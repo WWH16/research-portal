@@ -298,7 +298,7 @@ new #[Title('Manage Users')] class extends Component {
                                     <div class="flex items-center gap-2">
                                         <span class="truncate font-medium text-zinc-800">{{ $user->name }}</span>
                                         @if ($user->is(auth()->user()))
-                                            <flux:badge size="sm" color="zinc">{{ __('You') }}</flux:badge>
+                                            <span class="inline-flex shrink-0 items-center rounded-md bg-isu-green-700 px-1.5 py-0.5 text-xs font-medium text-white">{{ __('You') }}</span>
                                         @endif
                                     </div>
                                     <div class="truncate text-zinc-500">{{ $user->email }}</div>

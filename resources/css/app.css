@@ -6,44 +6,84 @@
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
 
+/*
+ * The portal ships light-only. Dark variants stay tied to a `.dark` class that
+ * nothing sets, so Flux's built-in dark styles never activate.
+ */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-zinc-50: #fafafa;
-    --color-zinc-100: #f5f5f5;
-    --color-zinc-200: #e5e5e5;
-    --color-zinc-300: #d4d4d4;
-    --color-zinc-400: #a3a3a3;
-    --color-zinc-500: #737373;
-    --color-zinc-600: #525252;
-    --color-zinc-700: #404040;
-    --color-zinc-800: #262626;
-    --color-zinc-900: #171717;
-    --color-zinc-950: #0a0a0a;
+    /* ISU seal green. 700 is the brand green. */
+    --color-isu-green-50: #edf7f1;
+    --color-isu-green-100: #d3ecdd;
+    --color-isu-green-200: #a8d8bb;
+    --color-isu-green-300: #73bd93;
+    --color-isu-green-400: #3f9c6b;
+    --color-isu-green-500: #1f7f50;
+    --color-isu-green-600: #126b41;
+    --color-isu-green-700: #0b5e36;
+    --color-isu-green-800: #094b2b;
+    --color-isu-green-900: #073a22;
+    --color-isu-green-950: #042414;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    /* ISU seal gold. 500 is the brand gold. Too light for text on white; use it for borders, fills and highlights. */
+    --color-isu-gold-50: #fefae8;
+    --color-isu-gold-100: #fdf1c3;
+    --color-isu-gold-200: #fbe28a;
+    --color-isu-gold-300: #f8d04d;
+    --color-isu-gold-400: #f5c21f;
+    --color-isu-gold-500: #f2b705;
+    --color-isu-gold-600: #cc9804;
+    --color-isu-gold-700: #9f7406;
+    --color-isu-gold-800: #7d5b0c;
+    --color-isu-gold-900: #664a0f;
+    --color-isu-gold-950: #3a2803;
+
+    /* Neutrals, faintly tinted toward the seal green so grays sit with the brand. */
+    --color-zinc-50: oklch(0.985 0.003 160);
+    --color-zinc-100: oklch(0.967 0.004 160);
+    --color-zinc-200: oklch(0.922 0.006 160);
+    --color-zinc-300: oklch(0.87 0.008 160);
+    --color-zinc-400: oklch(0.708 0.01 160);
+    --color-zinc-500: oklch(0.556 0.01 160);
+    --color-zinc-600: oklch(0.439 0.01 160);
+    --color-zinc-700: oklch(0.371 0.01 160);
+    --color-zinc-800: oklch(0.269 0.008 160);
+    --color-zinc-900: oklch(0.205 0.006 160);
+    --color-zinc-950: oklch(0.145 0.004 160);
+
+    /* Semantic tokens. Pages should reach for these, not raw hex values. */
+    --color-canvas: var(--color-zinc-50);
+    --color-surface: var(--color-white);
+    --color-line: var(--color-zinc-200);
+    --color-highlight: var(--color-isu-gold-500);
+    --color-highlight-soft: var(--color-isu-gold-50);
+    --color-highlight-line: var(--color-isu-gold-300);
+
+    /* Flux reads these for primary buttons, links, focus rings and checked controls. */
+    --color-accent: var(--color-isu-green-700);
+    --color-accent-content: var(--color-isu-green-700);
     --color-accent-foreground: var(--color-white);
 }
 
-@layer theme {
-    .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
-    }
-}
-
 @layer base {
-
     *,
     ::after,
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
+        border-color: var(--color-line, currentColor);
+    }
+
+    html {
+        color-scheme: light;
+    }
+
+    ::selection {
+        background-color: var(--color-isu-gold-200);
+        color: var(--color-isu-green-950);
     }
 }
 
@@ -61,6 +101,41 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
-/* \[:where(&)\]:size-4 {
-    @apply size-4;
-} */
+/* Headings carry the brand green. */
+[data-flux-heading] {
+    color: var(--color-isu-green-800);
+}
+
+/* Primary buttons deepen on hover instead of fading. */
+[data-flux-button][class*='bg-[var(--color-accent)]']:hover {
+    background-color: var(--color-isu-green-800);
+}
+
+/* Links keep green text and pick up a gold underline on hover. */
+[data-flux-link]:hover {
+    text-decoration-color: var(--color-highlight);
+}
+
+/* Navigation: gold marks where you are and where you're pointing. */
+[data-flux-sidebar-item]:not([data-current]):hover,
+[data-flux-navlist-item]:not([data-current]):hover {
+    background-color: var(--color-highlight-soft);
+}
+
+[data-flux-sidebar-item][data-current],
+[data-flux-navlist-item][data-current] {
+    background-color: var(--color-highlight-soft);
+    border-color: var(--color-highlight-line);
+    box-shadow: none;
+}
+
+/* A thin gold rule across the top of every page, echoing the seal's ring. */
+.isu-rule::before {
+    content: '';
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 60;
+    height: 3px;
+    background-color: var(--color-highlight);
+    pointer-events: none;
+}

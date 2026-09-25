@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\AutoLoginInLocal;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Temporary: auto-login as a dev user in local. Delete this line to restore the login screen.
+        $middleware->web(append: [AutoLoginInLocal::class]);
+        $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: AutoLoginInLocal::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

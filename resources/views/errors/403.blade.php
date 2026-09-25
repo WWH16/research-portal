@@ -6,7 +6,7 @@
     <body class="min-h-screen bg-surface antialiased">
         <main class="flex min-h-svh items-center justify-center p-6 md:p-10">
             <div class="flex w-full max-w-md flex-col items-center text-center">
-                <img src="{{ asset('images/isu_logo.png') }}" alt="{{ __('Isabela State University') }}" class="size-16 object-contain" />
+                <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-16 object-contain" />
 
                 <flux:heading size="xl" level="1" class="mt-8 text-balance">{{ __('You don’t have access to this page') }}</flux:heading>
 

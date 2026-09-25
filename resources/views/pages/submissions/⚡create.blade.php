@@ -90,7 +90,7 @@ new #[Title('Submit Proposal')] class extends Component {
 
 <section class="mx-auto w-full max-w-2xl">
     <header class="flex items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_logo.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+        <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <flux:heading size="xl" level="1">{{ __('Submit Proposal') }}</flux:heading>
     </header>
 

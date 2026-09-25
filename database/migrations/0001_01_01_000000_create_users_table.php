@@ -17,6 +17,14 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            // Added for the research portal
+            $table->string('researcher_id', 20)->nullable()->unique();
+            $table->string('mobile', 20)->nullable();
+            $table->foreignId('department_id')->nullable()->constrained();
+            $table->enum('role', ['admin', 'faculty'])->default('faculty');
+            $table->string('profile_image')->nullable();
+
             $table->rememberToken();
             $table->timestamps();
         });

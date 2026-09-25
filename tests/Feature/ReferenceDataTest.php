@@ -46,11 +46,19 @@ class ReferenceDataTest extends TestCase
     }
 
     #[DataProvider('pages')]
-    public function test_page_is_displayed(string $route, string $heading): void
+    public function test_page_is_displayed_to_admins(string $route, string $heading): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $this->get(route($route))->assertOk()->assertSee($heading);
+    }
+
+    #[DataProvider('pages')]
+    public function test_faculty_are_forbidden(string $route): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'faculty']));
+
+        $this->get(route($route))->assertForbidden();
     }
 
     #[DataProvider('namedModels')]

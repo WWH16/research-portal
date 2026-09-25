@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AutoLoginInLocal;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias(['admin' => EnsureUserIsAdmin::class]);
+
         // Temporary: auto-login as a dev user in local. Delete this line to restore the login screen.
         $middleware->web(append: [AutoLoginInLocal::class]);
         $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: AutoLoginInLocal::class);

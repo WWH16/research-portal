@@ -76,6 +76,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             : $initials;
     }
 
+    /**
+     * Determine whether the user is a portal administrator.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);

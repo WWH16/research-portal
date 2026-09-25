@@ -16,9 +16,13 @@ class DatabaseSeeder extends Seeder
 
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $testUser = User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            ['name' => 'Test User', 'password' => 'password'],
+        );
+
+        if (! $testUser->hasVerifiedEmail()) {
+            $testUser->markEmailAsVerified();
+        }
     }
 }

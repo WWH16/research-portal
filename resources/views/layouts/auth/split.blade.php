@@ -4,39 +4,42 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-surface antialiased">
-        <div class="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
-            <div class="bg-muted relative hidden h-full flex-col p-10 text-white lg:flex">
-                <div class="absolute inset-0 bg-accent"></div>
-                <a href="{{ route('home') }}" class="relative z-20 flex items-center text-lg font-medium" wire:navigate>
-                    <span class="flex h-10 w-10 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="me-2 size-7" />
-                    </span>
-                    {{ config('app.name', 'Laravel') }}
-                </a>
-
-                @php
-                    [$message, $author] = str(Illuminate\Foundation\Inspiring::quotes()->random())->explode('-');
-                @endphp
-
-                <div class="relative z-20 mt-auto">
-                    <blockquote class="space-y-2">
-                        <flux:heading size="lg" class="text-white!">&ldquo;{{ trim($message) }}&rdquo;</flux:heading>
-                        <footer><flux:heading class="text-isu-gold-300!">{{ trim($author) }}</flux:heading></footer>
-                    </blockquote>
+        <div class="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+            {{-- Brand panel: the same seal green as the app sidebar, so signing in and working inside feel like one place. --}}
+            <aside class="relative hidden flex-col justify-between overflow-hidden bg-isu-green-800 p-12 text-isu-green-50 lg:flex">
+                <div class="flex items-center gap-3">
+                    <x-app-logo-icon class="size-10 rounded-full bg-white p-px" />
+                    <span class="text-base font-semibold text-white">{{ config('app.name') }}</span>
                 </div>
-            </div>
-            <div class="w-full lg:p-8">
-                <div class="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-                    <a href="{{ route('home') }}" class="z-20 flex flex-col items-center gap-2 font-medium lg:hidden" wire:navigate>
-                        <span class="flex h-9 w-9 items-center justify-center rounded-md">
-                            <x-app-logo-icon class="size-9" />
-                        </span>
 
-                        <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
-                    </a>
+                <div class="relative z-10 max-w-md">
+                    <p class="text-4xl/tight font-semibold tracking-[-0.02em] text-balance text-white">
+                        {{ __('Research proposals, reviews, and records in one place.') }}
+                    </p>
+                </div>
+
+                <p class="text-sm text-isu-green-300">
+                    &copy; {{ now()->year }} {{ __('Isabela State University') }}
+                </p>
+
+                {{-- The seal, centered and faded into the green, anchors the panel without competing with the text. --}}
+                <img
+                    src="{{ asset('images/isu_logo.png') }}"
+                    alt=""
+                    class="pointer-events-none absolute inset-0 m-auto size-[min(80%,30rem)] max-w-none opacity-[0.07] mix-blend-luminosity select-none"
+                />
+            </aside>
+
+            <main class="flex items-center justify-center px-6 py-12 sm:px-10">
+                <div class="flex w-full max-w-sm flex-col gap-8">
+                    <div class="flex items-center gap-3 lg:hidden">
+                        <x-app-logo-icon class="size-10" />
+                        <span class="text-base font-semibold text-isu-green-800">{{ config('app.name') }}</span>
+                    </div>
+
                     {{ $slot }}
                 </div>
-            </div>
+            </main>
         </div>
 
         @persist('toast')

@@ -116,26 +116,123 @@ select:focus[data-flux-control] {
     text-decoration-color: var(--color-highlight);
 }
 
-/* Navigation: gold marks where you are and where you're pointing. */
-[data-flux-sidebar-item]:not([data-current]):hover,
+/* Settings navigation: gold marks where you are and where you're pointing. */
 [data-flux-navlist-item]:not([data-current]):hover {
     background-color: var(--color-highlight-soft);
 }
 
-[data-flux-sidebar-item][data-current],
 [data-flux-navlist-item][data-current] {
     background-color: var(--color-highlight-soft);
     border-color: var(--color-highlight-line);
     box-shadow: none;
 }
 
-/* A thin gold rule across the top of every page, echoing the seal's ring. */
-.isu-rule::before {
-    content: '';
-    position: fixed;
-    inset: 0 0 auto;
-    z-index: 60;
-    height: 3px;
-    background-color: var(--color-highlight);
-    pointer-events: none;
+/*
+ * The app sidebar sits on the seal green. Flux styles it for a light background, so
+ * these rules recolor each part it draws with solid tints of the same green: pale
+ * green text, mid-green icons and labels, a lighter green on hover, and the brighter
+ * seal green with white text for the current page.
+ */
+.isu-sidebar {
+    --color-accent: var(--color-white);
+    --color-accent-content: var(--color-isu-green-800);
+    --color-accent-foreground: var(--color-isu-green-800);
+
+    background-color: var(--color-isu-green-800);
+    border-color: var(--color-isu-green-900);
+    color: var(--color-isu-green-50);
+    scrollbar-color: var(--color-isu-green-600) transparent;
+}
+
+/* The user menu opens inside the sidebar but keeps the page's light styling. */
+.isu-sidebar [data-flux-menu] {
+    --color-accent: var(--color-isu-green-700);
+    --color-accent-content: var(--color-isu-green-700);
+    --color-accent-foreground: var(--color-white);
+
+    color: var(--color-zinc-800);
+}
+
+/* The seal's outer ring is green too, so a thin white disc keeps its edge visible. */
+.isu-sidebar [data-flux-sidebar-brand] img {
+    padding: 1px;
+    border-radius: 9999px;
+    background-color: var(--color-white);
+}
+
+.isu-sidebar [data-flux-sidebar-brand] div {
+    color: var(--color-white);
+    font-weight: 600;
+}
+
+.isu-sidebar [data-flux-sidebar-group] > div:first-child {
+    color: var(--color-isu-green-300);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.isu-sidebar [data-flux-sidebar-item],
+.isu-sidebar [data-flux-sidebar-profile] > span {
+    color: var(--color-isu-green-100);
+}
+
+.isu-sidebar [data-flux-sidebar-item] [data-flux-icon],
+.isu-sidebar [data-flux-sidebar-profile] > div [data-flux-icon],
+.isu-sidebar [data-flux-sidebar-collapse] svg {
+    color: var(--color-isu-green-300);
+}
+
+.isu-sidebar [data-flux-sidebar-item],
+.isu-sidebar [data-flux-sidebar-item] [data-flux-icon],
+.isu-sidebar [data-flux-sidebar-profile],
+.isu-sidebar [data-flux-sidebar-collapse] button {
+    transition:
+        background-color 150ms ease-out,
+        color 150ms ease-out;
+}
+
+.isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
+.isu-sidebar [data-flux-sidebar-profile]:hover,
+.isu-sidebar [data-flux-sidebar-collapse] button:hover {
+    background-color: var(--color-isu-green-700);
+}
+
+.isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
+.isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover [data-flux-icon],
+.isu-sidebar [data-flux-sidebar-profile]:hover > span,
+.isu-sidebar [data-flux-sidebar-profile]:hover > div [data-flux-icon] {
+    color: var(--color-white);
+}
+
+.isu-sidebar [data-flux-sidebar-item]:not([data-current]):active {
+    background-color: var(--color-isu-green-900);
+}
+
+.isu-sidebar [data-flux-sidebar-item][data-current] {
+    background-color: var(--color-isu-green-600);
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--color-white);
+    font-weight: 600;
+}
+
+.isu-sidebar [data-flux-sidebar-item][data-current] [data-flux-icon] {
+    color: var(--color-white);
+}
+
+/* Keyboard focus shows as a pale ring that reads on every sidebar green. */
+.isu-sidebar [data-flux-sidebar-item]:focus-visible,
+.isu-sidebar [data-flux-sidebar-brand]:focus-visible,
+.isu-sidebar [data-flux-sidebar-profile]:focus-visible,
+.isu-sidebar [data-flux-sidebar-collapse] button:focus-visible {
+    outline: 2px solid var(--color-isu-green-200);
+    outline-offset: 2px;
+}
+
+/* The avatar uses the same brighter green as the current page, with white initials. */
+.isu-sidebar [data-flux-sidebar-profile] [data-flux-avatar] {
+    background-color: var(--color-isu-green-600);
+    color: var(--color-white);
 }

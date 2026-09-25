@@ -20,6 +20,20 @@
                         {{ __('Submissions') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Reference data')" class="grid">
+                    <flux:sidebar.item icon="beaker" :href="route('research-types.index')" :current="request()->routeIs('research-types.*')" wire:navigate>
+                        {{ __('Research Types') }}
+                    </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="tag" :href="route('categories.index')" :current="request()->routeIs('categories.*')" wire:navigate>
+                        {{ __('Categories') }}
+                    </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="building-library" :href="route('departments.index')" :current="request()->routeIs('departments.*')" wire:navigate>
+                        {{ __('Departments') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
             </flux:sidebar.nav>
 
             <flux:spacer />

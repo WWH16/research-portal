@@ -16,7 +16,7 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('categories', 'pages::categories.index')->name('categories.index');
     Route::livewire('departments', 'pages::departments.index')->name('departments.index');
 
-    Route::livewire('users', 'pages::users.index')->name('users.index');
+    Route::livewire('users', 'pages::users.index')->middleware('admin')->name('users.index');
     Route::livewire('activity-log', 'pages::activity-log.index')->name('activity-log.index');
     Route::livewire('backups', 'pages::backups.index')->name('backups.index');
 });

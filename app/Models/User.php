@@ -77,6 +77,34 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * Give every new account a researcher ID unless one was set explicitly.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            $user->researcher_id ??= static::nextResearcherId();
+        });
+    }
+
+    /**
+     * The next researcher ID for the given year, in the form ISU-2026-0001.
+     */
+    public static function nextResearcherId(?int $year = null): string
+    {
+        $prefix = 'ISU-'.($year ?? now()->year).'-';
+
+        $last = static::query()
+            ->where('researcher_id', 'like', $prefix.'%')
+            ->orderByRaw('LENGTH(researcher_id) DESC')
+            ->orderByDesc('researcher_id')
+            ->value('researcher_id');
+
+        $next = $last === null ? 1 : (int) substr($last, strlen($prefix)) + 1;
+
+        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Determine whether the user is a portal administrator.
      */
     public function isAdmin(): bool

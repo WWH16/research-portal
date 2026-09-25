@@ -3,13 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Runs with model events on, so the admin gets a researcher ID like every other account.
+ */
 class AdminUserSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Create the Research Office administrator account if it does not exist yet.
      *

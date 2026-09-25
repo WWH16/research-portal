@@ -17,7 +17,6 @@ class AdministrationPagesTest extends TestCase
     public static function pages(): array
     {
         return [
-            'manage users' => ['users.index', 'Manage Users'],
             'activity log' => ['activity-log.index', 'Activity Log'],
             'backup and restore' => ['backups.index', 'Backup and Restore'],
         ];

@@ -36,9 +36,11 @@
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Administration')" class="grid">
-                    <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
-                        {{ __('Manage Users') }}
-                    </flux:sidebar.item>
+                    @if (auth()->user()->isAdmin())
+                        <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                            {{ __('Manage Users') }}
+                        </flux:sidebar.item>
+                    @endif
 
                     <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log.index')" :current="request()->routeIs('activity-log.*')" wire:navigate>
                         {{ __('Activity Log') }}

@@ -293,7 +293,7 @@ new #[Title('Manage Users')] class extends Component {
                     <flux:table.row :key="$user->id">
                         <flux:table.cell>
                             <div class="flex min-w-0 items-center gap-3">
-                                <flux:avatar size="sm" :name="$user->name" :initials="$user->initials()" />
+                                <flux:avatar size="sm" :src="$user->profileImageUrl()" :name="$user->name" :initials="$user->initials()" />
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2">
                                         <span class="truncate font-medium text-zinc-800">{{ $user->name }}</span>

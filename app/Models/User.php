@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -102,6 +103,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         $next = $last === null ? 1 : (int) substr($last, strlen($prefix)) + 1;
 
         return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Public URL of the user's profile photo, or null when they have not uploaded one.
+     */
+    public function profileImageUrl(): ?string
+    {
+        return $this->profile_image ? Storage::disk('public')->url($this->profile_image) : null;
     }
 
     /**

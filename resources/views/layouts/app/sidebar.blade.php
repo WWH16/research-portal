@@ -19,6 +19,10 @@
                     <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*')" wire:navigate>
                         {{ __('Submissions') }}
                     </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="user-circle" :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>
+                        {{ __('My Profile') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Reference data')" class="grid">
@@ -75,6 +79,7 @@
 
             <flux:dropdown position="top" align="end">
                 <flux:profile
+                    :avatar="auth()->user()->profileImageUrl()"
                     :initials="auth()->user()->initials()"
                     icon-trailing="chevron-down"
                 />
@@ -84,6 +89,7 @@
                         <div class="p-0 text-sm font-normal">
                             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                                 <flux:avatar
+                                    :src="auth()->user()->profileImageUrl()"
                                     :name="auth()->user()->name"
                                     :initials="auth()->user()->initials()"
                                 />

@@ -7,7 +7,17 @@
 
         <x-passkey-verify />
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
+        {{-- A plain form post, so Alpine drives the loading state: disabling the submit button makes Flux show its spinner.
+             pageshow resets it when the browser restores this page from the back/forward cache. --}}
+        <form
+            method="POST"
+            action="{{ route('login.store') }}"
+            class="flex flex-col gap-6"
+            x-data="{ submitting: false }"
+            x-on:submit="submitting = true"
+            x-on:pageshow.window="submitting = false"
+            x-bind:aria-busy="submitting"
+        >
             @csrf
 
             <!-- Email Address -->
@@ -44,7 +54,7 @@
             <!-- Remember Me -->
             <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
 
-            <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
+            <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="login-button">
                 {{ __('Sign in') }}
             </flux:button>
         </form>

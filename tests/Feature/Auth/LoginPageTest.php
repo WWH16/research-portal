@@ -26,6 +26,14 @@ class LoginPageTest extends TestCase
             ->assertDontSee('Sign up');
     }
 
+    public function test_sign_in_button_shows_a_loading_state_while_submitting(): void
+    {
+        $this->get(route('login'))
+            ->assertSee('x-on:submit="submitting = true"', escape: false)
+            ->assertSee('x-bind:disabled="submitting"', escape: false)
+            ->assertSee('data-flux-loading-indicator', escape: false);
+    }
+
     public function test_public_registration_is_disabled(): void
     {
         $this->get('/register')->assertNotFound();

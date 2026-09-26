@@ -11,7 +11,7 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')" class="grid">
+                <flux:sidebar.group class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
@@ -41,21 +41,21 @@
                     </flux:sidebar.group>
                 @endif
 
-                <flux:sidebar.group :heading="__('Administration')" class="grid">
-                    @if (auth()->user()->isAdmin())
+                @if (auth()->user()->isAdmin())
+                    <flux:sidebar.group :heading="__('Administration')" class="grid">
                         <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
                             {{ __('Manage Users') }}
                         </flux:sidebar.item>
-                    @endif
 
-                    <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log.index')" :current="request()->routeIs('activity-log.*')" wire:navigate>
-                        {{ __('Activity Log') }}
-                    </flux:sidebar.item>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log.index')" :current="request()->routeIs('activity-log.*')" wire:navigate>
+                            {{ __('Activity Log') }}
+                        </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
-                        {{ __('Backup and Restore') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
+                        <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
+                            {{ __('Backup and Restore') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
             <flux:spacer />

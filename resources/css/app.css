@@ -165,7 +165,8 @@ select:focus[data-flux-control] {
     font-weight: 600;
 }
 
-.isu-sidebar [data-flux-sidebar-group] > div:first-child {
+/* Group headings are text-only divs; items are elements, so they never pick up this style. */
+.isu-sidebar [data-flux-sidebar-group] > div:first-child:not(:has(*)) {
     color: var(--color-isu-green-300);
     font-size: 0.6875rem;
     font-weight: 600;

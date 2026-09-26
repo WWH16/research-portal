@@ -30,14 +30,40 @@ class SubmissionTest extends TestCase
         $this->get(route('submissions.create'))->assertOk()->assertSee('Submit Proposal');
     }
 
-    public function test_department_defaults_to_the_users_department(): void
+    public function test_form_shows_the_members_own_department_instead_of_a_picker(): void
     {
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        Department::create(['code' => 'CBM', 'name' => 'College of Business and Management']);
 
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         Livewire::test('pages::submissions.create')
-            ->assertSet('department_id', $department->id);
+            ->assertSee('CCS · College of Computer Studies')
+            ->assertSee('From your profile')
+            ->assertDontSee('College of Business and Management')
+            ->assertDontSeeHtml('wire:model="department_id"');
+    }
+
+    public function test_members_without_a_department_cannot_submit(): void
+    {
+        Storage::fake('local');
+
+        $researchType = ResearchType::create(['name' => 'Thesis']);
+        $category = Category::create(['name' => 'Computing']);
+
+        $this->actingAs(User::factory()->create(['department_id' => null]));
+
+        Livewire::test('pages::submissions.create')
+            ->assertSee('Your account has no department yet')
+            ->set('title', 'Sample Proposal')
+            ->set('abstract', 'An abstract.')
+            ->set('research_type_id', $researchType->id)
+            ->set('category_id', $category->id)
+            ->set('document', UploadedFile::fake()->create('proposal.pdf', 500, 'application/pdf'))
+            ->call('save')
+            ->assertHasErrors(['department']);
+
+        $this->assertSame(0, Submission::count());
     }
 
     public function test_proposal_can_be_submitted(): void
@@ -74,7 +100,9 @@ class SubmissionTest extends TestCase
 
     public function test_required_fields_are_validated(): void
     {
-        $this->actingAs(User::factory()->create());
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+
+        $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         Livewire::test('pages::submissions.create')
             ->call('save')
@@ -82,7 +110,6 @@ class SubmissionTest extends TestCase
                 'title' => 'required',
                 'abstract' => 'required',
                 'research_type_id' => 'required',
-                'department_id' => 'required',
                 'category_id' => 'required',
                 'document' => 'required',
             ]);
@@ -94,7 +121,9 @@ class SubmissionTest extends TestCase
     {
         Storage::fake('local');
 
-        $this->actingAs(User::factory()->create());
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+
+        $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         Livewire::test('pages::submissions.create')
             ->set('document', UploadedFile::fake()->create('proposal.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))

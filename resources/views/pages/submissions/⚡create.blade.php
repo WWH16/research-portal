@@ -17,7 +17,6 @@ new #[Title('Submit Proposal')] class extends Component {
     public string $title = '';
     public string $abstract = '';
     public ?int $research_type_id = null;
-    public ?int $department_id = null;
     public ?int $category_id = null;
     public string $designation = '';
 
@@ -25,29 +24,26 @@ new #[Title('Submit Proposal')] class extends Component {
     public $document = null;
 
     /**
-     * Mount the component.
-     */
-    public function mount(): void
-    {
-        $this->department_id = Auth::user()->department_id;
-    }
-
-    /**
      * Validate the proposal, store its PDF privately, and create the submission.
      */
     public function save(): void
     {
+        // The department always comes from the member's own account, never from the form.
+        if (! $this->department) {
+            $this->addError('department', __('Your account has no department yet. Contact the Research Office before submitting.'));
+
+            return;
+        }
+
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'abstract' => ['required', 'string'],
             'research_type_id' => ['required', 'integer', 'exists:research_types,id'],
-            'department_id' => ['required', 'integer', 'exists:departments,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'designation' => ['nullable', 'string', 'max:100'],
             'document' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ], attributes: [
             'research_type_id' => __('research type'),
-            'department_id' => __('department'),
             'category_id' => __('category'),
             'document' => __('proposal PDF'),
         ]);
@@ -56,7 +52,7 @@ new #[Title('Submit Proposal')] class extends Component {
 
         Auth::user()->submissions()->create([
             'research_type_id' => $validated['research_type_id'],
-            'department_id' => $validated['department_id'],
+            'department_id' => $this->department->id,
             'category_id' => $validated['category_id'],
             'title' => $validated['title'],
             'abstract' => $validated['abstract'],
@@ -75,10 +71,13 @@ new #[Title('Submit Proposal')] class extends Component {
         return ResearchType::orderBy('name')->get(['id', 'name']);
     }
 
+    /**
+     * The signed-in member's department, which every proposal they submit is filed under.
+     */
     #[Computed]
-    public function departments(): Collection
+    public function department(): ?Department
     {
-        return Department::orderBy('name')->get(['id', 'code', 'name']);
+        return Auth::user()->department;
     }
 
     #[Computed]
@@ -93,6 +92,10 @@ new #[Title('Submit Proposal')] class extends Component {
         <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <flux:heading size="xl" level="1">{{ __('Submit Proposal') }}</flux:heading>
     </header>
+
+    @unless ($this->department)
+        <flux:callout variant="warning" icon="exclamation-triangle" class="mt-6" :heading="__('Your account has no department yet')" :text="__('Proposals are filed under your department. Contact the Research Office to have one assigned, then come back to submit.')" />
+    @endunless
 
     <form wire:submit="save" class="mt-8 flex flex-col gap-6">
         <flux:input wire:model="title" :label="__('Title')" type="text" required autofocus />
@@ -114,11 +117,13 @@ new #[Title('Submit Proposal')] class extends Component {
         </div>
 
         <div class="grid gap-6 sm:grid-cols-2">
-            <flux:select wire:model="department_id" :label="__('Department')" :placeholder="__('Select department')" required>
-                @foreach ($this->departments as $department)
-                    <flux:select.option :value="$department->id">{{ $department->code }} · {{ $department->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
+            <flux:input
+                :label="__('Department')"
+                :value="$this->department ? $this->department->code.' · '.$this->department->name : __('Not assigned')"
+                :badge="__('From your profile')"
+                type="text"
+                disabled
+            />
 
             <flux:input wire:model="designation" :label="__('Designation')" :badge="__('Optional')" type="text" />
         </div>
@@ -143,7 +148,9 @@ new #[Title('Submit Proposal')] class extends Component {
                 {{ __('Cancel') }}
             </flux:button>
 
-            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save,document" data-test="submit-proposal-button">
+            <flux:error name="department" class="me-auto" />
+
+            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save,document" :disabled="! $this->department" data-test="submit-proposal-button">
                 {{ __('Submit') }}
             </flux:button>
         </div>

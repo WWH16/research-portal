@@ -111,6 +111,37 @@ class ManageUsersTest extends TestCase
             ->assertHasErrors(['email' => 'unique']);
     }
 
+    public function test_edit_form_shows_no_department_for_unassigned_users(): void
+    {
+        Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+        $user = User::factory()->create(['department_id' => null]);
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->call('edit', $user->id)
+            ->assertSet('department_id', null)
+            ->assertSee('No department')
+            ->assertDontSeeHtml('class="placeholder"');
+    }
+
+    public function test_admin_can_remove_a_users_department(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+        $user = User::factory()->create(['department_id' => $department->id]);
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->call('edit', $user->id)
+            ->assertSet('department_id', $department->id)
+            ->set('department_id', '')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull($user->fresh()->department_id);
+    }
+
     public function test_admin_can_update_a_user_and_keep_their_password(): void
     {
         $user = User::factory()->create(['name' => 'Maria Santos', 'role' => 'faculty']);

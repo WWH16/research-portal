@@ -353,22 +353,23 @@ new #[Title('Manage Users')] class extends Component {
             </div>
 
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:select wire:model="department_id" :label="__('Department')" :placeholder="__('No department')">
+                <flux:select wire:model="department_id" :label="__('Department')">
+                    {{-- A real, selectable option so users without a department show it and admins can clear one. --}}
+                    <flux:select.option value="">{{ __('No department') }}</flux:select.option>
                     @foreach ($this->departments as $department)
                         <flux:select.option :value="$department->id">{{ $department->code }} · {{ $department->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
-                <div>
-                    <flux:select wire:model="role" :label="__('Role')" :disabled="$this->editingSelf">
-                        <flux:select.option value="faculty">{{ __('Faculty') }}</flux:select.option>
-                        <flux:select.option value="admin">{{ __('Admin') }}</flux:select.option>
-                    </flux:select>
+                <flux:select wire:model="role" :label="__('Role')" :disabled="$this->editingSelf">
+                    <flux:select.option value="faculty">{{ __('Faculty') }}</flux:select.option>
+                    <flux:select.option value="admin">{{ __('Admin') }}</flux:select.option>
+                </flux:select>
 
-                    @if ($this->editingSelf)
-                        <flux:text class="mt-2 text-sm">{{ __('You can’t change your own role.') }}</flux:text>
-                    @endif
-                </div>
+                {{-- Its own grid row under the Role column, so Department and Role stay level above it. --}}
+                @if ($this->editingSelf)
+                    <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('You can’t change your own role.') }}</flux:text>
+                @endif
             </div>
 
             <flux:input

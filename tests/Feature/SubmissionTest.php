@@ -30,6 +30,45 @@ class SubmissionTest extends TestCase
         $this->get(route('submissions.create'))->assertOk()->assertSee('Submit Proposal');
     }
 
+    public function test_admins_cannot_open_the_submit_form(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('submissions.create'))
+            ->assertForbidden()
+            ->assertSee('Admins monitor submissions and don’t submit proposals.');
+    }
+
+    public function test_admins_monitor_every_submission_without_a_new_button(): void
+    {
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('submissions.index'))
+            ->assertOk()
+            ->assertSee('Every proposal filed across the portal.')
+            ->assertSee('Maria Proposal')
+            ->assertSee('Jose Proposal')
+            ->assertSee($maria->name)
+            ->assertSee($jose->name)
+            ->assertSee('CCS')
+            ->assertDontSee(route('submissions.create'), escape: false);
+    }
+
+    public function test_faculty_see_only_their_own_submissions(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+
+        $this->actingAs($maria);
+
+        $this->get(route('submissions.index'))
+            ->assertOk()
+            ->assertSee('Maria Proposal')
+            ->assertDontSee('Jose Proposal')
+            ->assertSee(route('submissions.create'), escape: false);
+    }
+
     public function test_form_shows_the_members_own_department_instead_of_a_picker(): void
     {
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
@@ -134,5 +173,30 @@ class SubmissionTest extends TestCase
             ->set('document', UploadedFile::fake()->create('proposal.pdf', 10241, 'application/pdf'))
             ->call('save')
             ->assertHasErrors(['document' => 'max']);
+    }
+
+    /**
+     * @return array{User, User}
+     */
+    private function twoFacultyWithSubmissions(): array
+    {
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $researchType = ResearchType::create(['name' => 'Thesis']);
+        $category = Category::create(['name' => 'Computing']);
+
+        $maria = User::factory()->create(['name' => 'Maria Santos', 'department_id' => $department->id]);
+        $jose = User::factory()->create(['name' => 'Jose Reyes', 'department_id' => $department->id]);
+
+        foreach ([[$maria, 'Maria Proposal'], [$jose, 'Jose Proposal']] as [$user, $title]) {
+            $user->submissions()->create([
+                'research_type_id' => $researchType->id,
+                'category_id' => $category->id,
+                'department_id' => $department->id,
+                'title' => $title,
+                'file_path' => 'submissions/sample.pdf',
+            ]);
+        }
+
+        return [$maria, $jose];
     }
 }

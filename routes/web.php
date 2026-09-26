@@ -10,7 +10,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::livewire('submissions', 'pages::submissions.index')->name('submissions.index');
-    Route::livewire('submissions/create', 'pages::submissions.create')->name('submissions.create');
+    Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
 
     Route::middleware('admin')->group(function () {
         Route::livewire('research-types', 'pages::research-types.index')->name('research-types.index');

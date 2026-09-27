@@ -29,18 +29,18 @@ class ReferenceDataTest extends TestCase
     }
 
     /**
-     * @return array<string, array{class-string, string, string}>
+     * @return array<string, array{class-string, string}>
      */
     public static function namedModels(): array
     {
         return [
-            'research types' => [ResearchType::class, 'pages::research-types.index', 'research_types'],
-            'categories' => [Category::class, 'pages::categories.index', 'categories'],
+            'research types' => [ResearchType::class, 'research-types'],
+            'categories' => [Category::class, 'categories'],
         ];
     }
 
     #[DataProvider('pages')]
-    public function test_guests_are_redirected_to_the_login_page(string $route): void
+    public function test_guests_are_redirected_to_the_login_page(string $route, string $heading): void
     {
         $this->get(route($route))->assertRedirect(route('login'));
     }
@@ -50,11 +50,11 @@ class ReferenceDataTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->get(route($route))->assertOk()->assertSee($heading);
+        $this->get(route($route))->assertOk()->assertSee($heading)->assertSee($heading.' - '.config('app.name'));
     }
 
     #[DataProvider('pages')]
-    public function test_faculty_are_forbidden(string $route): void
+    public function test_faculty_are_forbidden(string $route, string $heading): void
     {
         $this->actingAs(User::factory()->create(['role' => 'faculty']));
 
@@ -62,11 +62,11 @@ class ReferenceDataTest extends TestCase
     }
 
     #[DataProvider('namedModels')]
-    public function test_named_record_can_be_created_and_renamed(string $model, string $component): void
+    public function test_named_record_can_be_created_and_renamed(string $model, string $type): void
     {
         $this->actingAs(User::factory()->create());
 
-        $page = Livewire::test($component)
+        $page = Livewire::test('pages::named-records.index', ['type' => $type])
             ->call('create')
             ->set('name', '  Thesis  ')
             ->call('save')
@@ -87,13 +87,13 @@ class ReferenceDataTest extends TestCase
     }
 
     #[DataProvider('namedModels')]
-    public function test_named_record_name_is_required_and_unique(string $model, string $component): void
+    public function test_named_record_name_is_required_and_unique(string $model, string $type): void
     {
         $this->actingAs(User::factory()->create());
 
         $existing = $model::create(['name' => 'Thesis']);
 
-        Livewire::test($component)
+        Livewire::test('pages::named-records.index', ['type' => $type])
             ->call('create')
             ->call('save')
             ->assertHasErrors(['name' => 'required'])
@@ -101,7 +101,7 @@ class ReferenceDataTest extends TestCase
             ->call('save')
             ->assertHasErrors(['name' => 'unique']);
 
-        Livewire::test($component)
+        Livewire::test('pages::named-records.index', ['type' => $type])
             ->call('edit', $existing->id)
             ->call('save')
             ->assertHasNoErrors();
@@ -110,13 +110,13 @@ class ReferenceDataTest extends TestCase
     }
 
     #[DataProvider('namedModels')]
-    public function test_unused_named_record_can_be_deleted(string $model, string $component): void
+    public function test_unused_named_record_can_be_deleted(string $model, string $type): void
     {
         $this->actingAs(User::factory()->create());
 
         $record = $model::create(['name' => 'Thesis']);
 
-        Livewire::test($component)
+        Livewire::test('pages::named-records.index', ['type' => $type])
             ->call('confirmDelete', $record->id)
             ->call('delete');
 
@@ -124,15 +124,15 @@ class ReferenceDataTest extends TestCase
     }
 
     #[DataProvider('namedModels')]
-    public function test_named_record_used_by_a_submission_cannot_be_deleted(string $model, string $component, string $table): void
+    public function test_named_record_used_by_a_submission_cannot_be_deleted(string $model, string $type): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
 
         $submission = $this->createSubmission($user);
-        $record = $model::findOrFail($submission->{str($table)->singular().'_id'});
+        $record = $model::findOrFail($submission->{str((new $model)->getTable())->singular().'_id'});
 
-        Livewire::test($component)
+        Livewire::test('pages::named-records.index', ['type' => $type])
             ->call('confirmDelete', $record->id)
             ->assertSee('can’t be deleted')
             ->call('delete');

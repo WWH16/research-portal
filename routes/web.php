@@ -13,8 +13,8 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
 
     Route::middleware('admin')->group(function () {
-        Route::livewire('research-types', 'pages::research-types.index')->name('research-types.index');
-        Route::livewire('categories', 'pages::categories.index')->name('categories.index');
+        Route::livewire('research-types', 'pages::named-records.index')->defaults('type', 'research-types')->name('research-types.index');
+        Route::livewire('categories', 'pages::named-records.index')->defaults('type', 'categories')->name('categories.index');
         Route::livewire('departments', 'pages::departments.index')->name('departments.index');
 
         Route::livewire('users', 'pages::users.index')->name('users.index');

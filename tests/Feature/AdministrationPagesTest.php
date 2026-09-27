@@ -23,7 +23,7 @@ class AdministrationPagesTest extends TestCase
     }
 
     #[DataProvider('pages')]
-    public function test_guests_are_redirected_to_the_login_page(string $route): void
+    public function test_guests_are_redirected_to_the_login_page(string $route, string $heading): void
     {
         $this->get(route($route))->assertRedirect(route('login'));
     }
@@ -37,7 +37,7 @@ class AdministrationPagesTest extends TestCase
     }
 
     #[DataProvider('pages')]
-    public function test_faculty_are_forbidden(string $route): void
+    public function test_faculty_are_forbidden(string $route, string $heading): void
     {
         $this->actingAs(User::factory()->create(['role' => 'faculty']));
 

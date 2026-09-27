@@ -1,19 +1,20 @@
-<div class="flex items-start max-md:flex-col">
-    <div class="me-10 w-full pb-4 md:w-[220px]">
-        <flux:navlist aria-label="{{ __('Settings') }}">
-            <flux:navlist.item :href="route('profile.edit')" wire:navigate>{{ __('My Profile') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
-        </flux:navlist>
+<div class="mx-auto w-full max-w-4xl">
+    <header class="flex items-center gap-4">
+        <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+        <div class="min-w-0 flex-1">
+            <flux:heading size="xl" level="1">{{ $heading ?? '' }}</flux:heading>
+            <flux:text class="mt-1">{{ $subheading ?? '' }}</flux:text>
+        </div>
+    </header>
+
+    <div class="mt-4 border-b border-line">
+        <flux:navbar class="settings-tabs -mb-px" scrollable aria-label="{{ __('Settings') }}">
+            <flux:navbar.item :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>{{ __('My Profile') }}</flux:navbar.item>
+            <flux:navbar.item :href="route('security.edit')" :current="request()->routeIs('security.edit')" wire:navigate>{{ __('Security') }}</flux:navbar.item>
+        </flux:navbar>
     </div>
 
-    <flux:separator class="md:hidden" />
-
-    <div class="flex-1 self-stretch max-md:pt-6">
-        <flux:heading>{{ $heading ?? '' }}</flux:heading>
-        <flux:subheading>{{ $subheading ?? '' }}</flux:subheading>
-
-        <div class="mt-5 w-full max-w-lg">
-            {{ $slot }}
-        </div>
+    <div class="mt-8 space-y-6">
+        {{ $slot }}
     </div>
 </div>

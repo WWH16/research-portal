@@ -116,15 +116,13 @@ select:focus[data-flux-control] {
     text-decoration-color: var(--color-highlight);
 }
 
-/* Settings navigation: gold marks where you are and where you're pointing. */
-[data-flux-navlist-item]:not([data-current]):hover {
+/* Settings tabs: gold marks where you are and where you're pointing. */
+.settings-tabs [data-flux-navbar-items]:not([data-current]):hover {
     background-color: var(--color-highlight-soft);
 }
 
-[data-flux-navlist-item][data-current] {
-    background-color: var(--color-highlight-soft);
-    border-color: var(--color-highlight-line);
-    box-shadow: none;
+.settings-tabs [data-flux-navbar-items][data-current]::after {
+    background-color: var(--color-highlight);
 }
 
 /*

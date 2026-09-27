@@ -167,50 +167,49 @@ new #[Title('Security settings')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    @include('partials.settings-heading')
+    <x-pages::settings.layout :heading="__('Security')" :subheading="__('Your password and how you sign in.')">
+        <form method="POST" wire:submit="updatePassword">
+            <x-pages::settings.section :heading="__('Update password')" :description="__('Ensure your account is using a long, random password to stay secure')">
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <flux:input
+                        wire:model="current_password"
+                        :label="__('Current password')"
+                        type="password"
+                        required
+                        autocomplete="current-password"
+                        viewable
+                        class="sm:col-span-2"
+                    />
+                    <flux:input
+                        wire:model="password"
+                        :label="__('New password')"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                        viewable
+                    />
+                    <flux:input
+                        wire:model="password_confirmation"
+                        :label="__('Confirm password')"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                        viewable
+                    />
+                </div>
 
-    <flux:heading level="2" class="sr-only">{{ __('Security settings') }}</flux:heading>
-
-    <x-pages::settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
-        <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
-            <flux:input
-                wire:model="current_password"
-                :label="__('Current password')"
-                type="password"
-                required
-                autocomplete="current-password"
-                viewable
-            />
-            <flux:input
-                wire:model="password"
-                :label="__('New password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-            <flux:input
-                wire:model="password_confirmation"
-                :label="__('Confirm password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-
-            <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-password-button">
-                    {{ __('Save') }}
-                </flux:button>
-            </div>
+                <x-slot:footer>
+                    <flux:button variant="primary" type="submit" data-test="update-password-button">
+                        {{ __('Save') }}
+                    </flux:button>
+                </x-slot:footer>
+            </x-pages::settings.section>
         </form>
 
         @if ($canManageTwoFactor)
-            <section class="mt-12">
-                <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your two-factor authentication settings') }}</flux:subheading>
+            <x-pages::settings.section :heading="__('Two-factor authentication')" :description="__('Manage your two-factor authentication settings')">
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     @if ($twoFactorEnabled)
@@ -249,15 +248,12 @@ new #[Title('Security settings')] class extends Component {
                         </div>
                     @endif
                 </div>
-            </section>
+            </x-pages::settings.section>
         @endif
 
         @if ($canManagePasskeys)
-            <section class="mt-12">
-                <flux:heading>{{ __('Passkeys') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your passkeys for passwordless sign-in') }}</flux:subheading>
-
-                <div class="mt-6 flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
+            <x-pages::settings.section :heading="__('Passkeys')" :description="__('Manage your passkeys for passwordless sign-in')">
+                <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
                         @forelse ($passkeys as $passkey)
                             <div class="flex items-center justify-between p-4 {{ ! $loop->last ? 'border-b border-zinc-200 dark:border-zinc-700' : '' }}">
@@ -304,7 +300,7 @@ new #[Title('Security settings')] class extends Component {
 
                     <x-passkey-registration />
                 </div>
-            </section>
+            </x-pages::settings.section>
         @endif
     </x-pages::settings.layout>
 

@@ -15,6 +15,16 @@ new #[Title('Submissions')] class extends Component {
     public string $remarks = '';
 
     /**
+     * Confirm a just-submitted proposal with the same toast the rest of the portal uses.
+     */
+    public function mount(): void
+    {
+        if ($message = session('status')) {
+            Flux::toast(variant: 'success', text: $message);
+        }
+    }
+
+    /**
      * Admins monitor every proposal in the portal; faculty see only their own.
      */
     #[Computed]
@@ -104,10 +114,6 @@ new #[Title('Submissions')] class extends Component {
             </flux:button>
         @endunless
     </header>
-
-    @if (session('status'))
-        <flux:callout variant="success" icon="check-circle" class="mt-6" :heading="session('status')" />
-    @endif
 
     @if ($this->submissions->isEmpty())
         <flux:text class="mt-8">

@@ -134,7 +134,11 @@ class SubmissionTest extends TestCase
         $this->assertNull($submission->designation);
         Storage::disk('local')->assertExists($submission->file_path);
 
-        $this->get(route('submissions.index'))->assertSee('Proposal submitted.')->assertSee('Sample Proposal');
+        $this->get(route('submissions.index'))->assertSee('Sample Proposal')->assertDontSee('data-flux-callout', escape: false);
+
+        session()->flash('status', 'Proposal submitted.');
+
+        Livewire::test('pages::submissions.index')->assertDispatched('toast-show', fn ($name, $params) => $params['slots']['text'] === 'Proposal submitted.' && $params['dataset']['variant'] === 'success');
     }
 
     public function test_required_fields_are_validated(): void

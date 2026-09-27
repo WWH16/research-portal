@@ -175,6 +175,97 @@ class SubmissionTest extends TestCase
             ->assertHasErrors(['document' => 'max']);
     }
 
+    public function test_admin_can_ask_for_a_revision_with_remarks(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $submission = $maria->submissions()->sole();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::test('pages::submissions.index')
+            ->call('review', $submission->id)
+            ->assertSet('status', 'Pending')
+            ->set('status', 'For Revision')
+            ->set('remarks', '  Add a methodology section.  ')
+            ->call('saveReview')
+            ->assertHasNoErrors();
+
+        $submission->refresh();
+        $this->assertSame('For Revision', $submission->status);
+        $this->assertSame('Add a methodology section.', $submission->remarks);
+    }
+
+    public function test_review_status_and_remarks_are_validated(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $submission = $maria->submissions()->sole();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::test('pages::submissions.index')
+            ->call('review', $submission->id)
+            ->set('status', 'For Revision')
+            ->call('saveReview')
+            ->assertHasErrors(['remarks' => 'required_if'])
+            ->set('status', 'Rejected')
+            ->call('saveReview')
+            ->assertHasErrors(['status' => 'in'])
+            ->set('status', 'OK')
+            ->set('remarks', '')
+            ->call('saveReview')
+            ->assertHasNoErrors();
+
+        $this->assertSame('OK', $submission->fresh()->status);
+        $this->assertNull($submission->fresh()->remarks);
+    }
+
+    public function test_faculty_cannot_review_submissions(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $submission = $maria->submissions()->sole();
+
+        $this->actingAs($maria);
+
+        Livewire::test('pages::submissions.index')
+            ->assertDontSee('data-test="review-submission-button"', escape: false)
+            ->call('review', $submission->id)
+            ->assertForbidden();
+
+        Livewire::test('pages::submissions.index')
+            ->set('reviewingId', $submission->id)
+            ->set('status', 'OK')
+            ->call('saveReview')
+            ->assertForbidden();
+
+        $this->assertSame('Pending', $submission->fresh()->status);
+    }
+
+    public function test_faculty_see_remarks_on_proposals_sent_back_for_revision(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $maria->submissions()->sole()->update(['status' => 'For Revision', 'remarks' => 'Add a methodology section.']);
+
+        $this->actingAs($maria);
+
+        $this->get(route('submissions.index'))->assertSee('Remarks: Add a methodology section.');
+    }
+
+    public function test_only_the_author_and_admins_can_open_a_proposal_pdf(): void
+    {
+        Storage::fake('local');
+
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $submission = $maria->submissions()->sole();
+        Storage::disk('local')->put($submission->file_path, '%PDF-1.4');
+
+        $url = route('submissions.document', $submission);
+
+        $this->get($url)->assertRedirect(route('login'));
+        $this->actingAs($jose)->get($url)->assertForbidden();
+        $this->actingAs($maria)->get($url)->assertOk();
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->get($url)->assertOk();
+    }
+
     /**
      * @return array{User, User}
      */

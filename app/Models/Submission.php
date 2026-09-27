@@ -20,6 +20,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Submission extends Model
 {
+    /** The review states, in the order an admin moves through them. Matches the column's enum. */
+    public const STATUSES = ['Pending', 'For Revision', 'OK'];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

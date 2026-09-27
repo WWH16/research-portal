@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Submission;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 Route::redirect('/', '/dashboard')->name('home');
 
@@ -11,6 +14,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::livewire('submissions', 'pages::submissions.index')->name('submissions.index');
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
+
+    // Proposals live on the private disk, so only their author and admins can open one.
+    Route::get('submissions/{submission}/document', function (Submission $submission) {
+        abort_unless(auth()->user()->isAdmin() || $submission->user_id === auth()->id(), 403);
+        abort_unless(Storage::disk('local')->exists($submission->file_path), 404);
+
+        return Storage::disk('local')->response($submission->file_path, Str::slug($submission->title).'.pdf');
+    })->name('submissions.document');
 
     Route::middleware('admin')->group(function () {
         Route::livewire('research-types', 'pages::named-records.index')->defaults('type', 'research-types')->name('research-types.index');

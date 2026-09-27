@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 });
 
 Route::middleware(['auth'])->group(function () {

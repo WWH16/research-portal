@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Title('Submissions')] class extends Component {
@@ -14,13 +15,22 @@ new #[Title('Submissions')] class extends Component {
     public string $status = '';
     public string $remarks = '';
 
+    /** Admins can narrow the list to one status; the dashboard links here with ?status=. */
+    #[Url(as: 'status', except: '')]
+    public string $statusFilter = '';
+
     /**
-     * Confirm a just-submitted proposal with the same toast the rest of the portal uses.
+     * Confirm a just-submitted proposal with the same toast the rest of the portal uses,
+     * and open the review panel when an admin arrives from the dashboard with ?review=.
      */
     public function mount(): void
     {
         if ($message = session('status')) {
             Flux::toast(variant: 'success', text: $message);
+        }
+
+        if ($this->monitoring && ($id = request()->integer('review'))) {
+            $this->review($id);
         }
     }
 
@@ -42,6 +52,7 @@ new #[Title('Submissions')] class extends Component {
 
         return $query
             ->with(['researchType:id,name', 'category:id,name'])
+            ->when($this->monitoring && in_array($this->statusFilter, Submission::STATUSES, true), fn ($query) => $query->where('status', $this->statusFilter))
             ->latest()
             ->get();
     }
@@ -108,16 +119,27 @@ new #[Title('Submissions')] class extends Component {
             </flux:text>
         </div>
 
-        @unless ($this->monitoring)
+        @if ($this->monitoring)
+            <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-44 shrink-0">
+                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+                @foreach (Submission::STATUSES as $option)
+                    <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        @else
             <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="shrink-0" wire:navigate>
                 {{ __('New') }}
             </flux:button>
-        @endunless
+        @endif
     </header>
 
     @if ($this->submissions->isEmpty())
         <flux:text class="mt-8">
-            {{ $this->monitoring ? __('No proposals have been submitted yet.') : __('No submissions yet.') }}
+            @if ($this->monitoring && $statusFilter !== '')
+                {{ __('No proposals have this status.') }}
+            @else
+                {{ $this->monitoring ? __('No proposals have been submitted yet.') : __('No submissions yet.') }}
+            @endif
         </flux:text>
     @else
         <flux:table class="mt-6">
@@ -154,7 +176,7 @@ new #[Title('Submissions')] class extends Component {
                         <flux:table.cell>{{ $submission->researchType->name }}</flux:table.cell>
                         <flux:table.cell>{{ $submission->category->name }}</flux:table.cell>
                         <flux:table.cell>
-                            <flux:badge size="sm" inset="top bottom" :color="match ($submission->status) { 'OK' => 'green', 'For Revision' => 'amber', default => 'zinc' }">
+                            <flux:badge size="sm" inset="top bottom" :color="Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">
                                 {{ $submission->status }}
                             </flux:badge>
                         </flux:table.cell>

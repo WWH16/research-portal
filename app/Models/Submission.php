@@ -23,6 +23,9 @@ class Submission extends Model
     /** The review states, in the order an admin moves through them. Matches the column's enum. */
     public const STATUSES = ['Pending', 'For Revision', 'OK'];
 
+    /** Flux badge colour for each status, shared by every list that shows one. */
+    public const STATUS_COLORS = ['Pending' => 'zinc', 'For Revision' => 'amber', 'OK' => 'green'];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

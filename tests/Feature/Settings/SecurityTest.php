@@ -18,14 +18,6 @@ class SecurityTest extends TestCase
         parent::setUp();
 
         $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-        Features::twoFactorAuthentication([
-            'confirm' => true,
-            'confirmPassword' => true,
-        ]);
-        Features::passkeys([
-            'confirmPassword' => false,
-        ]);
     }
 
     public function test_security_settings_page_can_be_rendered(): void
@@ -33,7 +25,6 @@ class SecurityTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'));
 
         $response->assertOk();
@@ -58,7 +49,6 @@ class SecurityTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'))
             ->assertOk()
             ->assertSee('Update password')

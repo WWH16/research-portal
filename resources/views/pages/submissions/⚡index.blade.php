@@ -62,13 +62,13 @@ new #[Title('Submissions')] class extends Component {
     {
         abort_unless($this->monitoring, 403);
 
-        $submission = Submission::findOrFail($id);
+        $this->reviewingId = $id;
+        unset($this->reviewing);
+        $submission = $this->reviewing ?? abort(404);
 
-        $this->reviewingId = $submission->id;
         $this->status = $submission->status;
         $this->remarks = (string) $submission->remarks;
         $this->resetValidation();
-        unset($this->reviewing);
 
         Flux::modal('review-submission')->show();
     }

@@ -21,14 +21,12 @@ new class extends Component {
             'title' => 'Research Types',
             'description' => 'Kinds of research a proposal can be filed as.',
             'singular' => 'research type',
-            'plural' => 'research types',
         ],
         'categories' => [
             'model' => Category::class,
             'title' => 'Categories',
             'description' => 'Subject areas a proposal can be filed under.',
             'singular' => 'category',
-            'plural' => 'categories',
         ],
     ];
 
@@ -48,7 +46,7 @@ new class extends Component {
     }
 
     /**
-     * @return array{model: class-string<Model>, title: string, description: string, singular: string, plural: string}
+     * @return array{model: class-string<Model>, title: string, description: string, singular: string}
      */
     #[Computed]
     public function config(): array
@@ -169,7 +167,7 @@ new class extends Component {
 
     @if ($this->records->isEmpty())
         <div class="mt-8 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-            <flux:heading>{{ __('No :types yet', ['types' => $this->config['plural']]) }}</flux:heading>
+            <flux:heading>{{ __('No :types yet', ['types' => str($this->config['singular'])->plural()]) }}</flux:heading>
             <flux:text class="mt-2">{{ __('Add one so proposals can be classified when they are submitted.') }}</flux:text>
         </div>
     @else

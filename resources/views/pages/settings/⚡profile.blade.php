@@ -133,7 +133,14 @@ new #[Title('My Profile')] class extends Component {
 
         {{-- Who you are in the portal: photo, name, and the record the Research Office keeps --}}
         <div class="rounded-xl border border-line bg-surface">
-            <div class="flex items-center gap-5 p-5 sm:p-6" x-data>
+            <div
+                class="flex items-center gap-5 p-5 sm:p-6"
+                x-data="avatarCropper(@js([
+                    'type' => __('Choose a JPG, PNG, or WebP image.'),
+                    'size' => __('Choose an image under 10 MB.'),
+                    'failed' => __('The photo could not be saved. Please try again.'),
+                ]))"
+            >
                 <flux:avatar
                     size="xl"
                     circle
@@ -151,7 +158,7 @@ new #[Title('My Profile')] class extends Component {
                         <input
                             type="file"
                             x-ref="photo"
-                            wire:model="photo"
+                            x-on:change="pick($event)"
                             accept="image/png,image/jpeg,image/webp"
                             class="sr-only"
                             tabindex="-1"
@@ -170,11 +177,57 @@ new #[Title('My Profile')] class extends Component {
                             </flux:modal.trigger>
                         @endif
 
-                        <flux:text class="text-sm" wire:loading.remove wire:target="photo">{{ __('JPG, PNG, or WebP, up to 2 MB.') }}</flux:text>
+                        <flux:text class="text-sm" wire:loading.remove wire:target="photo">{{ __('JPG, PNG, or WebP, up to 10 MB.') }}</flux:text>
                         <flux:text class="text-sm" wire:loading wire:target="photo">{{ __('Uploading…') }}</flux:text>
                     </div>
 
                     <flux:error name="photo" class="mt-2" />
+                    <p class="mt-2 text-sm font-medium text-red-500" role="alert" x-show="error" x-text="error"></p>
+
+                    <flux:modal name="adjust-photo" class="w-full md:w-[26rem]" aria-labelledby="adjust-photo-heading" x-on:close="release()">
+                        <div class="flex flex-col gap-6">
+                            <div>
+                                <flux:heading size="lg" id="adjust-photo-heading">{{ __('Adjust your photo') }}</flux:heading>
+                                <flux:text class="mt-2">{{ __('Drag or use the arrow keys to reposition.') }}</flux:text>
+                            </div>
+
+                            <div
+                                x-ref="stage"
+                                tabindex="0"
+                                role="group"
+                                aria-label="{{ __('Photo position') }}"
+                                class="relative mx-auto aspect-square w-full max-w-72 cursor-grab touch-none select-none overflow-hidden rounded-lg bg-zinc-100 outline-accent focus-visible:outline-2 focus-visible:outline-offset-2 active:cursor-grabbing"
+                                x-on:pointerdown="start($event)"
+                                x-on:pointermove="move($event)"
+                                x-on:lostpointercapture="drag = null"
+                                x-on:wheel.prevent="setZoom(zoom - $event.deltaY * 0.002)"
+                                x-on:keydown="key($event)"
+                            >
+                                <img x-ref="image" x-show="src" :src="src" x-on:load="loaded()" alt="" draggable="false" class="absolute top-0 left-0 max-w-none" :style="imageStyle" />
+                                <div class="pointer-events-none absolute inset-0 rounded-full ring-[999px] ring-zinc-950/50"></div>
+                            </div>
+
+                            <div class="grid gap-2">
+                                <div class="flex items-center gap-3">
+                                    <label for="photo-zoom" class="text-sm font-medium text-zinc-800">{{ __('Zoom') }}</label>
+                                    <input id="photo-zoom" type="range" min="1" max="3" step="0.01" :value="zoom" x-on:input="setZoom(+$event.target.value)" class="w-full accent-accent" />
+                                </div>
+
+                                <flux:text class="text-sm" x-show="small">{{ __('This photo is small and may look blurry.') }}</flux:text>
+                                <p class="text-sm font-medium text-red-500" role="alert" x-show="error" x-text="error"></p>
+                            </div>
+
+                            <div class="flex justify-end gap-2">
+                                <flux:modal.close>
+                                    <flux:button variant="ghost" x-bind:disabled="saving">{{ __('Cancel') }}</flux:button>
+                                </flux:modal.close>
+                                <flux:button variant="primary" x-on:click="save()" x-bind:disabled="saving || ! stage" x-bind:class="saving && 'disabled:opacity-100!'" data-test="save-photo-button">
+                                    <flux:icon.loading x-show="saving" class="size-4" />
+                                    <span x-text="saving ? @js(__('Saving…')) : @js(__('Save photo'))">{{ __('Save photo') }}</span>
+                                </flux:button>
+                            </div>
+                        </div>
+                    </flux:modal>
 
                     {{-- Outside the button row and the photo check, so the dialog closes normally after a removal --}}
                     <flux:modal

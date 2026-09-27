@@ -124,6 +124,17 @@ class MyProfileTest extends TestCase
         $this->assertSame(1, substr_count($page, 'wire:click="removePhoto"'));
     }
 
+    public function test_a_chosen_photo_is_framed_before_it_uploads(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get(route('profile.edit'))
+            ->assertSee('Adjust your photo')
+            ->assertSee('x-on:change="pick($event)"', escape: false)
+            ->assertDontSee('wire:model="photo"', escape: false)
+            ->assertSee('x-show="saving"', escape: false);
+    }
+
     public function test_photo_must_be_an_image_under_two_megabytes(): void
     {
         Storage::fake('public');

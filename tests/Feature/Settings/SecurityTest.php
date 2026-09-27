@@ -24,7 +24,7 @@ class SecurityTest extends TestCase
             'confirmPassword' => true,
         ]);
         Features::passkeys([
-            'confirmPassword' => true,
+            'confirmPassword' => false,
         ]);
     }
 
@@ -44,14 +44,11 @@ class SecurityTest extends TestCase
         $response->assertSee('Enable 2FA');
     }
 
-    public function test_security_settings_page_requires_password_confirmation_when_enabled(): void
+    public function test_security_settings_page_opens_without_confirming_the_password(): void
     {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)
-            ->get(route('security.edit'));
-
-        $response->assertRedirect(route('password.confirm'));
+        $this->actingAs(User::factory()->create())
+            ->get(route('security.edit'))
+            ->assertOk();
     }
 
     public function test_security_settings_page_renders_without_two_factor_when_feature_is_disabled(): void

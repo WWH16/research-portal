@@ -9,11 +9,8 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::livewire('settings/security', 'pages::settings.security')
-        ->middleware([
-            'password.confirm',
-        ])
-        ->name('security.edit');
+    // No password re-prompt: changing the password already asks for the current one.
+    Route::livewire('settings/security', 'pages::settings.security')->name('security.edit');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

@@ -393,11 +393,11 @@ new #[Title('Manage Users')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="user-delete" class="w-full md:w-96">
+    <flux:modal name="user-delete" class="w-full md:w-96" aria-labelledby="user-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>
-                    <flux:heading size="lg">{{ __('Delete :name?', ['name' => $this->deleting->name]) }}</flux:heading>
+                    <flux:heading size="lg" id="user-delete-heading">{{ __('Delete :name?', ['name' => $this->deleting->name]) }}</flux:heading>
 
                     @if ($this->deletingBlocker)
                         <flux:text class="mt-2">{{ $this->deletingBlocker }}</flux:text>

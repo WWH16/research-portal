@@ -170,11 +170,11 @@ new #[Title('Categories')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="category-delete" class="w-full md:w-96">
+    <flux:modal name="category-delete" class="w-full md:w-96" aria-labelledby="category-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>
-                    <flux:heading size="lg">{{ __('Delete :name?', ['name' => $this->deleting->name]) }}</flux:heading>
+                    <flux:heading size="lg" id="category-delete-heading">{{ __('Delete :name?', ['name' => $this->deleting->name]) }}</flux:heading>
 
                     @if ($this->deleting->submissions_count > 0)
                         <flux:text class="mt-2">

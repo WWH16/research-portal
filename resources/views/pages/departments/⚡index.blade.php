@@ -201,11 +201,11 @@ new #[Title('Departments')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="department-delete" class="w-full md:w-96">
+    <flux:modal name="department-delete" class="w-full md:w-96" aria-labelledby="department-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>
-                    <flux:heading size="lg">{{ __('Delete :name?', ['name' => $this->deleting->code]) }}</flux:heading>
+                    <flux:heading size="lg" id="department-delete-heading">{{ __('Delete :name?', ['name' => $this->deleting->code]) }}</flux:heading>
 
                     @if ($this->deletingBlocker)
                         <flux:text class="mt-2">

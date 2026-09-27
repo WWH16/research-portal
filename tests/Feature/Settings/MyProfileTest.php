@@ -104,6 +104,26 @@ class MyProfileTest extends TestCase
         Storage::disk('public')->assertMissing($second);
     }
 
+    public function test_removing_a_photo_asks_for_confirmation_first(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+
+        $this->get(route('profile.edit'))->assertDontSee('data-test="remove-photo-button"', escape: false);
+
+        $user->update(['profile_image' => 'profile-images/me.png']);
+
+        $page = $this->get(route('profile.edit'))
+            ->assertSee('data-test="remove-photo-button"', escape: false)
+            ->assertSee("name: 'remove-photo'", escape: false)
+            ->assertSee('Remove your photo?')
+            ->getContent();
+
+        // Only the dialog's confirm button removes the photo, never the Remove button itself.
+        $this->assertSame(1, substr_count($page, 'wire:click="removePhoto"'));
+    }
+
     public function test_photo_must_be_an_image_under_two_megabytes(): void
     {
         Storage::fake('public');

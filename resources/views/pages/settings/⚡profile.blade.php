@@ -98,6 +98,7 @@ new #[Title('My Profile')] class extends Component {
             $user->update(['profile_image' => null]);
         }
 
+        Flux::modal('remove-photo')->close();
         Flux::toast(variant: 'success', text: __('Photo removed.'));
     }
 
@@ -157,14 +158,16 @@ new #[Title('My Profile')] class extends Component {
                             aria-hidden="true"
                         />
 
-                        <flux:button size="sm" icon="camera" x-on:click="$refs.photo.click()" wire:loading.attr="disabled" wire:target="photo" data-test="upload-photo-button">
+                        <flux:button size="sm" icon="camera" x-on:click="$refs.photo.click()" wire:loading.attr="disabled" wire:target="photo" id="upload-photo-button" data-test="upload-photo-button">
                             {{ $user->profile_image ? __('Change photo') : __('Upload photo') }}
                         </flux:button>
 
                         @if ($user->profile_image)
-                            <flux:button size="sm" variant="ghost" wire:click="removePhoto" wire:target="photo,removePhoto" wire:loading.attr="disabled">
-                                {{ __('Remove') }}
-                            </flux:button>
+                            <flux:modal.trigger name="remove-photo">
+                                <flux:button size="sm" variant="ghost" wire:target="photo" wire:loading.attr="disabled" data-test="remove-photo-button">
+                                    {{ __('Remove') }}
+                                </flux:button>
+                            </flux:modal.trigger>
                         @endif
 
                         <flux:text class="text-sm" wire:loading.remove wire:target="photo">{{ __('JPG, PNG, or WebP, up to 2 MB.') }}</flux:text>
@@ -172,6 +175,32 @@ new #[Title('My Profile')] class extends Component {
                     </div>
 
                     <flux:error name="photo" class="mt-2" />
+
+                    {{-- Outside the button row and the photo check, so the dialog closes normally after a removal --}}
+                    <flux:modal
+                        name="remove-photo"
+                        class="w-full md:w-96"
+                        aria-labelledby="remove-photo-heading"
+                        x-on:close="setTimeout(() => { if (! document.activeElement || document.activeElement === document.body) document.getElementById('upload-photo-button')?.focus() })"
+                    >
+                        <div class="flex flex-col gap-6">
+                            <flux:avatar size="lg" circle :src="$user->profileImageUrl()" :name="$user->name" />
+
+                            <div>
+                                <flux:heading size="lg" id="remove-photo-heading">{{ __('Remove your photo?') }}</flux:heading>
+                                <flux:text class="mt-2">{{ __('Your initials will show instead.') }}</flux:text>
+                            </div>
+
+                            <div class="flex justify-end gap-2">
+                                <flux:modal.close>
+                                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                </flux:modal.close>
+                                <flux:button variant="danger" wire:click="removePhoto" data-test="confirm-remove-photo-button">
+                                    {{ __('Remove photo') }}
+                                </flux:button>
+                            </div>
+                        </div>
+                    </flux:modal>
                 </div>
             </div>
 

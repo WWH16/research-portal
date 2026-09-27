@@ -106,6 +106,8 @@ class DashboardTest extends TestCase
             ->assertSee('Maria Proposal')
             ->assertDontSee('Jose Proposal')
             ->assertDontSee('data-test="waiting-tile"', escape: false)
+            ->assertSee('My submissions per month')
+            ->assertSee(now()->format('F Y').': one proposal, 0 Pending, 1 For Revision, 0 OK')
             ->assertSee(route('submissions.create'), escape: false);
     }
 

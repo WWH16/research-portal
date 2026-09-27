@@ -14,8 +14,8 @@ use Livewire\Component;
 
 /*
  * Each chart answers one question with the form that fits it: headline numbers as stat tiles,
- * the monthly trend as stacked columns, status share as one 100% bar, and "where from / what about"
- * as ranked horizontal bars. Faculty get the same tiles for their own proposals.
+ * the monthly trend as stacked columns, and "where from / what about"
+ * as ranked horizontal bars. Faculty get the same tiles and monthly chart for their own proposals.
  */
 new #[Title('Dashboard')] class extends Component {
     #[Computed]
@@ -39,7 +39,7 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Proposals filed in each of the last 12 months, split by their current status.
+     * Proposals filed in each of the last 12 months, split by their current status: everyone's for admins, their own for faculty.
      *
      * @return list<array{month: Carbon, counts: array<string, int>, total: int}>
      */
@@ -49,7 +49,8 @@ new #[Title('Dashboard')] class extends Component {
         $start = now()->startOfMonth()->subMonths(11);
 
         // ponytail: grouped in PHP so it runs the same on MySQL and SQLite; move to a SQL GROUP BY past ~50k proposals a year.
-        $rows = Submission::where('created_at', '>=', $start)->get(['status', 'created_at'])
+        $query = $this->isAdmin ? Submission::query() : Auth::user()->submissions();
+        $rows = $query->where('created_at', '>=', $start)->get(['status', 'created_at'])
             ->groupBy(fn ($submission) => $submission->created_at->format('Y-m'));
 
         return collect(range(0, 11))->map(function ($offset) use ($start, $rows) {
@@ -79,12 +80,13 @@ new #[Title('Dashboard')] class extends Component {
     #[Computed]
     public function breakdowns(): array
     {
-        $top = fn ($model, array $columns) => $model::whereHas('submissions')->withCount('submissions')->orderByDesc('submissions_count')->limit(6)->get($columns);
+        $top = fn ($model, string $label) => $model::whereHas('submissions')->withCount('submissions')->orderByDesc('submissions_count')->limit(6)->get()
+            ->map(fn ($row) => ['label' => $row->{$label}, 'title' => $row->name, 'count' => $row->submissions_count]);
 
         return [
-            __('By department') => $top(Department::class, ['id', 'code', 'name'])->map(fn ($row) => ['label' => $row->code, 'title' => $row->name, 'count' => $row->submissions_count]),
-            __('By research type') => $top(ResearchType::class, ['id', 'name'])->map(fn ($row) => ['label' => $row->name, 'title' => $row->name, 'count' => $row->submissions_count]),
-            __('By category') => $top(Category::class, ['id', 'name'])->map(fn ($row) => ['label' => $row->name, 'title' => $row->name, 'count' => $row->submissions_count]),
+            __('By department') => $top(Department::class, 'code'),
+            __('By research type') => $top(ResearchType::class, 'name'),
+            __('By category') => $top(Category::class, 'name'),
         ];
     }
 
@@ -217,150 +219,7 @@ new #[Title('Dashboard')] class extends Component {
             </div>
 
             {{-- Trend over time, split by status: stacked columns --}}
-            @php
-                $peak = max(1, max(array_column($this->monthly, 'total')));
-                // Round the axis up to a clean number (1, 2, 5, 10, 20, 50...) so the ticks read easily.
-                $magnitude = 10 ** floor(log10($peak));
-                $axisMax = collect([1, 2, 5, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
-                $ticks = $axisMax >= 2 ? [$axisMax, $axisMax / 2, 0] : [$axisMax, 0];
-                $filedThisYear = array_sum(array_column($this->monthly, 'total'));
-            @endphp
-
-            <section class="{{ $tile }} lg:col-span-8" data-test="monthly-chart">
-                <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-                    <div>
-                        <flux:heading level="2">{{ __('Submissions per month') }}</flux:heading>
-                        <flux:text class="mt-1">{{ __('Last 12 months, by current status.') }}</flux:text>
-                    </div>
-
-                    <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
-                        @foreach ($bars as $status => $class)
-                            <li class="flex items-center gap-2">
-                                <span class="h-2.5 w-3 rounded-sm {{ $class }}" aria-hidden="true"></span>{{ __($status) }}
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-
-                @if ($filedThisYear === 0)
-                    <flux:text class="mt-6">{{ __('No proposals in the last 12 months.') }}</flux:text>
-                @else
-                    <div class="mt-6 flex gap-3">
-                        <div class="flex h-56 flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
-                            @foreach ($ticks as $tick)
-                                <span class="-my-2">{{ $tick }}</span>
-                            @endforeach
-                        </div>
-
-                        <div class="min-w-0 flex-1">
-                            <div class="relative h-56">
-                                @foreach ($ticks as $tick)
-                                    <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
-                                @endforeach
-
-                                <ol class="relative grid h-full grid-cols-12 gap-1">
-                                    @foreach ($this->monthly as $index => $month)
-                                        @php
-                                            $label = $month['month']->format('F Y');
-                                            $summary = collect($month['counts'])->map(fn ($count, $status) => $count.' '.__($status))->join(', ');
-                                            $tooltipSide = match (true) { $index < 2 => 'left-0', $index > 9 => 'right-0', default => 'left-1/2 -translate-x-1/2' };
-                                        @endphp
-                                        {{-- The whole column is the hover and focus target, not just the painted bar --}}
-                                        <li
-                                            class="group relative flex h-full items-end justify-center rounded outline-none focus-visible:bg-zinc-100"
-                                            tabindex="0"
-                                            aria-label="{{ trans_choice('{0} :month: no proposals|{1} :month: one proposal, :summary|[2,*] :month: :count proposals, :summary', $month['total'], ['month' => $label, 'summary' => $summary]) }}"
-                                        >
-                                            @if ($month['total'] > 0)
-                                                <div
-                                                    class="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t transition group-hover:brightness-110 group-focus-visible:ring-2 group-focus-visible:ring-accent group-focus-visible:ring-offset-2"
-                                                    style="height: {{ $month['total'] / $axisMax * 100 }}%"
-                                                    aria-hidden="true"
-                                                >
-                                                    @foreach ($month['counts'] as $status => $count)
-                                                        @if ($count > 0)
-                                                            <div class="{{ $bars[$status] }}" style="flex-grow: {{ $count }}"></div>
-                                                        @endif
-                                                    @endforeach
-                                                </div>
-                                            @endif
-
-                                            <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block {{ $tooltipSide }}" aria-hidden="true">
-                                                <p class="text-zinc-500">{{ $label }}</p>
-                                                <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No proposals|{1} One proposal|[2,*] :count proposals', $month['total']) }}</p>
-                                                @if ($month['total'] > 0)
-                                                    <ul class="mt-1.5 grid gap-1">
-                                                        @foreach ($month['counts'] as $status => $count)
-                                                            <li class="flex items-center gap-2">
-                                                                <span class="h-0.5 w-3 rounded-full {{ $bars[$status] }}"></span>
-                                                                <span class="font-semibold tabular-nums text-zinc-900">{{ $count }}</span>
-                                                                <span class="text-zinc-500">{{ __($status) }}</span>
-                                                            </li>
-                                                        @endforeach
-                                                    </ul>
-                                                @endif
-                                            </div>
-                                        </li>
-                                    @endforeach
-                                </ol>
-                            </div>
-
-                            {{-- Month labels; every other one hides on phones so they never collide --}}
-                            <ol class="mt-2 grid grid-cols-12 gap-1 text-center text-xs text-zinc-500" aria-hidden="true">
-                                @foreach ($this->monthly as $index => $month)
-                                    <li class="{{ $index % 2 ? 'max-sm:invisible' : '' }}">
-                                        {{ $month['month']->format('M') }}
-                                        @if ($index === 0 || $month['month']->month === 1)
-                                            <span class="block text-zinc-400">{{ $month['month']->format('Y') }}</span>
-                                        @endif
-                                    </li>
-                                @endforeach
-                            </ol>
-                        </div>
-                    </div>
-
-                    {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
-                    <details class="mt-4 text-sm">
-                        <summary class="cursor-pointer text-zinc-600 hover:text-zinc-900">{{ __('Show as table') }}</summary>
-                        <div class="mt-3 overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="text-zinc-500">
-                                    <tr>
-                                        <th class="py-1.5 pe-4 text-start font-medium">{{ __('Month') }}</th>
-                                        @foreach (Submission::STATUSES as $status)
-                                            <th class="py-1.5 pe-4 text-end font-medium">{{ __($status) }}</th>
-                                        @endforeach
-                                        <th class="py-1.5 text-end font-medium">{{ __('Total') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-line tabular-nums text-zinc-800">
-                                    @foreach ($this->monthly as $month)
-                                        <tr>
-                                            <td class="py-1.5 pe-4">{{ $month['month']->format('M Y') }}</td>
-                                            @foreach ($month['counts'] as $count)
-                                                <td class="py-1.5 pe-4 text-end">{{ $count }}</td>
-                                            @endforeach
-                                            <td class="py-1.5 text-end font-medium">{{ $month['total'] }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </details>
-                @endif
-            </section>
-
-            {{-- Part-to-whole: one 100% bar, with count and share per status --}}
-            <section class="{{ $tile }} lg:col-span-4">
-                <flux:heading level="2">{{ __('Status share') }}</flux:heading>
-                <flux:text class="mt-1">{{ trans_choice('{0} No proposals yet.|{1} Of one proposal.|[2,*] Of all :count proposals.', $total) }}</flux:text>
-
-                @if ($total > 0)
-                    <div class="mt-6">
-                        @include('partials.status-breakdown', ['counts' => $counts, 'bars' => $bars, 'linked' => true])
-                    </div>
-                @endif
-            </section>
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month')])
 
             {{-- Magnitude comparisons: ranked horizontal bars, one hue, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
@@ -468,16 +327,9 @@ new #[Title('Dashboard')] class extends Component {
                         <flux:text class="mt-2">{{ __('Your account has no department yet. Contact the Research Office to have one assigned.') }}</flux:text>
                     @endif
                 </section>
-
-                @if ($total > 0)
-                    <section class="{{ $tile }}">
-                        <flux:heading level="2">{{ __('Status share') }}</flux:heading>
-                        <div class="mt-4">
-                            @include('partials.status-breakdown', ['counts' => $counts, 'bars' => $bars, 'linked' => false])
-                        </div>
-                    </section>
-                @endif
             </div>
+
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('My submissions per month')])
 
             <section class="{{ $tile }} lg:col-span-12">
                 <div class="flex items-baseline justify-between gap-4">

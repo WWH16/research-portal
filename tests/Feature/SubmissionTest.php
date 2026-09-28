@@ -296,6 +296,36 @@ class SubmissionTest extends TestCase
             ->assertHeader('content-disposition', 'inline; filename='.Str::slug($submission->title).'.docx');
     }
 
+    public function test_submissions_are_paged_fifteen_at_a_time(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $proposal = $maria->submissions()->sole();
+
+        foreach (range(1, 14) as $number) {
+            $proposal->replicate()->fill(['title' => "Extra Proposal {$number}"])->save();
+        }
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $component = Livewire::test('pages::submissions.index');
+        $this->assertCount(15, $component->instance()->submissions);
+        $this->assertSame(16, $component->instance()->submissions->total());
+
+        $component->call('nextPage');
+        $this->assertCount(1, $component->instance()->submissions);
+
+        // A new filter starts from the first page.
+        $component->set('statusFilter', 'Pending')->assertSet('paginators.page', 1);
+
+        // Approving the only proposal on the last filtered page steps back to a page with rows.
+        $last = $component->call('nextPage')->instance()->submissions->sole();
+        $component->call('review', $last->id)
+            ->set('status', 'OK')
+            ->call('saveReview')
+            ->assertHasNoErrors()
+            ->assertSet('paginators.page', 1);
+    }
+
     /**
      * @return array{User, User}
      */

@@ -2,15 +2,18 @@
 
 use App\Models\Submission;
 use Flux\Flux;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Submissions')] class extends Component {
+    use WithPagination;
+
     public ?int $reviewingId = null;
     public string $status = '';
     public string $remarks = '';
@@ -43,8 +46,13 @@ new #[Title('Submissions')] class extends Component {
         return Auth::user()->isAdmin();
     }
 
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
-    public function submissions(): Collection
+    public function submissions(): LengthAwarePaginator
     {
         $query = $this->monitoring
             ? Submission::query()->with(['user:id,name', 'department:id,code,name'])
@@ -54,7 +62,7 @@ new #[Title('Submissions')] class extends Component {
             ->with(['researchType:id,name', 'category:id,name'])
             ->when($this->monitoring && in_array($this->statusFilter, Submission::STATUSES, true), fn ($query) => $query->where('status', $this->statusFilter))
             ->latest()
-            ->get();
+            ->paginate(15);
     }
 
     #[Computed]
@@ -106,6 +114,11 @@ new #[Title('Submissions')] class extends Component {
         Flux::modal('review-submission')->close();
         Flux::toast(variant: 'success', text: __('Status updated.'));
         unset($this->submissions, $this->reviewing);
+
+        // Under a status filter, the saved proposal can leave the last page empty; step back to one with rows.
+        if ($this->submissions->isEmpty() && $this->getPage() > 1) {
+            $this->previousPage();
+        }
     }
 }; ?>
 
@@ -142,7 +155,7 @@ new #[Title('Submissions')] class extends Component {
             @endif
         </flux:text>
     @else
-        <flux:table class="mt-6">
+        <flux:table class="mt-6" :paginate="$this->submissions">
             <flux:table.columns>
                 <flux:table.column>{{ __('Title') }}</flux:table.column>
                 @if ($this->monitoring)

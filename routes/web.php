@@ -11,6 +11,9 @@ Route::redirect('/', '/dashboard')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 
+    Route::livewire('announcements', 'pages::announcements.index')->name('announcements.index');
+    Route::livewire('drive', 'pages::drive.index')->name('drive.index');
+
     Route::livewire('submissions', 'pages::submissions.index')->name('submissions.index');
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
 

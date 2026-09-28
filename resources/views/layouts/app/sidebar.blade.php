@@ -62,12 +62,12 @@
             <flux:spacer />
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
+                <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
+                    {{ __('Announcements') }}
                 </flux:sidebar.item>
 
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
+                <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*')" wire:navigate>
+                    {{ __('Research Drive') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 

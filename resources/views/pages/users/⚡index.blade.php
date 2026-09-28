@@ -375,7 +375,7 @@ new #[Title('Manage Users')] class extends Component {
             <flux:input
                 wire:model="password"
                 :label="$editingId ? __('New password') : __('Password')"
-                :description:trailing="$editingId ? __('Leave blank to keep the current password.') : __('Share it with the member; they can change it in Settings.')"
+                :description:trailing="$editingId ? __('Leave blank to keep the current password.') : __('Share it with the member; they can change it under My Profile, Security.')"
                 type="password"
                 autocomplete="new-password"
                 viewable

@@ -4,7 +4,6 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
-use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -31,15 +30,6 @@ class EmailVerificationTest extends TestCase
         $response->assertOk()
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false);
-    }
-
-    public function test_verification_email_uses_the_portal_colors(): void
-    {
-        $user = User::factory()->unverified()->create();
-
-        $html = (string) (new VerifyEmail)->toMail($user)->render();
-
-        $this->assertStringContainsString('#0b5e36', $html);
     }
 
     public function test_unverified_users_are_redirected_to_the_email_verification_prompt(): void

@@ -10,9 +10,17 @@
         @endif
 
         <div class="flex flex-col gap-3">
-            <form method="POST" action="{{ route('verification.send') }}">
+            {{-- Same loading pattern as the login form: disabling the submit button makes Flux show its spinner. --}}
+            <form
+                method="POST"
+                action="{{ route('verification.send') }}"
+                x-data="{ submitting: false }"
+                x-on:submit="submitting = true"
+                x-on:pageshow.window="submitting = false"
+                x-bind:aria-busy="submitting"
+            >
                 @csrf
-                <flux:button type="submit" variant="primary" class="w-full">
+                <flux:button type="submit" variant="primary" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="send-verification-link-button">
                     {{ __('Send verification link') }}
                 </flux:button>
             </form>

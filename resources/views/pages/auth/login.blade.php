@@ -63,9 +63,5 @@
             <span>{{ __('Don\'t have an account?') }}</span>
             <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
         </div>
-
-        <flux:text class="text-sm">
-            {{ __('Locked out? Contact the Research Office.') }}
-        </flux:text>
     </div>
 </x-layouts::auth>

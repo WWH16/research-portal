@@ -22,7 +22,6 @@ class LoginPageTest extends TestCase
             ->assertOk()
             ->assertSee('ISU Research Portal')
             ->assertSee('Sign in')
-            ->assertSee('Contact the Research Office.')
             ->assertSee(route('register'));
     }
 

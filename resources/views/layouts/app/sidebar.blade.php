@@ -11,7 +11,8 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group class="grid">
+                {{-- Headed only for admins, where it sits above the admin groups; faculty have just this one group. --}}
+                <flux:sidebar.group :heading="auth()->user()->isAdmin() ? __('General') : null" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>

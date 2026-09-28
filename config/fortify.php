@@ -170,11 +170,12 @@ return [
             'confirmPassword' => true,
             // 'window' => 0
         ]),
-        // Off to match the security page, which no longer asks for the password first.
-        // With it on, adding a passkey fails with "Password confirmation required."
-        Features::passkeys([
-            'confirmPassword' => false,
-        ]),
+        // Passkeys are off until the client asks for them. Uncomment to turn them back on.
+        // Keep 'confirmPassword' => false: the security page no longer asks for the password
+        // first, so with it on, adding a passkey fails with "Password confirmation required."
+        // Features::passkeys([
+        //     'confirmPassword' => false,
+        // ]),
     ],
 
 ];

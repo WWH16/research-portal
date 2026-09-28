@@ -6,6 +6,8 @@
     'separator' => __('Or continue with email'),
 ])
 
+{{-- Fortify only registers the passkey routes while the feature is on, so route() below would throw without this guard. --}}
+@if (\Laravel\Fortify\Features::canManagePasskeys())
 @assets
 @vite('resources/js/passkeys.js')
 @endassets
@@ -74,3 +76,4 @@
         </div>
     </template>
 </div>
+@endif

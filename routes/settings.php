@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Features;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
@@ -13,9 +14,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('settings/security', 'pages::settings.security')->name('security.edit');
 });
 
-Route::get('.well-known/passkey-endpoints', function () {
-    return response()->json([
-        'enroll' => route('security.edit'),
-        'manage' => route('security.edit'),
-    ]);
-})->name('well-known.passkeys');
+if (Features::canManagePasskeys()) {
+    Route::get('.well-known/passkey-endpoints', function () {
+        return response()->json([
+            'enroll' => route('security.edit'),
+            'manage' => route('security.edit'),
+        ]);
+    })->name('well-known.passkeys');
+}

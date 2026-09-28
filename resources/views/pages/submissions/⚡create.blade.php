@@ -24,7 +24,7 @@ new #[Title('Submit Proposal')] class extends Component {
     public $document = null;
 
     /**
-     * Validate the proposal, store its PDF privately, and create the submission.
+     * Validate the proposal, store its document privately, and create the submission.
      */
     public function save(): void
     {
@@ -41,11 +41,11 @@ new #[Title('Submit Proposal')] class extends Component {
             'research_type_id' => ['required', 'integer', 'exists:research_types,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'designation' => ['nullable', 'string', 'max:100'],
-            'document' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            'document' => ['required', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
         ], attributes: [
             'research_type_id' => __('research type'),
             'category_id' => __('category'),
-            'document' => __('proposal PDF'),
+            'document' => __('proposal document'),
         ]);
 
         $path = $this->document->store('submissions', 'local');
@@ -131,10 +131,10 @@ new #[Title('Submit Proposal')] class extends Component {
         <div>
             <flux:input
                 wire:model="document"
-                :label="__('Proposal PDF')"
-                :description:trailing="__('PDF, up to 10 MB')"
+                :label="__('Proposal document')"
+                :description:trailing="__('PDF or Word, up to 10 MB')"
                 type="file"
-                accept="application/pdf,.pdf"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 required
             />
 

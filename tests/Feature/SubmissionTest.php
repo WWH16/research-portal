@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -160,7 +161,7 @@ class SubmissionTest extends TestCase
         $this->assertSame(0, Submission::count());
     }
 
-    public function test_document_must_be_a_pdf_under_ten_megabytes(): void
+    public function test_document_must_be_a_pdf_or_word_file_under_ten_megabytes(): void
     {
         Storage::fake('local');
 
@@ -170,6 +171,16 @@ class SubmissionTest extends TestCase
 
         Livewire::test('pages::submissions.create')
             ->set('document', UploadedFile::fake()->create('proposal.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))
+            ->call('save')
+            ->assertHasNoErrors('document');
+
+        Livewire::test('pages::submissions.create')
+            ->set('document', UploadedFile::fake()->create('proposal.doc', 100, 'application/msword'))
+            ->call('save')
+            ->assertHasNoErrors('document');
+
+        Livewire::test('pages::submissions.create')
+            ->set('document', UploadedFile::fake()->create('proposal.png', 100, 'image/png'))
             ->call('save')
             ->assertHasErrors(['document' => 'mimes']);
 
@@ -268,6 +279,21 @@ class SubmissionTest extends TestCase
         $this->actingAs($jose)->get($url)->assertForbidden();
         $this->actingAs($maria)->get($url)->assertOk();
         $this->actingAs(User::factory()->create(['role' => 'admin']))->get($url)->assertOk();
+    }
+
+    public function test_word_proposals_download_with_their_own_extension(): void
+    {
+        Storage::fake('local');
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $submission = $maria->submissions()->sole();
+        $submission->update(['file_path' => 'submissions/sample.docx']);
+        Storage::disk('local')->put($submission->file_path, 'docx');
+
+        $this->actingAs($maria)
+            ->get(route('submissions.document', $submission))
+            ->assertOk()
+            ->assertHeader('content-disposition', 'inline; filename='.Str::slug($submission->title).'.docx');
     }
 
     /**

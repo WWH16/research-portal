@@ -309,7 +309,7 @@ new #[Title('Dashboard')] class extends Component {
                                 @if ($submission->remarks)
                                     <p class="mt-1 text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
                                 @endif
-                                <flux:link :href="route('submissions.document', $submission)" target="_blank" rel="noopener" class="mt-2 inline-block text-sm">{{ __('Open PDF') }}</flux:link>
+                                <flux:link :href="route('submissions.document', $submission)" target="_blank" rel="noopener" class="mt-2 inline-block text-sm">{{ __('Open document') }}</flux:link>
                             </li>
                         @endforeach
                     </ul>
@@ -321,7 +321,7 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:heading level="2">{{ __('Submit a proposal') }}</flux:heading>
 
                     @if (auth()->user()->department_id)
-                        <flux:text class="mt-2">{{ __('Upload your proposal as a PDF, up to 10 MB.') }}</flux:text>
+                        <flux:text class="mt-2">{{ __('Upload your proposal as a PDF or Word file, up to 10 MB.') }}</flux:text>
                         <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-4">{{ __('New proposal') }}</flux:button>
                     @else
                         <flux:text class="mt-2">{{ __('Your account has no department yet. Contact the Research Office to have one assigned.') }}</flux:text>

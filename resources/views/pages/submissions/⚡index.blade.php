@@ -231,7 +231,7 @@ new #[Title('Submissions')] class extends Component {
                     </dl>
 
                     <flux:button :href="route('submissions.document', $this->reviewing)" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" class="self-start">
-                        {{ __('Open PDF') }}
+                        {{ __('Open document') }}
                     </flux:button>
 
                     <flux:separator variant="subtle" />

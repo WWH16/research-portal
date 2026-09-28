@@ -19,7 +19,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         abort_unless(auth()->user()->isAdmin() || $submission->user_id === auth()->id(), 403);
         abort_unless(Storage::disk('local')->exists($submission->file_path), 404);
 
-        return Storage::disk('local')->response($submission->file_path, Str::slug($submission->title).'.pdf');
+        return Storage::disk('local')->response($submission->file_path, Str::slug($submission->title).'.'.pathinfo($submission->file_path, PATHINFO_EXTENSION));
     })->name('submissions.document');
 
     Route::middleware('admin')->group(function () {

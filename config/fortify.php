@@ -161,8 +161,8 @@ return [
     */
 
     'features' => [
-        // Registration is off: admins create accounts from Manage Users.
-        // Features::registration(),
+        // Anyone can sign up as faculty; they must verify their email before using the portal.
+        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

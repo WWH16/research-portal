@@ -59,8 +59,13 @@
             </flux:button>
         </form>
 
+        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
+            <span>{{ __('Don\'t have an account?') }}</span>
+            <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
+        </div>
+
         <flux:text class="text-sm">
-            {{ __('Need an account or locked out? Contact the Research Office.') }}
+            {{ __('Locked out? Contact the Research Office.') }}
         </flux:text>
     </div>
 </x-layouts::auth>

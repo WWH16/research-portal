@@ -7,11 +7,10 @@ use Illuminate\Support\Str;
 
 Route::redirect('/', '/dashboard')->name('home');
 
+// Verified only: anyone can sign up, so unconfirmed emails must not reach proposals or admin pages.
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
-});
 
-Route::middleware(['auth'])->group(function () {
     Route::livewire('submissions', 'pages::submissions.index')->name('submissions.index');
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
 

@@ -29,7 +29,7 @@
                 required
                 autofocus
                 autocomplete="email"
-                placeholder="name@isu.edu.ph"
+                placeholder="name_cyn@isu.edu.ph"
             />
 
             <!-- Password -->

@@ -36,7 +36,7 @@
                 type="email"
                 required
                 autocomplete="email"
-                placeholder="email@example.com"
+                placeholder="name_cyn@isu.edu.ph"
             />
 
             <!-- Department -->

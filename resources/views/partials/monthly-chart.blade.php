@@ -1,5 +1,5 @@
 {{--
-    Stacked columns of proposals filed per month, split by current status, with hover and focus
+    Stacked columns of projects filed per month, split by current status, with hover and focus
     tooltips and a table view. Expects: $monthly, $bars, $tile, $heading.
 --}}
 @php
@@ -28,7 +28,7 @@
     </div>
 
     @if ($filedThisYear === 0)
-        <flux:text class="mt-6">{{ __('No proposals in the last 12 months.') }}</flux:text>
+        <flux:text class="mt-6">{{ __('No projects in the last 12 months.') }}</flux:text>
     @else
         <div class="mt-6 flex gap-3">
             <div class="flex h-56 flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
@@ -54,7 +54,7 @@
                             <li
                                 class="group relative flex h-full items-end justify-center rounded outline-none focus-visible:bg-zinc-100"
                                 tabindex="0"
-                                aria-label="{{ trans_choice('{0} :month: no proposals|{1} :month: one proposal, :summary|[2,*] :month: :count proposals, :summary', $month['total'], ['month' => $label, 'summary' => $summary]) }}"
+                                aria-label="{{ trans_choice('{0} :month: no projects|{1} :month: one project, :summary|[2,*] :month: :count projects, :summary', $month['total'], ['month' => $label, 'summary' => $summary]) }}"
                             >
                                 @if ($month['total'] > 0)
                                     <div
@@ -70,9 +70,9 @@
                                     </div>
                                 @endif
 
-                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block {{ $tooltipSide }}" aria-hidden="true">
+                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus:block {{ $tooltipSide }}" aria-hidden="true">
                                     <p class="text-zinc-500">{{ $label }}</p>
-                                    <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No proposals|{1} One proposal|[2,*] :count proposals', $month['total']) }}</p>
+                                    <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No projects|{1} One project|[2,*] :count projects', $month['total']) }}</p>
                                     @if ($month['total'] > 0)
                                         <ul class="mt-1.5 grid gap-1">
                                             @foreach ($month['counts'] as $status => $count)
@@ -96,7 +96,7 @@
                         <li class="{{ $index % 2 ? 'max-sm:invisible' : '' }}">
                             {{ $month['month']->format('M') }}
                             @if ($index === 0 || $month['month']->month === 1)
-                                <span class="block text-zinc-400">{{ $month['month']->format('Y') }}</span>
+                                <span class="block text-zinc-500">{{ $month['month']->format('Y') }}</span>
                             @endif
                         </li>
                     @endforeach

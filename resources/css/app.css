@@ -62,6 +62,14 @@
     --color-highlight-soft: var(--color-isu-gold-50);
     --color-highlight-line: var(--color-isu-gold-300);
 
+    /* Project stages, shared by the chart, stat tiles and swatches. Each holds at least 3:1 on white
+       so a bar or swatch reads as a shape (WCAG 1.4.11). Badges use the matching Flux hues. */
+    --color-status-submitted: var(--color-zinc-500);
+    --color-status-concept: var(--color-sky-600);
+    --color-status-detailed: var(--color-amber-600);
+    --color-status-completed: var(--color-green-700);
+    --color-status-delayed: var(--color-red-600);
+
     /* Flux reads these for primary buttons, links, focus rings and checked controls. */
     --color-accent: var(--color-isu-green-700);
     --color-accent-content: var(--color-isu-green-700);

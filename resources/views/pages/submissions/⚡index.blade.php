@@ -24,7 +24,7 @@ new #[Title('Submissions')] class extends Component {
     public ?int $year = null;
     public ?int $departmentId = null;
 
-    /** Admins can narrow the list to a status, "review" or "delayed"; the dashboard links here with ?status=. */
+    /** A status, "proposal" (Concept or Detailed), "review" or "delayed"; the dashboard tiles link here with ?status=. */
     #[Url(as: 'status', except: '')]
     public string $statusFilter = '';
 
@@ -99,7 +99,8 @@ new #[Title('Submissions')] class extends Component {
             ->with('proponents.user:id,name')
             ->when($this->yearFilter !== '', fn ($query) => $query->where('year', (int) $this->yearFilter))
             ->when($this->monitoring && $this->department !== '', fn ($query) => $query->whereRelation('department', 'code', $this->department))
-            ->when($this->monitoring, fn ($query) => match (true) {
+            ->tap(fn ($query) => match (true) {
+                $this->statusFilter === 'proposal' => $query->whereIn('status', Submission::PROPOSAL_STAGES),
                 $this->statusFilter === 'review' => $query->where('awaiting_review', true),
                 $this->statusFilter === 'delayed' => $query->delayed(),
                 in_array($this->statusFilter, Submission::STATUSES, true) => $query->where('status', $this->statusFilter),
@@ -240,16 +241,17 @@ new #[Title('Submissions')] class extends Component {
     <div class="mt-6 flex flex-wrap gap-3">
         @if ($this->monitoring)
             <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search faculty')" :aria-label="__('Search faculty')" class="min-w-48 flex-1" />
-
-            <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-44">
-                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
-                <flux:select.option value="review">{{ __('Awaiting review') }}</flux:select.option>
-                <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
-                @foreach (Submission::STATUSES as $option)
-                    <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
-                @endforeach
-            </flux:select>
         @endif
+
+        <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-48" data-test="status-filter">
+            <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+            <flux:select.option value="proposal">{{ __('At proposal stage') }}</flux:select.option>
+            <flux:select.option value="review">{{ __('Awaiting review') }}</flux:select.option>
+            <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
+            @foreach (Submission::STATUSES as $option)
+                <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
+            @endforeach
+        </flux:select>
 
         <flux:select wire:model.live="yearFilter" :aria-label="__('Filter by year')" class="max-w-36">
             <flux:select.option value="">{{ __('All years') }}</flux:select.option>

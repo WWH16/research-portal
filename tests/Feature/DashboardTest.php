@@ -171,7 +171,7 @@ class DashboardTest extends TestCase
 
         $this->get(route('dashboard', ['year' => now()->subMonthNoOverflow()->year]))
             ->assertSee('Submissions per month')
-            ->assertSee("{$lastMonth}: 2 proposals, 1 Submitted, 1 Concept, 0 Detailed, 0 Completed")
+            ->assertSee("{$lastMonth}: 2 projects, 1 Submitted, 1 Concept, 0 Detailed, 0 Completed")
             ->assertSee('Show as table');
 
         $byType = Livewire::withQueryParams(['year' => now()->subMonthNoOverflow()->year])->test('pages::dashboard')->instance()->breakdowns[__('By research type')];
@@ -242,6 +242,28 @@ class DashboardTest extends TestCase
             ->test('pages::submissions.index')
             ->assertSet('reviewingId', $waiting->id)
             ->assertSet('status', 'Submitted');
+    }
+
+    public function test_faculty_tiles_open_the_list_they_count(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $this->submit($maria, 'Concept Study', 'Concept');
+        $this->submit($maria, 'Finished Study', 'Completed');
+        $this->submit($maria, 'Late Study', 'Submitted', ['target_date' => today()->subWeek()]);
+
+        $this->actingAs($maria);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee(route('submissions.index', ['status' => 'proposal']), escape: false)
+            ->assertSee(route('submissions.index', ['status' => 'Completed']), escape: false)
+            ->assertSee(route('submissions.index', ['status' => 'delayed']), escape: false);
+
+        Livewire::withQueryParams(['status' => 'proposal'])->test('pages::submissions.index')
+            ->assertSeeHtml('data-test="status-filter"')
+            ->assertSee('Concept Study')->assertDontSee('Finished Study')->assertDontSee('Late Study');
+        Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')
+            ->assertSee('Late Study')->assertDontSee('Concept Study');
     }
 
     private function facultyInDepartment(string $name): User

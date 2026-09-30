@@ -281,9 +281,8 @@ new #[Title('Dashboard')] class extends Component {
 }; ?>
 
 @php
-    // Chart colours per status. Submitted is a deliberate neutral; the stages step from blue through
-    // amber to green. Written out in full so Tailwind keeps them.
-    $bars = ['Submitted' => 'bg-zinc-400', 'Concept' => 'bg-sky-600', 'Detailed' => 'bg-[#ed9400]', 'Completed' => 'bg-green-700'];
+    // Stage colours come from the status tokens in app.css; written out in full so Tailwind keeps them.
+    $bars = ['Submitted' => 'bg-status-submitted', 'Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Completed' => 'bg-status-completed'];
     $tile = 'rounded-xl border border-line bg-surface p-5 sm:p-6';
 @endphp
 
@@ -326,7 +325,7 @@ new #[Title('Dashboard')] class extends Component {
                 'pending' => ['label' => __('Not yet submitted'), 'note' => __('Verified faculty on no project yet')],
                 'proposal' => ['label' => __('At proposal stage'), 'note' => __('Concept or detailed proposal accepted'), 'swatch' => $bars['Detailed']],
                 'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
-                'delayed' => ['label' => __('Delayed'), 'note' => __('Past target date, no terminal report'), 'swatch' => 'bg-red-600'],
+                'delayed' => ['label' => __('Delayed'), 'note' => __('Past target date, no terminal report'), 'swatch' => 'bg-status-delayed'],
             ];
         @endphp
 
@@ -337,7 +336,7 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:callout variant="warning" icon="exclamation-triangle" data-test="no-department-tile">
                         <flux:callout.heading>{{ trans_choice('{1} One faculty member has no college and can’t submit.|[2,*] :count faculty members have no college and can’t submit.', $this->facultyWithoutDepartment) }}</flux:callout.heading>
                         <x-slot name="actions">
-                            <flux:button size="sm" :href="route('users.index')" wire:navigate>{{ __('Assign colleges') }}</flux:button>
+                            <flux:button size="sm" :href="route('users.index')" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Assign colleges') }}</flux:button>
                         </x-slot>
                     </flux:callout>
                 @endif
@@ -350,7 +349,7 @@ new #[Title('Dashboard')] class extends Component {
                         </flux:callout.text>
                         <x-slot name="actions">
                             @foreach ($this->missingSetup as $label => $url)
-                                <flux:button size="sm" :href="$url" wire:navigate>{{ __('Add :list', ['list' => $label]) }}</flux:button>
+                                <flux:button size="sm" :href="$url" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Add :list', ['list' => $label]) }}</flux:button>
                             @endforeach
                         </x-slot>
                     </flux:callout>
@@ -358,10 +357,10 @@ new #[Title('Dashboard')] class extends Component {
             </div>
         @endif
 
-        <div class="mt-6 grid gap-6 lg:grid-cols-12">
+        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
             {{-- The yearly summary: faculty counts by stage, each opening the list of faculty behind it --}}
             {{-- Five tiles: one row only once each has room (xl); pairs below that, the last spanning the row --}}
-            <div class="grid gap-4 sm:grid-cols-2 sm:[&>:last-child]:col-span-2 lg:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1" data-test="summary-tiles">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>:last-child]:col-span-2 lg:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1" data-test="summary-tiles">
                 @foreach ($kpis as $key => $kpi)
                     @include('partials.stat-tile', $kpi + ['value' => $facultyCounts[$key], 'href' => route('dashboard', $filters + ['group' => $key]).'#faculty-list'])
                 @endforeach
@@ -376,9 +375,9 @@ new #[Title('Dashboard')] class extends Component {
                         </div>
                         <div class="flex gap-2">
                             @if ($this->groupFaculty->isNotEmpty())
-                                <flux:button size="sm" icon="arrow-down-tray" wire:click="export" data-test="export-button">{{ __('Export CSV') }}</flux:button>
+                                <flux:button size="sm" icon="arrow-down-tray" wire:click="export" data-test="export-button" class="max-sm:h-11 max-sm:px-4">{{ __('Export CSV') }}</flux:button>
                             @endif
-                            <flux:button size="sm" variant="ghost" :href="route('dashboard', $filters)" wire:navigate>{{ __('Close') }}</flux:button>
+                            <flux:button size="sm" variant="ghost" :href="route('dashboard', $filters)" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Close') }}</flux:button>
                         </div>
                     </div>
 
@@ -459,10 +458,10 @@ new #[Title('Dashboard')] class extends Component {
                                     <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
                                     <p class="truncate text-sm text-zinc-500">
                                         {{ $submission->user->name }}, {{ $submission->department->code }}.
-                                        {{ __('At :status, uploaded :when', ['status' => __($submission->status), 'when' => $submission->updated_at->diffForHumans()]) }}
+                                        {{ __('At :status, updated :when', ['status' => __($submission->status), 'when' => $submission->updated_at->diffForHumans()]) }}
                                     </p>
                                 </div>
-                                <flux:button size="sm" :href="route('submissions.index', ['review' => $submission->id])" wire:navigate class="shrink-0">{{ __('Review') }}</flux:button>
+                                <flux:button size="sm" :href="route('submissions.index', ['review' => $submission->id])" wire:navigate class="shrink-0 max-sm:h-11 max-sm:px-4">{{ __('Review') }}</flux:button>
                             </li>
                         @endforeach
                     </ul>
@@ -476,14 +475,14 @@ new #[Title('Dashboard')] class extends Component {
 
             $kpis = [
                 ['label' => __('My projects'), 'value' => $total, 'note' => __('Filed or listed as proponent'), 'href' => route('submissions.index')],
-                ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal accepted'), 'href' => route('submissions.index'), 'swatch' => $bars['Detailed']],
-                ['label' => __('Completed'), 'value' => $counts['Completed'], 'note' => __('Terminal report accepted'), 'href' => route('submissions.index'), 'swatch' => $bars['Completed']],
-                ['label' => __('Delayed'), 'value' => $this->delayedCount, 'note' => __('Past target date, no terminal report'), 'href' => route('submissions.index'), 'swatch' => 'bg-red-600'],
+                ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal accepted'), 'href' => route('submissions.index', ['status' => 'proposal']), 'swatch' => $bars['Detailed']],
+                ['label' => __('Completed'), 'value' => $counts['Completed'], 'note' => __('Terminal report accepted'), 'href' => route('submissions.index', ['status' => 'Completed']), 'swatch' => $bars['Completed']],
+                ['label' => __('Delayed'), 'value' => $this->delayedCount, 'note' => __('Past target date, no terminal report'), 'href' => route('submissions.index', ['status' => 'delayed']), 'swatch' => 'bg-status-delayed'],
             ];
         @endphp
 
-        <div class="mt-6 grid gap-6 lg:grid-cols-12">
-            <div class="grid gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4">
+        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4">
                 @foreach ($kpis as $kpi)
                     @include('partials.stat-tile', $kpi)
                 @endforeach

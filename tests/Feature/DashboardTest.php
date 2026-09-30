@@ -104,8 +104,10 @@ class DashboardTest extends TestCase
     {
         $natividad = $this->facultyInDepartment('Natividad');
         $siton = $this->facultyInDepartment('Siton');
-        $this->submit($natividad, 'Finished Study', 'Completed', ['awaiting_review' => false, 'target_date' => today(), 'terminal_uploaded_at' => now()->subDay()]);
-        $this->submit($natividad, 'Overdue Study', 'Completed', ['awaiting_review' => false, 'target_date' => today()->subWeek(), 'terminal_uploaded_at' => now()->subDay()]);
+        $report = ['awaiting_review' => false, 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()->subDay()];
+        $this->submit($natividad, 'Finished Study', 'Completed', $report + ['target_date' => today()]);
+        $this->submit($natividad, 'Overdue Study', 'Completed', $report + ['target_date' => today()->subWeek()]);
+        $this->submit($natividad, 'Unreported Study', 'Completed', ['awaiting_review' => false, 'target_date' => today()]);
         $this->submit($siton, 'Ongoing Study', 'Concept', ['awaiting_review' => false]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
@@ -117,7 +119,9 @@ class DashboardTest extends TestCase
             ->assertSee('Completed, '.now()->year)
             ->assertSee('Natividad')
             ->assertSee('Finished Study')
-            ->assertSeeInOrder(['Natividad', 'CCS', '· 2', 'projects', 'Finished Study', 'Completed', 'On time', 'Overdue Study', 'Completed', 'Late'])
+            // On time is the norm and gets no badge; only late and missing reports are flagged.
+            ->assertSeeInOrder(['Natividad', 'CCS', '· 3', 'projects', 'Finished Study', 'Completed', 'Overdue Study', 'Completed', 'Late', 'Unreported Study', 'Completed', 'No terminal report'])
+            ->assertDontSee('On time')
             ->assertDontSee('Siton')
             ->call('export')
             ->assertFileDownloaded('completed-'.now()->year.'.csv');

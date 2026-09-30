@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Department;
 use App\Models\Submission;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -276,29 +275,7 @@ new #[Title('Submissions')] class extends Component {
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
                 @if ($this->monitoring)
                     <flux:table.column data-test="department-column">
-                        {{-- The column filters itself: pick a college from its header --}}
-                        <flux:dropdown position="bottom" align="start">
-                            <flux:button
-                                variant="ghost"
-                                size="sm"
-                                inset="top bottom"
-                                icon:trailing="chevron-down"
-                                class="-ms-2 {{ $department !== '' ? 'text-isu-green-700!' : '' }}"
-                                :aria-label="$department !== '' ? __('College, filtered to :code. Change filter', ['code' => $department]) : __('College. Filter by college')"
-                            >
-                                {{ $department !== '' ? $department : __('College') }}
-                            </flux:button>
-
-                            <flux:menu class="max-h-80 min-w-40 overflow-y-auto">
-                                <flux:menu.radio.group wire:model.live="department">
-                                    <flux:menu.radio value="">{{ __('All colleges') }}</flux:menu.radio>
-                                    <flux:menu.separator />
-                                    @foreach (Department::orderBy('code')->pluck('code') as $option)
-                                        <flux:menu.radio :value="$option">{{ $option }}</flux:menu.radio>
-                                    @endforeach
-                                </flux:menu.radio.group>
-                            </flux:menu>
-                        </flux:dropdown>
+                        <x-college-filter model="department" :value="$department" />
                     </flux:table.column>
                 @endif
                 <flux:table.column>{{ __('Year') }}</flux:table.column>

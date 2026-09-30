@@ -38,19 +38,14 @@ new #[Title('Manage Users')] class extends Component {
 
     public ?int $deletingId = null;
 
-    public function updatedSearch(): void
+    /**
+     * Any filter change starts again from the first page.
+     */
+    public function updated(string $property): void
     {
-        $this->resetPage();
-    }
-
-    public function updatedRoleFilter(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatedCollege(): void
-    {
-        $this->resetPage();
+        if (in_array($property, ['search', 'roleFilter', 'college'], true)) {
+            $this->resetPage();
+        }
     }
 
     #[Computed]
@@ -296,31 +291,7 @@ new #[Title('Manage Users')] class extends Component {
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
                 <flux:table.column class="max-md:hidden">{{ __('Researcher ID') }}</flux:table.column>
                 <flux:table.column data-test="college-column">
-                    {{-- Same header filter as the College column on Submissions --}}
-                    @php($collegeLabel = match ($college) { '' => __('College'), 'none' => __('No college'), default => $college })
-                    <flux:dropdown position="bottom" align="start">
-                        <flux:button
-                            variant="ghost"
-                            size="sm"
-                            inset="top bottom"
-                            icon:trailing="chevron-down"
-                            class="-ms-2 {{ $college !== '' ? 'text-isu-green-700!' : '' }}"
-                            :aria-label="$college !== '' ? __('College, filtered to :code. Change filter', ['code' => $collegeLabel]) : __('College. Filter by college')"
-                        >
-                            {{ $collegeLabel }}
-                        </flux:button>
-
-                        <flux:menu class="max-h-80 min-w-40 overflow-y-auto">
-                            <flux:menu.radio.group wire:model.live="college">
-                                <flux:menu.radio value="">{{ __('All colleges') }}</flux:menu.radio>
-                                <flux:menu.radio value="none">{{ __('No college') }}</flux:menu.radio>
-                                <flux:menu.separator />
-                                @foreach ($this->departments as $option)
-                                    <flux:menu.radio :value="$option->code">{{ $option->code }}</flux:menu.radio>
-                                @endforeach
-                            </flux:menu.radio.group>
-                        </flux:menu>
-                    </flux:dropdown>
+                    <x-college-filter model="college" :value="$college" with-none />
                 </flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>

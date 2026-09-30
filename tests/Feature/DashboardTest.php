@@ -31,7 +31,7 @@ class DashboardTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_admins_see_the_oldest_proposals_waiting_for_review(): void
+    public function test_admins_see_projects_waiting_for_review_longest_first(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');
 
@@ -41,7 +41,7 @@ class DashboardTest extends TestCase
         }
         Carbon::setTestNow();
 
-        $this->submit($maria, 'Already approved', 'OK');
+        $this->submit($maria, 'Already reviewed', 'Concept', ['awaiting_review' => false]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
@@ -49,9 +49,99 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertSeeInOrder(['Waiting for review', 'Proposal 1', 'Proposal 5'])
             ->assertDontSee('Proposal 6')
-            ->assertDontSee('Already approved')
+            ->assertDontSee('Already reviewed')
+            ->assertSee('View all 6')
             ->assertSee(route('submissions.index', ['review' => Submission::firstWhere('title', 'Proposal 1')->id]), escape: false)
-            ->assertSee(route('submissions.index', ['status' => 'Pending']), escape: false);
+            ->assertSee(route('submissions.index', ['status' => 'review']), escape: false);
+    }
+
+    public function test_yearly_summary_counts_each_faculty_member_once_per_group(): void
+    {
+        $natividad = $this->facultyInDepartment('Natividad');
+        $siton = $this->facultyInDepartment('Siton');
+        $tabago = $this->facultyInDepartment('Tabago');
+        $year = now()->year;
+
+        // SMART-ResearchTrack: Natividad in all three studies, Siton in two, Tabago in one.
+        $smart = $this->submit($natividad, 'SMART-ResearchTrack', 'Detailed');
+        $smart->proponents()->createMany([
+            ['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff'],
+            ['user_id' => $natividad->id, 'study' => 2, 'role' => 'Leader'],
+            ['user_id' => $siton->id, 'study' => 2, 'role' => 'Staff'],
+            ['user_id' => $tabago->id, 'study' => 3, 'role' => 'Leader'],
+            ['user_id' => $natividad->id, 'study' => 3, 'role' => 'Co-Leader'],
+        ]);
+
+        // Natividad also finished another project on time, and a 2025 project stays out of this year.
+        $this->submit($natividad, 'Finished Study', 'Completed', ['target_date' => today(), 'terminal_uploaded_at' => now()->subDay()]);
+        $this->submit($tabago, 'Old Study', 'Completed', ['year' => $year - 1]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $component = Livewire::test('pages::dashboard')->assertSet('year', $year);
+        $this->assertSame(['submitted' => 3, 'pending' => 0, 'proposal' => 3, 'completed' => 1, 'delayed' => 0], $component->instance()->facultyCounts);
+        $component->assertSee('Across 2 projects in '.$year)->assertSee('1 of 1 project finished on time');
+
+        $lastYear = Livewire::test('pages::dashboard')->set('year', $year - 1);
+        $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
+    }
+
+    public function test_admins_open_the_faculty_behind_a_count_and_export_it(): void
+    {
+        $natividad = $this->facultyInDepartment('Natividad');
+        $siton = $this->facultyInDepartment('Siton');
+        $this->submit($natividad, 'Finished Study', 'Completed', ['awaiting_review' => false]);
+        $this->submit($siton, 'Ongoing Study', 'Concept', ['awaiting_review' => false]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('dashboard'))->assertSee(route('dashboard', ['year' => now()->year, 'group' => 'completed']));
+
+        Livewire::withQueryParams(['group' => 'completed'])
+            ->test('pages::dashboard')
+            ->assertSee('Completed, '.now()->year)
+            ->assertSee('Natividad')
+            ->assertSee('Finished Study')
+            ->assertDontSee('Siton')
+            ->call('export')
+            ->assertFileDownloaded('completed-'.now()->year.'.csv');
+
+        $this->actingAs($natividad);
+        Livewire::withQueryParams(['group' => 'completed'])->test('pages::dashboard')->assertDontSee('data-test="faculty-list"', escape: false)->call('export')->assertForbidden();
+    }
+
+    public function test_admins_see_faculty_not_yet_submitted_by_department(): void
+    {
+        $year = now()->year;
+        $ccs = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $cbm = Department::create(['code' => 'CBM', 'name' => 'College of Business and Management']);
+        $natividad = User::factory()->create(['name' => 'Natividad', 'department_id' => $ccs->id]);
+        $siton = User::factory()->create(['name' => 'Siton', 'department_id' => $ccs->id]);
+        $reyes = User::factory()->create(['name' => 'Reyes', 'department_id' => $cbm->id]);
+        User::factory()->unverified()->create(['name' => 'Unverified Person', 'department_id' => $cbm->id]);
+
+        // Siton is only a co-proponent, which still counts as submitting; Reyes filed last year only.
+        $this->submit($natividad, 'SMART-ResearchTrack', 'Submitted', ['awaiting_review' => false])
+            ->proponents()->create(['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff']);
+        $this->submit($reyes, 'Old Study', 'Submitted', ['year' => $year - 1, 'awaiting_review' => false]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $counts = Livewire::test('pages::dashboard')->instance()->facultyCounts;
+        $this->assertSame([2, 1], [$counts['submitted'], $counts['pending']]);
+
+        Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CBM'])
+            ->test('pages::dashboard')
+            ->assertSee("Not yet submitted, CBM, {$year}")
+            ->assertSee('Reyes')
+            ->assertDontSee('Unverified Person')
+            ->assertDontSee('By college')
+            ->call('export')
+            ->assertFileDownloaded("not-yet-submitted-cbm-{$year}.csv");
+
+        Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CCS'])
+            ->test('pages::dashboard')
+            ->assertSee("Every faculty member in CCS has submitted for {$year}.");
     }
 
     public function test_admins_see_submissions_per_month_by_status(): void
@@ -60,7 +150,7 @@ class DashboardTest extends TestCase
 
         Carbon::setTestNow(now()->subMonthNoOverflow()->startOfMonth()->addDays(3));
         $this->submit($maria, 'Last month A');
-        $this->submit($maria, 'Last month B', 'OK');
+        $this->submit($maria, 'Last month B', 'Concept');
         Carbon::setTestNow(now()->subYears(2));
         $this->submit($maria, 'Too old to chart');
         Carbon::setTestNow();
@@ -69,12 +159,11 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->get(route('dashboard'))
+        $this->get(route('dashboard', ['year' => now()->subMonthNoOverflow()->year]))
             ->assertSee('Submissions per month')
-            ->assertSee("{$lastMonth}: 2 proposals, 1 Pending, 0 For Revision, 1 OK")
+            ->assertSee("{$lastMonth}: 2 proposals, 1 Submitted, 1 Concept, 0 Detailed, 0 Completed")
             ->assertSee('Show as table')
-            ->assertSeeInOrder(['Proposals filed', '3', 'Waiting for review', '2', 'Approved', '1'])
-            ->assertSeeInOrder(['By research type', 'Thesis', '3']);
+            ->assertSeeInOrder(['By research type', 'Thesis', '2']);
     }
 
     public function test_admins_are_told_about_missing_departments_and_setup(): void
@@ -84,18 +173,19 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $this->get(route('dashboard'))
-            ->assertSee('One faculty member has no department')
+            ->assertSee('One faculty member has no college')
             ->assertSee('Finish setup')
             ->assertSee(route('research-types.index'), escape: false)
             ->assertSee('Nothing is waiting for review.');
     }
 
-    public function test_faculty_see_their_revisions_and_only_their_own_proposals(): void
+    public function test_faculty_see_their_own_progress_and_what_needs_attention(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');
         $jose = $this->facultyInDepartment('Jose Reyes');
 
-        $this->submit($maria, 'Maria Proposal', 'For Revision', 'Add a methodology section.');
+        $this->submit($maria, 'Maria Proposal', 'Submitted', ['awaiting_review' => false, 'remarks' => 'Add a methodology section.']);
+        $this->submit($maria, 'Late Study', 'Detailed', ['target_date' => today()->subWeek()]);
         $this->submit($jose, 'Jose Proposal');
 
         $this->actingAs($maria);
@@ -103,11 +193,13 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard'))
             ->assertSee('Needs your attention')
             ->assertSee('Remarks: Add a methodology section.')
+            ->assertSee('Late Study')
+            ->assertSee('Delayed')
             ->assertSee('Maria Proposal')
             ->assertDontSee('Jose Proposal')
             ->assertDontSee('data-test="waiting-tile"', escape: false)
+            ->assertDontSee('data-test="year-select"', escape: false)
             ->assertSee('My submissions per month')
-            ->assertSee(now()->format('F Y').': one proposal, 0 Pending, 1 For Revision, 0 OK')
             ->assertSee(route('submissions.create'), escape: false);
     }
 
@@ -116,7 +208,7 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->create(['department_id' => null]));
 
         $this->get(route('dashboard'))
-            ->assertSee('Your account has no department yet.')
+            ->assertSee('Your account has no college yet.')
             ->assertSee('Nothing needs your attention.')
             ->assertDontSee(route('submissions.create'), escape: false);
     }
@@ -124,20 +216,20 @@ class DashboardTest extends TestCase
     public function test_admins_arrive_on_submissions_filtered_or_reviewing(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');
-        $pending = $this->submit($maria, 'Pending Proposal');
-        $this->submit($maria, 'Approved Proposal', 'OK');
+        $waiting = $this->submit($maria, 'Waiting Proposal');
+        $this->submit($maria, 'Reviewed Proposal', 'Concept', ['awaiting_review' => false]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        Livewire::withQueryParams(['status' => 'Pending'])
+        Livewire::withQueryParams(['status' => 'review'])
             ->test('pages::submissions.index')
-            ->assertSee('Pending Proposal')
-            ->assertDontSee('Approved Proposal');
+            ->assertSee('Waiting Proposal')
+            ->assertDontSee('Reviewed Proposal');
 
-        Livewire::withQueryParams(['review' => $pending->id])
+        Livewire::withQueryParams(['review' => $waiting->id])
             ->test('pages::submissions.index')
-            ->assertSet('reviewingId', $pending->id)
-            ->assertSet('status', 'Pending');
+            ->assertSet('reviewingId', $waiting->id)
+            ->assertSet('status', 'Submitted');
     }
 
     private function facultyInDepartment(string $name): User
@@ -147,16 +239,20 @@ class DashboardTest extends TestCase
         return User::factory()->create(['name' => $name, 'department_id' => $department->id]);
     }
 
-    private function submit(User $user, string $title, string $status = 'Pending', ?string $remarks = null): Submission
+    private function submit(User $user, string $title, string $status = 'Submitted', array $attributes = []): Submission
     {
-        return $user->submissions()->create([
+        $project = $user->submissions()->create([
             'research_type_id' => ResearchType::firstOrCreate(['name' => 'Thesis'])->id,
             'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
             'department_id' => $user->department_id,
             'title' => $title,
-            'file_path' => 'submissions/sample.pdf',
+            'concept_path' => 'submissions/sample.pdf',
             'status' => $status,
-            'remarks' => $remarks,
+            ...$attributes,
         ]);
+
+        $project->proponents()->create(['user_id' => $user->id, 'study' => 1, 'role' => 'Leader']);
+
+        return $project;
     }
 }

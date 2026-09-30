@@ -74,7 +74,7 @@ new #[Title('Manage Users')] class extends Component {
     public function deleting(): ?User
     {
         return $this->deletingId
-            ? User::withCount(['submissions', 'driveItems', 'announcements', 'activityLogs'])->find($this->deletingId)
+            ? User::withCount(['submissions', 'proponents', 'driveItems', 'announcements', 'activityLogs'])->find($this->deletingId)
             : null;
     }
 
@@ -96,6 +96,7 @@ new #[Title('Manage Users')] class extends Component {
 
         $uses = array_filter([
             $user->submissions_count ? trans_choice('{1} one submission|[2,*] :count submissions', $user->submissions_count) : null,
+            $user->proponents_count ? trans_choice('{1} one place on a proponents list|[2,*] :count places on proponents lists', $user->proponents_count) : null,
             $user->drive_items_count ? trans_choice('{1} one drive item|[2,*] :count drive items', $user->drive_items_count) : null,
             $user->announcements_count ? trans_choice('{1} one announcement|[2,*] :count announcements', $user->announcements_count) : null,
             $user->activity_logs_count ? trans_choice('{1} one activity log entry|[2,*] :count activity log entries', $user->activity_logs_count) : null,

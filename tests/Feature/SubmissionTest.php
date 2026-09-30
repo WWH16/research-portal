@@ -28,7 +28,7 @@ class SubmissionTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit Proposal');
+        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit Proposal')->assertSee('Proponents');
     }
 
     public function test_admins_cannot_open_the_submit_form(): void
@@ -40,7 +40,7 @@ class SubmissionTest extends TestCase
             ->assertSee('Admins monitor submissions and don’t submit proposals.');
     }
 
-    public function test_admins_monitor_every_submission_without_a_new_button(): void
+    public function test_admins_monitor_every_project_without_a_new_button(): void
     {
         [$maria, $jose] = $this->twoFacultyWithSubmissions();
 
@@ -48,7 +48,7 @@ class SubmissionTest extends TestCase
 
         $this->get(route('submissions.index'))
             ->assertOk()
-            ->assertSee('Every proposal filed across the portal.')
+            ->assertSee('Every project filed across the portal.')
             ->assertSee('Maria Proposal')
             ->assertSee('Jose Proposal')
             ->assertSee($maria->name)
@@ -57,7 +57,7 @@ class SubmissionTest extends TestCase
             ->assertDontSee(route('submissions.create'), escape: false);
     }
 
-    public function test_faculty_see_only_their_own_submissions(): void
+    public function test_faculty_see_only_projects_they_are_on(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
 
@@ -78,7 +78,8 @@ class SubmissionTest extends TestCase
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         Livewire::test('pages::submissions.create')
-            ->assertSee('CCS · College of Computer Studies')
+            ->assertSee('CCS')
+            ->assertDontSee('College of Computer Studies')
             ->assertSee('From your profile')
             ->assertDontSee('College of Business and Management')
             ->assertDontSeeHtml('wire:model="department_id"');
@@ -88,58 +89,90 @@ class SubmissionTest extends TestCase
     {
         Storage::fake('local');
 
-        $researchType = ResearchType::create(['name' => 'Thesis']);
-        $category = Category::create(['name' => 'Computing']);
-
         $this->actingAs(User::factory()->create(['department_id' => null]));
 
-        Livewire::test('pages::submissions.create')
-            ->assertSee('Your account has no department yet')
-            ->set('title', 'Sample Proposal')
-            ->set('abstract', 'An abstract.')
-            ->set('research_type_id', $researchType->id)
-            ->set('category_id', $category->id)
-            ->set('document', UploadedFile::fake()->create('proposal.pdf', 500, 'application/pdf'))
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->assertSee('Your account has no college yet')
             ->call('save')
             ->assertHasErrors(['department']);
 
         $this->assertSame(0, Submission::count());
     }
 
-    public function test_proposal_can_be_submitted(): void
+    public function test_project_with_several_studies_can_be_submitted(): void
     {
         Storage::fake('local');
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
-        $researchType = ResearchType::create(['name' => 'Thesis']);
-        $category = Category::create(['name' => 'Computing']);
-        $user = User::factory()->create(['department_id' => $department->id]);
+        $natividad = User::factory()->create(['name' => 'Natividad', 'department_id' => $department->id]);
+        $siton = User::factory()->create(['name' => 'Siton']);
+        $tabago = User::factory()->create(['name' => 'Tabago']);
 
-        $this->actingAs($user);
+        $this->actingAs($natividad);
 
-        Livewire::test('pages::submissions.create')
-            ->set('title', 'Sample Proposal')
-            ->set('abstract', 'An abstract.')
-            ->set('research_type_id', $researchType->id)
-            ->set('category_id', $category->id)
-            ->set('document', UploadedFile::fake()->create('proposal.pdf', 500, 'application/pdf'))
+        $this->fillProject(Livewire::test('pages::submissions.create'), 'SMART-ResearchTrack')
+            ->assertSet('proponents', [['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader']])
+            ->call('addProponent')
+            ->assertCount('proponents', 2)
+            ->set('proponents', [
+                ['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'],
+                ['study' => 1, 'user_id' => $siton->id, 'role' => 'Staff'],
+                ['study' => 2, 'user_id' => $natividad->id, 'role' => 'Leader'],
+                ['study' => 2, 'user_id' => $siton->id, 'role' => 'Staff'],
+                ['study' => 3, 'user_id' => $tabago->id, 'role' => 'Leader'],
+                ['study' => 3, 'user_id' => $natividad->id, 'role' => 'Co-Leader'],
+            ])
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('submissions.index'));
 
-        $submission = Submission::sole();
+        $project = Submission::sole();
 
-        $this->assertSame($user->id, $submission->user_id);
-        $this->assertSame($department->id, $submission->department_id);
-        $this->assertSame('Pending', $submission->fresh()->status);
-        $this->assertNull($submission->designation);
-        Storage::disk('local')->assertExists($submission->file_path);
+        $this->assertSame($natividad->id, $project->user_id);
+        $this->assertSame($department->id, $project->department_id);
+        $this->assertSame('Submitted', $project->fresh()->status);
+        $this->assertTrue($project->fresh()->awaiting_review);
+        $this->assertSame(now()->year, $project->year);
+        $this->assertSame(6, $project->proponents()->count());
+        Storage::disk('local')->assertExists($project->concept_path);
 
-        $this->get(route('submissions.index'))->assertSee('Sample Proposal')->assertDontSee('data-flux-callout', escape: false);
+        // Natividad is listed three times and Siton twice, but only three faculty are on the project.
+        $this->assertSame(3, User::whereHas('projects')->count());
+        $this->assertSame([$project->id], $siton->projects->pluck('id')->all());
+
+        $this->get(route('submissions.index'))->assertSee('SMART-ResearchTrack');
 
         session()->flash('status', 'Proposal submitted.');
 
         Livewire::test('pages::submissions.index')->assertDispatched('toast-show', fn ($name, $params) => $params['slots']['text'] === 'Proposal submitted.' && $params['dataset']['variant'] === 'success');
+    }
+
+    public function test_proponents_are_validated(): void
+    {
+        Storage::fake('local');
+
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $natividad = User::factory()->create(['department_id' => $department->id]);
+        $siton = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($natividad);
+
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->set('proponents', [['study' => 1, 'user_id' => $siton->id, 'role' => 'Leader']])
+            ->call('save')
+            ->assertHasErrors(['proponents'])
+            ->set('proponents', [['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $natividad->id, 'role' => 'Staff']])
+            ->call('save')
+            ->assertHasErrors(['proponents'])
+            ->set('proponents', [['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $admin->id, 'role' => 'Staff']])
+            ->call('save')
+            ->assertHasErrors(['proponents.1.user_id' => 'exists'])
+            ->set('proponents', [['study' => 0, 'user_id' => $natividad->id, 'role' => 'Boss']])
+            ->call('save')
+            ->assertHasErrors(['proponents.0.study' => 'between', 'proponents.0.role' => 'in']);
+
+        $this->assertSame(0, Submission::count());
     }
 
     public function test_required_fields_are_validated(): void
@@ -155,13 +188,32 @@ class SubmissionTest extends TestCase
                 'abstract' => 'required',
                 'research_type_id' => 'required',
                 'category_id' => 'required',
-                'document' => 'required',
+                'start_date' => 'required',
+                'target_date' => 'required',
+                'documents' => 'required',
             ]);
 
         $this->assertSame(0, Submission::count());
     }
 
-    public function test_document_must_be_a_pdf_or_word_file_under_ten_megabytes(): void
+    public function test_completion_date_must_come_after_the_starting_date(): void
+    {
+        Storage::fake('local');
+
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+
+        $this->actingAs(User::factory()->create(['department_id' => $department->id]));
+
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->set('start_date', '2026-06-01')
+            ->set('target_date', '2026-05-31')
+            ->call('save')
+            ->assertHasErrors(['target_date' => 'after']);
+
+        $this->assertSame(0, Submission::count());
+    }
+
+    public function test_documents_must_be_pdf_or_word_files_under_ten_megabytes(): void
     {
         Storage::fake('local');
 
@@ -170,130 +222,343 @@ class SubmissionTest extends TestCase
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         Livewire::test('pages::submissions.create')
-            ->set('document', UploadedFile::fake()->create('proposal.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))
+            ->set('documents.concept', UploadedFile::fake()->create('proposal.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))
+            ->set('documents.detailed', UploadedFile::fake()->create('proposal.doc', 100, 'application/msword'))
             ->call('save')
-            ->assertHasNoErrors('document');
+            ->assertHasNoErrors(['documents', 'documents.concept', 'documents.detailed']);
 
         Livewire::test('pages::submissions.create')
-            ->set('document', UploadedFile::fake()->create('proposal.doc', 100, 'application/msword'))
+            ->set('documents.concept', UploadedFile::fake()->create('proposal.png', 100, 'image/png'))
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 10241, 'application/pdf'))
             ->call('save')
-            ->assertHasNoErrors('document');
-
-        Livewire::test('pages::submissions.create')
-            ->set('document', UploadedFile::fake()->create('proposal.png', 100, 'image/png'))
-            ->call('save')
-            ->assertHasErrors(['document' => 'mimes']);
-
-        Livewire::test('pages::submissions.create')
-            ->set('document', UploadedFile::fake()->create('proposal.pdf', 10241, 'application/pdf'))
-            ->call('save')
-            ->assertHasErrors(['document' => 'max']);
+            ->assertHasErrors(['documents.concept' => 'mimes', 'documents.terminal' => 'max']);
     }
 
-    public function test_admin_can_ask_for_a_revision_with_remarks(): void
+    public function test_similar_projects_are_flagged_before_saving(): void
+    {
+        Storage::fake('local');
+
+        [$natividad, $siton] = $this->twoFacultyWithSubmissions();
+        $natividad->submissions()->sole()->update(['title' => 'SMART-ResearchTrack']);
+        $natividad->submissions()->sole()->proponents()->create(['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff']);
+
+        $this->actingAs($siton);
+
+        $component = $this->fillProject(Livewire::test('pages::submissions.create'), 'SMART ResearchTrack')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('A similar project is already in the portal')
+            ->assertSee('SMART-ResearchTrack')
+            ->assertSee('You are listed as a proponent.')
+            ->assertNoRedirect();
+
+        $this->assertSame(2, Submission::count());
+
+        // Unrelated titles go straight through, and a confirmed duplicate is saved on purpose.
+        $component->call('submitAnyway')->assertRedirect(route('submissions.index'));
+        $this->assertSame(3, Submission::count());
+
+        $this->fillProject(Livewire::test('pages::submissions.create'), 'Water Quality of the Cagayan River')
+            ->call('save')
+            ->assertRedirect(route('submissions.index'));
+    }
+
+    public function test_proponent_added_after_registering_sees_and_edits_the_project(): void
+    {
+        Storage::fake('local');
+
+        [$natividad] = $this->twoFacultyWithSubmissions();
+        $project = $natividad->submissions()->sole();
+        $project->update(['awaiting_review' => false]);
+
+        // Siton registers after the project was filed.
+        $siton = User::factory()->create(['name' => 'Siton']);
+        $this->actingAs($siton)->get(route('submissions.index'))->assertDontSee('Maria Proposal');
+        $this->get(route('submissions.edit', $project))->assertForbidden();
+
+        $this->actingAs($natividad);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->assertSee('Edit Project')
+            ->assertSet('title', 'Maria Proposal')
+            ->set('proponents', [
+                ['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'],
+                ['study' => 1, 'user_id' => $siton->id, 'role' => 'Staff'],
+                ['study' => 2, 'user_id' => $siton->id, 'role' => 'Staff'],
+            ])
+            ->set('start_date', '2026-08-15')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('submissions.index'));
+
+        $this->assertSame(2, Submission::count(), 'Editing never adds a second record.');
+        $this->assertFalse($project->fresh()->awaiting_review, 'Editing proponents alone does not need a review.');
+        $this->assertSame('2026-08-15', $project->fresh()->start_date->toDateString());
+
+        $this->actingAs($siton)->get(route('submissions.index'))->assertSee('Maria Proposal');
+        $this->get(route('submissions.edit', $project))->assertOk();
+    }
+
+    public function test_only_proponents_can_edit_a_project(): void
+    {
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+
+        $this->actingAs($jose)->get(route('submissions.edit', $project))->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->get(route('submissions.edit', $project))->assertForbidden();
+        $this->actingAs($maria)->get(route('submissions.edit', $project))->assertOk();
+    }
+
+    public function test_next_document_goes_on_the_same_project_and_only_admins_move_the_status(): void
+    {
+        Storage::fake('local');
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin);
+        $this->reviewAs($project, 'Concept');
+        $this->assertSame('Concept', $project->fresh()->status);
+        $this->assertFalse($project->fresh()->awaiting_review);
+
+        $this->actingAs($maria);
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $project->refresh();
+        $this->assertSame(2, Submission::count(), 'The next document goes on the same record.');
+        $this->assertSame('Concept', $project->status, 'Uploading never moves the status.');
+        $this->assertTrue($project->awaiting_review);
+        Storage::disk('local')->assertExists($project->detailed_path);
+
+        $this->actingAs($admin);
+        $this->reviewAs($project, 'Detailed');
+        $this->assertSame('Detailed', $project->fresh()->status);
+    }
+
+    public function test_corrected_upload_replaces_the_file_and_goes_back_for_review(): void
+    {
+        Storage::fake('local');
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs($maria);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'))
+            ->call('save');
+        $first = $project->fresh()->detailed_path;
+
+        // The Research Office finds it incomplete: remarks, no status change.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->set('remarks', 'Missing the budget section.')
+            ->call('saveReview')
+            ->assertHasNoErrors();
+        $this->assertFalse($project->fresh()->awaiting_review);
+        $this->actingAs($maria)->get(route('submissions.index'))->assertSee('Remarks: Missing the budget section.');
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.detailed', UploadedFile::fake()->create('detailed-v2.pdf', 100, 'application/pdf'))
+            ->call('save');
+
+        $project->refresh();
+        Storage::disk('local')->assertMissing($first);
+        Storage::disk('local')->assertExists($project->detailed_path);
+        $this->assertTrue($project->awaiting_review);
+        $this->assertSame('Submitted', $project->status);
+    }
+
+    public function test_admin_files_a_project_under_the_year_it_was_submitted(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
-        $submission = $maria->submissions()->sole();
+        $project = $maria->submissions()->sole();
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         Livewire::test('pages::submissions.index')
-            ->call('review', $submission->id)
-            ->assertSet('status', 'Pending')
-            ->set('status', 'For Revision')
-            ->set('remarks', '  Add a methodology section.  ')
+            ->call('review', $project->id)
+            ->assertSet('year', now()->year)
+            ->set('year', 2025)
             ->call('saveReview')
             ->assertHasNoErrors();
 
-        $submission->refresh();
-        $this->assertSame('For Revision', $submission->status);
-        $this->assertSame('Add a methodology section.', $submission->remarks);
+        $this->assertSame(2025, $project->fresh()->year);
+
+        Livewire::withQueryParams(['year' => '2025'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
+        Livewire::withQueryParams(['year' => (string) now()->year])->test('pages::submissions.index')->assertDontSee('Maria Proposal')->assertSee('Jose Proposal');
     }
 
-    public function test_review_status_and_remarks_are_validated(): void
+    public function test_review_status_and_year_are_validated(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
-        $submission = $maria->submissions()->sole();
+        $project = $maria->submissions()->sole();
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         Livewire::test('pages::submissions.index')
-            ->call('review', $submission->id)
-            ->set('status', 'For Revision')
-            ->call('saveReview')
-            ->assertHasErrors(['remarks' => 'required_if'])
+            ->call('review', $project->id)
             ->set('status', 'Rejected')
+            ->set('year', 1990)
             ->call('saveReview')
-            ->assertHasErrors(['status' => 'in'])
-            ->set('status', 'OK')
-            ->set('remarks', '')
-            ->call('saveReview')
-            ->assertHasNoErrors();
+            ->assertHasErrors(['status' => 'in', 'year' => 'between']);
 
-        $this->assertSame('OK', $submission->fresh()->status);
-        $this->assertNull($submission->fresh()->remarks);
+        $this->assertSame('Submitted', $project->fresh()->status);
     }
 
-    public function test_faculty_cannot_review_submissions(): void
+    public function test_faculty_cannot_review_projects(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
-        $submission = $maria->submissions()->sole();
+        $project = $maria->submissions()->sole();
 
         $this->actingAs($maria);
 
         Livewire::test('pages::submissions.index')
             ->assertDontSee('data-test="review-submission-button"', escape: false)
-            ->call('review', $submission->id)
+            ->call('review', $project->id)
             ->assertForbidden();
 
         Livewire::test('pages::submissions.index')
-            ->set('reviewingId', $submission->id)
-            ->set('status', 'OK')
+            ->set('reviewingId', $project->id)
+            ->set('status', 'Completed')
+            ->set('year', 2026)
             ->call('saveReview')
             ->assertForbidden();
 
-        $this->assertSame('Pending', $submission->fresh()->status);
+        $this->assertSame('Submitted', $project->fresh()->status);
     }
 
-    public function test_faculty_see_remarks_on_proposals_sent_back_for_revision(): void
+    public function test_delayed_and_on_time_are_judged_on_the_terminal_report_upload_date(): void
+    {
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $late = $maria->submissions()->sole();
+        $late->update(['target_date' => today()->subDay()]);
+        $onTime = $jose->submissions()->sole();
+        $onTime->update(['target_date' => today()->subDays(14), 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => today()->subDays(15)->setTime(16, 0)]);
+
+        $this->assertTrue($late->fresh()->isDelayed());
+        $this->assertFalse($onTime->fresh()->isDelayed());
+        $this->assertSame([$late->id], Submission::delayed()->pluck('id')->all());
+
+        // Reviewed two weeks after the target date, it still counts as finished on time.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->reviewAs($onTime, 'Completed');
+        $this->assertTrue($onTime->fresh()->completedOnTime());
+
+        Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
+        $this->get(route('submissions.index'))->assertSee('Finished on time');
+
+        $this->actingAs($maria)->get(route('dashboard'))->assertSee('Delayed')->assertSee('has passed');
+    }
+
+    public function test_admins_search_by_faculty_and_year(): void
+    {
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $jose->submissions()->sole()->proponents()->create(['user_id' => $maria->id, 'study' => 2, 'role' => 'Staff']);
+        $maria->submissions()->sole()->update(['year' => 2025]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::test('pages::submissions.index')
+            ->set('search', 'Maria')
+            ->assertSee('Maria Proposal')
+            ->assertSee('Jose Proposal')
+            ->set('yearFilter', (string) now()->year)
+            ->assertDontSee('Maria Proposal')
+            ->assertSee('Jose Proposal')
+            ->set('search', 'Nobody')
+            ->assertSee('No projects match these filters.');
+    }
+
+    public function test_admins_filter_projects_by_department(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
-        $maria->submissions()->sole()->update(['status' => 'For Revision', 'remarks' => 'Add a methodology section.']);
+        $cbm = Department::create(['code' => 'CBM', 'name' => 'College of Business and Management']);
+        $maria->submissions()->sole()->update(['department_id' => $cbm->id]);
 
-        $this->actingAs($maria);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->get(route('submissions.index'))->assertSee('Remarks: Add a methodology section.');
+        Livewire::test('pages::submissions.index')
+            ->assertSeeHtml('data-test="department-column"')
+            ->assertSee('All colleges')
+            ->set('department', 'CBM')
+            ->assertSee('Maria Proposal')
+            ->assertDontSee('Jose Proposal')
+            ->set('department', 'CAS')
+            ->assertSee('No projects match these filters.')
+            ->call('clearFilters')
+            ->assertSet('department', '')
+            ->assertSee('Jose Proposal');
     }
 
-    public function test_only_the_author_and_admins_can_open_a_proposal_pdf(): void
+    public function test_admins_export_the_filtered_list_for_excel(): void
+    {
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $project->update(['title' => '=HYPERLINK("http://x")', 'status' => 'Completed', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()]);
+        $siton = User::factory()->create(['name' => 'Siton Ñuñez']);
+        $project->proponents()->createMany([
+            ['user_id' => $siton->id, 'study' => 2, 'role' => 'Staff'],
+            ['user_id' => $maria->id, 'study' => 2, 'role' => 'Co-Leader'],
+        ]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $component = Livewire::test('pages::submissions.index')
+            ->set('yearFilter', (string) now()->year)
+            ->set('statusFilter', 'Completed')
+            ->call('export')
+            ->assertFileDownloaded('submissions-'.now()->year.'-completed.csv');
+
+        $csv = base64_decode(data_get($component->effects, 'download.content'));
+
+        $this->assertStringStartsWith("\xEF\xBB\xBF".'Title,Year,College,Status', $csv);
+        $this->assertStringContainsString("'=HYPERLINK", $csv, 'Formula-looking cells are escaped.');
+        $this->assertStringContainsString('"Study 1: Maria Santos (Leader); Study 2: Siton Ñuñez (Staff), Maria Santos (Co-Leader)",2', $csv);
+        $this->assertStringContainsString('Concept, Terminal', $csv);
+        $this->assertStringNotContainsString('Jose Proposal', $csv);
+
+        $this->actingAs($jose);
+        Livewire::test('pages::submissions.index')->call('export')->assertForbidden();
+    }
+
+    public function test_only_proponents_and_admins_can_open_a_document(): void
     {
         Storage::fake('local');
 
         [$maria, $jose] = $this->twoFacultyWithSubmissions();
-        $submission = $maria->submissions()->sole();
-        Storage::disk('local')->put($submission->file_path, '%PDF-1.4');
+        $project = $maria->submissions()->sole();
+        Storage::disk('local')->put($project->concept_path, '%PDF-1.4');
 
-        $url = route('submissions.document', $submission);
+        $url = route('submissions.document', [$project, 'concept']);
 
         $this->get($url)->assertRedirect(route('login'));
         $this->actingAs($jose)->get($url)->assertForbidden();
         $this->actingAs($maria)->get($url)->assertOk();
+        $this->actingAs($maria)->get(route('submissions.document', [$project, 'detailed']))->assertNotFound();
         $this->actingAs(User::factory()->create(['role' => 'admin']))->get($url)->assertOk();
+
+        $project->proponents()->create(['user_id' => $jose->id, 'study' => 1, 'role' => 'Staff']);
+        $this->actingAs($jose)->get($url)->assertOk();
     }
 
-    public function test_word_proposals_download_with_their_own_extension(): void
+    public function test_word_documents_download_with_their_own_extension(): void
     {
         Storage::fake('local');
 
         [$maria] = $this->twoFacultyWithSubmissions();
-        $submission = $maria->submissions()->sole();
-        $submission->update(['file_path' => 'submissions/sample.docx']);
-        Storage::disk('local')->put($submission->file_path, 'docx');
+        $project = $maria->submissions()->sole();
+        $project->update(['terminal_path' => 'submissions/sample.docx']);
+        Storage::disk('local')->put($project->terminal_path, 'docx');
 
         $this->actingAs($maria)
-            ->get(route('submissions.document', $submission))
+            ->get(route('submissions.document', [$project, 'terminal']))
             ->assertOk()
-            ->assertHeader('content-disposition', 'inline; filename='.Str::slug($submission->title).'.docx');
+            ->assertHeader('content-disposition', 'inline; filename='.Str::slug($project->title.' terminal').'.docx');
     }
 
     public function test_submissions_are_paged_fifteen_at_a_time(): void
@@ -315,15 +580,35 @@ class SubmissionTest extends TestCase
         $this->assertCount(1, $component->instance()->submissions);
 
         // A new filter starts from the first page.
-        $component->set('statusFilter', 'Pending')->assertSet('paginators.page', 1);
+        $component->set('statusFilter', 'review')->assertSet('paginators.page', 1);
 
-        // Approving the only proposal on the last filtered page steps back to a page with rows.
+        // Reviewing the only project on the last filtered page steps back to a page with rows.
         $last = $component->call('nextPage')->instance()->submissions->sole();
         $component->call('review', $last->id)
-            ->set('status', 'OK')
             ->call('saveReview')
             ->assertHasNoErrors()
             ->assertSet('paginators.page', 1);
+    }
+
+    private function fillProject($component, string $title = 'Sample Proposal')
+    {
+        return $component
+            ->set('title', $title)
+            ->set('abstract', 'An abstract.')
+            ->set('research_type_id', ResearchType::firstOrCreate(['name' => 'Thesis'])->id)
+            ->set('category_id', Category::firstOrCreate(['name' => 'Computing'])->id)
+            ->set('start_date', now()->toDateString())
+            ->set('target_date', now()->addYear()->toDateString())
+            ->set('documents.concept', UploadedFile::fake()->create('proposal.pdf', 500, 'application/pdf'));
+    }
+
+    private function reviewAs(Submission $project, string $status): void
+    {
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->set('status', $status)
+            ->call('saveReview')
+            ->assertHasNoErrors();
     }
 
     /**
@@ -344,8 +629,11 @@ class SubmissionTest extends TestCase
                 'category_id' => $category->id,
                 'department_id' => $department->id,
                 'title' => $title,
-                'file_path' => 'submissions/sample.pdf',
-            ]);
+                'abstract' => 'An abstract.',
+                'start_date' => now(),
+                'target_date' => now()->addYear(),
+                'concept_path' => 'submissions/sample.pdf',
+            ])->proponents()->create(['user_id' => $user->id, 'study' => 1, 'role' => 'Leader']);
         }
 
         return [$maria, $jose];

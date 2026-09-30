@@ -226,7 +226,7 @@ class ManageUsersTest extends TestCase
             'category_id' => Category::create(['name' => 'Computing'])->id,
             'department_id' => $department->id,
             'title' => 'Sample Proposal',
-            'file_path' => 'submissions/sample.pdf',
+            'concept_path' => 'submissions/sample.pdf',
         ]);
 
         $this->actingAs($this->admin);

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -129,6 +130,19 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function submissions(): HasMany
     {
         return $this->hasMany(Submission::class);
+    }
+
+    public function proponents(): HasMany
+    {
+        return $this->hasMany(Proponent::class);
+    }
+
+    /**
+     * Projects the member is listed on as a proponent, once each however many studies they are in.
+     */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Submission::class, 'proponents')->distinct();
     }
 
     public function driveItems(): HasMany

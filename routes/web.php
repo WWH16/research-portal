@@ -16,14 +16,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::livewire('submissions', 'pages::submissions.index')->name('submissions.index');
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
+    Route::livewire('submissions/{submission}/edit', 'pages::submissions.create')->middleware(['faculty', 'can:update,submission'])->name('submissions.edit');
 
-    // Proposals live on the private disk, so only their author and admins can open one.
-    Route::get('submissions/{submission}/document', function (Submission $submission) {
-        abort_unless(auth()->user()->isAdmin() || $submission->user_id === auth()->id(), 403);
-        abort_unless(Storage::disk('local')->exists($submission->file_path), 404);
+    // Documents live on the private disk, so only the project's proponents and admins can open one.
+    Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
+        $path = $submission->{$stage.'_path'};
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return Storage::disk('local')->response($submission->file_path, Str::slug($submission->title).'.'.pathinfo($submission->file_path, PATHINFO_EXTENSION));
-    })->name('submissions.document');
+        return Storage::disk('local')->response($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
+    })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     Route::middleware('admin')->group(function () {
         Route::livewire('research-types', 'pages::named-records.index')->defaults('type', 'research-types')->name('research-types.index');

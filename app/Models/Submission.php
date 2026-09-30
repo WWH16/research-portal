@@ -48,6 +48,9 @@ class Submission extends Model
     /** The stages the Research Office moves a project through, in order. */
     public const STATUSES = ['Submitted', 'Concept', 'Detailed', 'Completed'];
 
+    /** The year the portal went live. Pickers and the dashboard start here; nothing earlier is tracked. */
+    public const FIRST_YEAR = 2026;
+
     /** Stages that count as "still at proposal stage" in the yearly summary. */
     public const PROPOSAL_STAGES = ['Concept', 'Detailed'];
 
@@ -103,11 +106,11 @@ class Submission extends Model
     }
 
     /**
-     * Every year with a project, plus this one, newest first, for year pickers.
+     * Every year with a project since the portal went live, plus this one, newest first, for year pickers.
      */
     public static function years(): Collection
     {
-        return static::distinct()->pluck('year')->push(now()->year)->unique()->sortDesc()->values();
+        return static::where('year', '>=', self::FIRST_YEAR)->distinct()->pluck('year')->push(now()->year)->unique()->sortDesc()->values();
     }
 
     /**

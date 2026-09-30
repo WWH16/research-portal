@@ -61,7 +61,8 @@ new #[Title('Dashboard')] class extends Component {
 
     /**
      * The filing-date window as [start of the first day, end of the last day]. Faculty always see the
-     * last 12 months; a bad date falls back to this year, and a reversed pair is swapped, not rejected.
+     * last 12 months; a bad date falls back to this year, a reversed pair is swapped, not rejected, and
+     * nothing starts before Submission::FIRST_YEAR.
      *
      * @return array{0: CarbonInterface, 1: CarbonInterface}
      */
@@ -80,7 +81,9 @@ new #[Title('Dashboard')] class extends Component {
             [$start, $end] = [$end, $start];
         }
 
-        return [$start->startOfDay(), $end->endOfDay()];
+        $first = Date::create(Submission::FIRST_YEAR);
+
+        return [$start->max($first)->startOfDay(), $end->max($first)->endOfDay()];
     }
 
     /**
@@ -374,7 +377,7 @@ new #[Title('Dashboard')] class extends Component {
             </flux:select>
 
             <div class="flex items-center gap-2" data-test="date-range">
-                <flux:input type="date" wire:model.live="from" :max="$to" :aria-label="__('From')" class="w-40" />
+                <flux:input type="date" wire:model.live="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="w-40" />
                 <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
                 <flux:input type="date" wire:model.live="to" :min="$from" :aria-label="__('To')" class="w-40" />
 
@@ -382,7 +385,9 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" />
                     <flux:menu>
                         <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
-                        <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
+                        @if (now()->year > Submission::FIRST_YEAR)
+                            <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
+                        @endif
                         <flux:menu.item wire:click="preset('last-12-months')">{{ __('Last 12 months') }}</flux:menu.item>
                     </flux:menu>
                 </flux:dropdown>

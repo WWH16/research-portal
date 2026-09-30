@@ -69,6 +69,8 @@ class DashboardTest extends TestCase
         $natividad = $this->facultyInDepartment('Natividad');
         $siton = $this->facultyInDepartment('Siton');
         $tabago = $this->facultyInDepartment('Tabago');
+        // A year after go-live, so "last year" is one the portal tracks.
+        $this->travelTo(now()->setYear(Submission::FIRST_YEAR + 1));
         $year = now()->year;
 
         // SMART-ResearchTrack: Natividad in all three studies, Siton in two, Tabago in one.
@@ -81,9 +83,12 @@ class DashboardTest extends TestCase
             ['user_id' => $natividad->id, 'study' => 3, 'role' => 'Co-Leader'],
         ]);
 
-        // Natividad also finished another project on time, and a 2025 project stays out of this year.
+        // Natividad also finished another project on time, and last year's project stays out of this year.
         $this->submit($natividad, 'Finished Study', 'Completed', ['target_date' => today(), 'terminal_uploaded_at' => now()->subDay()]);
-        $this->travelTo(now()->subYear(), fn () => $this->submit($tabago, 'Old Study', 'Completed', ['year' => $year - 1]));
+        // travel() moves the frozen clock and leaves it there; travelTo() with a callback would reset it to real time.
+        $this->travel(-1)->years();
+        $this->submit($tabago, 'Old Study', 'Completed', ['year' => $year - 1]);
+        $this->travel(1)->years();
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
@@ -104,8 +109,10 @@ class DashboardTest extends TestCase
     {
         $maria = $this->facultyInDepartment('Maria Santos');
         $jose = $this->facultyInDepartment('Jose Reyes');
-        $this->travelTo(now()->startOfYear()->addDays(10), fn () => $this->submit($maria, 'January Study'));
-        $this->travelTo(now()->startOfYear()->addMonths(7), fn () => $this->submit($jose, 'August Study'));
+        $this->travelTo(now()->setYear(Submission::FIRST_YEAR + 3)->startOfYear()->addDays(10));
+        $this->submit($maria, 'January Study');
+        $this->travel(7)->months();
+        $this->submit($jose, 'August Study');
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
         $year = now()->year;
@@ -124,6 +131,10 @@ class DashboardTest extends TestCase
         $this->assertCount(12, $whole->instance()->monthly);
 
         $this->assertCount(24, Livewire::withQueryParams(['from' => ($year - 3).'-01-01', 'to' => "{$year}-12-31"])->test('pages::dashboard')->instance()->monthly);
+
+        // Nothing before the portal went live counts, even when the dates reach back further.
+        $early = Livewire::withQueryParams(['from' => (Submission::FIRST_YEAR - 5).'-01-01', 'to' => "{$year}-12-31"])->test('pages::dashboard');
+        $this->assertSame(Submission::FIRST_YEAR.'-01-01', $early->instance()->range[0]->toDateString());
 
         Livewire::test('pages::dashboard')
             ->call('preset', 'last-12-months')

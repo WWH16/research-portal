@@ -241,14 +241,18 @@ new #[Title('Research Project')] class extends Component {
 
         <flux:textarea wire:model="abstract" :label="__('Abstract')" rows="6" required />
 
+        {{-- Real, selectable blank options instead of Flux's disabled placeholder: after a re-render the browser
+             can't show a disabled option, so it showed the first real one while nothing was chosen. --}}
         <div class="grid gap-6 sm:grid-cols-2">
-            <flux:select wire:model="research_type_id" :label="__('Research type')" :placeholder="__('Select type')" required>
+            <flux:select wire:model="research_type_id" :label="__('Research type')" required>
+                <flux:select.option value="">{{ __('Select type') }}</flux:select.option>
                 @foreach ($this->researchTypes as $type)
                     <flux:select.option :value="$type->id">{{ $type->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="category_id" :label="__('Category')" :placeholder="__('Select category')" required>
+            <flux:select wire:model="category_id" :label="__('Category')" required>
+                <flux:select.option value="">{{ __('Select category') }}</flux:select.option>
                 @foreach ($this->categories as $category)
                     <flux:select.option :value="$category->id">{{ $category->name }}</flux:select.option>
                 @endforeach
@@ -290,7 +294,8 @@ new #[Title('Research Project')] class extends Component {
                     <div class="grid grid-cols-[4.5rem_minmax(0,1fr)_7.5rem_2.5rem] items-start gap-2" wire:key="proponent-{{ $index }}" data-test="proponent-row">
                         <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" :aria-label="__('Study')" />
 
-                        <flux:select wire:model="proponents.{{ $index }}.user_id" :placeholder="__('Select faculty')" :aria-label="__('Faculty')">
+                        <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')">
+                            <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
                             @foreach ($this->faculty as $member)
                                 <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
                             @endforeach

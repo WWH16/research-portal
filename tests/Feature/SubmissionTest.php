@@ -208,6 +208,24 @@ class SubmissionTest extends TestCase
         $this->assertSame(0, Submission::count());
     }
 
+    public function test_blank_choices_are_real_options_and_still_required(): void
+    {
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        ResearchType::create(['name' => 'Concept Proposal']);
+
+        $this->actingAs(User::factory()->create(['department_id' => $department->id]));
+
+        // A disabled placeholder can't stay shown after a re-render, so the blank choice must be a real option.
+        Livewire::test('pages::submissions.create')
+            ->assertSeeHtml('>Select type</option>')
+            ->assertDontSeeHtml('class="placeholder"')
+            ->set('research_type_id', '')
+            ->set('category_id', '')
+            ->set('proponents.0.user_id', '')
+            ->call('save')
+            ->assertHasErrors(['research_type_id' => 'required', 'category_id' => 'required', 'proponents.0.user_id' => 'required']);
+    }
+
     public function test_completion_date_must_come_after_the_starting_date(): void
     {
         Storage::fake('local');

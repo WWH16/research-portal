@@ -17,7 +17,7 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*')" wire:navigate>
+                    <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" wire:navigate>
                         {{ __('Submissions') }}
                     </flux:sidebar.item>
 
@@ -66,7 +66,7 @@
                     {{ __('Announcements') }}
                 </flux:sidebar.item>
 
-                <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*')" wire:navigate>
+                <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*') || request('from') === 'drive'" wire:navigate>
                     {{ __('Research Drive') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>

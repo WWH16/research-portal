@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -43,6 +44,10 @@ new #[Title('Research Project')] class extends Component {
     public array $duplicates = [];
 
     public bool $ignoreDuplicates = false;
+
+    /** "drive" when the member opened the form from a Research Drive project, so leaving it goes back there. */
+    #[Url(except: '')]
+    public string $from = '';
 
     public function mount(?Submission $submission = null): void
     {
@@ -166,7 +171,17 @@ new #[Title('Research Project')] class extends Component {
             default => __('Project updated.'),
         });
 
-        $this->redirectRoute('submissions.index', navigate: true);
+        $this->redirect($this->backUrl, navigate: true);
+    }
+
+    /**
+     * Where Back, Cancel and Save lead: the Drive project the form was opened from, or the Submissions list.
+     * Only the literal "drive" is honoured, so the query string can't point anywhere else.
+     */
+    #[Computed]
+    public function backUrl(): string
+    {
+        return $this->from === 'drive' && $this->submission ? route('drive.show', $this->submission) : route('submissions.index');
     }
 
     /**
@@ -229,7 +244,8 @@ new #[Title('Research Project')] class extends Component {
 {{-- Same width as the Submissions list and My Profile, so the page doesn't jump when you open it --}}
 <section class="mx-auto w-full max-w-4xl">
     <header class="flex items-center gap-4 border-b border-line pb-6">
-        <flux:button :href="route('submissions.index')" variant="ghost" icon="arrow-left" wire:navigate :aria-label="__('Back to Submissions')" :tooltip="__('Back to Submissions')" class="-ms-2 shrink-0" data-test="back-to-submissions" />
+        @php($backLabel = $this->backUrl === route('submissions.index') ? __('Back to Submissions') : __('Back to Research Drive'))
+        <flux:button :href="$this->backUrl" variant="ghost" icon="arrow-left" wire:navigate :aria-label="$backLabel" :tooltip="$backLabel" class="-ms-2 shrink-0" data-test="back-to-submissions" />
         <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <flux:heading size="xl" level="1">{{ $submission ? __('Edit Project') : __('Submit Proposal') }}</flux:heading>
     </header>
@@ -373,14 +389,14 @@ new #[Title('Research Project')] class extends Component {
                     <p class="mt-2">{{ __('Submitting it again counts the same project twice. Check with your co-proponents first.') }}</p>
                 </flux:callout.text>
                 <x-slot name="actions">
-                    <flux:button size="sm" :href="route('submissions.index')" wire:navigate>{{ __('Cancel') }}</flux:button>
+                    <flux:button size="sm" :href="$this->backUrl" wire:navigate>{{ __('Cancel') }}</flux:button>
                     <flux:button size="sm" variant="ghost" wire:click="submitAnyway" data-test="submit-anyway-button">{{ __('Submit anyway') }}</flux:button>
                 </x-slot>
             </flux:callout>
         @endif
 
         <div class="flex items-center justify-end gap-3 border-t border-line pt-6">
-            <flux:button :href="route('submissions.index')" variant="ghost" wire:navigate>
+            <flux:button :href="$this->backUrl" variant="ghost" wire:navigate>
                 {{ __('Cancel') }}
             </flux:button>
 

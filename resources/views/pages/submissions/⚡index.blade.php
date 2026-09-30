@@ -32,6 +32,10 @@ new #[Title('Submissions')] class extends Component {
     #[Url(as: 'dept', except: '')]
     public string $department = '';
 
+    /** "drive" when an admin came to review from a Research Drive project, so closing the review goes back there. */
+    #[Url(except: '')]
+    public string $from = '';
+
     /** Admins find a faculty member's projects by name. */
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -181,6 +185,16 @@ new #[Title('Submissions')] class extends Component {
     }
 
     /**
+     * Closing a review opened from the Drive, saved or not, goes back to that project.
+     */
+    public function closeReview(): void
+    {
+        if ($this->from === 'drive' && $this->reviewingId) {
+            $this->redirectRoute('drive.show', $this->reviewingId, navigate: true);
+        }
+    }
+
+    /**
      * Save the review. Saving takes the project off the review list whether or not the status
      * moves, so a document found incomplete stays at its old status until a corrected upload.
      */
@@ -200,6 +214,13 @@ new #[Title('Submissions')] class extends Component {
             'remarks' => $validated['remarks'] ?: null,
             'awaiting_review' => false,
         ]);
+
+        if ($this->from === 'drive') {
+            session()->flash('status', __('Review saved.'));
+            $this->closeReview();
+
+            return;
+        }
 
         Flux::modal('review-submission')->close();
         Flux::toast(variant: 'success', text: __('Review saved.'));
@@ -335,7 +356,7 @@ new #[Title('Submissions')] class extends Component {
     @endif
 
     @if ($this->monitoring)
-        <flux:modal name="review-submission" variant="flyout" class="w-full md:w-[30rem]" aria-labelledby="review-submission-heading">
+        <flux:modal name="review-submission" variant="flyout" wire:close="closeReview" class="w-full md:w-[30rem]" aria-labelledby="review-submission-heading">
             @if ($this->reviewing)
                 <form wire:submit="saveReview" class="flex flex-col gap-6">
                     <div class="pe-8">

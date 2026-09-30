@@ -114,12 +114,65 @@ class DriveTest extends TestCase
             ->assertSeeInOrder(['Study 1', 'Natividad', 'Leader', 'CCSICT', 'Siton', 'Staff', 'CCSICT', 'Study 3', 'Tabago', 'Leader', 'CAS'])
             ->assertSeeInOrder(['Concept proposal', 'Uploaded', 'Detailed proposal', 'Terminal report', 'Not uploaded yet'])
             ->assertSee(route('submissions.document', [$this->smart, 'concept']), escape: false)
-            ->assertSee(route('submissions.edit', $this->smart), escape: false);
+            ->assertSee(route('submissions.edit', [$this->smart, 'from' => 'drive']), escape: false);
 
         $this->actingAs($this->admin())
             ->get(route('drive.show', $this->smart))
             ->assertOk()
-            ->assertSee(route('submissions.index', ['review' => $this->smart->id]), escape: false);
+            ->assertSee(route('submissions.index', ['review' => $this->smart->id, 'from' => 'drive']));
+    }
+
+    public function test_editing_from_the_drive_returns_to_the_drive_project(): void
+    {
+        $this->actingAs($this->natividad);
+
+        $page = $this->get(route('submissions.edit', [$this->smart, 'from' => 'drive']))->assertOk()->assertSee('Back to Research Drive');
+
+        // The sidebar keeps Research Drive highlighted, not Submissions.
+        $current = fn (string $url) => preg_match('#<a\b[^>]*href="'.preg_quote($url, '#').'"[^>]*\sdata-current[=\s>]#', $page->getContent());
+        $this->assertSame(1, $current(route('drive.index')));
+        $this->assertSame(0, $current(route('submissions.index')));
+
+        Livewire::withQueryParams(['from' => 'drive'])
+            ->test('pages::submissions.create', ['submission' => $this->smart])
+            ->set('abstract', 'A study.')
+            ->set('start_date', '2026-01-01')
+            ->set('target_date', '2026-12-31')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('drive.show', $this->smart));
+
+        $this->get(route('drive.show', $this->smart))->assertSee('Project updated.');
+
+        // Opened from Submissions, or with any other value, it goes back to the list as before.
+        Livewire::withQueryParams(['from' => 'https://example.com'])
+            ->test('pages::submissions.create', ['submission' => $this->smart])
+            ->set('abstract', 'A study.')
+            ->set('start_date', '2026-01-01')
+            ->set('target_date', '2026-12-31')
+            ->call('save')
+            ->assertRedirect(route('submissions.index'));
+    }
+
+    public function test_a_review_opened_from_the_drive_returns_to_the_drive_project(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::withQueryParams(['review' => $this->smart->id, 'from' => 'drive'])
+            ->test('pages::submissions.index')
+            ->set('status', 'Completed')
+            ->call('saveReview')
+            ->assertRedirect(route('drive.show', $this->smart));
+
+        Livewire::withQueryParams(['review' => $this->smart->id, 'from' => 'drive'])
+            ->test('pages::submissions.index')
+            ->call('closeReview')
+            ->assertRedirect(route('drive.show', $this->smart));
+
+        Livewire::withQueryParams(['review' => $this->smart->id])
+            ->test('pages::submissions.index')
+            ->call('closeReview')
+            ->assertNoRedirect();
     }
 
     public function test_strangers_cannot_open_the_project_or_its_files(): void

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Submission;
+use Flux\Flux;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -8,13 +9,18 @@ use Livewire\Component;
 /*
  * One project in the Research Drive: status, studies with each proponent's role and college, and
  * the documents by stage. The route checks the view policy, so only the Research Office and the
- * project's own people get here. Editing and reviewing stay on Submissions.
+ * project's own people get here. Editing and reviewing stay on Submissions, but return here when done.
  */
 new #[Title('Research Drive')] class extends Component {
     public Submission $submission;
 
     public function mount(Submission $submission): void
     {
+        // Edits and reviews opened from here come back with a confirmation.
+        if ($message = session('status')) {
+            Flux::toast(variant: 'success', text: $message);
+        }
+
         $this->submission = $submission->load([
             'user:id,name',
             'department:id,code',
@@ -47,10 +53,10 @@ new #[Title('Research Drive')] class extends Component {
         </div>
 
         @can('update', $project)
-            <flux:button :href="route('submissions.edit', $project)" icon="pencil-square" wire:navigate data-test="drive-edit-button">{{ __('Edit project') }}</flux:button>
+            <flux:button :href="route('submissions.edit', [$project, 'from' => 'drive'])" icon="pencil-square" wire:navigate data-test="drive-edit-button">{{ __('Edit project') }}</flux:button>
         @endcan
         @if ($admin)
-            <flux:button :href="route('submissions.index', ['review' => $project->id])" variant="primary" wire:navigate data-test="drive-review-button">{{ __('Review') }}</flux:button>
+            <flux:button :href="route('submissions.index', ['review' => $project->id, 'from' => 'drive'])" variant="primary" wire:navigate data-test="drive-review-button">{{ __('Review') }}</flux:button>
         @endif
     </header>
 

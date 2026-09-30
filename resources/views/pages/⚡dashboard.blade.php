@@ -412,7 +412,8 @@ new #[Title('Dashboard')] class extends Component {
                                         @foreach ($member->projects as $project)
                                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                                                 <flux:link :href="route('submissions.index', ['year' => $year, 'review' => $project->id])" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
-                                                <flux:badge size="sm" inset="top bottom" :color="\App\Models\Submission::STATUS_COLORS[$project->status] ?? 'zinc'">{{ __($project->status) }}</flux:badge>
+                                                {{-- Stage plus Awaiting review / Delayed; reversed so the stage keeps its column at the right edge --}}
+                                                @include('partials.project-status', ['submission' => $project, 'class' => 'flex-row-reverse'])
                                             </li>
                                         @endforeach
                                     </ul>

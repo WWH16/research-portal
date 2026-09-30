@@ -93,6 +93,11 @@ class DashboardTest extends TestCase
 
         $lastYear = Livewire::test('pages::dashboard')->set('year', $year - 1);
         $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
+
+        // The proposal-stage list flags what waits on the Research Office, next to the stage.
+        Livewire::withQueryParams(['group' => 'proposal'])
+            ->test('pages::dashboard')
+            ->assertSeeInOrder(['SMART-ResearchTrack', 'Awaiting review', 'Detailed']);
     }
 
     public function test_admins_open_the_faculty_behind_a_count_and_export_it(): void

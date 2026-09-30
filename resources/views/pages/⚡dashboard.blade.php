@@ -413,7 +413,7 @@ new #[Title('Dashboard')] class extends Component {
                                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                                                 <flux:link :href="route('submissions.index', ['year' => $year, 'review' => $project->id])" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
                                                 {{-- Stage plus Awaiting review / Delayed; reversed so the stage keeps its column at the right edge --}}
-                                                @include('partials.project-status', ['submission' => $project, 'class' => 'flex-row-reverse'])
+                                                @include('partials.project-status', ['submission' => $project, 'class' => 'flex-row-reverse', 'timing' => true])
                                             </li>
                                         @endforeach
                                     </ul>

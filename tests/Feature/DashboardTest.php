@@ -104,7 +104,8 @@ class DashboardTest extends TestCase
     {
         $natividad = $this->facultyInDepartment('Natividad');
         $siton = $this->facultyInDepartment('Siton');
-        $this->submit($natividad, 'Finished Study', 'Completed', ['awaiting_review' => false]);
+        $this->submit($natividad, 'Finished Study', 'Completed', ['awaiting_review' => false, 'target_date' => today(), 'terminal_uploaded_at' => now()->subDay()]);
+        $this->submit($natividad, 'Overdue Study', 'Completed', ['awaiting_review' => false, 'target_date' => today()->subWeek(), 'terminal_uploaded_at' => now()->subDay()]);
         $this->submit($siton, 'Ongoing Study', 'Concept', ['awaiting_review' => false]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
@@ -116,7 +117,7 @@ class DashboardTest extends TestCase
             ->assertSee('Completed, '.now()->year)
             ->assertSee('Natividad')
             ->assertSee('Finished Study')
-            ->assertSeeInOrder(['Natividad', 'CCS', '· 1', 'project', 'Finished Study', 'Completed'])
+            ->assertSeeInOrder(['Natividad', 'CCS', '· 2', 'projects', 'Finished Study', 'Completed', 'On time', 'Overdue Study', 'Completed', 'Late'])
             ->assertDontSee('Siton')
             ->call('export')
             ->assertFileDownloaded('completed-'.now()->year.'.csv');

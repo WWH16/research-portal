@@ -233,14 +233,14 @@ new #[Title('Submissions')] class extends Component {
 
         @unless ($this->monitoring)
             <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="shrink-0" wire:navigate>
-                {{ __('New') }}
+                {{ __('New proposal') }}
             </flux:button>
         @endunless
     </header>
 
     <div class="mt-6 flex flex-wrap gap-3">
         @if ($this->monitoring)
-            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search faculty')" :aria-label="__('Search faculty')" class="min-w-48 flex-1" />
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search by faculty name')" :aria-label="__('Search by faculty name')" class="min-w-48 flex-1" />
         @endif
 
         <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-48" data-test="status-filter">
@@ -272,8 +272,10 @@ new #[Title('Submissions')] class extends Component {
             @if ($statusFilter !== '' || $yearFilter !== '' || $department !== '' || $search !== '')
                 {{ __('No projects match these filters.') }}
                 <flux:link as="button" wire:click="clearFilters" class="ms-1" data-test="clear-filters-button">{{ __('Clear filters') }}</flux:link>
+            @elseif ($this->monitoring)
+                {{ __('No projects have been filed yet. They appear here as faculty submit proposals.') }}
             @else
-                {{ $this->monitoring ? __('No proposals have been submitted yet.') : __('No submissions yet.') }}
+                {{ __('You’re not on any projects yet. Submit a proposal, or ask a colleague to list you as a proponent on theirs.') }}
             @endif
         </flux:text>
     @else
@@ -382,7 +384,7 @@ new #[Title('Submissions')] class extends Component {
                             <dd class="mt-1 font-medium text-zinc-800">{{ $this->reviewing->category->name }}</dd>
                         </div>
                         <div>
-                            <dt class="text-zinc-500">{{ __('Encoded') }}</dt>
+                            <dt class="text-zinc-500">{{ __('Encoded on') }}</dt>
                             <dd class="mt-1 font-medium tabular-nums text-zinc-800">{{ $this->reviewing->created_at->format('M j, Y') }}</dd>
                         </div>
                         <div>
@@ -438,7 +440,7 @@ new #[Title('Submissions')] class extends Component {
 
                     <flux:separator variant="subtle" />
 
-                    <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Move the status only once the latest document is accepted.')" variant="segmented">
+                    <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Change it only after accepting the latest document. Saving without a change still takes the project off the review list.')" variant="segmented">
                         @foreach (Submission::STATUSES as $option)
                             <flux:radio :value="$option" :label="__($option)" />
                         @endforeach
@@ -447,14 +449,14 @@ new #[Title('Submissions')] class extends Component {
                     <div class="grid gap-6 sm:grid-cols-2">
                         <flux:input wire:model="year" :label="__('Year')" :description="__('The year it was actually submitted.')" type="number" min="2000" :max="now()->year + 1" required />
 
-                        <flux:select wire:model="departmentId" :label="__('College')" :description="__('Where it is filed in the Drive.')" data-test="review-college-select">
+                        <flux:select wire:model="departmentId" :label="__('College')" :description="__('Moves the project to this college’s folder in the Research Drive.')" data-test="review-college-select">
                             @foreach (Department::orderBy('code')->get(['id', 'code']) as $option)
                                 <flux:select.option :value="$option->id">{{ $option->code }}</flux:select.option>
                             @endforeach
                         </flux:select>
                     </div>
 
-                    <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. The researcher sees these.')" rows="4" maxlength="2000" />
+                    <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. Everyone on the project sees these.')" rows="4" maxlength="2000" />
 
                     <div class="flex justify-end gap-2">
                         <flux:modal.close>

@@ -27,7 +27,7 @@
                 </flux:sidebar.group>
 
                 @if (auth()->user()->isAdmin())
-                    <flux:sidebar.group :heading="__('Reference data')" class="grid">
+                    <flux:sidebar.group :heading="__('Filing options')" class="grid">
                         <flux:sidebar.item icon="beaker" :href="route('research-types.index')" :current="request()->routeIs('research-types.*')" wire:navigate>
                             {{ __('Research Types') }}
                         </flux:sidebar.item>

@@ -24,7 +24,7 @@ class ReferenceDataTest extends TestCase
         return [
             'research types' => ['research-types.index', 'Research Types'],
             'categories' => ['categories.index', 'Categories'],
-            'departments' => ['departments.index', 'Departments'],
+            'departments' => ['departments.index', 'Colleges'],
         ];
     }
 

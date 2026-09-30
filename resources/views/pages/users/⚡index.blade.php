@@ -175,7 +175,7 @@ new #[Title('Manage Users')] class extends Component {
             'role' => ['required', Rule::in(['admin', 'faculty'])],
             'password' => [$this->editingId ? 'nullable' : 'required', 'string', Password::default()],
         ], attributes: [
-            'department_id' => __('department'),
+            'department_id' => __('college'),
         ]);
 
         $validated['mobile'] = $validated['mobile'] ?: null;
@@ -249,7 +249,7 @@ new #[Title('Manage Users')] class extends Component {
         <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ __('Manage Users') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Accounts, roles, and department assignments for portal members.') }}</flux:text>
+            <flux:text class="mt-1">{{ __('Accounts, roles, and college assignments for portal members.') }}</flux:text>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="create" class="shrink-0" data-test="new-user-button">
             {{ __('New') }}
@@ -284,7 +284,7 @@ new #[Title('Manage Users')] class extends Component {
             <flux:table.columns>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
                 <flux:table.column class="max-md:hidden">{{ __('Researcher ID') }}</flux:table.column>
-                <flux:table.column>{{ __('Department') }}</flux:table.column>
+                <flux:table.column>{{ __('College') }}</flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>
@@ -309,7 +309,7 @@ new #[Title('Manage Users')] class extends Component {
                         <flux:table.cell class="tabular-nums max-md:hidden">{{ $user->researcher_id ?? '—' }}</flux:table.cell>
                         <flux:table.cell>
                             @if ($user->department)
-                                <span title="{{ $user->department->name }}">{{ $user->department->code }}</span>
+                                {{ $user->department->code }}
                             @else
                                 <span class="text-zinc-400">—</span>
                             @endif
@@ -354,11 +354,11 @@ new #[Title('Manage Users')] class extends Component {
             </div>
 
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:select wire:model="department_id" :label="__('Department')">
+                <flux:select wire:model="department_id" :label="__('College')">
                     {{-- A real, selectable option so users without a department show it and admins can clear one. --}}
-                    <flux:select.option value="">{{ __('No department') }}</flux:select.option>
+                    <flux:select.option value="">{{ __('No college') }}</flux:select.option>
                     @foreach ($this->departments as $department)
-                        <flux:select.option :value="$department->id">{{ $department->code }} · {{ $department->name }}</flux:select.option>
+                        <flux:select.option :value="$department->id">{{ $department->code }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
@@ -367,7 +367,7 @@ new #[Title('Manage Users')] class extends Component {
                     <flux:select.option value="admin">{{ __('Admin') }}</flux:select.option>
                 </flux:select>
 
-                {{-- Its own grid row under the Role column, so Department and Role stay level above it. --}}
+                {{-- Its own grid row under the Role column, so College and Role stay level above it. --}}
                 @if ($this->editingSelf)
                     <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('You can’t change your own role.') }}</flux:text>
                 @endif

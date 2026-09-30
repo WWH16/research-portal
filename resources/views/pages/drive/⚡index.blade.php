@@ -12,7 +12,7 @@ new #[Title('Research Drive')] class extends Component {
         <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0">
             <flux:heading size="xl" level="1">{{ __('Research Drive') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Shared files and folders for each department.') }}</flux:text>
+            <flux:text class="mt-1">{{ __('Shared files and folders for each college.') }}</flux:text>
         </div>
     </header>
 

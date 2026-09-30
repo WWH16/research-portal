@@ -23,7 +23,7 @@ class CreateNewUser implements CreatesNewUsers
             ...$this->profileRules(),
             'department_id' => ['required', 'integer', 'exists:departments,id'],
             'password' => $this->passwordRules(),
-        ], attributes: ['department_id' => __('department')])->validate();
+        ], attributes: ['department_id' => __('college')])->validate();
 
         // Role is left out on purpose: sign-ups always get the default faculty role.
         return User::create([

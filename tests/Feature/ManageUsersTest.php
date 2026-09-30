@@ -121,7 +121,7 @@ class ManageUsersTest extends TestCase
         Livewire::test('pages::users.index')
             ->call('edit', $user->id)
             ->assertSet('department_id', null)
-            ->assertSee('No department')
+            ->assertSee('No college')
             ->assertDontSeeHtml('class="placeholder"');
     }
 

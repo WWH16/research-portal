@@ -8,7 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Departments')] class extends Component {
+new #[Title('Colleges')] class extends Component {
     public ?int $editingId = null;
     public string $code = '';
     public string $name = '';
@@ -91,10 +91,10 @@ new #[Title('Departments')] class extends Component {
 
         if ($this->editingId) {
             Department::findOrFail($this->editingId)->update($validated);
-            Flux::toast(variant: 'success', text: __('Department updated.'));
+            Flux::toast(variant: 'success', text: __('College updated.'));
         } else {
             Department::create($validated);
-            Flux::toast(variant: 'success', text: __('Department added.'));
+            Flux::toast(variant: 'success', text: __('College added.'));
         }
 
         Flux::modal('department-form')->close();
@@ -125,7 +125,7 @@ new #[Title('Departments')] class extends Component {
         $this->deleting->delete();
 
         Flux::modal('department-delete')->close();
-        Flux::toast(variant: 'success', text: __('Department deleted.'));
+        Flux::toast(variant: 'success', text: __('College deleted.'));
         $this->reset('deletingId');
         unset($this->departments, $this->deleting, $this->deletingBlocker);
     }
@@ -135,8 +135,8 @@ new #[Title('Departments')] class extends Component {
     <header class="flex items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0">
-            <flux:heading size="xl" level="1">{{ __('Departments') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Colleges and units that members and proposals belong to.') }}</flux:text>
+            <flux:heading size="xl" level="1">{{ __('Colleges') }}</flux:heading>
+            <flux:text class="mt-1">{{ __('Colleges that members and proposals belong to.') }}</flux:text>
         </div>
         <flux:spacer />
         <flux:button variant="primary" icon="plus" wire:click="create" data-test="new-department-button">
@@ -146,7 +146,7 @@ new #[Title('Departments')] class extends Component {
 
     @if ($this->departments->isEmpty())
         <div class="mt-8 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-            <flux:heading>{{ __('No departments yet') }}</flux:heading>
+            <flux:heading>{{ __('No colleges yet') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Add one so members and proposals can be assigned to it.') }}</flux:text>
         </div>
     @else
@@ -184,7 +184,7 @@ new #[Title('Departments')] class extends Component {
 
     <flux:modal name="department-form" class="w-full md:w-[28rem]">
         <form wire:submit="save" class="flex flex-col gap-6">
-            <flux:heading size="lg">{{ $editingId ? __('Edit department') : __('New department') }}</flux:heading>
+            <flux:heading size="lg">{{ $editingId ? __('Edit college') : __('New college') }}</flux:heading>
 
             <flux:input wire:model="code" :label="__('Code')" :description:trailing="__('Short label, like CCS. Letters, numbers, dashes.')" type="text" maxlength="20" class:input="uppercase" required autofocus />
 
@@ -195,7 +195,7 @@ new #[Title('Departments')] class extends Component {
                     <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
                 <flux:button type="submit" variant="primary" data-test="save-department-button">
-                    {{ $editingId ? __('Save changes') : __('Add department') }}
+                    {{ $editingId ? __('Save changes') : __('Add college') }}
                 </flux:button>
             </div>
         </form>

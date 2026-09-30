@@ -267,8 +267,8 @@ new #[Title('My Profile')] class extends Component {
                     <dd class="mt-1 font-medium text-zinc-800">{{ $user->isAdmin() ? __('Admin') : __('Faculty') }}</dd>
                 </div>
                 <div class="col-span-2 min-w-0 sm:col-span-1">
-                    <dt class="text-sm text-zinc-500">{{ __('Department') }}</dt>
-                    <dd class="mt-1 truncate font-medium text-zinc-800" title="{{ $user->department?->name }}">{{ $user->department?->code ?? __('Not assigned') }}</dd>
+                    <dt class="text-sm text-zinc-500">{{ __('College') }}</dt>
+                    <dd class="mt-1 truncate font-medium text-zinc-800">{{ $user->department?->code ?? __('Not assigned') }}</dd>
                 </div>
                 <p class="col-span-2 text-sm text-zinc-500 sm:col-span-3">{{ __('To change these, contact the Research Office.') }}</p>
             </dl>

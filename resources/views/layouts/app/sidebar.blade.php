@@ -37,7 +37,7 @@
                         </flux:sidebar.item>
 
                         <flux:sidebar.item icon="building-library" :href="route('departments.index')" :current="request()->routeIs('departments.*')" wire:navigate>
-                            {{ __('Departments') }}
+                            {{ __('Colleges') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endif

@@ -39,10 +39,10 @@
                 placeholder="name_cyn@isu.edu.ph"
             />
 
-            <!-- Department -->
-            <flux:select name="department_id" :label="__('Department')" :placeholder="__('Choose your department')" required>
+            <!-- College -->
+            <flux:select name="department_id" :label="__('College')" :placeholder="__('Choose your college')" required>
                 @foreach ($departments as $department)
-                    <flux:select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->code }} · {{ $department->name }}</flux:select.option>
+                    <flux:select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->code }}</flux:select.option>
                 @endforeach
             </flux:select>
 

@@ -135,7 +135,7 @@ new #[Title('Dashboard')] class extends Component {
         return $this->facultyIn($this->group)
             ->with(['department:id,code', 'projects' => $this->projectsIn($this->group)])
             ->orderBy('name')
-            ->get(['id', 'name', 'researcher_id', 'department_id']);
+            ->get(['id', 'name', 'email', 'researcher_id', 'department_id']);
     }
 
     /**
@@ -398,10 +398,16 @@ new #[Title('Dashboard')] class extends Component {
                                         <span class="truncate font-medium text-zinc-800" title="{{ $member->name }}">{{ $member->name }}</span>
                                         <span class="shrink-0 text-xs text-zinc-500">
                                             {{ $member->department?->code ?? __('No college') }}
-                                            · {{ $member->projects->count() }}
-                                            <span class="sr-only">{{ trans_choice('{1} project|[2,*] projects', $member->projects->count()) }}</span>
+                                            @if ($group !== 'pending')
+                                                · {{ $member->projects->count() }}
+                                                <span class="sr-only">{{ trans_choice('{1} project|[2,*] projects', $member->projects->count()) }}</span>
+                                            @endif
                                         </span>
                                     </p>
+                                    @if ($group === 'pending')
+                                        {{-- No projects to list, so show how to reach them for a follow-up --}}
+                                        <flux:link :href="'mailto:'.$member->email" variant="ghost" class="truncate">{{ $member->email }}</flux:link>
+                                    @else
                                     <ul class="grid gap-1.5">
                                         @foreach ($member->projects as $project)
                                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
@@ -410,6 +416,7 @@ new #[Title('Dashboard')] class extends Component {
                                             </li>
                                         @endforeach
                                     </ul>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>

@@ -144,6 +144,8 @@ class DashboardTest extends TestCase
             ->test('pages::dashboard')
             ->assertSee("Not yet submitted, CBM, {$year}")
             ->assertSee('Reyes')
+            ->assertSeeHtml('href="mailto:'.$reyes->email.'"')
+            ->assertDontSee('CBM · 0')
             ->assertDontSee('Unverified Person')
             ->assertDontSee('By college')
             ->call('export')

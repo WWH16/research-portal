@@ -31,6 +31,16 @@ class DashboardTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
+    public function test_the_sidebar_names_the_university_and_the_signed_in_role(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->get(route('dashboard'))->assertSeeInOrder(['Research Portal', 'Isabela State University', 'Administrator']);
+
+        $college = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+        $this->actingAs(User::factory()->create(['role' => 'faculty', 'department_id' => $college->id]));
+        $this->get(route('dashboard'))->assertSee('Faculty, CCSICT');
+    }
+
     public function test_authenticated_users_can_visit_the_dashboard(): void
     {
         $user = User::factory()->create();

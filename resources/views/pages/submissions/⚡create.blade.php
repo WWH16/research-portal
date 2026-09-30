@@ -380,7 +380,9 @@ new #[Title('Research Project')] class extends Component {
 
             <flux:error name="department" class="me-auto" />
 
-            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save,documents" :disabled="! $this->department" data-test="submit-proposal-button">
+            {{-- Flux drops its built-in spinner when a :disabled binding is present, so turn it back on; skipped when
+                 there's no college, because Flux shows the spinner on any disabled submit button. --}}
+            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save,documents" :disabled="! $this->department" :loading="(bool) $this->department" data-test="submit-proposal-button">
                 {{ $submission ? __('Save') : __('Submit') }}
             </flux:button>
         </div>

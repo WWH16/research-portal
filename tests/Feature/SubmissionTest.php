@@ -89,12 +89,14 @@ class SubmissionTest extends TestCase
 
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
-        Livewire::test('pages::submissions.create')
+        $component = Livewire::test('pages::submissions.create')
             ->assertSee('CCS')
             ->assertDontSee('College of Computer Studies')
             ->assertSee('From your profile')
             ->assertDontSee('College of Business and Management')
             ->assertDontSeeHtml('wire:model="department_id"');
+
+        $this->assertStringContainsString('data-flux-loading-indicator', $this->submitButton($component->html()), 'Submit shows a spinner while saving.');
     }
 
     public function test_members_without_a_department_cannot_submit(): void
@@ -103,8 +105,13 @@ class SubmissionTest extends TestCase
 
         $this->actingAs(User::factory()->create(['department_id' => null]));
 
-        $this->fillProject(Livewire::test('pages::submissions.create'))
-            ->assertSee('Your account has no college yet')
+        $component = $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->assertSee('Your account has no college yet');
+
+        // A disabled submit button would otherwise show a spinner that never stops.
+        $this->assertStringNotContainsString('data-flux-loading-indicator', $this->submitButton($component->html()));
+
+        $component
             ->call('save')
             ->assertHasErrors(['department']);
 
@@ -633,6 +640,16 @@ class SubmissionTest extends TestCase
             ->call('saveReview')
             ->assertHasNoErrors()
             ->assertSet('paginators.page', 1);
+    }
+
+    /**
+     * The submit button's markup alone, so other buttons' spinners don't count.
+     */
+    private function submitButton(string $html): string
+    {
+        preg_match('/<button[^>]*data-test="submit-proposal-button".*?<\/button>/s', $html, $match);
+
+        return $match[0] ?? '';
     }
 
     private function fillProject($component, string $title = 'Sample Proposal')

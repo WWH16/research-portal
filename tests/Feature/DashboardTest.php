@@ -83,21 +83,52 @@ class DashboardTest extends TestCase
 
         // Natividad also finished another project on time, and a 2025 project stays out of this year.
         $this->submit($natividad, 'Finished Study', 'Completed', ['target_date' => today(), 'terminal_uploaded_at' => now()->subDay()]);
-        $this->submit($tabago, 'Old Study', 'Completed', ['year' => $year - 1]);
+        $this->travelTo(now()->subYear(), fn () => $this->submit($tabago, 'Old Study', 'Completed', ['year' => $year - 1]));
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $component = Livewire::test('pages::dashboard')->assertSet('year', $year);
+        $component = Livewire::test('pages::dashboard')->assertSet('from', "{$year}-01-01")->assertSet('to', "{$year}-12-31");
         $this->assertSame(['submitted' => 3, 'pending' => 0, 'proposal' => 3, 'completed' => 1, 'delayed' => 0], $component->instance()->facultyCounts);
         $component->assertSee('Across 2 projects in '.$year)->assertSee('1 of 1 project finished on time');
 
-        $lastYear = Livewire::test('pages::dashboard')->set('year', $year - 1);
+        $lastYear = Livewire::test('pages::dashboard')->call('preset', 'last-year');
         $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
 
         // The proposal-stage list flags what waits on the Research Office, next to the stage.
         Livewire::withQueryParams(['group' => 'proposal'])
             ->test('pages::dashboard')
             ->assertSeeInOrder(['SMART-ResearchTrack', 'Awaiting review', 'Detailed']);
+    }
+
+    public function test_date_range_filters_the_summary_by_filing_date(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $jose = $this->facultyInDepartment('Jose Reyes');
+        $this->travelTo(now()->startOfYear()->addDays(10), fn () => $this->submit($maria, 'January Study'));
+        $this->travelTo(now()->startOfYear()->addMonths(7), fn () => $this->submit($jose, 'August Study'));
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $year = now()->year;
+
+        $firstHalf = Livewire::withQueryParams(['from' => "{$year}-01-01", 'to' => "{$year}-06-30"])->test('pages::dashboard');
+        $this->assertSame(1, $firstHalf->instance()->facultyCounts['submitted']);
+        $firstHalf->assertSee("Jan 1 – Jun 30, {$year}")->assertSee('Across one project in');
+
+        // A reversed pair is swapped instead of showing nothing.
+        $reversed = Livewire::withQueryParams(['from' => "{$year}-12-31", 'to' => "{$year}-07-01"])->test('pages::dashboard');
+        $this->assertSame(1, $reversed->instance()->facultyCounts['submitted']);
+
+        // A bad date falls back to the whole year, and the chart shows one column per month in range.
+        $whole = Livewire::withQueryParams(['from' => 'not-a-date', 'to' => "{$year}-12-31"])->test('pages::dashboard');
+        $this->assertSame(2, $whole->instance()->facultyCounts['submitted']);
+        $this->assertCount(12, $whole->instance()->monthly);
+
+        $this->assertCount(24, Livewire::withQueryParams(['from' => ($year - 3).'-01-01', 'to' => "{$year}-12-31"])->test('pages::dashboard')->instance()->monthly);
+
+        Livewire::test('pages::dashboard')
+            ->call('preset', 'last-12-months')
+            ->assertSet('to', today()->toDateString())
+            ->assertSet('from', now()->subMonths(11)->startOfMonth()->toDateString());
     }
 
     public function test_admins_open_the_faculty_behind_a_count_and_export_it(): void
@@ -112,7 +143,7 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->get(route('dashboard'))->assertSee(route('dashboard', ['year' => now()->year, 'group' => 'completed']));
+        $this->get(route('dashboard'))->assertSee(route('dashboard', ['from' => now()->year.'-01-01', 'to' => now()->year.'-12-31', 'group' => 'completed']));
 
         Livewire::withQueryParams(['group' => 'completed'])
             ->test('pages::dashboard')
@@ -124,7 +155,7 @@ class DashboardTest extends TestCase
             ->assertDontSee('On time')
             ->assertDontSee('Siton')
             ->call('export')
-            ->assertFileDownloaded('completed-'.now()->year.'.csv');
+            ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.now()->year.'-12-31.csv');
 
         $this->actingAs($natividad);
         Livewire::withQueryParams(['group' => 'completed'])->test('pages::dashboard')->assertDontSee('data-test="faculty-list"', escape: false)->call('export')->assertForbidden();
@@ -143,7 +174,7 @@ class DashboardTest extends TestCase
         // Siton is only a co-proponent, which still counts as submitting; Reyes filed last year only.
         $this->submit($natividad, 'SMART-ResearchTrack', 'Submitted', ['awaiting_review' => false])
             ->proponents()->create(['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff']);
-        $this->submit($reyes, 'Old Study', 'Submitted', ['year' => $year - 1, 'awaiting_review' => false]);
+        $this->travelTo(now()->subYear(), fn () => $this->submit($reyes, 'Old Study', 'Submitted', ['year' => $year - 1, 'awaiting_review' => false]));
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
@@ -159,11 +190,11 @@ class DashboardTest extends TestCase
             ->assertDontSee('Unverified Person')
             ->assertDontSee('By college')
             ->call('export')
-            ->assertFileDownloaded("not-yet-submitted-cbm-{$year}.csv");
+            ->assertFileDownloaded("not-yet-submitted-cbm-{$year}-01-01-{$year}-12-31.csv");
 
         Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CCS'])
             ->test('pages::dashboard')
-            ->assertSee("Every faculty member in CCS has submitted for {$year}.");
+            ->assertSee("Every faculty member in CCS has submitted in {$year}.");
     }
 
     public function test_delayed_list_shows_days_overdue_and_how_to_reach_each_member(): void
@@ -200,12 +231,14 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->get(route('dashboard', ['year' => now()->subMonthNoOverflow()->year]))
+        $sinceLastMonth = ['from' => now()->subMonthNoOverflow()->startOfMonth()->toDateString(), 'to' => today()->toDateString()];
+
+        $this->get(route('dashboard', $sinceLastMonth))
             ->assertSee('Submissions per month')
             ->assertSee("{$lastMonth}: 2 projects, 1 Submitted, 1 Concept, 0 Detailed, 0 Completed")
             ->assertSee('Show as table');
 
-        $byType = Livewire::withQueryParams(['year' => now()->subMonthNoOverflow()->year])->test('pages::dashboard')->instance()->breakdowns[__('By research type')];
+        $byType = Livewire::withQueryParams($sinceLastMonth)->test('pages::dashboard')->instance()->breakdowns[__('By research type')];
         $this->assertSame([['label' => 'Thesis', 'title' => 'Thesis', 'count' => 2]], $byType->all());
     }
 

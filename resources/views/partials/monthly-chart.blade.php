@@ -1,6 +1,7 @@
 {{--
     Stacked columns of projects filed per month, split by current status, with hover and focus
-    tooltips and a table view. Expects: $monthly, $bars, $tile, $heading.
+    tooltips and a table view. Expects: $monthly (one entry per month, up to 24), $bars, $tile, $heading,
+    and $period, how the months are described ("2026", "the last 12 months").
 --}}
 @php
     $peak = max(1, max(array_column($monthly, 'total')));
@@ -8,14 +9,17 @@
     $magnitude = 10 ** floor(log10($peak));
     $axisMax = collect([1, 2, 5, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
     $ticks = $axisMax >= 2 ? [$axisMax, $axisMax / 2, 0] : [$axisMax, 0];
-    $filedThisYear = array_sum(array_column($monthly, 'total'));
+    $filed = array_sum(array_column($monthly, 'total'));
+    $columns = count($monthly);
+    // Label every month up to 12 columns; past that, every other one, so the labels never collide.
+    $labelEvery = (int) ceil($columns / 12);
 @endphp
 
 <section class="{{ $tile }} lg:col-span-12" data-test="monthly-chart">
     <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <div>
             <flux:heading level="2">{{ $heading }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Last 12 months, by current status.') }}</flux:text>
+            <flux:text class="mt-1">{{ __(':period, by current status.', ['period' => ucfirst($period)]) }}</flux:text>
         </div>
 
         <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
@@ -27,8 +31,8 @@
         </ul>
     </div>
 
-    @if ($filedThisYear === 0)
-        <flux:text class="mt-6">{{ __('No projects in the last 12 months.') }}</flux:text>
+    @if ($filed === 0)
+        <flux:text class="mt-6">{{ __('No projects in :period.', ['period' => $period]) }}</flux:text>
     @else
         <div class="mt-6 flex gap-3">
             <div class="flex h-56 flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
@@ -43,12 +47,12 @@
                         <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
 
-                    <ol class="relative grid h-full grid-cols-12 gap-1">
+                    <ol class="relative grid h-full gap-1" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))">
                         @foreach ($monthly as $index => $month)
                             @php
                                 $label = $month['month']->format('F Y');
                                 $summary = collect($month['counts'])->map(fn ($count, $status) => $count.' '.__($status))->join(', ');
-                                $tooltipSide = match (true) { $index < 2 => 'left-0', $index > 9 => 'right-0', default => 'left-1/2 -translate-x-1/2' };
+                                $tooltipSide = match (true) { $index < 2 => 'left-0', $index > $columns - 3 => 'right-0', default => 'left-1/2 -translate-x-1/2' };
                             @endphp
                             {{-- The whole column is the hover and focus target, not just the painted bar --}}
                             <li
@@ -91,12 +95,16 @@
                 </div>
 
                 {{-- Month labels; every other one hides on phones so they never collide --}}
-                <ol class="mt-2 grid grid-cols-12 gap-1 text-center text-xs text-zinc-500" aria-hidden="true">
+                <ol class="mt-2 grid gap-1 text-center text-xs text-zinc-500" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
+                    @php($yearShown = null)
                     @foreach ($monthly as $index => $month)
-                        <li class="{{ $index % 2 ? 'max-sm:invisible' : '' }}">
+                        @php($labelled = $index % $labelEvery === 0)
+                        <li class="{{ $labelled ? '' : 'invisible' }} {{ ($index / $labelEvery) % 2 ? 'max-sm:invisible' : '' }}">
                             {{ $month['month']->format('M') }}
-                            @if ($index === 0 || $month['month']->month === 1)
+                            {{-- The year sits under the first labelled month of each year, so a year change is always marked --}}
+                            @if ($labelled && $month['month']->year !== $yearShown)
                                 <span class="block text-zinc-500">{{ $month['month']->format('Y') }}</span>
+                                @php($yearShown = $month['month']->year)
                             @endif
                         </li>
                     @endforeach

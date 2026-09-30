@@ -103,11 +103,11 @@ class Submission extends Model
     }
 
     /**
-     * Every year with a project, plus this one and any extra years given, newest first, for year pickers.
+     * Every year with a project, plus this one, newest first, for year pickers.
      */
-    public static function years(int ...$extra): Collection
+    public static function years(): Collection
     {
-        return static::distinct()->pluck('year')->push(now()->year, ...$extra)->unique()->sortDesc()->values();
+        return static::distinct()->pluck('year')->push(now()->year)->unique()->sortDesc()->values();
     }
 
     /**

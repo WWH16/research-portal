@@ -6,9 +6,10 @@ use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -17,14 +18,17 @@ use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /*
- * Admins get the yearly summary first: faculty counts per stage, each opening the faculty behind it
+ * Admins get the summary for a filing-date range first: faculty counts per stage, each opening the faculty behind it
  * and exportable as a report. Below it, the monthly trend as stacked columns, "where from / what
  * about" as ranked horizontal bars, and the review queue. Faculty get their own progress.
  */
 new #[Title('Dashboard')] class extends Component {
-    /** The year the admin summary covers; projects are filed under the year they were submitted. */
+    /** First and last filing date the admin summary covers, as Y-m-d. Defaults to this calendar year. */
     #[Url]
-    public int $year = 0;
+    public string $from = '';
+
+    #[Url]
+    public string $to = '';
 
     /** The faculty group whose list is open under the summary tiles, if any. */
     #[Url(except: '')]
@@ -36,7 +40,70 @@ new #[Title('Dashboard')] class extends Component {
 
     public function mount(): void
     {
-        $this->year = $this->year ?: now()->year;
+        $this->from = $this->from ?: now()->startOfYear()->toDateString();
+        $this->to = $this->to ?: now()->endOfYear()->toDateString();
+    }
+
+    /**
+     * Quick picks for the date range.
+     */
+    public function preset(string $key): void
+    {
+        [$from, $to] = match ($key) {
+            'last-year' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
+            'last-12-months' => [now()->subMonths(11)->startOfMonth(), today()],
+            default => [now()->startOfYear(), now()->endOfYear()],
+        };
+
+        $this->from = $from->toDateString();
+        $this->to = $to->toDateString();
+    }
+
+    /**
+     * The filing-date window as [start of the first day, end of the last day]. Faculty always see the
+     * last 12 months; a bad date falls back to this year, and a reversed pair is swapped, not rejected.
+     *
+     * @return array{0: CarbonInterface, 1: CarbonInterface}
+     */
+    #[Computed]
+    public function range(): array
+    {
+        if (! $this->isAdmin) {
+            return [now()->startOfMonth()->subMonths(11), now()->endOfMonth()];
+        }
+
+        $parse = fn (string $date, CarbonInterface $fallback) => rescue(fn () => Date::createFromFormat('Y-m-d', $date), $fallback, false);
+        $start = $parse($this->from, now()->startOfYear());
+        $end = $parse($this->to, now()->endOfYear());
+
+        if ($start->greaterThan($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        return [$start->startOfDay(), $end->endOfDay()];
+    }
+
+    /**
+     * The range as people say it: "2026" for a whole calendar year, otherwise "Jan 1 – Jun 30, 2026".
+     */
+    #[Computed]
+    public function rangeLabel(): string
+    {
+        [$start, $end] = $this->range;
+
+        return match (true) {
+            $start->isSameYear($end) && $start->isSameDay($start->startOfYear()) && $end->isSameDay($end->endOfYear()) => (string) $start->year,
+            $start->isSameYear($end) => $start->format('M j').' – '.$end->format('M j, Y'),
+            default => $start->format('M j, Y').' – '.$end->format('M j, Y'),
+        };
+    }
+
+    /**
+     * Narrow a project query to the chosen filing dates.
+     */
+    private function inRange(): Closure
+    {
+        return fn ($query) => $query->whereBetween('submissions.created_at', $this->range);
     }
 
     #[Computed]
@@ -65,11 +132,11 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * A constraint on a faculty member's projects: the selected year, narrowed to one group.
+     * A constraint on a faculty member's projects: the chosen filing dates, narrowed to one group.
      */
     private function projectsIn(string $group): Closure
     {
-        return fn ($query) => ($this->groups()[$group]['filter'])($query->where('year', $this->year));
+        return fn ($query) => ($this->groups()[$group]['filter'])($query->tap($this->inRange()));
     }
 
     /**
@@ -104,15 +171,15 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * The selected year's projects, how many are completed, and how many of those had the
+     * Projects filed in the chosen range, how many are completed, and how many of those had the
      * terminal report in by the target date.
      *
      * @return array{projects: int, completed: int, onTime: int}
      */
     #[Computed]
-    public function yearProjects(): array
+    public function rangeProjects(): array
     {
-        $projects = Submission::where('year', $this->year)->tap($this->inDepartment())->get(['status', 'target_date', 'terminal_uploaded_at']);
+        $projects = Submission::query()->tap($this->inRange())->tap($this->inDepartment())->get(['status', 'target_date', 'terminal_uploaded_at']);
         $completed = $projects->where('status', 'Completed');
 
         return [
@@ -149,7 +216,7 @@ new #[Title('Dashboard')] class extends Component {
         $faculty = $this->groupFaculty;
 
         return response()->csv(
-            Str::slug($label.' '.$this->department.' '.$this->year).'.csv',
+            Str::slug($label.' '.$this->department.' '.$this->from.' '.$this->to).'.csv',
             [__('Name'), __('Researcher ID'), __('College'), __('Projects')],
             $faculty->map(fn ($member) => [$member->name, $member->researcher_id, $member->department?->code, $member->projects->pluck('title')->join('; ')]),
         );
@@ -169,21 +236,24 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Projects filed in each of the last 12 months, split by their current status: everyone's for admins, the member's own for faculty.
+     * Projects filed in each month of the range, split by their current status: everyone's for admins,
+     * the member's own for faculty. Capped at the range's last 24 months so the columns stay readable.
      *
-     * @return list<array{month: Carbon, counts: array<string, int>, total: int}>
+     * @return list<array{month: CarbonInterface, counts: array<string, int>, total: int}>
      */
     #[Computed]
     public function monthly(): array
     {
-        $start = now()->startOfMonth()->subMonths(11);
+        [$from, $end] = $this->range;
+        $start = $from->startOfMonth()->max($end->startOfMonth()->subMonths(23));
+        $months = (int) round($start->diffInMonths($end->startOfMonth())) + 1;
 
         // ponytail: grouped in PHP so it runs the same on MySQL and SQLite; move to a SQL GROUP BY past ~50k proposals a year.
         $query = $this->isAdmin ? Submission::query() : Submission::involving(Auth::user());
-        $rows = $query->where('created_at', '>=', $start)->get(['status', 'created_at'])
+        $rows = $query->whereBetween('created_at', [$start, $end])->get(['status', 'created_at'])
             ->groupBy(fn ($submission) => $submission->created_at->format('Y-m'));
 
-        return collect(range(0, 11))->map(function ($offset) use ($start, $rows) {
+        return collect(range(0, $months - 1))->map(function ($offset) use ($start, $rows) {
             $month = $start->copy()->addMonths($offset);
             $inMonth = $rows->get($month->format('Y-m'), collect())->countBy('status');
             $counts = collect(Submission::STATUSES)->mapWithKeys(fn ($status) => [$status => $inMonth->get($status, 0)])->all();
@@ -212,15 +282,15 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * The top six of each reference list by number of projects in the selected year, for the ranked bar charts.
+     * The top six of each reference list by number of projects filed in the range, for the ranked bar charts.
      *
      * @return array<string, Collection>
      */
     #[Computed]
     public function breakdowns(): array
     {
-        $inYear = fn ($query) => $query->where('year', $this->year)->tap($this->inDepartment());
-        $top = fn ($model, string $label) => $model::whereHas('submissions', $inYear)->withCount(['submissions' => $inYear])->orderByDesc('submissions_count')->limit(6)->get()
+        $inRange = fn ($query) => $query->tap($this->inRange())->tap($this->inDepartment());
+        $top = fn ($model, string $label) => $model::whereHas('submissions', $inRange)->withCount(['submissions' => $inRange])->orderByDesc('submissions_count')->limit(6)->get()
             ->map(fn ($row) => ['label' => $row->{$label}, 'title' => $row->{$label}, 'count' => $row->submissions_count]);
 
         // One department picked would chart a single bar, so that chart drops out.
@@ -295,20 +365,29 @@ new #[Title('Dashboard')] class extends Component {
         </div>
 
         @if ($this->isAdmin)
-            {{-- Filters drop to their own full-width row on phones instead of pushing the page sideways --}}
-            <div class="flex w-full gap-3 sm:w-auto">
-            <flux:select wire:model.live="department" :aria-label="__('College')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
+            {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways --}}
+            <div class="flex w-full flex-wrap gap-3 sm:w-auto">
+            <flux:select wire:model.live="department" :aria-label="__('College')" class="w-full sm:w-40" data-test="department-select">
                 <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
                 @foreach (Department::orderBy('code')->pluck('code') as $option)
                     <flux:select.option :value="$option">{{ $option }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="year" :aria-label="__('Year')" class="w-28 shrink-0" data-test="year-select">
-                @foreach (Submission::years($year) as $option)
-                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-                @endforeach
-            </flux:select>
+            <div class="flex items-center gap-2" data-test="date-range">
+                <flux:input type="date" wire:model.live="from" :max="$to" :aria-label="__('From')" class="w-40" />
+                <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
+                <flux:input type="date" wire:model.live="to" :min="$from" :aria-label="__('To')" class="w-40" />
+
+                <flux:dropdown position="bottom" align="end">
+                    <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" />
+                    <flux:menu>
+                        <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
+                        <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
+                        <flux:menu.item wire:click="preset('last-12-months')">{{ __('Last 12 months') }}</flux:menu.item>
+                    </flux:menu>
+                </flux:dropdown>
+            </div>
             </div>
         @endif
     </header>
@@ -316,12 +395,12 @@ new #[Title('Dashboard')] class extends Component {
     @if ($this->isAdmin)
         @php
             $facultyCounts = $this->facultyCounts;
-            $projects = $this->yearProjects;
-            $filters = array_filter(['year' => $year, 'dept' => $department]);
-            $scope = $department === '' ? $year : $department.', '.$year;
+            $projects = $this->rangeProjects;
+            $filters = array_filter(['from' => $from, 'to' => $to, 'dept' => $department]);
+            $scope = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
 
             $kpis = [
-                'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed for :year|{1} Across one project in :year|[2,*] Across :count projects in :year', $projects['projects'], ['year' => $scope])],
+                'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed in :range|{1} Across one project in :range|[2,*] Across :count projects in :range', $projects['projects'], ['range' => $scope])],
                 'pending' => ['label' => __('Not yet submitted'), 'note' => __('Verified faculty on no project yet')],
                 'proposal' => ['label' => __('At proposal stage'), 'note' => __('Concept or detailed proposal accepted'), 'swatch' => $bars['Detailed']],
                 'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
@@ -384,8 +463,8 @@ new #[Title('Dashboard')] class extends Component {
                     @if ($this->groupFaculty->isEmpty())
                         <flux:text class="mt-4">
                             {{ $group === 'pending'
-                                ? __('Every faculty member :where has submitted for :year.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'year' => $year])
-                                : __('No faculty in this group for :year.', ['year' => $year]) }}
+                                ? __('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel])
+                                : __('No faculty in this group for :range.', ['range' => $this->rangeLabel]) }}
                         </flux:text>
                     @else
                         {{-- Person on the left, their projects on the right. Each project is title | status, so statuses
@@ -438,7 +517,7 @@ new #[Title('Dashboard')] class extends Component {
                                     <ul class="grid gap-1.5">
                                         @foreach ($member->projects as $project)
                                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                                                <flux:link :href="route('submissions.index', ['year' => $year, 'review' => $project->id])" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
+                                                <flux:link :href="route('submissions.index', ['review' => $project->id])" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
                                                 {{-- Stage plus Awaiting review / Delayed; reversed so the stage keeps its column at the right edge --}}
                                                 @include('partials.project-status', ['submission' => $project, 'class' => 'flex-row-reverse', 'timing' => true])
                                             </li>
@@ -453,7 +532,7 @@ new #[Title('Dashboard')] class extends Component {
             @endif
 
             {{-- Trend over time, split by status: stacked columns --}}
-            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month')])
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $this->rangeLabel])
 
             {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
@@ -461,7 +540,7 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:heading level="2">{{ $heading }}</flux:heading>
 
                     @if ($rows->isEmpty())
-                        <flux:text class="mt-4">{{ __('No projects for :year.', ['year' => $year]) }}</flux:text>
+                        <flux:text class="mt-4">{{ __('No projects for :range.', ['range' => $this->rangeLabel]) }}</flux:text>
                     @else
                         @php
                             $most = $rows->max('count');
@@ -571,7 +650,7 @@ new #[Title('Dashboard')] class extends Component {
                 </section>
             </div>
 
-            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('My submissions per month')])
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('My submissions per month'), 'period' => __('the last 12 months')])
 
             <section class="{{ $tile }} lg:col-span-12">
                 <div class="flex items-baseline justify-between gap-4">

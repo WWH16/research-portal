@@ -1,6 +1,6 @@
 {{--
     Stacked columns of projects filed per month, split by current status, with hover and focus
-    tooltips and a table view. Expects: $monthly (one entry per month, up to 24), $bars, $tile, $heading,
+    tooltips and a table view. Expects: $monthly (one entry per month, up to 24), $bars, $heading,
     and $period, how the months are described ("2026", "the last 12 months").
 --}}
 @php
@@ -15,7 +15,7 @@
     $labelEvery = (int) ceil($columns / 12);
 @endphp
 
-<section class="{{ $tile }} lg:col-span-12" data-test="monthly-chart">
+<flux:card class="max-sm:p-5 lg:col-span-12" data-test="monthly-chart">
     <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <div>
             <flux:heading level="2">{{ $heading }}</flux:heading>
@@ -115,30 +115,27 @@
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
         <details class="mt-4 text-sm">
             <summary class="cursor-pointer text-zinc-600 hover:text-zinc-900">{{ __('Show as table') }}</summary>
-            <div class="mt-3 overflow-x-auto">
-                <table class="w-full">
-                    <thead class="text-zinc-500">
-                        <tr>
-                            <th class="py-1.5 pe-4 text-start font-medium">{{ __('Month') }}</th>
-                            @foreach (\App\Models\Submission::STATUSES as $status)
-                                <th class="py-1.5 pe-4 text-end font-medium">{{ __($status) }}</th>
+            <flux:table class="mt-3">
+                <flux:table.columns>
+                    <flux:table.column>{{ __('Month') }}</flux:table.column>
+                    @foreach (\App\Models\Submission::STATUSES as $status)
+                        <flux:table.column align="end">{{ __($status) }}</flux:table.column>
+                    @endforeach
+                    <flux:table.column align="end">{{ __('Total') }}</flux:table.column>
+                </flux:table.columns>
+
+                <flux:table.rows>
+                    @foreach ($monthly as $month)
+                        <flux:table.row>
+                            <flux:table.cell>{{ $month['month']->format('M Y') }}</flux:table.cell>
+                            @foreach ($month['counts'] as $count)
+                                <flux:table.cell align="end" class="tabular-nums">{{ $count }}</flux:table.cell>
                             @endforeach
-                            <th class="py-1.5 text-end font-medium">{{ __('Total') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-line tabular-nums text-zinc-800">
-                        @foreach ($monthly as $month)
-                            <tr>
-                                <td class="py-1.5 pe-4">{{ $month['month']->format('M Y') }}</td>
-                                @foreach ($month['counts'] as $count)
-                                    <td class="py-1.5 pe-4 text-end">{{ $count }}</td>
-                                @endforeach
-                                <td class="py-1.5 text-end font-medium">{{ $month['total'] }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                            <flux:table.cell align="end" variant="strong" class="tabular-nums">{{ $month['total'] }}</flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
         </details>
     @endif
-</section>
+</flux:card>

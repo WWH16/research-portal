@@ -353,7 +353,6 @@ new #[Title('Dashboard')] class extends Component {
 @php
     // Stage colours come from the status tokens in app.css; written out in full so Tailwind keeps them.
     $bars = ['Submitted' => 'bg-status-submitted', 'Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Completed' => 'bg-status-completed'];
-    $tile = 'rounded-xl border border-line bg-surface p-5 sm:p-6';
 @endphp
 
 <section class="mx-auto w-full max-w-6xl">
@@ -446,7 +445,7 @@ new #[Title('Dashboard')] class extends Component {
             </div>
 
             @if ($group !== '' && isset($kpis[$group]))
-                <section id="faculty-list" class="{{ $tile }} lg:col-span-12" data-test="faculty-list">
+                <flux:card id="faculty-list" class="max-sm:p-5 lg:col-span-12" data-test="faculty-list">
                     <div class="flex flex-wrap items-baseline justify-between gap-4">
                         <div>
                             <flux:heading level="2">{{ $kpis[$group]['label'] }}, {{ $scope }}</flux:heading>
@@ -528,7 +527,7 @@ new #[Title('Dashboard')] class extends Component {
                             @endforeach
                         </ul>
                     @endif
-                </section>
+                </flux:card>
             @endif
 
             {{-- Trend over time, split by status: stacked columns --}}
@@ -536,7 +535,7 @@ new #[Title('Dashboard')] class extends Component {
 
             {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
-                <section class="{{ $tile }} lg:col-span-4">
+                <flux:card class="max-sm:p-5 lg:col-span-4">
                     <flux:heading level="2">{{ $heading }}</flux:heading>
 
                     @if ($rows->isEmpty())
@@ -557,11 +556,11 @@ new #[Title('Dashboard')] class extends Component {
                             @endforeach
                         </dl>
                     @endif
-                </section>
+                </flux:card>
             @endforeach
 
             {{-- The review queue: new and corrected uploads, longest waiting first, so nothing waits forever --}}
-            <section class="{{ $tile }} lg:col-span-12" data-test="waiting-tile">
+            <flux:card class="max-sm:p-5 lg:col-span-12" data-test="waiting-tile">
                 <div class="flex items-baseline justify-between gap-4">
                     <flux:heading level="2">{{ __('Waiting for review') }}</flux:heading>
                     @if ($this->waitingCount > 0)
@@ -587,7 +586,7 @@ new #[Title('Dashboard')] class extends Component {
                         @endforeach
                     </ul>
                 @endif
-            </section>
+            </flux:card>
         </div>
     @else
         @php
@@ -609,7 +608,7 @@ new #[Title('Dashboard')] class extends Component {
                 @endforeach
             </div>
 
-            <section class="{{ $tile }} lg:col-span-8" data-test="attention-tile">
+            <flux:card class="max-sm:p-5 lg:col-span-8" data-test="attention-tile">
                 <flux:heading level="2">{{ __('Needs your attention') }}</flux:heading>
 
                 @if ($this->needsAttention->isEmpty())
@@ -635,10 +634,10 @@ new #[Title('Dashboard')] class extends Component {
                         @endforeach
                     </ul>
                 @endif
-            </section>
+            </flux:card>
 
             <div class="flex flex-col gap-6 lg:col-span-4">
-                <section class="{{ $tile }}" data-test="submit-tile">
+                <flux:card class="max-sm:p-5" data-test="submit-tile">
                     <flux:heading level="2">{{ __('Submit a proposal') }}</flux:heading>
 
                     @if (auth()->user()->department_id)
@@ -647,12 +646,12 @@ new #[Title('Dashboard')] class extends Component {
                     @else
                         <flux:text class="mt-2">{{ __('Your account has no college yet. Contact the Research Office to have one assigned.') }}</flux:text>
                     @endif
-                </section>
+                </flux:card>
             </div>
 
             @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('My submissions per month'), 'period' => __('the last 12 months')])
 
-            <section class="{{ $tile }} lg:col-span-12">
+            <flux:card class="max-sm:p-5 lg:col-span-12">
                 <div class="flex items-baseline justify-between gap-4">
                     <flux:heading level="2">{{ __('Recent projects') }}</flux:heading>
                     @if ($total > 0)
@@ -675,7 +674,7 @@ new #[Title('Dashboard')] class extends Component {
                         @endforeach
                     </ul>
                 @endif
-            </section>
+            </flux:card>
         </div>
     @endif
 </section>

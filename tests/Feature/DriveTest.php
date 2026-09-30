@@ -134,23 +134,20 @@ class DriveTest extends TestCase
         $this->actingAs($this->siton)->get(route('submissions.document', [$this->smart, 'detailed']))->assertOk();
     }
 
-    public function test_research_office_moves_a_project_to_another_college(): void
+    public function test_a_review_keeps_the_project_in_its_college_folder(): void
     {
         $this->actingAs($this->admin());
 
         Livewire::test('pages::submissions.index')
             ->call('review', $this->smart->id)
-            ->assertSet('departmentId', $this->ccsict->id)
             ->assertSee('Tabago (Leader, CAS)')
-            ->set('departmentId', $this->cas->id)
+            ->set('status', 'Completed')
             ->call('saveReview')
             ->assertHasNoErrors();
 
-        $this->assertSame($this->cas->id, $this->smart->fresh()->department_id);
-        $this->assertSame(3, $this->smart->proponents()->count(), 'Studies stay with the project.');
-
-        Livewire::withQueryParams(['college' => 'CAS'])->test('pages::drive.index')->assertSee('SMART-ResearchTrack');
-        Livewire::withQueryParams(['college' => 'CCSICT'])->test('pages::drive.index')->assertDontSee('SMART-ResearchTrack');
+        $this->assertSame($this->ccsict->id, $this->smart->fresh()->department_id);
+        Livewire::withQueryParams(['college' => 'CCSICT'])->test('pages::drive.index')->assertSee('SMART-ResearchTrack');
+        Livewire::withQueryParams(['college' => 'CAS'])->test('pages::drive.index')->assertDontSee('SMART-ResearchTrack');
     }
 
     public function test_college_counts_use_each_faculty_members_own_college(): void

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -146,6 +147,21 @@ class Submission extends Model
         return $this->terminal_uploaded_at && $this->target_date
             ? $this->terminal_uploaded_at->lte($this->target_date->endOfDay())
             : null;
+    }
+
+    /**
+     * The most recently uploaded document, read from the stored files' times since a new upload
+     * replaces the file. Null when no file is on disk.
+     *
+     * @return array{stage: string, at: Carbon}|null
+     */
+    public function latestUpload(): ?array
+    {
+        return collect(array_keys(self::DOCUMENTS))
+            ->filter(fn (string $stage) => $this->{$stage.'_path'} && Storage::disk('local')->exists($this->{$stage.'_path'}))
+            ->map(fn (string $stage) => ['stage' => $stage, 'at' => Carbon::createFromTimestamp(Storage::disk('local')->lastModified($this->{$stage.'_path'}))])
+            ->sortByDesc('at')
+            ->first();
     }
 
     /**

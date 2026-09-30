@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Livewire\Exceptions\PublicPropertyNotFoundException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -346,8 +347,20 @@ class SubmissionTest extends TestCase
         Storage::disk('local')->assertExists($project->detailed_path);
 
         $this->actingAs($admin);
+
+        // The review panel names the document that is new, and says so plainly once it is reviewed.
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertSee('To review: Detailed proposal')
+            ->assertDontSeeHtml('data-test="review-nothing-new"');
+
         $this->reviewAs($project, 'Detailed');
         $this->assertSame('Detailed', $project->fresh()->status);
+
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertSee('Already reviewed. No new document since then.')
+            ->assertDontSeeHtml('data-test="review-to-check"');
     }
 
     public function test_corrected_upload_replaces_the_file_and_goes_back_for_review(): void
@@ -384,27 +397,32 @@ class SubmissionTest extends TestCase
         $this->assertSame('Submitted', $project->status);
     }
 
-    public function test_admin_files_a_project_under_the_year_it_was_submitted(): void
+    public function test_a_review_never_changes_the_year_or_college(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
+        $cas = Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        Livewire::test('pages::submissions.index')
+        $component = Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
-            ->assertSet('year', now()->year)
-            ->set('year', now()->year - 1)
+            ->assertSee(now()->year)
+            ->assertDontSeeHtml('wire:model="year"')
+            ->assertDontSeeHtml('data-test="review-college-select"')
+            ->set('status', 'Concept')
             ->call('saveReview')
             ->assertHasNoErrors();
 
-        $this->assertSame(now()->year - 1, $project->fresh()->year);
+        $this->assertSame(now()->year, $project->fresh()->year);
+        $this->assertNotSame($cas->id, $project->fresh()->department_id);
 
-        Livewire::withQueryParams(['year' => (string) (now()->year - 1)])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
-        Livewire::withQueryParams(['year' => (string) now()->year])->test('pages::submissions.index')->assertDontSee('Maria Proposal')->assertSee('Jose Proposal');
+        // There is no year or college on the review form for a crafted request to set.
+        $this->expectException(PublicPropertyNotFoundException::class);
+        $component->set('departmentId', $cas->id);
     }
 
-    public function test_review_status_and_year_are_validated(): void
+    public function test_review_status_is_validated(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -414,9 +432,8 @@ class SubmissionTest extends TestCase
         Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
             ->set('status', 'Rejected')
-            ->set('year', 1990)
             ->call('saveReview')
-            ->assertHasErrors(['status' => 'in', 'year' => 'between']);
+            ->assertHasErrors(['status' => 'in']);
 
         $this->assertSame('Submitted', $project->fresh()->status);
     }
@@ -436,7 +453,6 @@ class SubmissionTest extends TestCase
         Livewire::test('pages::submissions.index')
             ->set('reviewingId', $project->id)
             ->set('status', 'Completed')
-            ->set('year', 2026)
             ->call('saveReview')
             ->assertForbidden();
 

@@ -21,8 +21,6 @@ new #[Title('Submissions')] class extends Component {
     public ?int $reviewingId = null;
     public string $status = '';
     public string $remarks = '';
-    public ?int $year = null;
-    public ?int $departmentId = null;
 
     /** A status, "proposal" (Concept or Detailed), "review" or "delayed"; the dashboard tiles link here with ?status=. */
     #[Url(as: 'status', except: '')]
@@ -178,8 +176,6 @@ new #[Title('Submissions')] class extends Component {
 
         $this->status = $submission->status;
         $this->remarks = (string) $submission->remarks;
-        $this->year = $submission->year;
-        $this->departmentId = $submission->department_id;
         $this->resetValidation();
 
         Flux::modal('review-submission')->show();
@@ -198,15 +194,11 @@ new #[Title('Submissions')] class extends Component {
         $validated = $this->validate([
             'status' => ['required', Rule::in(Submission::STATUSES)],
             'remarks' => ['nullable', 'string', 'max:2000'],
-            'year' => ['required', 'integer', 'between:2000,'.(now()->year + 1)],
-            'departmentId' => ['required', 'integer', 'exists:departments,id'],
         ]);
 
         Submission::findOrFail($this->reviewingId)->update([
             'status' => $validated['status'],
             'remarks' => $validated['remarks'] ?: null,
-            'year' => $validated['year'],
-            'department_id' => $validated['departmentId'],
             'awaiting_review' => false,
         ]);
 
@@ -371,8 +363,22 @@ new #[Title('Submissions')] class extends Component {
                 <form wire:submit="saveReview" class="flex flex-col gap-6">
                     <div class="pe-8">
                         <flux:heading size="lg" id="review-submission-heading">{{ $this->reviewing->title }}</flux:heading>
-                        <flux:text class="mt-1">{{ $this->reviewing->user->name }}, {{ $this->reviewing->department->code }}</flux:text>
+                        <flux:text class="mt-1">{{ __('Filed by :name · :college', ['name' => $this->reviewing->user->name, 'college' => $this->reviewing->department->code]) }}</flux:text>
                     </div>
+
+                    @php($latest = $this->reviewing->latestUpload())
+                    @if ($this->reviewing->awaiting_review)
+                        <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">
+                            <flux:callout.heading>
+                                {{ $latest ? __('To review: :document', ['document' => __(Submission::DOCUMENTS[$latest['stage']])]) : __('Waiting for review') }}
+                            </flux:callout.heading>
+                            @if ($latest)
+                                <flux:callout.text>{{ __('Uploaded :date. Open it below, then set the status or leave remarks.', ['date' => $latest['at']->format('M j, Y, g:i A')]) }}</flux:callout.text>
+                            @endif
+                        </flux:callout>
+                    @else
+                        <flux:text class="text-sm" data-test="review-nothing-new">{{ __('Already reviewed. No new document since then.') }}</flux:text>
+                    @endif
 
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
                         <div>
@@ -382,6 +388,10 @@ new #[Title('Submissions')] class extends Component {
                         <div>
                             <dt class="text-zinc-500">{{ __('Category') }}</dt>
                             <dd class="mt-1 font-medium text-zinc-800">{{ $this->reviewing->category->name }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-zinc-500">{{ __('Year') }}</dt>
+                            <dd class="mt-1 font-medium tabular-nums text-zinc-800">{{ $this->reviewing->year }}</dd>
                         </div>
                         <div>
                             <dt class="text-zinc-500">{{ __('Encoded on') }}</dt>
@@ -428,33 +438,26 @@ new #[Title('Submissions')] class extends Component {
                         @endif
                     </dl>
 
-                    <div class="flex flex-wrap gap-2">
-                        @foreach (Submission::DOCUMENTS as $stage => $label)
-                            @if ($this->reviewing->{$stage.'_path'})
-                                <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, $stage])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square">
-                                    {{ __($label) }}
-                                </flux:button>
-                            @endif
-                        @endforeach
+                    <div>
+                        <p class="text-sm text-zinc-500">{{ __('Documents') }}</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            @foreach (Submission::DOCUMENTS as $stage => $label)
+                                @if ($this->reviewing->{$stage.'_path'})
+                                    <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, $stage])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" :variant="$this->reviewing->awaiting_review && $latest && $latest['stage'] === $stage ? 'primary' : 'outline'">
+                                        {{ __($label) }}
+                                    </flux:button>
+                                @endif
+                            @endforeach
+                        </div>
                     </div>
 
                     <flux:separator variant="subtle" />
 
-                    <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Change it only after accepting the latest document. Saving without a change still takes the project off the review list.')" variant="segmented">
+                    <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Pick the stage whose document you accept: Concept or Detailed for a proposal, Completed for the terminal report. Saving without a change still takes the project off the review list.')" variant="segmented">
                         @foreach (Submission::STATUSES as $option)
                             <flux:radio :value="$option" :label="__($option)" />
                         @endforeach
                     </flux:radio.group>
-
-                    <div class="grid gap-6 sm:grid-cols-2">
-                        <flux:input wire:model="year" :label="__('Year')" :description="__('The year it was actually submitted.')" type="number" min="2000" :max="now()->year + 1" required />
-
-                        <flux:select wire:model="departmentId" :label="__('College')" :description="__('Moves the project to this college’s folder in the Research Drive.')" data-test="review-college-select">
-                            @foreach (Department::orderBy('code')->get(['id', 'code']) as $option)
-                                <flux:select.option :value="$option->id">{{ $option->code }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                    </div>
 
                     <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. Everyone on the project sees these.')" rows="4" maxlength="2000" />
 

@@ -111,6 +111,7 @@ class DashboardTest extends TestCase
             ->assertSee('Completed, '.now()->year)
             ->assertSee('Natividad')
             ->assertSee('Finished Study')
+            ->assertSeeInOrder(['Natividad', 'CCS', '· 1', 'project', 'Finished Study', 'Completed'])
             ->assertDontSee('Siton')
             ->call('export')
             ->assertFileDownloaded('completed-'.now()->year.'.csv');

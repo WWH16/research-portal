@@ -388,18 +388,25 @@ new #[Title('Dashboard')] class extends Component {
                                 : __('No faculty in this group for :year.', ['year' => $year]) }}
                         </flux:text>
                     @else
-                        <ul class="mt-4 divide-y divide-line">
+                        {{-- Person on the left, their projects on the right. Each project is title | status, so statuses
+                             line up in one column and long titles wrap inside the card instead of pushing past it. --}}
+                        <ul class="mt-4 divide-y divide-line border-t border-line text-sm">
                             @foreach ($this->groupFaculty as $member)
-                                <li class="grid gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[14rem_1fr] sm:gap-4">
-                                    <div class="min-w-0">
-                                        <p class="truncate font-medium text-zinc-800">{{ $member->name }}</p>
-                                        <p class="truncate text-sm text-zinc-500">{{ $member->department?->code ?? __('No college') }}</p>
-                                    </div>
-                                    <ul class="grid gap-1 text-sm">
+                                <li class="grid gap-1.5 py-2.5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-4">
+                                    {{-- Name and meta on one line so a one-project row stays one line tall --}}
+                                    <p class="flex min-w-0 items-center gap-2 self-start">
+                                        <span class="truncate font-medium text-zinc-800" title="{{ $member->name }}">{{ $member->name }}</span>
+                                        <span class="shrink-0 text-xs text-zinc-500">
+                                            {{ $member->department?->code ?? __('No college') }}
+                                            · {{ $member->projects->count() }}
+                                            <span class="sr-only">{{ trans_choice('{1} project|[2,*] projects', $member->projects->count()) }}</span>
+                                        </span>
+                                    </p>
+                                    <ul class="grid gap-1.5">
                                         @foreach ($member->projects as $project)
-                                            <li class="flex items-center gap-2">
-                                                <flux:link :href="route('submissions.index', ['year' => $year, 'review' => $project->id])" wire:navigate class="min-w-0 truncate">{{ $project->title }}</flux:link>
-                                                <flux:badge size="sm" :color="\App\Models\Submission::STATUS_COLORS[$project->status] ?? 'zinc'">{{ __($project->status) }}</flux:badge>
+                                            <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                                                <flux:link :href="route('submissions.index', ['year' => $year, 'review' => $project->id])" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
+                                                <flux:badge size="sm" inset="top bottom" :color="\App\Models\Submission::STATUS_COLORS[$project->status] ?? 'zinc'">{{ __($project->status) }}</flux:badge>
                                             </li>
                                         @endforeach
                                     </ul>

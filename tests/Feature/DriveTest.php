@@ -36,6 +36,7 @@ class DriveTest extends TestCase
     {
         parent::setUp();
 
+        $this->freezeTime();
         $this->ccsict = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
         $this->cas = Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
         Department::create(['code' => 'CBM', 'name' => 'College of Business and Management']);
@@ -82,7 +83,8 @@ class DriveTest extends TestCase
 
     public function test_a_project_is_filed_once_under_its_own_college_and_filtered_by_year(): void
     {
-        $this->project($this->natividad, 'Old CCSICT Study', ['year' => 2025]);
+        $lastYear = now()->year - 1;
+        $this->project($this->natividad, 'Old CCSICT Study', ['year' => $lastYear]);
 
         $this->actingAs($this->admin());
 
@@ -90,7 +92,7 @@ class DriveTest extends TestCase
             ->test('pages::drive.index')
             ->assertSee('SMART-ResearchTrack')
             ->assertSee('Old CCSICT Study')
-            ->set('year', '2025')
+            ->set('year', (string) $lastYear)
             ->assertDontSee('SMART-ResearchTrack')
             ->assertSee('Old CCSICT Study');
 

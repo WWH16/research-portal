@@ -16,6 +16,16 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Freeze the clock so a test that runs across midnight or New Year can't see two different "today"s.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->freezeTime();
+    }
+
     public function test_guests_are_redirected_to_the_login_page(): void
     {
         $response = $this->get(route('dashboard'));
@@ -162,8 +172,10 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard', ['year' => now()->subMonthNoOverflow()->year]))
             ->assertSee('Submissions per month')
             ->assertSee("{$lastMonth}: 2 proposals, 1 Submitted, 1 Concept, 0 Detailed, 0 Completed")
-            ->assertSee('Show as table')
-            ->assertSeeInOrder(['By research type', 'Thesis', '2']);
+            ->assertSee('Show as table');
+
+        $byType = Livewire::withQueryParams(['year' => now()->subMonthNoOverflow()->year])->test('pages::dashboard')->instance()->breakdowns[__('By research type')];
+        $this->assertSame([['label' => 'Thesis', 'title' => 'Thesis', 'count' => 2]], $byType->all());
     }
 
     public function test_admins_are_told_about_missing_departments_and_setup(): void
@@ -194,7 +206,7 @@ class DashboardTest extends TestCase
             ->assertSee('Needs your attention')
             ->assertSee('Remarks: Add a methodology section.')
             ->assertSee('Late Study')
-            ->assertSee('Delayed')
+            ->assertSee('Target date '.today()->subWeek()->format('M j, Y').' has passed')
             ->assertSee('Maria Proposal')
             ->assertDontSee('Jose Proposal')
             ->assertDontSee('data-test="waiting-tile"', escape: false)

@@ -18,6 +18,16 @@ class SubmissionTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Freeze the clock so a test that runs across midnight or New Year can't see two different "today"s.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->freezeTime();
+    }
+
     public function test_guests_are_redirected_to_the_login_page(): void
     {
         $this->get(route('submissions.create'))->assertRedirect(route('login'));
@@ -53,7 +63,7 @@ class SubmissionTest extends TestCase
             ->assertSee('Jose Proposal')
             ->assertSee($maria->name)
             ->assertSee($jose->name)
-            ->assertSee('CCS')
+            ->assertSeeHtml('data-test="department-column"')
             ->assertDontSee(route('submissions.create'), escape: false);
     }
 
@@ -67,6 +77,7 @@ class SubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Maria Proposal')
             ->assertDontSee('Jose Proposal')
+            ->assertDontSeeHtml('data-test="department-column"')
             ->assertSee(route('submissions.create'), escape: false);
     }
 
@@ -273,7 +284,7 @@ class SubmissionTest extends TestCase
 
         // Siton registers after the project was filed.
         $siton = User::factory()->create(['name' => 'Siton']);
-        $this->actingAs($siton)->get(route('submissions.index'))->assertDontSee('Maria Proposal');
+        $this->actingAs($siton)->get(route('submissions.index'))->assertOk()->assertDontSee('Maria Proposal');
         $this->get(route('submissions.edit', $project))->assertForbidden();
 
         $this->actingAs($natividad);
@@ -383,13 +394,13 @@ class SubmissionTest extends TestCase
         Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
             ->assertSet('year', now()->year)
-            ->set('year', 2025)
+            ->set('year', now()->year - 1)
             ->call('saveReview')
             ->assertHasNoErrors();
 
-        $this->assertSame(2025, $project->fresh()->year);
+        $this->assertSame(now()->year - 1, $project->fresh()->year);
 
-        Livewire::withQueryParams(['year' => '2025'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
+        Livewire::withQueryParams(['year' => (string) (now()->year - 1)])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
         Livewire::withQueryParams(['year' => (string) now()->year])->test('pages::submissions.index')->assertDontSee('Maria Proposal')->assertSee('Jose Proposal');
     }
 
@@ -452,14 +463,14 @@ class SubmissionTest extends TestCase
         Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
         $this->get(route('submissions.index'))->assertSee('Finished on time');
 
-        $this->actingAs($maria)->get(route('dashboard'))->assertSee('Delayed')->assertSee('has passed');
+        $this->actingAs($maria)->get(route('dashboard'))->assertOk()->assertSee('Target date '.today()->subDay()->format('M j, Y').' has passed');
     }
 
     public function test_admins_search_by_faculty_and_year(): void
     {
         [$maria, $jose] = $this->twoFacultyWithSubmissions();
         $jose->submissions()->sole()->proponents()->create(['user_id' => $maria->id, 'study' => 2, 'role' => 'Staff']);
-        $maria->submissions()->sole()->update(['year' => 2025]);
+        $maria->submissions()->sole()->update(['year' => now()->year - 1]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 

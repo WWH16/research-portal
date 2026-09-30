@@ -143,7 +143,7 @@ new #[Title('Dashboard')] class extends Component {
      */
     public function export(): StreamedResponse
     {
-        abort_unless($this->isAdmin, 403);
+        $this->authorize('viewAny', Submission::class);
 
         $label = $this->groups()[$this->group]['label'] ?? abort(404);
         $faculty = $this->groupFaculty;

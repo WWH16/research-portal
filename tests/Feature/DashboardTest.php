@@ -8,7 +8,6 @@ use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -46,10 +45,10 @@ class DashboardTest extends TestCase
         $maria = $this->facultyInDepartment('Maria Santos');
 
         foreach (range(1, 6) as $day) {
-            Carbon::setTestNow(now()->startOfYear()->addDays($day));
+            $this->travelTo(now()->startOfYear()->addDays($day));
             $this->submit($maria, "Proposal {$day}");
         }
-        Carbon::setTestNow();
+        $this->travelBack();
 
         $this->submit($maria, 'Already reviewed', 'Concept', ['awaiting_review' => false]);
 
@@ -158,12 +157,12 @@ class DashboardTest extends TestCase
     {
         $maria = $this->facultyInDepartment('Maria Santos');
 
-        Carbon::setTestNow(now()->subMonthNoOverflow()->startOfMonth()->addDays(3));
+        $this->travelTo(now()->subMonthNoOverflow()->startOfMonth()->addDays(3));
         $this->submit($maria, 'Last month A');
         $this->submit($maria, 'Last month B', 'Concept');
-        Carbon::setTestNow(now()->subYears(2));
+        $this->travelTo(now()->subYears(2));
         $this->submit($maria, 'Too old to chart');
-        Carbon::setTestNow();
+        $this->travelBack();
 
         $lastMonth = now()->subMonthNoOverflow()->format('F Y');
 

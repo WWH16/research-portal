@@ -117,7 +117,7 @@ new #[Title('Submissions')] class extends Component {
      */
     public function export(): StreamedResponse
     {
-        abort_unless($this->monitoring, 403);
+        $this->authorize('viewAny', Submission::class);
 
         $filters = array_filter([$this->department, $this->yearFilter, $this->statusFilter, trim($this->search)]);
         $filename = 'submissions-'.($filters ? Str::slug(implode(' ', $filters)) : today()->toDateString()).'.csv';
@@ -168,7 +168,7 @@ new #[Title('Submissions')] class extends Component {
      */
     public function review(int $id): void
     {
-        abort_unless($this->monitoring, 403);
+        $this->authorize('review', Submission::class);
 
         $this->reviewingId = $id;
         unset($this->reviewing);
@@ -187,7 +187,7 @@ new #[Title('Submissions')] class extends Component {
      */
     public function saveReview(): void
     {
-        abort_unless($this->monitoring, 403);
+        $this->authorize('review', Submission::class);
 
         $this->remarks = trim($this->remarks);
 

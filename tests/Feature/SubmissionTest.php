@@ -317,6 +317,8 @@ class SubmissionTest extends TestCase
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
             ->assertSee('Edit Project')
+            ->assertSeeHtml('data-test="back-to-submissions"')
+            ->assertSeeHtml('aria-label="Back to Submissions"')
             ->assertSet('title', 'Maria Proposal')
             ->set('proponents', [
                 ['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'],

@@ -226,8 +226,10 @@ new #[Title('Research Project')] class extends Component {
     }
 }; ?>
 
-<section class="mx-auto w-full max-w-2xl">
+{{-- Same width as the Submissions list and My Profile, so the page doesn't jump when you open it --}}
+<section class="mx-auto w-full max-w-4xl">
     <header class="flex items-center gap-4 border-b border-line pb-6">
+        <flux:button :href="route('submissions.index')" variant="ghost" icon="arrow-left" wire:navigate :aria-label="__('Back to Submissions')" :tooltip="__('Back to Submissions')" class="-ms-2 shrink-0" data-test="back-to-submissions" />
         <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <flux:heading size="xl" level="1">{{ $submission ? __('Edit Project') : __('Submit Proposal') }}</flux:heading>
     </header>

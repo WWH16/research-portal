@@ -124,13 +124,13 @@ new #[Title('Research Project')] class extends Component {
         $rows = collect($validated['proponents'])->map(fn ($row) => ['study' => (int) $row['study'], 'user_id' => (int) $row['user_id'], 'role' => $row['role']]);
 
         if ($rows->duplicates(fn ($row) => $row['study'].'-'.$row['user_id'])->isNotEmpty()) {
-            $this->addError('proponents', __('A faculty member is listed twice in the same study.'));
+            $this->addError('proponents', __('A faculty member is listed twice in the same study. Remove one of the rows.'));
 
             return;
         }
 
         if (! $rows->contains('user_id', Auth::id())) {
-            $this->addError('proponents', __('List yourself as a proponent, or you lose access to this project.'));
+            $this->addError('proponents', __('Add yourself to the proponents list, so the project counts toward your research.'));
 
             return;
         }
@@ -160,7 +160,11 @@ new #[Title('Research Project')] class extends Component {
             }
         });
 
-        session()->flash('status', $this->submission ? __('Project updated.') : __('Proposal submitted.'));
+        session()->flash('status', match (true) {
+            ! $this->submission => __('Proposal submitted. It’s now waiting for the Research Office to review.'),
+            $this->documents !== [] => __('Project updated. The new document is waiting for the Research Office to review.'),
+            default => __('Project updated.'),
+        });
 
         $this->redirectRoute('submissions.index', navigate: true);
     }
@@ -232,7 +236,7 @@ new #[Title('Research Project')] class extends Component {
         <flux:callout variant="warning" icon="exclamation-triangle" class="mt-6" :heading="__('Your account has no college yet')" :text="__('Proposals are filed under your college. Contact the Research Office to have one assigned, then come back to submit.')" />
     @endunless
 
-    @if ($submission?->remarks)
+    @if ($submission?->remarks && ! $submission->awaiting_review)
         <flux:callout icon="chat-bubble-left-ellipsis" class="mt-6" :heading="__('Remarks from the Research Office')" :text="$submission->remarks" />
     @endif
 

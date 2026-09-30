@@ -367,6 +367,7 @@ class SubmissionTest extends TestCase
 
         $project->refresh();
         $this->assertSame(2, Submission::count(), 'The next document goes on the same record.');
+        $this->assertSame('Project updated. The new document is waiting for the Research Office to review.', session('status'));
         $this->assertSame('Concept', $project->status, 'Uploading never moves the status.');
         $this->assertTrue($project->awaiting_review);
         Storage::disk('local')->assertExists($project->detailed_path);

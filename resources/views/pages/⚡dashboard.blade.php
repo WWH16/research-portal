@@ -403,6 +403,33 @@ new #[Title('Dashboard')] class extends Component {
                                                 <span class="sr-only">{{ trans_choice('{1} project|[2,*] projects', $member->projects->count()) }}</span>
                                             @endif
                                         </span>
+                                        @if ($group === 'delayed')
+                                            {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
+                                                 right above the icon confirms it where the admin is already looking --}}
+                                            <button
+                                                type="button"
+                                                x-data="{ copied: false, message: '' }"
+                                                x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
+                                                    () => { copied = true; message = @js(__('Copied!')) },
+                                                    () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
+                                                ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
+                                                class="relative shrink-0 rounded text-zinc-400 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent"
+                                                title="{{ __('Copy :email', ['email' => $member->email]) }}"
+                                                aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
+                                                data-test="copy-email"
+                                            >
+                                                <flux:icon.envelope variant="micro" x-show="! copied" />
+                                                <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
+                                                <span
+                                                    x-show="message"
+                                                    x-cloak
+                                                    x-transition.opacity
+                                                    x-text="message"
+                                                    role="status"
+                                                    class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
+                                                ></span>
+                                            </button>
+                                        @endif
                                     </p>
                                     @if ($group === 'pending')
                                         {{-- No projects to list, so show how to reach them for a follow-up --}}

@@ -162,6 +162,25 @@ class DashboardTest extends TestCase
             ->assertSee("Every faculty member in CCS has submitted for {$year}.");
     }
 
+    public function test_delayed_list_shows_days_overdue_and_how_to_reach_each_member(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $jose = $this->facultyInDepartment('Jose Reyes');
+        $this->submit($maria, 'Late Study', 'Detailed', ['awaiting_review' => false, 'target_date' => today()->subWeek()]);
+        $this->submit($jose, 'Just Late Study', 'Concept', ['awaiting_review' => false, 'target_date' => today()->subDay()]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::withQueryParams(['group' => 'delayed'])
+            ->test('pages::dashboard')
+            ->assertSeeInOrder(['Jose Reyes', 'Just Late Study', 'Concept', '1 day overdue'])
+            ->assertSeeInOrder(['Maria Santos', 'Late Study', 'Detailed', '7 days overdue'])
+            ->assertSeeHtml("writeText('{$maria->email}')")
+            ->assertSeeHtml("message = 'Copied!'")
+            ->assertSeeHtml('role="status"')
+            ->assertSeeHtml('aria-label="Copy Maria Santos’s email"');
+    }
+
     public function test_admins_see_submissions_per_month_by_status(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');

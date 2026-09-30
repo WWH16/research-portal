@@ -243,3 +243,8 @@ select:focus[data-flux-control] {
     background-color: var(--color-isu-green-600);
     color: var(--color-white);
 }
+
+/* Hide Alpine-controlled elements until Alpine starts, so they never flash on load. */
+[x-cloak] {
+    display: none !important;
+}

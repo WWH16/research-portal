@@ -336,7 +336,7 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:callout variant="warning" icon="exclamation-triangle" data-test="no-department-tile">
                         <flux:callout.heading>{{ trans_choice('{1} One faculty member has no college and can’t submit.|[2,*] :count faculty members have no college and can’t submit.', $this->facultyWithoutDepartment) }}</flux:callout.heading>
                         <x-slot name="actions">
-                            <flux:button size="sm" :href="route('users.index')" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Assign colleges') }}</flux:button>
+                            <flux:button size="sm" :href="route('users.index', ['college' => 'none', 'role' => 'faculty'])" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Assign colleges') }}</flux:button>
                         </x-slot>
                     </flux:callout>
                 @endif

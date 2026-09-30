@@ -67,6 +67,45 @@ class ManageUsersTest extends TestCase
             ->assertDontSee('Maria Santos');
     }
 
+    public function test_users_can_be_filtered_by_college(): void
+    {
+        $ccs = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $cbm = Department::create(['code' => 'CBM', 'name' => 'College of Business and Management']);
+        User::factory()->create(['name' => 'Maria Santos', 'department_id' => $ccs->id]);
+        User::factory()->create(['name' => 'Jose Reyes', 'department_id' => $cbm->id]);
+        User::factory()->create(['name' => 'Ana Unassigned', 'department_id' => null]);
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->assertSeeHtml('data-test="college-column"')
+            ->set('college', 'CBM')
+            ->assertSee('Jose Reyes')
+            ->assertDontSee('Maria Santos')
+            ->assertDontSee('Ana Unassigned')
+            ->set('college', 'none')
+            ->assertSee('Ana Unassigned')
+            ->assertSee('Research Office') // admins have no college either
+            ->assertDontSee('Jose Reyes')
+            ->set('roleFilter', 'faculty')
+            ->assertSee('Ana Unassigned')
+            ->assertDontSee('Research Office')
+            ->set('search', 'Nobody')
+            ->assertSee('No users match these filters')
+            ->call('clearFilters')
+            ->assertSet('college', '')
+            ->assertSee('Maria Santos')
+            ->assertSee('Jose Reyes');
+
+        // The dashboard's "no college" warning opens exactly those faculty.
+        Livewire::withQueryParams(['college' => 'none', 'role' => 'faculty'])
+            ->test('pages::users.index')
+            ->assertSee('Ana Unassigned')
+            ->assertDontSee('Maria Santos')
+            ->assertDontSee('Research Office');
+        $this->get(route('dashboard'))->assertSee(route('users.index', ['college' => 'none', 'role' => 'faculty']));
+    }
+
     public function test_admin_can_create_a_user(): void
     {
         $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);

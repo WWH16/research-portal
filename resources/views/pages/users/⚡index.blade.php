@@ -24,6 +24,10 @@ new #[Title('Manage Users')] class extends Component {
     #[Url(as: 'role', except: '')]
     public string $roleFilter = '';
 
+    /** A college code, or "none" for accounts without one; the dashboard links here with ?college=none. */
+    #[Url(as: 'college', except: '')]
+    public string $college = '';
+
     public ?int $editingId = null;
     public string $name = '';
     public string $email = '';
@@ -44,6 +48,11 @@ new #[Title('Manage Users')] class extends Component {
         $this->resetPage();
     }
 
+    public function updatedCollege(): void
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
     public function users(): LengthAwarePaginator
     {
@@ -60,6 +69,8 @@ new #[Title('Manage Users')] class extends Component {
                     ->orWhere('researcher_id', 'like', $term));
             })
             ->when(in_array($this->roleFilter, ['admin', 'faculty'], true), fn ($query) => $query->where('role', $this->roleFilter))
+            ->when($this->college === 'none', fn ($query) => $query->whereNull('department_id'))
+            ->when(! in_array($this->college, ['', 'none'], true), fn ($query) => $query->whereRelation('department', 'code', $this->college))
             ->orderBy('name')
             ->paginate(15);
     }
@@ -228,11 +239,11 @@ new #[Title('Manage Users')] class extends Component {
     }
 
     /**
-     * Clear the search and role filter.
+     * Clear the search, role and college filters.
      */
     public function clearFilters(): void
     {
-        $this->reset('search', 'roleFilter');
+        $this->reset('search', 'roleFilter', 'college');
         $this->resetPage();
     }
 
@@ -276,7 +287,7 @@ new #[Title('Manage Users')] class extends Component {
     @if ($this->users->isEmpty())
         <div class="mt-6 rounded-xl border border-dashed border-line px-6 py-12 text-center">
             <flux:heading>{{ __('No users match these filters') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Try a different name or email, or show every role.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('Try a different name or email, or show every role and college.') }}</flux:text>
             <flux:button variant="ghost" size="sm" class="mt-4" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
         </div>
     @else
@@ -284,7 +295,33 @@ new #[Title('Manage Users')] class extends Component {
             <flux:table.columns>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
                 <flux:table.column class="max-md:hidden">{{ __('Researcher ID') }}</flux:table.column>
-                <flux:table.column>{{ __('College') }}</flux:table.column>
+                <flux:table.column data-test="college-column">
+                    {{-- Same header filter as the College column on Submissions --}}
+                    @php($collegeLabel = match ($college) { '' => __('College'), 'none' => __('No college'), default => $college })
+                    <flux:dropdown position="bottom" align="start">
+                        <flux:button
+                            variant="ghost"
+                            size="sm"
+                            inset="top bottom"
+                            icon:trailing="chevron-down"
+                            class="-ms-2 {{ $college !== '' ? 'text-isu-green-700!' : '' }}"
+                            :aria-label="$college !== '' ? __('College, filtered to :code. Change filter', ['code' => $collegeLabel]) : __('College. Filter by college')"
+                        >
+                            {{ $collegeLabel }}
+                        </flux:button>
+
+                        <flux:menu class="max-h-80 min-w-40 overflow-y-auto">
+                            <flux:menu.radio.group wire:model.live="college">
+                                <flux:menu.radio value="">{{ __('All colleges') }}</flux:menu.radio>
+                                <flux:menu.radio value="none">{{ __('No college') }}</flux:menu.radio>
+                                <flux:menu.separator />
+                                @foreach ($this->departments as $option)
+                                    <flux:menu.radio :value="$option->code">{{ $option->code }}</flux:menu.radio>
+                                @endforeach
+                            </flux:menu.radio.group>
+                        </flux:menu>
+                    </flux:dropdown>
+                </flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>

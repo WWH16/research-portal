@@ -129,7 +129,7 @@ new #[Title('My Profile')] class extends Component {
 
 <section class="w-full">
     <x-pages::settings.layout :heading="__('My Profile')" :subheading="__('Your photo, contact details, and portal account.')">
-        @php($user = auth()->user()->loadMissing('department:id,code,name'))
+        @php($user = auth()->user()->loadMissing('department:id,code'))
 
         {{-- Who you are in the portal: photo, name, and the record the Research Office keeps --}}
         <div class="rounded-xl border border-line bg-surface">

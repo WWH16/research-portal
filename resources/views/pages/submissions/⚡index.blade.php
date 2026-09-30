@@ -91,7 +91,7 @@ new #[Title('Submissions')] class extends Component {
     private function filtered(): Builder
     {
         $query = $this->monitoring
-            ? Submission::query()->with(['user:id,name', 'department:id,code,name'])
+            ? Submission::query()->with(['user:id,name', 'department:id,code'])
             : Submission::involving(Auth::user());
 
         return $query
@@ -158,7 +158,7 @@ new #[Title('Submissions')] class extends Component {
     public function reviewing(): ?Submission
     {
         return $this->reviewingId
-            ? Submission::with(['user:id,name', 'department:id,code,name', 'researchType:id,name', 'category:id,name', 'proponents.user:id,name'])->find($this->reviewingId)
+            ? Submission::with(['user:id,name', 'department:id,code', 'researchType:id,name', 'category:id,name', 'proponents.user:id,name'])->find($this->reviewingId)
             : null;
     }
 

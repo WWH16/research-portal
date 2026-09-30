@@ -50,7 +50,7 @@ new #[Title('Manage Users')] class extends Component {
         $search = trim($this->search);
 
         return User::query()
-            ->with('department:id,code,name')
+            ->with('department:id,code')
             ->when($search !== '', function ($query) use ($search) {
                 $term = '%'.$search.'%';
 

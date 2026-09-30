@@ -156,15 +156,14 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Projects per status, in stage order, for everyone (admins) or the projects the member is on.
+     * The member's projects per status, in stage order, for the faculty tiles.
      *
      * @return array<string, int>
      */
     #[Computed]
     public function statusCounts(): array
     {
-        $query = $this->isAdmin ? Submission::query() : Submission::involving(Auth::user());
-        $counts = $query->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $counts = Submission::involving(Auth::user())->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return collect(Submission::STATUSES)->mapWithKeys(fn ($status) => [$status => (int) ($counts[$status] ?? 0)])->all();
     }
@@ -282,8 +281,6 @@ new #[Title('Dashboard')] class extends Component {
 }; ?>
 
 @php
-    $counts = $this->statusCounts;
-    $total = array_sum($counts);
     // Chart colours per status. Submitted is a deliberate neutral; the stages step from blue through
     // amber to green. Written out in full so Tailwind keeps them.
     $bars = ['Submitted' => 'bg-zinc-400', 'Concept' => 'bg-sky-600', 'Detailed' => 'bg-[#ed9400]', 'Completed' => 'bg-green-700'];
@@ -474,6 +471,9 @@ new #[Title('Dashboard')] class extends Component {
         </div>
     @else
         @php
+            $counts = $this->statusCounts;
+            $total = array_sum($counts);
+
             $kpis = [
                 ['label' => __('My projects'), 'value' => $total, 'note' => __('Filed or listed as proponent'), 'href' => route('submissions.index')],
                 ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal accepted'), 'href' => route('submissions.index'), 'swatch' => $bars['Detailed']],

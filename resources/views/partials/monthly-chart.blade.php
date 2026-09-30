@@ -15,7 +15,7 @@
     $labelEvery = (int) ceil($columns / 12);
 @endphp
 
-<flux:card class="max-sm:p-5 lg:col-span-12" data-test="monthly-chart">
+<flux:card class="lg:col-span-12" data-test="monthly-chart">
     <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <div>
             <flux:heading level="2">{{ $heading }}</flux:heading>
@@ -115,7 +115,7 @@
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
         <details class="mt-4 text-sm">
             <summary class="cursor-pointer text-zinc-600 hover:text-zinc-900">{{ __('Show as table') }}</summary>
-            <flux:table class="mt-3">
+            <flux:table class="mt-3 tabular-nums">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Month') }}</flux:table.column>
                     @foreach (\App\Models\Submission::STATUSES as $status)
@@ -129,9 +129,9 @@
                         <flux:table.row>
                             <flux:table.cell>{{ $month['month']->format('M Y') }}</flux:table.cell>
                             @foreach ($month['counts'] as $count)
-                                <flux:table.cell align="end" class="tabular-nums">{{ $count }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ $count }}</flux:table.cell>
                             @endforeach
-                            <flux:table.cell align="end" variant="strong" class="tabular-nums">{{ $month['total'] }}</flux:table.cell>
+                            <flux:table.cell align="end" variant="strong">{{ $month['total'] }}</flux:table.cell>
                         </flux:table.row>
                     @endforeach
                 </flux:table.rows>

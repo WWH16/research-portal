@@ -22,6 +22,7 @@ new #[Title('Submissions')] class extends Component {
     public string $status = '';
     public string $remarks = '';
     public ?int $year = null;
+    public ?int $departmentId = null;
 
     /** Admins can narrow the list to a status, "review" or "delayed"; the dashboard links here with ?status=. */
     #[Url(as: 'status', except: '')]
@@ -158,7 +159,7 @@ new #[Title('Submissions')] class extends Component {
     public function reviewing(): ?Submission
     {
         return $this->reviewingId
-            ? Submission::with(['user:id,name', 'department:id,code', 'researchType:id,name', 'category:id,name', 'proponents.user:id,name'])->find($this->reviewingId)
+            ? Submission::with(['user:id,name', 'department:id,code', 'researchType:id,name', 'category:id,name', 'proponents.user:id,name,department_id', 'proponents.user.department:id,code'])->find($this->reviewingId)
             : null;
     }
 
@@ -177,6 +178,7 @@ new #[Title('Submissions')] class extends Component {
         $this->status = $submission->status;
         $this->remarks = (string) $submission->remarks;
         $this->year = $submission->year;
+        $this->departmentId = $submission->department_id;
         $this->resetValidation();
 
         Flux::modal('review-submission')->show();
@@ -196,12 +198,14 @@ new #[Title('Submissions')] class extends Component {
             'status' => ['required', Rule::in(Submission::STATUSES)],
             'remarks' => ['nullable', 'string', 'max:2000'],
             'year' => ['required', 'integer', 'between:2000,'.(now()->year + 1)],
+            'departmentId' => ['required', 'integer', 'exists:departments,id'],
         ]);
 
         Submission::findOrFail($this->reviewingId)->update([
             'status' => $validated['status'],
             'remarks' => $validated['remarks'] ?: null,
             'year' => $validated['year'],
+            'department_id' => $validated['departmentId'],
             'awaiting_review' => false,
         ]);
 
@@ -331,15 +335,7 @@ new #[Title('Submissions')] class extends Component {
                         @endif
                         <flux:table.cell class="tabular-nums">{{ $submission->year }}</flux:table.cell>
                         <flux:table.cell>
-                            <div class="flex flex-wrap gap-1">
-                                <flux:badge size="sm" inset="top bottom" :color="Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">{{ __($submission->status) }}</flux:badge>
-                                @if ($submission->awaiting_review)
-                                    <flux:badge size="sm" inset="top bottom" color="blue">{{ __('Awaiting review') }}</flux:badge>
-                                @endif
-                                @if ($submission->isDelayed())
-                                    <flux:badge size="sm" inset="top bottom" color="red">{{ __('Delayed') }}</flux:badge>
-                                @endif
-                            </div>
+                            @include('partials.project-status')
                         </flux:table.cell>
                         <flux:table.cell class="tabular-nums">
                             <div class="whitespace-nowrap">{{ $submission->start_date?->format('M j, Y') ?? '—' }} –</div>
@@ -416,7 +412,7 @@ new #[Title('Submissions')] class extends Component {
                             <dt class="text-zinc-500">{{ __('Proponents') }}</dt>
                             <dd class="mt-1 grid gap-1 text-zinc-800">
                                 @foreach ($this->reviewing->proponents->sortBy('study')->groupBy('study') as $study => $rows)
-                                    <p><span class="font-medium">{{ __('Study :number', ['number' => $study]) }}:</span> {{ $rows->map(fn ($row) => $row->user->name.' ('.__($row->role).')')->join(', ') }}</p>
+                                    <p><span class="font-medium">{{ __('Study :number', ['number' => $study]) }}:</span> {{ $rows->map(fn ($row) => $row->user->name.' ('.__($row->role).', '.($row->user->department?->code ?? __('No college')).')')->join(', ') }}</p>
                                 @endforeach
                             </dd>
                         </div>
@@ -446,7 +442,15 @@ new #[Title('Submissions')] class extends Component {
                         @endforeach
                     </flux:radio.group>
 
-                    <flux:input wire:model="year" :label="__('Year')" :description="__('The year the project was actually submitted.')" type="number" min="2000" :max="now()->year + 1" required />
+                    <div class="grid gap-6 sm:grid-cols-2">
+                        <flux:input wire:model="year" :label="__('Year')" :description="__('The year it was actually submitted.')" type="number" min="2000" :max="now()->year + 1" required />
+
+                        <flux:select wire:model="departmentId" :label="__('College')" :description="__('Where it is filed in the Drive.')" data-test="review-college-select">
+                            @foreach (Department::orderBy('code')->get(['id', 'code']) as $option)
+                                <flux:select.option :value="$option->id">{{ $option->code }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    </div>
 
                     <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. The researcher sees these.')" rows="4" maxlength="2000" />
 

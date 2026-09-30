@@ -13,6 +13,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::livewire('announcements', 'pages::announcements.index')->name('announcements.index');
     Route::livewire('drive', 'pages::drive.index')->name('drive.index');
+    Route::livewire('drive/projects/{submission}', 'pages::drive.show')->middleware('can:view,submission')->name('drive.show');
 
     Route::livewire('submissions', 'pages::submissions.index')->name('submissions.index');
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');

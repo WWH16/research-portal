@@ -32,6 +32,6 @@ class AnnouncementsTest extends TestCase
 
         $this->get(route('drive.index'))
             ->assertOk()
-            ->assertSee('No files yet.');
+            ->assertSee('You’re not on any projects yet');
     }
 }

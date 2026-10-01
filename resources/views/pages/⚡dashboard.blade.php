@@ -182,14 +182,32 @@ new #[Title('Dashboard')] class extends Component {
     #[Computed]
     public function rangeProjects(): array
     {
-        $projects = Submission::query()->tap($this->inRange())->tap($this->inDepartment())->get(['status', 'target_date', 'terminal_uploaded_at']);
-        $completed = $projects->where('status', 'Completed');
+        $completed = $this->rangeRows->where('status', 'Completed');
 
         return [
-            'projects' => $projects->count(),
+            'projects' => $this->rangeRows->count(),
             'completed' => $completed->count(),
             'onTime' => $completed->filter(fn ($project) => $project->completedOnTime())->count(),
         ];
+    }
+
+    /**
+     * Projects filed in the chosen range and college, loaded once for the admin summary and the monthly chart.
+     */
+    #[Computed]
+    public function rangeRows(): Collection
+    {
+        return Submission::query()->tap($this->inRange())->tap($this->inDepartment())->get(['status', 'created_at', 'target_date', 'terminal_uploaded_at']);
+    }
+
+    /**
+     * Every project the member filed or is a proponent on, newest first. A member has a handful, so the
+     * faculty tiles, lists and chart all come from this one query.
+     */
+    #[Computed]
+    public function myProjects(): Collection
+    {
+        return Submission::involving(Auth::user())->with('researchType:id,name')->latest()->get();
     }
 
     /**
@@ -233,14 +251,14 @@ new #[Title('Dashboard')] class extends Component {
     #[Computed]
     public function statusCounts(): array
     {
-        $counts = Submission::involving(Auth::user())->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $counts = $this->myProjects->countBy('status');
 
-        return collect(Submission::STATUSES)->mapWithKeys(fn ($status) => [$status => (int) ($counts[$status] ?? 0)])->all();
+        return collect(Submission::STATUSES)->mapWithKeys(fn ($status) => [$status => $counts->get($status, 0)])->all();
     }
 
     /**
-     * Projects filed in each month of the range, split by their current status: everyone's for admins,
-     * the member's own for faculty. Capped at the range's last 24 months so the columns stay readable.
+     * Projects filed in each month of the range, split by their current status: the selected college's for
+     * admins, the member's own for faculty. Capped at the range's last 24 months so the columns stay readable.
      *
      * @return list<array{month: CarbonInterface, counts: array<string, int>, total: int}>
      */
@@ -252,8 +270,8 @@ new #[Title('Dashboard')] class extends Component {
         $months = (int) round($start->diffInMonths($end->startOfMonth())) + 1;
 
         // ponytail: grouped in PHP so it runs the same on MySQL and SQLite; move to a SQL GROUP BY past ~50k proposals a year.
-        $query = $this->isAdmin ? Submission::query() : Submission::involving(Auth::user());
-        $rows = $query->whereBetween('created_at', [$start, $end])->get(['status', 'created_at'])
+        $rows = ($this->isAdmin ? $this->rangeRows : $this->myProjects)
+            ->filter(fn ($submission) => $submission->created_at->between($start, $end))
             ->groupBy(fn ($submission) => $submission->created_at->format('Y-m'));
 
         return collect(range(0, $months - 1))->map(function ($offset) use ($start, $rows) {
@@ -325,31 +343,16 @@ new #[Title('Dashboard')] class extends Component {
         ]);
     }
 
-    #[Computed]
-    public function delayedCount(): int
-    {
-        return Submission::involving(Auth::user())->delayed()->count();
-    }
-
     /**
      * The member's projects that are past their target date, or reviewed with remarks to act on.
      */
     #[Computed]
     public function needsAttention(): Collection
     {
-        return Submission::involving(Auth::user())
-            ->where(fn ($query) => $query
-                ->where(fn ($query) => $query->delayed())
-                ->orWhere(fn ($query) => $query->whereNotNull('remarks')->where('awaiting_review', false)->where('status', '!=', 'Completed')))
-            ->latest('updated_at')
-            ->limit(5)
-            ->get();
-    }
-
-    #[Computed]
-    public function latest(): Collection
-    {
-        return Submission::involving(Auth::user())->with('researchType:id,name')->latest()->limit(5)->get();
+        return $this->myProjects
+            ->filter(fn ($project) => $project->isDelayed() || ($project->remarks !== null && ! $project->awaiting_review && $project->status !== 'Completed'))
+            ->sortByDesc('updated_at')
+            ->take(5);
     }
 }; ?>
 
@@ -377,9 +380,10 @@ new #[Title('Dashboard')] class extends Component {
             </flux:select>
 
             <div class="flex items-center gap-2" data-test="date-range">
-                <flux:input type="date" wire:model.live="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="w-40" />
+                {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
+                <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="w-40" />
                 <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
-                <flux:input type="date" wire:model.live="to" :min="$from" :aria-label="__('To')" class="w-40" />
+                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :aria-label="__('To')" class="w-40" />
 
                 <flux:dropdown position="bottom" align="end">
                     <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" />
@@ -536,7 +540,7 @@ new #[Title('Dashboard')] class extends Component {
             @endif
 
             {{-- Trend over time, split by status: stacked columns --}}
-            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $this->rangeLabel])
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope])
 
             {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
@@ -602,7 +606,7 @@ new #[Title('Dashboard')] class extends Component {
                 ['label' => __('My projects'), 'value' => $total, 'note' => __('Filed or listed as proponent'), 'href' => route('submissions.index')],
                 ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal accepted'), 'href' => route('submissions.index', ['status' => 'proposal']), 'swatch' => $bars['Detailed']],
                 ['label' => __('Completed'), 'value' => $counts['Completed'], 'note' => __('Terminal report accepted'), 'href' => route('submissions.index', ['status' => 'Completed']), 'swatch' => $bars['Completed']],
-                ['label' => __('Delayed'), 'value' => $this->delayedCount, 'note' => __('Past target date, no terminal report'), 'href' => route('submissions.index', ['status' => 'delayed']), 'swatch' => 'bg-status-delayed'],
+                ['label' => __('Delayed'), 'value' => $this->myProjects->filter->isDelayed()->count(), 'note' => __('Past target date, no terminal report'), 'href' => route('submissions.index', ['status' => 'delayed']), 'swatch' => 'bg-status-delayed'],
             ];
         @endphp
 
@@ -668,7 +672,7 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:text class="mt-4">{{ __('You haven’t submitted a proposal yet.') }}</flux:text>
                 @else
                     <ul class="mt-4 divide-y divide-line">
-                        @foreach ($this->latest as $submission)
+                        @foreach ($this->myProjects->take(5) as $submission)
                             <li class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>

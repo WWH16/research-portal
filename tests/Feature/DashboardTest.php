@@ -8,6 +8,7 @@ use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -261,6 +262,12 @@ class DashboardTest extends TestCase
 
         $byType = Livewire::withQueryParams($sinceLastMonth)->test('pages::dashboard')->instance()->breakdowns[__('By research type')];
         $this->assertSame([['label' => 'Thesis', 'title' => 'Thesis', 'count' => 2]], $byType->all());
+
+        // The chart follows the college filter like the rest of the summary.
+        Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
+        $this->get(route('dashboard', $sinceLastMonth + ['dept' => 'CAS']))
+            ->assertSee('No projects in CAS, ', escape: false)
+            ->assertDontSee("{$lastMonth}: 2 projects");
     }
 
     public function test_admins_are_told_about_missing_departments_and_setup(): void
@@ -349,6 +356,29 @@ class DashboardTest extends TestCase
             ->assertSee('Concept Study')->assertDontSee('Finished Study')->assertDontSee('Late Study');
         Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')
             ->assertSee('Late Study')->assertDontSee('Concept Study');
+    }
+
+    public function test_the_dashboard_runs_a_fixed_number_of_queries(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $jose = $this->facultyInDepartment('Jose Reyes');
+
+        foreach (range(1, 12) as $i) {
+            $this->submit($i % 2 ? $maria : $jose, "Project {$i}", Submission::STATUSES[$i % 4], ['target_date' => today()->subDays($i - 6)]);
+        }
+
+        $queriesFor = function (User $user): int {
+            $this->actingAs($user);
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->get(route('dashboard'))->assertOk();
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $this->assertLessThanOrEqual(18, $queriesFor(User::factory()->create(['role' => 'admin'])));
+        $this->assertLessThanOrEqual(3, $queriesFor($maria));
     }
 
     private function facultyInDepartment(string $name): User

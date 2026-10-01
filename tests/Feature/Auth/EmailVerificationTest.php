@@ -4,8 +4,10 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -33,6 +35,37 @@ class EmailVerificationTest extends TestCase
             ->assertSee('Resend verification link')
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false);
+    }
+
+    public function test_verification_email_is_worded_and_branded_for_the_portal(): void
+    {
+        $user = User::factory()->unverified()->create(['name' => 'Maria Santos']);
+
+        $mail = (new VerifyEmail)->toMail($user);
+        $html = (string) $mail->render();
+
+        $this->assertSame('Verify your email for the Research Portal', $mail->subject);
+        $this->assertSame('Verify email address', $mail->actionText);
+        $this->assertStringContainsString('Hello, Maria Santos', $html);
+        $this->assertStringContainsString('This link expires in 60 minutes.', $html);
+        $this->assertStringContainsString('Regards,<br>Research Office, Isabela State University', $html);
+        $this->assertStringContainsString('Button not working? Paste this link into your browser:', $html);
+        $this->assertStringContainsString('Isabela State University', $html);
+        $this->assertStringNotContainsString('All rights reserved', $html);
+        $this->assertStringContainsString('class="brand-bar"', $html);
+    }
+
+    public function test_sent_verification_email_carries_the_seal_inside_it(): void
+    {
+        config(['mail.default' => 'array']);
+        $user = User::factory()->unverified()->create();
+
+        $user->sendEmailVerificationNotification();
+
+        // Embedded (cid:), not linked, so the seal shows even before the portal has a public address.
+        $email = Mail::mailer('array')->getSymfonyTransport()->messages()->first()->getOriginalMessage();
+        $this->assertStringContainsString('src="cid:', $email->getHtmlBody());
+        $this->assertCount(1, $email->getAttachments());
     }
 
     public function test_unverified_users_are_redirected_to_the_email_verification_prompt(): void

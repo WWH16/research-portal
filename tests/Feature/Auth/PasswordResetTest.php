@@ -38,6 +38,20 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, ResetPassword::class);
     }
 
+    public function test_reset_email_is_worded_and_branded_for_the_portal(): void
+    {
+        $user = User::factory()->create(['name' => 'Maria Santos']);
+
+        $mail = (new ResetPassword('reset-token'))->toMail($user);
+        $html = (string) $mail->render();
+
+        $this->assertSame('Reset your Research Portal password', $mail->subject);
+        $this->assertStringContainsString(route('password.reset', ['token' => 'reset-token', 'email' => $user->email]), $mail->actionUrl);
+        $this->assertStringContainsString('Hello, Maria Santos', $html);
+        $this->assertStringContainsString('Isabela State University', $html);
+        $this->assertStringNotContainsString('All rights reserved', $html);
+    }
+
     public function test_reset_password_screen_can_be_rendered(): void
     {
         Notification::fake();

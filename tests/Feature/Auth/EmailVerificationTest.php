@@ -27,7 +27,10 @@ class EmailVerificationTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('verification.notice'));
 
+        // Signing up already sent the link, so the page says so and only offers to resend it.
         $response->assertOk()
+            ->assertSee('We sent a verification link to '.$user->email)
+            ->assertSee('Resend verification link')
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false);
     }

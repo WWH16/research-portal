@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-6">
         <x-auth-header
             :title="__('Verify your email')"
-            :description="__('Your email address isn’t verified yet. Send a verification link to :email to continue.', ['email' => auth()->user()->email])"
+            :description="__('We sent a verification link to :email. Open it to continue.', ['email' => auth()->user()->email])"
         />
 
         @if (session('status') == 'verification-link-sent')
@@ -10,7 +10,8 @@
         @endif
 
         <div class="flex flex-col gap-3">
-            {{-- Same loading pattern as the login form: disabling the submit button makes Flux show its spinner. --}}
+            {{-- Signing up already sent the link, so resending is a secondary action, not the next step: a green outline, not a solid button.
+                 Same loading pattern as the login form: disabling the submit button makes Flux show its spinner. --}}
             <form
                 method="POST"
                 action="{{ route('verification.send') }}"
@@ -20,8 +21,8 @@
                 x-bind:aria-busy="submitting"
             >
                 @csrf
-                <flux:button type="submit" variant="primary" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="send-verification-link-button">
-                    {{ __('Send verification link') }}
+                <flux:button type="submit" class="w-full border-isu-green-700! text-isu-green-700! hover:bg-isu-green-50! disabled:opacity-100!" x-bind:disabled="submitting" data-test="send-verification-link-button">
+                    {{ __('Resend verification link') }}
                 </flux:button>
             </form>
 

@@ -8,7 +8,6 @@ use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -367,18 +366,11 @@ class DashboardTest extends TestCase
             $this->submit($i % 2 ? $maria : $jose, "Project {$i}", Submission::STATUSES[$i % 4], ['target_date' => today()->subDays($i - 6)]);
         }
 
-        $queriesFor = function (User $user): int {
-            $this->actingAs($user);
-            DB::flushQueryLog();
-            DB::enableQueryLog();
-            $this->get(route('dashboard'))->assertOk();
-            DB::disableQueryLog();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->assertQueriesAtMost(18, fn () => $this->get(route('dashboard'))->assertOk());
 
-            return count(DB::getQueryLog());
-        };
-
-        $this->assertLessThanOrEqual(18, $queriesFor(User::factory()->create(['role' => 'admin'])));
-        $this->assertLessThanOrEqual(3, $queriesFor($maria));
+        $this->actingAs($maria);
+        $this->assertQueriesAtMost(3, fn () => $this->get(route('dashboard'))->assertOk());
     }
 
     private function facultyInDepartment(string $name): User

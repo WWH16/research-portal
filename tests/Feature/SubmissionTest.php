@@ -645,6 +645,38 @@ class SubmissionTest extends TestCase
             ->assertSet('paginators.page', 1);
     }
 
+    public function test_the_list_and_the_review_panel_load_only_what_they_show(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = Submission::where('title', 'Maria Proposal')->first();
+
+        $this->actingAs($maria);
+        $this->assertQueriesAtMost(6, fn () => $this->get(route('submissions.index'))->assertOk());
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->assertQueriesAtMost(8, fn () => $this->get(route('submissions.index'))->assertOk());
+
+        // Calls the way a click inside the review panel sends them, scoped to the review island.
+        $component = Livewire::test('pages::submissions.index');
+        $inReviewIsland = fn (string $method, ...$params) => $component->update(calls: [['method' => $method, 'params' => $params, 'path' => '', 'metadata' => ['island' => ['name' => 'review', 'mode' => 'morph']]]]);
+
+        // Opening a review from its button redraws only the review island, not the list.
+        $inReviewIsland('review', $project->id);
+        $fragments = implode('', $component->effects['islandFragments'] ?? []);
+        $this->assertStringContainsString('Filed by Maria Santos', $fragments);
+        $this->assertStringNotContainsString('Jose Proposal', $fragments);
+
+        // Saving from inside the panel also redraws the list, so the new status shows without a reload.
+        $component->set('status', 'Concept');
+        $inReviewIsland('saveReview');
+        $this->assertStringContainsString('data-test="status-filter"', implode('', $component->effects['islandFragments'] ?? []));
+        $this->assertSame('Concept', $project->fresh()->status);
+
+        // Once the panel closes, filtering the list no longer reloads the reviewed project.
+        $component->call('closeReview')->assertSet('reviewingId', null);
+        $this->assertQueriesAtMost(8, fn () => $component->set('statusFilter', 'Submitted'));
+    }
+
     /**
      * The submit button's markup alone, so other buttons' spinners don't count.
      */

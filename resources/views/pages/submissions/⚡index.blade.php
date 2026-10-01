@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -185,13 +186,19 @@ new #[Title('Submissions')] class extends Component {
     }
 
     /**
-     * Closing a review opened from the Drive, saved or not, goes back to that project.
+     * Closing a review opened from the Drive, saved or not, goes back to that project. Otherwise forget the
+     * project, so later filter and page changes don't reload it. Nothing on screen changes, so skip the render.
      */
+    #[Renderless]
     public function closeReview(): void
     {
         if ($this->from === 'drive' && $this->reviewingId) {
             $this->redirectRoute('drive.show', $this->reviewingId, navigate: true);
+
+            return;
         }
+
+        $this->reviewingId = null;
     }
 
     /**
@@ -230,6 +237,9 @@ new #[Title('Submissions')] class extends Component {
         if ($this->submissions->isEmpty() && $this->getPage() > 1) {
             $this->previousPage();
         }
+
+        // Saving runs inside the review island, which only redraws itself; the list has to show the new status too.
+        $this->renderIsland('list');
     }
 }; ?>
 
@@ -250,6 +260,8 @@ new #[Title('Submissions')] class extends Component {
         @endunless
     </header>
 
+    {{-- Filters and results redraw together; opening a review redraws only the review island below --}}
+    @island(name: 'list', always: true)
     <div class="mt-6 flex flex-wrap gap-3">
         @if ($this->monitoring)
             <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search by faculty name')" :aria-label="__('Search by faculty name')" class="min-w-48 flex-1" />
@@ -340,7 +352,7 @@ new #[Title('Submissions')] class extends Component {
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($this->monitoring)
-                                <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" data-test="review-submission-button">
+                                <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button">
                                     {{ __('Review') }}
                                 </flux:button>
                             @else
@@ -354,9 +366,12 @@ new #[Title('Submissions')] class extends Component {
             </flux:table.rows>
         </flux:table>
     @endif
+    @endisland
 
     @if ($this->monitoring)
         <flux:modal name="review-submission" variant="flyout" wire:close="closeReview" class="w-full md:w-[30rem]" aria-labelledby="review-submission-heading">
+            {{-- Also redraws on full renders, which is free once a closed review forgets its project --}}
+            @island(name: 'review', always: true)
             @if ($this->reviewing)
                 <form wire:submit="saveReview" class="flex flex-col gap-6">
                     <div class="pe-8">
@@ -467,6 +482,7 @@ new #[Title('Submissions')] class extends Component {
                     </div>
                 </form>
             @endif
+            @endisland
         </flux:modal>
     @endif
 </section>

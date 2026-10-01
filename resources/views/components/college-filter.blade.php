@@ -2,8 +2,9 @@
     A College column header that filters its own table: shows the chosen code (in green when a filter is on),
     lists "All colleges" and every college code, and optionally "No college".
     Usage: <x-college-filter model="college" :value="$college" with-none />
+    Pass :codes when the page already has the college list, so it isn't queried twice.
 --}}
-@props(['model', 'value' => '', 'withNone' => false])
+@props(['model', 'value' => '', 'withNone' => false, 'codes' => null])
 
 @php($label = match ($value) { '' => __('College'), 'none' => __('No college'), default => $value })
 
@@ -26,7 +27,7 @@
                 <flux:menu.radio value="none">{{ __('No college') }}</flux:menu.radio>
             @endif
             <flux:menu.separator />
-            @foreach (\App\Models\Department::orderBy('code')->pluck('code') as $code)
+            @foreach ($codes ?? \App\Models\Department::orderBy('code')->pluck('code') as $code)
                 <flux:menu.radio :value="$code">{{ $code }}</flux:menu.radio>
             @endforeach
         </flux:menu.radio.group>

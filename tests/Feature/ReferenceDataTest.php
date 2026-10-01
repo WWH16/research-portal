@@ -123,6 +123,15 @@ class ReferenceDataTest extends TestCase
         $this->assertModelMissing($record);
     }
 
+    public function test_closing_a_delete_dialog_forgets_the_record(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $closes = 'wire:close="$set(\'deletingId\', null, false)"';
+
+        Livewire::test('pages::named-records.index', ['type' => 'research-types'])->assertSeeHtml($closes);
+        Livewire::test('pages::departments.index')->assertSeeHtml($closes);
+    }
+
     #[DataProvider('namedModels')]
     public function test_named_record_used_by_a_submission_cannot_be_deleted(string $model, string $type): void
     {

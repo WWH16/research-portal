@@ -216,7 +216,8 @@ new class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="named-record-delete" class="w-full md:w-96" aria-labelledby="named-record-delete-heading">
+    {{-- Closing forgets the record without a request, so later actions don't reload it --}}
+    <flux:modal name="named-record-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96" aria-labelledby="named-record-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>

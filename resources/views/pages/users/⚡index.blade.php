@@ -291,7 +291,7 @@ new #[Title('Manage Users')] class extends Component {
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
                 <flux:table.column class="max-md:hidden">{{ __('Researcher ID') }}</flux:table.column>
                 <flux:table.column data-test="college-column">
-                    <x-college-filter model="college" :value="$college" with-none />
+                    <x-college-filter model="college" :value="$college" :codes="$this->departments->pluck('code')" with-none />
                 </flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
@@ -343,7 +343,8 @@ new #[Title('Manage Users')] class extends Component {
         </flux:table>
     @endif
 
-    <flux:modal name="user-form" class="w-full md:w-[34rem]">
+    {{-- Closing either dialog forgets its account without a request, so later searches don't reload it --}}
+    <flux:modal name="user-form" wire:close="$set('editingId', null, false)" class="w-full md:w-[34rem]">
         <form wire:submit="save" class="flex flex-col gap-6">
             <div>
                 <flux:heading size="lg">{{ $editingId ? __('Edit user') : __('New user') }}</flux:heading>
@@ -402,7 +403,7 @@ new #[Title('Manage Users')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="user-delete" class="w-full md:w-96" aria-labelledby="user-delete-heading">
+    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96" aria-labelledby="user-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>

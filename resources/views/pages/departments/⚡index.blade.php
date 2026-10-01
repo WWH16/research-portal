@@ -201,7 +201,8 @@ new #[Title('Colleges')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="department-delete" class="w-full md:w-96" aria-labelledby="department-delete-heading">
+    {{-- Closing forgets the college without a request, so later actions don't reload it --}}
+    <flux:modal name="department-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96" aria-labelledby="department-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>

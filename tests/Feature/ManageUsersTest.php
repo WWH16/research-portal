@@ -244,6 +244,24 @@ class ManageUsersTest extends TestCase
         $this->assertModelMissing($user);
     }
 
+    public function test_closed_dialogs_and_the_college_list_add_no_queries_to_a_search(): void
+    {
+        $college = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $user = User::factory()->create(['department_id' => $college->id]);
+
+        $this->actingAs($this->admin);
+
+        $component = Livewire::test('pages::users.index')
+            ->assertSeeHtml('wire:close="$set(\'editingId\', null, false)"')
+            ->assertSeeHtml('wire:close="$set(\'deletingId\', null, false)"')
+            ->call('edit', $user->id)
+            ->call('confirmDelete', $user->id);
+
+        // Closing the dialogs clears both IDs in the browser; they reach the server with the next search.
+        // That search loads the page of users and its total, their colleges, and one shared college list.
+        $this->assertQueriesAtMost(4, fn () => $component->update(updates: ['editingId' => null, 'deletingId' => null, 'search' => 'a']));
+    }
+
     public function test_admin_cannot_delete_themselves(): void
     {
         $this->actingAs($this->admin);

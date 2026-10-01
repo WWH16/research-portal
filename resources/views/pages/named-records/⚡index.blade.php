@@ -1,10 +1,12 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\ResearchType;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -104,10 +106,19 @@ new class extends Component {
         ]);
 
         if ($this->editingId) {
-            $model::findOrFail($this->editingId)->update($validated);
+            // Each change and its log entry save together, so a failed log write never leaves a change the log missed.
+            DB::transaction(function () use ($model, $validated) {
+                $record = $model::findOrFail($this->editingId);
+                $record->update($validated);
+
+                if ($record->wasChanged('name')) {
+                    ActivityLog::record('filing.updated', $record, ['kind' => $this->config['singular'], 'from' => $record->getPrevious()['name']]);
+                }
+            });
+
             Flux::toast(variant: 'success', text: __(':Type updated.', ['type' => $this->config['singular']]));
         } else {
-            $model::create($validated);
+            DB::transaction(fn () => ActivityLog::record('filing.created', $model::create($validated), ['kind' => $this->config['singular']]));
             Flux::toast(variant: 'success', text: __(':Type added.', ['type' => $this->config['singular']]));
         }
 
@@ -138,7 +149,10 @@ new class extends Component {
             return;
         }
 
-        $record->delete();
+        DB::transaction(function () use ($record) {
+            $record->delete();
+            ActivityLog::record('filing.deleted', $record, ['kind' => $this->config['singular']]);
+        });
 
         Flux::modal('named-record-delete')->close();
         Flux::toast(variant: 'success', text: __(':Type deleted.', ['type' => $this->config['singular']]));

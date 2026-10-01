@@ -1,12 +1,14 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
@@ -80,7 +82,7 @@ new #[Title('Manage Users')] class extends Component {
     public function deleting(): ?User
     {
         return $this->deletingId
-            ? User::withCount(['submissions', 'proponents', 'driveItems', 'announcements', 'activityLogs'])->find($this->deletingId)
+            ? User::withCount(['submissions', 'proponents', 'driveItems', 'announcements'])->find($this->deletingId)
             : null;
     }
 
@@ -105,7 +107,6 @@ new #[Title('Manage Users')] class extends Component {
             $user->proponents_count ? trans_choice('{1} one place on a proponents list|[2,*] :count places on proponents lists', $user->proponents_count) : null,
             $user->drive_items_count ? trans_choice('{1} one drive item|[2,*] :count drive items', $user->drive_items_count) : null,
             $user->announcements_count ? trans_choice('{1} one announcement|[2,*] :count announcements', $user->announcements_count) : null,
-            $user->activity_logs_count ? trans_choice('{1} one activity log entry|[2,*] :count activity log entries', $user->activity_logs_count) : null,
         ]);
 
         return $uses === []
@@ -190,13 +191,31 @@ new #[Title('Manage Users')] class extends Component {
             unset($validated['password']);
         }
 
+        // Each change and its log entry save together, so a failed log write never leaves a change the log missed.
         if ($this->editingId) {
-            User::findOrFail($this->editingId)->update($validated);
+            DB::transaction(function () use ($validated) {
+                $user = User::findOrFail($this->editingId);
+                $user->update($validated);
+
+                if ($user->wasChanged()) {
+                    ActivityLog::record('user.updated', $user, array_filter([
+                        'role' => $user->wasChanged('role') ? [$user->getPrevious()['role'], $user->role] : null,
+                        'password' => $user->wasChanged('password'),
+                    ]));
+                }
+            });
+
             Flux::toast(variant: 'success', text: __('User updated.'));
         } else {
-            // Accounts an admin creates are trusted, so they skip email verification.
-            $user = User::create($validated);
-            $user->markEmailAsVerified();
+            $user = DB::transaction(function () use ($validated) {
+                // Accounts an admin creates are trusted, so they skip email verification.
+                $user = User::create($validated);
+                $user->markEmailAsVerified();
+                ActivityLog::record('user.created', $user, ['role' => $user->role]);
+
+                return $user;
+            });
+
             Flux::toast(variant: 'success', text: __('User added as :id.', ['id' => $user->researcher_id]));
         }
 
@@ -225,7 +244,10 @@ new #[Title('Manage Users')] class extends Component {
             return;
         }
 
-        $this->deleting->delete();
+        DB::transaction(function () {
+            $this->deleting->delete();
+            ActivityLog::record('user.deleted', $this->deleting);
+        });
 
         Flux::modal('user-delete')->close();
         Flux::toast(variant: 'success', text: __('User deleted.'));
@@ -333,6 +355,7 @@ new #[Title('Manage Users')] class extends Component {
 
                                 <flux:menu>
                                     <flux:menu.item icon="pencil-square" wire:click="edit({{ $user->id }})">{{ __('Edit') }}</flux:menu.item>
+                                    <flux:menu.item icon="clipboard-document-list" :href="route('activity-log.index', ['user' => $user->id])" wire:navigate>{{ __('View activity') }}</flux:menu.item>
                                     <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $user->id }})">{{ __('Delete') }}</flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>

@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Department;
 use Flux\Flux;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -90,10 +92,22 @@ new #[Title('Colleges')] class extends Component {
         ]);
 
         if ($this->editingId) {
-            Department::findOrFail($this->editingId)->update($validated);
+            // Each change and its log entry save together, so a failed log write never leaves a change the log missed.
+            DB::transaction(function () use ($validated) {
+                $department = Department::findOrFail($this->editingId);
+                $department->update($validated);
+
+                if ($department->wasChanged()) {
+                    ActivityLog::record('filing.updated', $department, array_filter([
+                        'kind' => 'college',
+                        'from' => $department->wasChanged('code') ? $department->getPrevious()['code'] : null,
+                    ]));
+                }
+            });
+
             Flux::toast(variant: 'success', text: __('College updated.'));
         } else {
-            Department::create($validated);
+            DB::transaction(fn () => ActivityLog::record('filing.created', Department::create($validated), ['kind' => 'college']));
             Flux::toast(variant: 'success', text: __('College added.'));
         }
 
@@ -122,7 +136,10 @@ new #[Title('Colleges')] class extends Component {
             return;
         }
 
-        $this->deleting->delete();
+        DB::transaction(function () {
+            $this->deleting->delete();
+            ActivityLog::record('filing.deleted', $this->deleting, ['kind' => 'college']);
+        });
 
         Flux::modal('department-delete')->close();
         Flux::toast(variant: 'success', text: __('College deleted.'));

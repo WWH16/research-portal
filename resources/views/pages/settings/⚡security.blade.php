@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\PasswordValidationRules;
+use App\Models\ActivityLog;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -82,6 +83,8 @@ new #[Title('Security settings')] class extends Component {
         Auth::user()->update([
             'password' => $validated['password'],
         ]);
+
+        ActivityLog::record('auth.password_changed');
 
         $this->reset('current_password', 'password', 'password_confirmation');
 

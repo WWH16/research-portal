@@ -1,11 +1,13 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Submission;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Renderless;
@@ -216,11 +218,21 @@ new #[Title('Submissions')] class extends Component {
             'remarks' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        Submission::findOrFail($this->reviewingId)->update([
-            'status' => $validated['status'],
-            'remarks' => $validated['remarks'] ?: null,
-            'awaiting_review' => false,
-        ]);
+        // The review and its log entry save together, so a failed log write never leaves a review the log missed.
+        DB::transaction(function () use ($validated) {
+            $submission = Submission::findOrFail($this->reviewingId);
+            $submission->update([
+                'status' => $validated['status'],
+                'remarks' => $validated['remarks'] ?: null,
+                'awaiting_review' => false,
+            ]);
+
+            // The project keeps only the latest remarks, so the log holds each review's own copy.
+            ActivityLog::record('submission.reviewed', $submission, array_filter([
+                'status' => [$submission->getPrevious()['status'] ?? $submission->status, $submission->status],
+                'remarks' => $submission->remarks,
+            ]));
+        });
 
         if ($this->from === 'drive') {
             session()->flash('status', __('Review saved.'));

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Proponent;
@@ -155,13 +156,37 @@ new #[Title('Research Project')] class extends Component {
                 'designation' => $validated['designation'] ?: null,
                 'start_date' => $validated['start_date'],
                 'target_date' => $validated['target_date'],
-            ])->save();
+            ]);
+
+            // What an edit changed, read before saving. Title, dates, research type and category keep their old and new
+            // values (option names saved now, in case one is renamed later); other fields, like the abstract, are only named.
+            $readers = [
+                'title' => fn (?string $title) => $title,
+                'start_date' => fn ($date) => $date?->toDateString(),
+                'target_date' => fn ($date) => $date?->toDateString(),
+                'research_type_id' => fn (?int $id) => ResearchType::find($id)?->name,
+                'category_id' => fn (?int $id) => Category::find($id)?->name,
+            ];
+            $dirty = array_keys($submission->getDirty());
+            $properties = $this->submission ? array_filter([
+                'values' => collect($readers)->only($dirty)->map(fn ($read, string $column) => [$read($submission->getOriginal($column)), $read($submission->{$column})])->all(),
+                'changed' => array_values(array_diff($dirty, array_keys($readers))),
+                'proponents' => $this->proponentChanges($submission->proponents()->get(['study', 'user_id', 'role'])->toArray(), $rows->all()),
+            ]) : [];
+            $submission->save();
 
             $submission->proponents()->delete();
             $submission->proponents()->createMany($rows->all());
 
             foreach ($this->documents as $stage => $file) {
                 $submission->attachDocument($stage, $file);
+            }
+
+            // Saving an edit that changed nothing and uploaded nothing is left out of the log.
+            if (! $this->submission || $properties !== [] || $this->documents !== []) {
+                ActivityLog::record($this->submission ? 'submission.updated' : 'submission.created', $submission, array_filter($properties + [
+                    'documents' => array_keys($this->documents),
+                ]));
             }
         });
 
@@ -172,6 +197,32 @@ new #[Title('Research Project')] class extends Component {
         });
 
         $this->redirect($this->backUrl, navigate: true);
+    }
+
+    /**
+     * Who joined, left, or changed role on the proponents list, by name, for the activity log. A study
+     * number is added to each name only when the project has more than one study.
+     *
+     * @param  list<array{study: int, user_id: int, role: string}>  $before
+     * @param  list<array{study: int, user_id: int, role: string}>  $after
+     * @return array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}
+     */
+    private function proponentChanges(array $before, array $after): array
+    {
+        $key = fn (array $row) => $row['study'].'-'.$row['user_id'];
+        [$before, $after] = [collect($before)->keyBy($key), collect($after)->keyBy($key)];
+        $names = User::whereIn('id', $before->pluck('user_id')->merge($after->pluck('user_id')))->pluck('name', 'id');
+        $studies = $before->merge($after)->pluck('study')->unique()->count();
+        $name = fn (array $row) => $names[$row['user_id']].($studies > 1 ? ' ('.__('study :number', ['number' => $row['study']]).')' : '');
+
+        return array_filter([
+            'added' => $after->diffKeys($before)->map(fn (array $row) => [$name($row), $row['role']])->values()->all(),
+            'removed' => $before->diffKeys($after)->map(fn (array $row) => [$name($row), $row['role']])->values()->all(),
+            'roles' => $after->intersectByKeys($before)
+                ->filter(fn (array $row, string $key) => $row['role'] !== $before[$key]['role'])
+                ->map(fn (array $row, string $key) => [$name($row), $before[$key]['role'], $row['role']])
+                ->values()->all(),
+        ]);
     }
 
     /**

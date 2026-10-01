@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Models\ActivityLog;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
@@ -59,6 +60,10 @@ new #[Title('My Profile')] class extends Component {
         }
 
         $user->save();
+
+        if ($user->wasChanged('email')) {
+            ActivityLog::record('auth.email_changed', properties: ['from' => $user->getPrevious()['email'], 'to' => $user->email]);
+        }
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));
     }

@@ -4,7 +4,14 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\ActivityLog;
 use App\Models\Department;
+use App\Models\User;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -16,6 +23,9 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Events\RecoveryCodesGenerated;
+use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
+use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -36,11 +46,48 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->logAuthEvents();
 
         // Fortify fires Verified when the emailed link verifies someone; the app layout shows this as a toast.
         Event::listen(Verified::class, fn () => session()->flash('verified', __('Email verified. Welcome to the portal.')));
 
         $this->configureEmails();
+    }
+
+    /**
+     * Record sign-ins and account security changes in the activity log. Each event names its user, since
+     * a sign-in or reset has no one signed in yet. Laravel's Login also fires when a remember-me cookie
+     * signs someone back in after their session ends.
+     */
+    private function logAuthEvents(): void
+    {
+        // The events type their user as the auth contract; skipping anything but a User also covers a
+        // logout from a session that already expired, which has no one to attribute.
+        $log = fn (string $action, mixed $user) => $user instanceof User && ActivityLog::record($action, user: $user);
+
+        Event::listen(Login::class, fn (Login $event) => $log('auth.login', $event->user));
+        Event::listen(Logout::class, fn (Logout $event) => $log('auth.logout', $event->user));
+        Event::listen(Registered::class, fn (Registered $event) => $log('auth.registered', $event->user));
+        Event::listen(Verified::class, fn (Verified $event) => $log('auth.verified', $event->user));
+        Event::listen(PasswordReset::class, fn (PasswordReset $event) => $log('auth.password_reset', $event->user));
+        Event::listen(TwoFactorAuthenticationConfirmed::class, fn ($event) => $log('auth.two_factor_enabled', $event->user));
+        Event::listen(TwoFactorAuthenticationDisabled::class, fn ($event) => $log('auth.two_factor_disabled', $event->user));
+        Event::listen(RecoveryCodesGenerated::class, fn ($event) => $log('auth.recovery_codes', $event->user));
+
+        // Tied to the account when the email matches one, so that member's activity shows attempts on it.
+        // Whether it matched is saved too, since a later account deletion clears the user.
+        // People sometimes type their password into the email box, so anything that isn't an email is never saved.
+        // Emails are saved lowercase, so searching the log finds them whatever case was typed.
+        Event::listen(Failed::class, function (Failed $event) {
+            $typed = (string) ($event->credentials[Fortify::username()] ?? '');
+            $email = filter_var($typed, FILTER_VALIDATE_EMAIL) ? Str::lower($typed) : null;
+
+            ActivityLog::record('auth.failed', properties: array_filter([
+                'email' => $email,
+                'not_email' => $email === null,
+                'no_account' => ! $event->user instanceof User,
+            ]), user: $event->user instanceof User ? $event->user : null);
+        });
     }
 
     /**

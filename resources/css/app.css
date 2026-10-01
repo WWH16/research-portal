@@ -85,8 +85,10 @@
         border-color: var(--color-line, currentColor);
     }
 
+    /* Always reserve the scrollbar's space, so centred pages don't shift sideways between short and long pages. */
     html {
         color-scheme: light;
+        scrollbar-gutter: stable;
     }
 
     ::selection {

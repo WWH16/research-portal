@@ -188,6 +188,7 @@ class ActivityLog extends Model
 
             'submission.created' => __('submitted a proposal'),
             'submission.updated' => __('updated a project'),
+            'submission.dates_changed' => __('changed a project’s dates'),
             'submission.reviewed' => __('reviewed a project'),
 
             'user.created' => __('added an account'),
@@ -308,7 +309,7 @@ class ActivityLog extends Model
                 isset($p['no_account']) => __('No account uses this email'),
                 default => __('Wrong password'),
             },
-            $this->action === 'submission.updated' => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? []),
+            in_array($this->action, ['submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? []),
             $this->action === 'submission.reviewed' && isset($p['status']) && $p['status'][0] === $p['status'][1] => __('Kept at :status', ['status' => $p['status'][1]]),
             $this->action === 'user.created' && is_string($p['role'] ?? null) => __(':role role', ['role' => Str::ucfirst($p['role'])]),
             $this->action === 'user.updated' && isset($p['password']) => __('New password set'),

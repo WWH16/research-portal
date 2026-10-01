@@ -7,6 +7,7 @@ use App\Models\Proponent;
 use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -106,8 +107,9 @@ new #[Title('Research Project')] class extends Component {
             'research_type_id' => ['required', 'integer', 'exists:research_types,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'designation' => ['nullable', 'string', 'max:100'],
-            'start_date' => ['required', 'date'],
-            'target_date' => ['required', 'date', 'after:start_date'],
+            // The researcher proposes the dates once; after that only the Research Office moves them, with Change dates on Submissions.
+            'start_date' => [$this->submission ? 'exclude' : 'required', 'date'],
+            'target_date' => [$this->submission ? 'exclude' : 'required', 'date', 'after:start_date'],
             'proponents' => ['required', 'array', 'max:60'],
             'proponents.*.study' => ['required', 'integer', 'between:1,20'],
             'proponents.*.user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'faculty')],
@@ -154,8 +156,7 @@ new #[Title('Research Project')] class extends Component {
                 'research_type_id' => $validated['research_type_id'],
                 'category_id' => $validated['category_id'],
                 'designation' => $validated['designation'] ?: null,
-                'start_date' => $validated['start_date'],
-                'target_date' => $validated['target_date'],
+                ...Arr::only($validated, ['start_date', 'target_date']),
             ]);
 
             // What an edit changed, read before saving. Title, dates, research type and category keep their old and new
@@ -346,10 +347,14 @@ new #[Title('Research Project')] class extends Component {
 
         <div>
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:input wire:model="start_date" :label="__('Starting date')" type="date" required />
-                <flux:input wire:model="target_date" :label="__('Completion date')" type="date" required />
+                <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :required="! $submission" :disabled="(bool) $submission" />
+                <flux:input wire:model="target_date" :label="__('Completion date')" type="date" :required="! $submission" :disabled="(bool) $submission" />
             </div>
-            <flux:text class="mt-2 text-sm">{{ __('As proposed. The project shows as delayed if no terminal report is in by the completion date.') }}</flux:text>
+            <flux:text class="mt-2 text-sm">
+                {{ $submission
+                    ? __('Only the Research Office can change these dates. Contact them if the project needs more time.')
+                    : __('As proposed. The project shows as delayed if no terminal report is in by the completion date.') }}
+            </flux:text>
         </div>
 
         <flux:fieldset>

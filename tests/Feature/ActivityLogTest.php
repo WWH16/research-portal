@@ -275,7 +275,6 @@ class ActivityLogTest extends TestCase
         $this->assertSame(0, ActivityLog::count(), 'Saving without changes is left out of the log.');
 
         $form->set('title', 'Solar Dryer Study, Phase 2')
-            ->set('target_date', now()->addYears(2)->toDateString())
             ->set('proponents.0.role', 'Co-Leader')
             ->set('research_type_id', ResearchType::create(['name' => 'Capstone'])->id)
             ->call('removeProponent', 1)
@@ -287,13 +286,12 @@ class ActivityLogTest extends TestCase
         $this->assertSame([
             'values' => [
                 'title' => ['Solar Dryer Study', 'Solar Dryer Study, Phase 2'],
-                'target_date' => [today()->addYear()->toDateString(), now()->addYears(2)->toDateString()],
                 'research_type_id' => ['Thesis', 'Capstone'],
             ],
             'proponents' => ['added' => [['Jose Reyes', 'Staff']], 'removed' => [['Ana Cruz', 'Co-Leader']], 'roles' => [[$maria->name, 'Leader', 'Co-Leader']]],
         ], $log->properties);
         $this->assertSame(
-            'Changed the title from “Solar Dryer Study” to “Solar Dryer Study, Phase 2” · Changed the completion date from '.today()->addYear()->format('M j, Y').' to '.now()->addYears(2)->format('M j, Y').' · Changed the research type from Thesis to Capstone · Added Jose Reyes as Staff to the proponents · Removed Co-Leader Ana Cruz from the proponents · Changed '.$maria->name.' from Leader to Co-Leader',
+            'Changed the title from “Solar Dryer Study” to “Solar Dryer Study, Phase 2” · Changed the research type from Thesis to Capstone · Added Jose Reyes as Staff to the proponents · Removed Co-Leader Ana Cruz from the proponents · Changed '.$maria->name.' from Leader to Co-Leader',
             $log->note(),
         );
     }
@@ -313,6 +311,35 @@ class ActivityLogTest extends TestCase
 
         $this->assertSame(['changed' => ['abstract', 'designation']], ActivityLog::sole()->properties);
         $this->assertSame('Updated the abstract and designation', ActivityLog::sole()->note());
+    }
+
+    public function test_only_the_research_office_moves_a_projects_dates_and_the_log_shows_it(): void
+    {
+        $project = $this->project('Solar Dryer Study');
+        $oldEnd = $project->target_date->toDateString();
+        $newEnd = today()->addYears(2)->toDateString();
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::submissions.index')
+            ->call('editDates', $project->id)
+            ->assertSet('target_date', $oldEnd)
+            ->set('target_date', $newEnd)
+            ->call('saveDates')
+            ->assertHasNoErrors();
+
+        $this->assertSame($newEnd, $project->fresh()->target_date->toDateString());
+        $this->assertSame('Submitted', $project->fresh()->status, 'Moving dates is not a review.');
+        $this->assertFalse(ActivityLog::where('action', 'submission.reviewed')->exists());
+
+        $moved = ActivityLog::firstWhere('action', 'submission.dates_changed');
+        $this->assertSame('changed a project’s dates', $moved->summary());
+        $this->assertSame(['values' => ['target_date' => [$oldEnd, $newEnd]]], $moved->properties);
+        $this->assertSame('Research Office', $moved->actor_name);
+        $this->assertStringStartsWith('Changed the completion date from', $moved->note());
+
+        $this->actingAs($project->user);
+        Livewire::test('pages::submissions.index')->call('editDates', $project->id)->assertForbidden();
     }
 
     public function test_each_review_keeps_its_own_remarks(): void

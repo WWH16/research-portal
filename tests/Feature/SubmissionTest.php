@@ -325,6 +325,7 @@ class SubmissionTest extends TestCase
                 ['study' => 1, 'user_id' => $siton->id, 'role' => 'Staff'],
                 ['study' => 2, 'user_id' => $siton->id, 'role' => 'Staff'],
             ])
+            ->assertSeeHtml('Only the Research Office can change these dates.')
             ->set('start_date', '2026-08-15')
             ->call('save')
             ->assertHasNoErrors()
@@ -332,7 +333,7 @@ class SubmissionTest extends TestCase
 
         $this->assertSame(2, Submission::count(), 'Editing never adds a second record.');
         $this->assertFalse($project->fresh()->awaiting_review, 'Editing proponents alone does not need a review.');
-        $this->assertSame('2026-08-15', $project->fresh()->start_date->toDateString());
+        $this->assertNotSame('2026-08-15', $project->fresh()->start_date->toDateString(), 'Faculty can’t move the dates once the project is filed.');
 
         $this->actingAs($siton)->get(route('submissions.index'))->assertSee('Maria Proposal');
         $this->get(route('submissions.edit', $project))->assertOk();

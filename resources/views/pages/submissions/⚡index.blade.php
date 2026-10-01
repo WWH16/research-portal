@@ -7,6 +7,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -23,6 +24,11 @@ new #[Title('Submissions')] class extends Component {
     public ?int $reviewingId = null;
     public string $status = '';
     public string $remarks = '';
+
+    /** The project open in the Change dates dialog. */
+    public ?int $datingId = null;
+    public string $start_date = '';
+    public string $target_date = '';
 
     /** A status, "proposal" (Concept or Detailed), "review" or "delayed"; the dashboard tiles link here with ?status=. */
     #[Url(as: 'status', except: '')]
@@ -203,6 +209,71 @@ new #[Title('Submissions')] class extends Component {
         $this->reviewingId = null;
     }
 
+    #[Computed]
+    public function dating(): ?Submission
+    {
+        return $this->datingId ? Submission::find($this->datingId, ['id', 'title', 'start_date', 'target_date']) : null;
+    }
+
+    /**
+     * Open the Change dates dialog. Once a project is filed only the Research Office moves its dates, for an
+     * extension or a correction, and doing so is not a review: the status and the review list stay as they are.
+     */
+    public function editDates(int $id): void
+    {
+        $this->authorize('review', Submission::class);
+
+        $this->datingId = $id;
+        unset($this->dating);
+        $submission = $this->dating ?? abort(404);
+
+        $this->start_date = (string) $submission->start_date?->toDateString();
+        $this->target_date = (string) $submission->target_date?->toDateString();
+        $this->resetValidation();
+
+        Flux::modal('project-dates')->show();
+    }
+
+    /**
+     * Save the new dates, logged like a project edit: "Changed the completion date from … to …".
+     */
+    public function saveDates(): void
+    {
+        $this->authorize('review', Submission::class);
+
+        $validated = $this->validate([
+            'start_date' => ['required', 'date'],
+            'target_date' => ['required', 'date', 'after:start_date'],
+        ], attributes: [
+            'start_date' => __('starting date'),
+            'target_date' => __('completion date'),
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $submission = Submission::findOrFail($this->datingId);
+            $submission->update($validated);
+
+            $dates = collect(['start_date', 'target_date'])
+                ->filter(fn (string $column) => $submission->wasChanged($column))
+                ->mapWithKeys(fn (string $column) => [$column => [
+                    ($previous = $submission->getPrevious()[$column]) ? Date::parse($previous)->toDateString() : null,
+                    $submission->{$column}->toDateString(),
+                ]])
+                ->all();
+            if ($dates !== []) {
+                ActivityLog::record('submission.dates_changed', $submission, ['values' => $dates]);
+            }
+        });
+
+        Flux::modal('project-dates')->close();
+        Flux::toast(variant: 'success', text: __('Dates changed.'));
+        $this->datingId = null;
+        unset($this->submissions, $this->dating);
+
+        // Saving runs inside the dates island, which only redraws itself; the list has to show the new dates too.
+        $this->renderIsland('list');
+    }
+
     /**
      * Save the review. Saving takes the project off the review list whether or not the status
      * moves, so a document found incomplete stays at its old status until a corrected upload.
@@ -364,9 +435,12 @@ new #[Title('Submissions')] class extends Component {
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($this->monitoring)
-                                <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button">
-                                    {{ __('Review') }}
-                                </flux:button>
+                                <div class="flex items-center gap-1">
+                                    <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button">
+                                        {{ __('Review') }}
+                                    </flux:button>
+                                    <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" />
+                                </div>
                             @else
                                 <flux:button size="sm" variant="ghost" inset="top bottom" :href="route('submissions.edit', $submission)" wire:navigate data-test="edit-submission-button">
                                     {{ __('Edit') }}
@@ -491,6 +565,34 @@ new #[Title('Submissions')] class extends Component {
                             <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                         </flux:modal.close>
                         <flux:button type="submit" variant="primary" data-test="save-review-button">{{ __('Save review') }}</flux:button>
+                    </div>
+                </form>
+            @endif
+            @endisland
+        </flux:modal>
+
+        {{-- Closing forgets the project without a request, so later filter changes don't reload it --}}
+        <flux:modal name="project-dates" wire:close="$set('datingId', null, false)" class="w-full md:w-96" aria-labelledby="project-dates-heading">
+            @island(name: 'dates', always: true)
+            @if ($this->dating)
+                <form wire:submit="saveDates" class="flex flex-col gap-6">
+                    <div>
+                        <flux:heading size="lg" id="project-dates-heading">{{ __('Change dates') }}</flux:heading>
+                        <flux:text class="mt-1">{{ $this->dating->title }}</flux:text>
+                    </div>
+
+                    <div class="grid gap-6 sm:grid-cols-2">
+                        <flux:input wire:model="start_date" :label="__('Starting date')" type="date" required />
+                        <flux:input wire:model="target_date" :label="__('Completion date')" type="date" required />
+                    </div>
+
+                    <flux:text class="text-sm">{{ __('For an extension or a correction. The status and review list stay as they are.') }}</flux:text>
+
+                    <div class="flex justify-end gap-2">
+                        <flux:modal.close>
+                            <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        </flux:modal.close>
+                        <flux:button type="submit" variant="primary" data-test="save-dates-button">{{ __('Save dates') }}</flux:button>
                     </div>
                 </form>
             @endif

@@ -61,6 +61,24 @@ class EmailVerificationTest extends TestCase
         $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
     }
 
+    public function test_verifying_returns_to_the_page_they_tried_to_open_with_the_confirmation(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)->get(route('submissions.index'))->assertRedirect(route('verification.notice'));
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        // The page they land on confirms it once, then not again on the next page.
+        $this->get($verificationUrl)->assertRedirect(route('submissions.index'));
+        $this->get(route('submissions.index'))->assertSee('Email verified. Welcome to the portal.');
+        $this->get(route('submissions.index'))->assertDontSee('Email verified. Welcome to the portal.');
+    }
+
     public function test_email_is_not_verified_with_invalid_hash(): void
     {
         $user = User::factory()->unverified()->create();

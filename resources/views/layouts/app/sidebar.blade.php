@@ -139,6 +139,11 @@
             </flux:toast.group>
         @endpersist
 
+        {{-- Confirms a clicked email verification link on whichever page the member lands on --}}
+        @if ($verified = session('verified'))
+            <div x-data x-init="$nextTick(() => $flux.toast(@js($verified), { variant: 'success' }))"></div>
+        @endif
+
         @fluxScripts
     </body>
 </html>

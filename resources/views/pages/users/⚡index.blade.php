@@ -367,8 +367,7 @@ new #[Title('Manage Users')] class extends Component {
     @endif
 
     {{-- Closing either dialog forgets its account without a request, so later searches don't reload it --}}
-    {{-- On phones the form opens as a sheet from the bottom edge, in thumb reach, instead of a floating card --}}
-    <flux:modal name="user-form" wire:close="$set('editingId', null, false)" class="w-full md:w-[34rem] max-sm:mb-0 max-sm:max-w-none max-sm:rounded-b-none">
+    <flux:modal name="user-form" wire:close="$set('editingId', null, false)" class="w-full md:w-[34rem]">
         <form wire:submit="save" class="flex flex-col gap-6">
             <div>
                 <flux:heading size="lg">{{ $editingId ? __('Edit user') : __('New user') }}</flux:heading>
@@ -416,20 +415,18 @@ new #[Title('Manage Users')] class extends Component {
                 :required="! $editingId"
             />
 
-            {{-- Phones pin the actions to the sheet's bottom edge so Add user stays reachable while the form scrolls --}}
-            <div class="flex justify-end gap-2 max-sm:sticky max-sm:bottom-0 max-sm:-mx-6 max-sm:-mb-6 max-sm:grid max-sm:grid-cols-2 max-sm:border-t max-sm:border-line max-sm:bg-white max-sm:px-6 max-sm:pt-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div class="flex justify-end gap-2">
                 <flux:modal.close>
-                    <flux:button variant="ghost" class="max-sm:h-11 max-sm:w-full">{{ __('Cancel') }}</flux:button>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="primary" data-test="save-user-button" class="max-sm:h-11">
+                <flux:button type="submit" variant="primary" data-test="save-user-button">
                     {{ $editingId ? __('Save changes') : __('Add user') }}
                 </flux:button>
             </div>
         </form>
     </flux:modal>
 
-    {{-- Same bottom sheet as the user form on phones, with room left for the home indicator --}}
-    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96 max-sm:mb-0 max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]" aria-labelledby="user-delete-heading">
+    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96" aria-labelledby="user-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>
@@ -442,13 +439,12 @@ new #[Title('Manage Users')] class extends Component {
                     @endif
                 </div>
 
-                {{-- Phones split the row evenly between however many buttons show --}}
-                <div class="flex justify-end gap-2 max-sm:grid max-sm:auto-cols-fr max-sm:grid-flow-col">
+                <div class="flex justify-end gap-2">
                     <flux:modal.close>
-                        <flux:button variant="ghost" class="max-sm:h-11 max-sm:w-full">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @unless ($this->deletingBlocker)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button" class="max-sm:h-11">{{ __('Delete') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button">{{ __('Delete') }}</flux:button>
                     @endunless
                 </div>
             </div>

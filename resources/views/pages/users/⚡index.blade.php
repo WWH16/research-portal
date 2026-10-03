@@ -428,7 +428,8 @@ new #[Title('Manage Users')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96" aria-labelledby="user-delete-heading">
+    {{-- Same bottom sheet as the user form on phones, with room left for the home indicator --}}
+    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96 max-sm:mb-0 max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]" aria-labelledby="user-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>
@@ -441,12 +442,13 @@ new #[Title('Manage Users')] class extends Component {
                     @endif
                 </div>
 
-                <div class="flex justify-end gap-2">
+                {{-- Phones split the row evenly between however many buttons show --}}
+                <div class="flex justify-end gap-2 max-sm:grid max-sm:auto-cols-fr max-sm:grid-flow-col">
                     <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost" class="max-sm:h-11 max-sm:w-full">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @unless ($this->deletingBlocker)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button">{{ __('Delete') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button" class="max-sm:h-11">{{ __('Delete') }}</flux:button>
                     @endunless
                 </div>
             </div>

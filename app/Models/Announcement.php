@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['posted_by', 'title', 'description'])]
 class Announcement extends Model
 {
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function poster(): BelongsTo
     {
         return $this->belongsTo(User::class, 'posted_by');

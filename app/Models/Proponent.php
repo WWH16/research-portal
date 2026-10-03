@@ -15,6 +15,9 @@ class Proponent extends Model
     /** Roles a faculty member can hold in a study, as the proposal's proponents table lists them. */
     public const ROLES = ['Leader', 'Co-Leader', 'Staff'];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

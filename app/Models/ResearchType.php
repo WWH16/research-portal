@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['name'])]
 class ResearchType extends Model
 {
+    /**
+     * @return HasMany<Submission, $this>
+     */
     public function submissions(): HasMany
     {
         return $this->hasMany(Submission::class);

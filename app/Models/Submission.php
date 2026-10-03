@@ -80,26 +80,41 @@ class Submission extends Model
         });
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<ResearchType, $this>
+     */
     public function researchType(): BelongsTo
     {
         return $this->belongsTo(ResearchType::class);
     }
 
+    /**
+     * @return BelongsTo<Category, $this>
+     */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
+    /**
+     * @return BelongsTo<Department, $this>
+     */
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
 
+    /**
+     * @return HasMany<Proponent, $this>
+     */
     public function proponents(): HasMany
     {
         return $this->hasMany(Proponent::class);
@@ -107,6 +122,8 @@ class Submission extends Model
 
     /**
      * Every year with a project since the portal went live, plus this one, newest first, for year pickers.
+     *
+     * @return Collection<int, int>
      */
     public static function years(): Collection
     {
@@ -115,6 +132,8 @@ class Submission extends Model
 
     /**
      * Projects the member filed or is listed on as a proponent.
+     *
+     * @param  Builder<self>  $query
      */
     public function scopeInvolving(Builder $query, User $user): void
     {
@@ -125,6 +144,8 @@ class Submission extends Model
 
     /**
      * Projects past their target date with no terminal report uploaded yet.
+     *
+     * @param  Builder<self>  $query
      */
     public function scopeDelayed(Builder $query): void
     {

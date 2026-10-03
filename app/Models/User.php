@@ -122,16 +122,25 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->role === 'admin';
     }
 
+    /**
+     * @return BelongsTo<Department, $this>
+     */
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
 
+    /**
+     * @return HasMany<Submission, $this>
+     */
     public function submissions(): HasMany
     {
         return $this->hasMany(Submission::class);
     }
 
+    /**
+     * @return HasMany<Proponent, $this>
+     */
     public function proponents(): HasMany
     {
         return $this->hasMany(Proponent::class);
@@ -139,22 +148,33 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
     /**
      * Projects the member is listed on as a proponent, once each however many studies they are in.
+     *
+     * @return BelongsToMany<Submission, $this>
      */
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Submission::class, 'proponents')->distinct();
     }
 
+    /**
+     * @return HasMany<DriveItem, $this>
+     */
     public function driveItems(): HasMany
     {
         return $this->hasMany(DriveItem::class, 'uploaded_by');
     }
 
+    /**
+     * @return HasMany<Announcement, $this>
+     */
     public function announcements(): HasMany
     {
         return $this->hasMany(Announcement::class, 'posted_by');
     }
 
+    /**
+     * @return HasMany<ActivityLog, $this>
+     */
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);

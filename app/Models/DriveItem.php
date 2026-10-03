@@ -31,21 +31,33 @@ class DriveItem extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<DriveItem, $this>
+     */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(DriveItem::class, 'parent_id');
     }
 
+    /**
+     * @return HasMany<DriveItem, $this>
+     */
     public function children(): HasMany
     {
         return $this->hasMany(DriveItem::class, 'parent_id');
     }
 
+    /**
+     * @return BelongsTo<Department, $this>
+     */
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');

@@ -101,7 +101,7 @@ class SubmissionTest extends TestCase
 
     public function test_members_without_a_department_cannot_submit(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         $this->actingAs(User::factory()->create(['department_id' => null]));
 
@@ -120,7 +120,7 @@ class SubmissionTest extends TestCase
 
     public function test_project_with_several_studies_can_be_submitted(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $natividad = User::factory()->create(['name' => 'Natividad', 'department_id' => $department->id]);
@@ -153,7 +153,7 @@ class SubmissionTest extends TestCase
         $this->assertTrue($project->fresh()->awaiting_review);
         $this->assertSame(now()->year, $project->year);
         $this->assertSame(6, $project->proponents()->count());
-        Storage::disk('local')->assertExists($project->concept_path);
+        Storage::disk('submissions')->assertExists($project->concept_path);
 
         // Natividad is listed three times and Siton twice, but only three faculty are on the project.
         $this->assertSame(3, User::whereHas('projects')->count());
@@ -168,7 +168,7 @@ class SubmissionTest extends TestCase
 
     public function test_proponents_are_validated(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $natividad = User::factory()->create(['department_id' => $department->id]);
@@ -235,7 +235,7 @@ class SubmissionTest extends TestCase
 
     public function test_completion_date_must_come_after_the_starting_date(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
 
@@ -252,7 +252,7 @@ class SubmissionTest extends TestCase
 
     public function test_documents_must_be_pdf_or_word_files_under_ten_megabytes(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
 
@@ -273,7 +273,7 @@ class SubmissionTest extends TestCase
 
     public function test_similar_projects_are_flagged_before_saving(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         [$natividad, $siton] = $this->twoFacultyWithSubmissions();
         $natividad->submissions()->sole()->update(['title' => 'SMART-ResearchTrack']);
@@ -302,7 +302,7 @@ class SubmissionTest extends TestCase
 
     public function test_proponent_added_after_registering_sees_and_edits_the_project(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         [$natividad] = $this->twoFacultyWithSubmissions();
         $project = $natividad->submissions()->sole();
@@ -351,7 +351,7 @@ class SubmissionTest extends TestCase
 
     public function test_next_document_goes_on_the_same_project_and_only_admins_move_the_status(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -373,7 +373,7 @@ class SubmissionTest extends TestCase
         $this->assertSame('Project updated. The new document is waiting for the Research Office to review.', session('status'));
         $this->assertSame('Concept', $project->status, 'Uploading never moves the status.');
         $this->assertTrue($project->awaiting_review);
-        Storage::disk('local')->assertExists($project->detailed_path);
+        Storage::disk('submissions')->assertExists($project->detailed_path);
 
         $this->actingAs($admin);
 
@@ -394,7 +394,7 @@ class SubmissionTest extends TestCase
 
     public function test_corrected_upload_replaces_the_file_and_goes_back_for_review(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -420,8 +420,8 @@ class SubmissionTest extends TestCase
             ->call('save');
 
         $project->refresh();
-        Storage::disk('local')->assertMissing($first);
-        Storage::disk('local')->assertExists($project->detailed_path);
+        Storage::disk('submissions')->assertMissing($first);
+        Storage::disk('submissions')->assertExists($project->detailed_path);
         $this->assertTrue($project->awaiting_review);
         $this->assertSame('Submitted', $project->status);
     }
@@ -584,11 +584,11 @@ class SubmissionTest extends TestCase
 
     public function test_only_proponents_and_admins_can_open_a_document(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         [$maria, $jose] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        Storage::disk('local')->put($project->concept_path, '%PDF-1.4');
+        Storage::disk('submissions')->put($project->concept_path, '%PDF-1.4');
 
         $url = route('submissions.document', [$project, 'concept']);
 
@@ -604,12 +604,12 @@ class SubmissionTest extends TestCase
 
     public function test_word_documents_download_with_their_own_extension(): void
     {
-        Storage::fake('local');
+        Storage::fake('submissions');
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
         $project->update(['terminal_path' => 'submissions/sample.docx']);
-        Storage::disk('local')->put($project->terminal_path, 'docx');
+        Storage::disk('submissions')->put($project->terminal_path, 'docx');
 
         $this->actingAs($maria)
             ->get(route('submissions.document', [$project, 'terminal']))

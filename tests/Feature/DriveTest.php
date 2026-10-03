@@ -104,8 +104,8 @@ class DriveTest extends TestCase
 
     public function test_project_page_shows_studies_roles_colleges_and_documents(): void
     {
-        Storage::fake('local');
-        Storage::disk('local')->put('submissions/concept.pdf', '%PDF');
+        Storage::fake('submissions');
+        Storage::disk('submissions')->put('submissions/concept.pdf', '%PDF');
 
         $this->actingAs($this->tabago)
             ->get(route('drive.show', $this->smart))
@@ -177,8 +177,8 @@ class DriveTest extends TestCase
 
     public function test_strangers_cannot_open_the_project_or_its_files(): void
     {
-        Storage::fake('local');
-        Storage::disk('local')->put('submissions/detailed.pdf', '%PDF');
+        Storage::fake('submissions');
+        Storage::disk('submissions')->put('submissions/detailed.pdf', '%PDF');
 
         $stranger = User::factory()->create(['department_id' => $this->ccsict->id]);
 

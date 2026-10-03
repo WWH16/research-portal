@@ -103,8 +103,8 @@ new #[Title('Research Drive')] class extends Component {
                     <div class="min-w-0 flex-1">
                         <p class="font-medium text-zinc-800">{{ __($label) }}</p>
                         <p class="text-sm text-zinc-500">
-                            @if ($path && Storage::disk('local')->exists($path))
-                                {{ __('Uploaded :date', ['date' => date('M j, Y', Storage::disk('local')->lastModified($path))]) }}
+                            @if ($path && Storage::disk('submissions')->exists($path))
+                                {{ __('Uploaded :date', ['date' => date('M j, Y', Storage::disk('submissions')->lastModified($path))]) }}
                             @elseif ($path)
                                 {{ __('Uploaded') }}
                             @else

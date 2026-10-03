@@ -19,12 +19,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
     Route::livewire('submissions/{submission}/edit', 'pages::submissions.create')->middleware(['faculty', 'can:update,submission'])->name('submissions.edit');
 
-    // Documents live on the private disk, so only the project's proponents and admins can open one.
+    // Documents live on the private "submissions" disk, so only the project's proponents and admins can open one.
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
         $path = $submission->{$stage.'_path'};
-        abort_unless($path && Storage::disk('local')->exists($path), 404);
+        abort_unless($path && Storage::disk('submissions')->exists($path), 404);
 
-        return Storage::disk('local')->response($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
+        return Storage::disk('submissions')->response($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     Route::middleware('admin')->group(function () {

@@ -161,8 +161,8 @@ class Submission extends Model
     public function latestUpload(): ?array
     {
         return collect(array_keys(self::DOCUMENTS))
-            ->filter(fn (string $stage) => $this->{$stage.'_path'} && Storage::disk('local')->exists($this->{$stage.'_path'}))
-            ->map(fn (string $stage) => ['stage' => $stage, 'at' => Carbon::createFromTimestamp(Storage::disk('local')->lastModified($this->{$stage.'_path'}))])
+            ->filter(fn (string $stage) => $this->{$stage.'_path'} && Storage::disk('submissions')->exists($this->{$stage.'_path'}))
+            ->map(fn (string $stage) => ['stage' => $stage, 'at' => Carbon::createFromTimestamp(Storage::disk('submissions')->lastModified($this->{$stage.'_path'}))])
             ->sortByDesc('at')
             ->first();
     }
@@ -175,7 +175,7 @@ class Submission extends Model
     {
         $old = $this->{$stage.'_path'};
 
-        $this->{$stage.'_path'} = $file->store('submissions', 'local');
+        $this->{$stage.'_path'} = $file->store('submissions', 'submissions');
         $this->awaiting_review = true;
 
         if ($stage === 'terminal') {
@@ -185,7 +185,7 @@ class Submission extends Model
         $this->save();
 
         if ($old) {
-            Storage::disk('local')->delete($old);
+            Storage::disk('submissions')->delete($old);
         }
     }
 }

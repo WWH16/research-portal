@@ -367,7 +367,8 @@ new #[Title('Manage Users')] class extends Component {
     @endif
 
     {{-- Closing either dialog forgets its account without a request, so later searches don't reload it --}}
-    <flux:modal name="user-form" wire:close="$set('editingId', null, false)" class="w-full md:w-[34rem]">
+    {{-- On phones the form opens as a sheet from the bottom edge, in thumb reach, instead of a floating card --}}
+    <flux:modal name="user-form" wire:close="$set('editingId', null, false)" class="w-full md:w-[34rem] max-sm:mb-0 max-sm:max-w-none max-sm:rounded-b-none">
         <form wire:submit="save" class="flex flex-col gap-6">
             <div>
                 <flux:heading size="lg">{{ $editingId ? __('Edit user') : __('New user') }}</flux:heading>
@@ -415,11 +416,12 @@ new #[Title('Manage Users')] class extends Component {
                 :required="! $editingId"
             />
 
-            <div class="flex justify-end gap-2">
+            {{-- Phones pin the actions to the sheet's bottom edge so Add user stays reachable while the form scrolls --}}
+            <div class="flex justify-end gap-2 max-sm:sticky max-sm:bottom-0 max-sm:-mx-6 max-sm:-mb-6 max-sm:grid max-sm:grid-cols-2 max-sm:border-t max-sm:border-line max-sm:bg-white max-sm:px-6 max-sm:pt-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]">
                 <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                    <flux:button variant="ghost" class="max-sm:h-11 max-sm:w-full">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="primary" data-test="save-user-button">
+                <flux:button type="submit" variant="primary" data-test="save-user-button" class="max-sm:h-11">
                     {{ $editingId ? __('Save changes') : __('Add user') }}
                 </flux:button>
             </div>

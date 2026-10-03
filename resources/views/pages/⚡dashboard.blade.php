@@ -379,14 +379,15 @@ new #[Title('Dashboard')] class extends Component {
                 @endforeach
             </flux:select>
 
-            <div class="flex items-center gap-2" data-test="date-range">
+            {{-- On phones the two dates share the row's width so the quick-range button stays on screen --}}
+            <div class="flex w-full items-center gap-2 sm:w-auto" data-test="date-range">
                 {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="w-40" />
+                <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
                 <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
-                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :aria-label="__('To')" class="w-40" />
+                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
 
                 <flux:dropdown position="bottom" align="end">
-                    <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" />
+                    <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" class="max-sm:size-11" />
                     <flux:menu>
                         <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
                         @if (now()->year > Submission::FIRST_YEAR)
@@ -416,13 +417,13 @@ new #[Title('Dashboard')] class extends Component {
             ];
         @endphp
 
-        {{-- Things blocking faculty from submitting, only when they apply --}}
+        {{-- Things blocking faculty from submitting, only when they apply. Fix-it buttons stack full width on phones --}}
         @if ($this->facultyWithoutDepartment > 0 || $this->missingSetup)
             <div class="mt-6 grid gap-3">
                 @if ($this->facultyWithoutDepartment > 0)
                     <flux:callout variant="warning" icon="exclamation-triangle" data-test="no-department-tile">
                         <flux:callout.heading>{{ trans_choice('{1} One faculty member has no college and can’t submit.|[2,*] :count faculty members have no college and can’t submit.', $this->facultyWithoutDepartment) }}</flux:callout.heading>
-                        <x-slot name="actions">
+                        <x-slot name="actions" class="max-sm:grid">
                             <flux:button size="sm" :href="route('users.index', ['college' => 'none', 'role' => 'faculty'])" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Assign colleges') }}</flux:button>
                         </x-slot>
                     </flux:callout>
@@ -434,7 +435,7 @@ new #[Title('Dashboard')] class extends Component {
                         <flux:callout.text>
                             {{ __('Faculty can’t submit until you add :lists.', ['lists' => collect($this->missingSetup)->keys()->join(', ', ' and ')]) }}
                         </flux:callout.text>
-                        <x-slot name="actions">
+                        <x-slot name="actions" class="flex-wrap max-sm:grid">
                             @foreach ($this->missingSetup as $label => $url)
                                 <flux:button size="sm" :href="$url" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Add :list', ['list' => $label]) }}</flux:button>
                             @endforeach
@@ -582,10 +583,11 @@ new #[Title('Dashboard')] class extends Component {
                 @else
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->waiting as $submission)
+                            {{-- Phones wrap the title to two lines instead of cutting it to a few words beside the button --}}
                             <li class="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
-                                    <p class="truncate text-sm text-zinc-500">
+                                    <p class="line-clamp-2 font-medium text-zinc-800 sm:line-clamp-1">{{ $submission->title }}</p>
+                                    <p class="text-sm text-zinc-500 sm:truncate">
                                         {{ $submission->user->name }}, {{ $submission->department->code }}.
                                         {{ __('At :status, updated :when', ['status' => __($submission->status), 'when' => $submission->updated_at->diffForHumans()]) }}
                                     </p>
@@ -651,7 +653,7 @@ new #[Title('Dashboard')] class extends Component {
 
                     @if (auth()->user()->department_id)
                         <flux:text class="mt-2">{{ __('Enter the project once, then upload each document on it as it’s ready.') }}</flux:text>
-                        <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-4">{{ __('New proposal') }}</flux:button>
+                        <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-4 max-sm:h-11 max-sm:w-full">{{ __('New proposal') }}</flux:button>
                     @else
                         <flux:text class="mt-2">{{ __('Your account has no college yet. Contact the Research Office to have one assigned.') }}</flux:text>
                     @endif

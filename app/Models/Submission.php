@@ -200,11 +200,11 @@ class Submission extends Model
     }
 
     /**
-     * The stage the project moves to next and where its document stands: "review" while an upload waits
-     * for the Research Office, "returned" when the document was reviewed but the stage didn't move, and
-     * "missing" when it hasn't been uploaded. Null once the project is Completed.
+     * The stage the project moves to next and where its document stands: "returned" when the document was
+     * reviewed but the stage didn't move, "missing" when it hasn't been uploaded. Null once the project is
+     * Completed. An upload still waiting for review is documentUnderReview()'s to report.
      *
-     * @return array{stage: string, document: string, state: 'review'|'returned'|'missing'}|null
+     * @return array{stage: string, document: string, state: 'returned'|'missing'}|null
      */
     public function nextStep(): ?array
     {
@@ -216,12 +216,7 @@ class Submission extends Model
 
         $document = self::STAGE_DOCUMENTS[$stage];
 
-        return match (true) {
-            // The upload under review can be a later stage's document, when a project skips ahead.
-            $this->awaiting_review === true => ['stage' => $stage, 'document' => $this->documentUnderReview() ?? $document, 'state' => 'review'],
-            (bool) $this->{$document.'_path'} => ['stage' => $stage, 'document' => $document, 'state' => 'returned'],
-            default => ['stage' => $stage, 'document' => $document, 'state' => 'missing'],
-        };
+        return ['stage' => $stage, 'document' => $document, 'state' => $this->{$document.'_path'} ? 'returned' : 'missing'];
     }
 
     /**

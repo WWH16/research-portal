@@ -39,10 +39,8 @@ class ProjectProgressTest extends TestCase
 
     public function test_the_next_step_follows_the_status_and_the_documents(): void
     {
-        $this->assertSame(
-            ['stage' => 'Concept', 'document' => 'concept', 'state' => 'review'],
-            $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf'])->nextStep(),
-        );
+        $this->assertSame('concept', $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf'])->documentUnderReview());
+        $this->assertNull($this->project(['status' => 'Submitted', 'awaiting_review' => false, 'concept_path' => 'submissions/concept.pdf'])->documentUnderReview());
         $this->assertSame(
             ['stage' => 'Detailed', 'document' => 'detailed', 'state' => 'missing'],
             $this->project(['status' => 'Concept', 'awaiting_review' => false])->nextStep(),
@@ -60,7 +58,7 @@ class ProjectProgressTest extends TestCase
 
         $project = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'detailed_path' => 'submissions/detailed.pdf']);
 
-        $this->assertSame(['stage' => 'Concept', 'document' => 'detailed', 'state' => 'review'], $project->nextStep());
+        $this->assertSame('detailed', $project->documentUnderReview());
     }
 
     public function test_an_upload_missing_from_disk_is_still_named_by_its_own_stage(): void
@@ -68,7 +66,7 @@ class ProjectProgressTest extends TestCase
         // Only the detailed proposal is on file, but its file is gone from the disk.
         $project = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'detailed_path' => 'submissions/lost.pdf']);
 
-        $this->assertSame('detailed', $project->nextStep()['document']);
+        $this->assertSame('detailed', $project->documentUnderReview());
     }
 
     public function test_a_completed_project_with_a_new_upload_says_it_waits_for_review(): void

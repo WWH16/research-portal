@@ -61,6 +61,9 @@ class Submission extends Model
     /** The documents a project collects, keyed by the prefix of the column that holds each one. */
     public const DOCUMENTS = ['concept' => 'Concept proposal', 'detailed' => 'Detailed proposal', 'terminal' => 'Terminal report'];
 
+    /** The document whose acceptance moves a project into each stage after Submitted. */
+    public const STAGE_DOCUMENTS = ['Concept' => 'concept', 'Detailed' => 'detailed', 'Completed' => 'terminal'];
+
     protected function casts(): array
     {
         return [
@@ -172,6 +175,40 @@ class Submission extends Model
         return $this->terminal_uploaded_at && $this->target_date
             ? $this->terminal_uploaded_at->lte($this->target_date->endOfDay())
             : null;
+    }
+
+    /**
+     * Where the project is in STATUSES, counting from 0. A status outside the list, such as one left
+     * from before the stages existed, counts as Submitted.
+     */
+    public function stageIndex(): int
+    {
+        return (int) array_search($this->status, self::STATUSES, true);
+    }
+
+    /**
+     * The stage the project moves to next and where its document stands: "review" while an upload waits
+     * for the Research Office, "returned" when the document was reviewed but the stage didn't move, and
+     * "missing" when it hasn't been uploaded. Null once the project is Completed.
+     *
+     * @return array{stage: string, document: string, state: 'review'|'returned'|'missing'}|null
+     */
+    public function nextStep(): ?array
+    {
+        $stage = self::STATUSES[$this->stageIndex() + 1] ?? null;
+
+        if ($stage === null) {
+            return null;
+        }
+
+        $document = self::STAGE_DOCUMENTS[$stage];
+
+        return match (true) {
+            // The upload under review can be a later stage's document, when a project skips ahead.
+            $this->awaiting_review === true => ['stage' => $stage, 'document' => $this->latestUpload()['stage'] ?? $document, 'state' => 'review'],
+            (bool) $this->{$document.'_path'} => ['stage' => $stage, 'document' => $document, 'state' => 'returned'],
+            default => ['stage' => $stage, 'document' => $document, 'state' => 'missing'],
+        };
     }
 
     /**

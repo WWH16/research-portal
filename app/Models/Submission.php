@@ -97,14 +97,6 @@ class Submission extends Model
     }
 
     /**
-     * @return BelongsTo<ResearchType, $this>
-     */
-    public function researchType(): BelongsTo
-    {
-        return $this->belongsTo(ResearchType::class);
-    }
-
-    /**
      * @return BelongsTo<Category, $this>
      */
     public function category(): BelongsTo

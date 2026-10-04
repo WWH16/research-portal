@@ -4,7 +4,6 @@ use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Proponent;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Support\Arr;
@@ -30,7 +29,6 @@ new #[Title('Research Project')] class extends Component {
 
     public string $title = '';
     public string $abstract = '';
-    public ?int $research_type_id = null;
     public ?int $category_id = null;
     public string $designation = '';
     public string $start_date = '';
@@ -61,7 +59,7 @@ new #[Title('Research Project')] class extends Component {
         }
 
         $this->submission = $submission;
-        $this->fill($submission->only(['title', 'research_type_id', 'category_id']));
+        $this->fill($submission->only(['title', 'category_id']));
         $this->abstract = (string) $submission->abstract;
         $this->designation = (string) $submission->designation;
         $this->start_date = (string) $submission->start_date?->toDateString();
@@ -116,7 +114,6 @@ new #[Title('Research Project')] class extends Component {
             'title' => ['required', 'string', 'max:255'],
             // A MySQL TEXT column holds 65,535 bytes, so 10,000 characters fit even when each takes four.
             'abstract' => ['required', 'string', 'max:10000'],
-            'research_type_id' => ['required', 'integer', 'exists:research_types,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'designation' => ['nullable', 'string', 'max:100'],
             // The researcher proposes the dates once; after that only the Research Office moves them, with Change dates on Submissions.
@@ -130,7 +127,6 @@ new #[Title('Research Project')] class extends Component {
             'documents.*' => ['file', 'mimes:pdf,doc,docx', 'max:10240'],
         ], [
             'documents.required' => __('Upload at least one document.'),        ], [
-            'research_type_id' => __('research type'),
             'category_id' => __('category'),
             'start_date' => __('starting date'),
             'target_date' => __('completion date'),
@@ -164,19 +160,17 @@ new #[Title('Research Project')] class extends Component {
             $submission->fill([
                 'title' => $validated['title'],
                 'abstract' => $validated['abstract'],
-                'research_type_id' => $validated['research_type_id'],
                 'category_id' => $validated['category_id'],
                 'designation' => $validated['designation'] ?: null,
                 ...Arr::only($validated, ['start_date', 'target_date']),
             ]);
 
-            // What an edit changed, read before saving. Title, dates, research type and category keep their old and new
-            // values (option names saved now, in case one is renamed later); other fields, like the abstract, are only named.
+            // What an edit changed, read before saving. Title, dates and category keep their old and new values
+            // (the category's name saved now, in case it is renamed later); other fields, like the abstract, are only named.
             $readers = [
                 'title' => fn (?string $title) => $title,
                 'start_date' => fn ($date) => $date?->toDateString(),
                 'target_date' => fn ($date) => $date?->toDateString(),
-                'research_type_id' => fn (?int $id) => ResearchType::find($id)?->name,
                 'category_id' => fn (?int $id) => Category::find($id)?->name,
             ];
             $dirty = array_keys($submission->getDirty());
@@ -282,12 +276,6 @@ new #[Title('Research Project')] class extends Component {
             ->all();
     }
 
-    #[Computed]
-    public function researchTypes(): Collection
-    {
-        return ResearchType::orderBy('name')->get(['id', 'name']);
-    }
-
     /**
      * The signed-in member's department, which every new project they submit is filed under.
      */
@@ -342,25 +330,17 @@ new #[Title('Research Project')] class extends Component {
 
         <flux:textarea wire:model="abstract" :label="__('Abstract')" rows="6" required />
 
-        {{-- Real, selectable blank options instead of Flux's disabled placeholder: after a re-render the browser
-             can't show a disabled option, so it showed the first real one while nothing was chosen. --}}
+        {{-- Category, college and designation share one grid, so the filing details read as one group --}}
         <div class="grid gap-6 sm:grid-cols-2">
-            <flux:select wire:model="research_type_id" :label="__('Research type')" required>
-                <flux:select.option value="">{{ __('Select type') }}</flux:select.option>
-                @foreach ($this->researchTypes as $type)
-                    <flux:select.option :value="$type->id">{{ $type->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
-
+            {{-- A real, selectable blank option instead of Flux's disabled placeholder: after a re-render the browser
+                 can't show a disabled option, so it showed the first real one while nothing was chosen. --}}
             <flux:select wire:model="category_id" :label="__('Category')" required>
                 <flux:select.option value="">{{ __('Select category') }}</flux:select.option>
                 @foreach ($this->categories as $category)
                     <flux:select.option :value="$category->id">{{ $category->name }}</flux:select.option>
                 @endforeach
             </flux:select>
-        </div>
 
-        <div class="grid gap-6 sm:grid-cols-2">
             <flux:input
                 :label="__('College')"
                 :value="$this->department ? $this->department->code : __('Not assigned')"

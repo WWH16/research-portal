@@ -291,7 +291,7 @@ class ActivityLogTest extends TestCase
 
         $form->set('title', 'Solar Dryer Study, Phase 2')
             ->set('proponents.0.role', 'Co-Leader')
-            ->set('research_type_id', ResearchType::create(['name' => 'Capstone'])->id)
+            ->set('category_id', Category::create(['name' => 'Agriculture'])->id)
             ->call('removeProponent', 1)
             ->set('proponents.1', ['study' => 1, 'user_id' => User::factory()->create(['name' => 'Jose Reyes'])->id, 'role' => 'Staff'])
             ->call('save')
@@ -301,12 +301,12 @@ class ActivityLogTest extends TestCase
         $this->assertSame([
             'values' => [
                 'title' => ['Solar Dryer Study', 'Solar Dryer Study, Phase 2'],
-                'research_type_id' => ['Thesis', 'Capstone'],
+                'category_id' => ['Computing', 'Agriculture'],
             ],
             'proponents' => ['added' => [['Jose Reyes', 'Staff']], 'removed' => [['Ana Cruz', 'Co-Leader']], 'roles' => [[$maria->name, 'Leader', 'Co-Leader']]],
         ], $log->properties);
         $this->assertSame(
-            'Changed the title from “Solar Dryer Study” to “Solar Dryer Study, Phase 2” · Changed the research type from Thesis to Capstone · Added Jose Reyes as Staff to the proponents · Removed Co-Leader Ana Cruz from the proponents · Changed '.$maria->name.' from Leader to Co-Leader',
+            'Changed the title from “Solar Dryer Study” to “Solar Dryer Study, Phase 2” · Changed the category from Computing to Agriculture · Added Jose Reyes as Staff to the proponents · Removed Co-Leader Ana Cruz from the proponents · Changed '.$maria->name.' from Leader to Co-Leader',
             $log->note(),
         );
     }

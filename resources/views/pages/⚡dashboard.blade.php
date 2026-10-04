@@ -2,7 +2,6 @@
 
 use App\Models\Category;
 use App\Models\Department;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -207,7 +206,7 @@ new #[Title('Dashboard')] class extends Component {
     #[Computed]
     public function myProjects(): Collection
     {
-        return Submission::involving(Auth::user())->with('researchType:id,name')->latest()->get();
+        return Submission::involving(Auth::user())->with('category:id,name')->latest()->get();
     }
 
     /**
@@ -317,7 +316,6 @@ new #[Title('Dashboard')] class extends Component {
         // One department picked would chart a single bar, so that chart drops out.
         return array_filter([
             __('By college') => $this->department === '' ? $top(Department::class, 'code') : null,
-            __('By research type') => $top(ResearchType::class, 'name'),
             __('By category') => $top(Category::class, 'name'),
         ]);
     }
@@ -337,7 +335,6 @@ new #[Title('Dashboard')] class extends Component {
     public function missingSetup(): array
     {
         return array_filter([
-            __('research types') => ResearchType::exists() ? null : route('research-types.index'),
             __('categories') => Category::exists() ? null : route('categories.index'),
             __('colleges') => Department::exists() ? null : route('departments.index'),
         ]);
@@ -545,7 +542,8 @@ new #[Title('Dashboard')] class extends Component {
 
             {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
-                <flux:card class="lg:col-span-4">
+                {{-- Colleges and categories side by side; the category chart alone takes the row once a college is picked --}}
+                <flux:card @class(['lg:col-span-6' => count($this->breakdowns) > 1, 'lg:col-span-12' => count($this->breakdowns) === 1])>
                     <flux:heading level="2">{{ $heading }}</flux:heading>
 
                     @if ($rows->isEmpty())
@@ -678,7 +676,7 @@ new #[Title('Dashboard')] class extends Component {
                             <li class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
-                                    <p class="truncate text-sm text-zinc-500">{{ $submission->researchType->name }}, {{ $submission->year }}</p>
+                                    <p class="truncate text-sm text-zinc-500">{{ $submission->category->name }}, {{ $submission->year }}</p>
                                 </div>
                                 <flux:badge size="sm" :color="\App\Models\Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">{{ __($submission->status) }}</flux:badge>
                             </li>

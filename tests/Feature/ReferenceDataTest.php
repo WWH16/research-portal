@@ -22,7 +22,6 @@ class ReferenceDataTest extends TestCase
     public static function pages(): array
     {
         return [
-            'research types' => ['research-types.index', 'Research Types'],
             'categories' => ['categories.index', 'Categories'],
             'departments' => ['departments.index', 'Colleges'],
         ];
@@ -34,9 +33,16 @@ class ReferenceDataTest extends TestCase
     public static function namedModels(): array
     {
         return [
-            'research types' => [ResearchType::class, 'research-types'],
             'categories' => [Category::class, 'categories'],
         ];
+    }
+
+    public function test_research_types_are_no_longer_a_filing_option(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get('/research-types')->assertNotFound();
+        $this->get(route('dashboard'))->assertDontSee('Research Types');
     }
 
     #[DataProvider('pages')]
@@ -128,7 +134,7 @@ class ReferenceDataTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
         $closes = 'wire:close="$set(\'deletingId\', null, false)"';
 
-        Livewire::test('pages::named-records.index', ['type' => 'research-types'])->assertSeeHtml($closes);
+        Livewire::test('pages::named-records.index', ['type' => 'categories'])->assertSeeHtml($closes);
         Livewire::test('pages::departments.index')->assertSeeHtml($closes);
     }
 

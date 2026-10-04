@@ -259,8 +259,10 @@ class DashboardTest extends TestCase
             ->assertSee("{$lastMonth}: 2 projects, 1 Submitted, 1 Concept, 0 Detailed, 0 Completed")
             ->assertSee('Show as table');
 
-        $byType = Livewire::withQueryParams($sinceLastMonth)->test('pages::dashboard')->instance()->breakdowns[__('By research type')];
-        $this->assertSame([['label' => 'Thesis', 'title' => 'Thesis', 'count' => 2]], $byType->all());
+        // Projects have no research type any more, so the summary charts colleges and categories only.
+        $breakdowns = Livewire::withQueryParams($sinceLastMonth)->test('pages::dashboard')->instance()->breakdowns;
+        $this->assertSame([__('By college'), __('By category')], array_keys($breakdowns));
+        $this->assertSame([['label' => 'Computing', 'title' => 'Computing', 'count' => 2]], $breakdowns[__('By category')]->all());
 
         // The chart follows the college filter like the rest of the summary.
         Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
@@ -278,7 +280,7 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard'))
             ->assertSee('One faculty member has no college')
             ->assertSee('Finish setup')
-            ->assertSee(route('research-types.index'), escape: false)
+            ->assertSee(route('categories.index'), escape: false)
             ->assertSee('Nothing is waiting for review.');
     }
 

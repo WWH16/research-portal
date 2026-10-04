@@ -28,10 +28,6 @@
 
                 @if (auth()->user()->isAdmin())
                     <flux:sidebar.group :heading="__('Filing options')" class="grid">
-                        <flux:sidebar.item icon="beaker" :href="route('research-types.index')" :current="request()->routeIs('research-types.*')" wire:navigate>
-                            {{ __('Research Types') }}
-                        </flux:sidebar.item>
-
                         <flux:sidebar.item icon="tag" :href="route('categories.index')" :current="request()->routeIs('categories.*')" wire:navigate>
                             {{ __('Categories') }}
                         </flux:sidebar.item>

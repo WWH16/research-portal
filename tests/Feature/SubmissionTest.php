@@ -207,7 +207,6 @@ class SubmissionTest extends TestCase
             ->assertHasErrors([
                 'title' => 'required',
                 'abstract' => 'required',
-                'research_type_id' => 'required',
                 'category_id' => 'required',
                 'start_date' => 'required',
                 'target_date' => 'required',
@@ -230,22 +229,37 @@ class SubmissionTest extends TestCase
             ->assertHasErrors(['abstract' => 'max']);
     }
 
+    public function test_a_proposal_is_filed_without_a_research_type(): void
+    {
+        Storage::fake('submissions');
+
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $this->actingAs(User::factory()->create(['department_id' => $department->id]));
+
+        // The stage tracker and the documents say where a project is, so there is no research type to pick.
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->assertDontSee('Research type')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull(Submission::sole()->research_type_id);
+    }
+
     public function test_blank_choices_are_real_options_and_still_required(): void
     {
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
-        ResearchType::create(['name' => 'Concept Proposal']);
+        Category::create(['name' => 'Computing']);
 
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         // A disabled placeholder can't stay shown after a re-render, so the blank choice must be a real option.
         Livewire::test('pages::submissions.create')
-            ->assertSeeHtml('>Select type</option>')
+            ->assertSeeHtml('>Select category</option>')
             ->assertDontSeeHtml('class="placeholder"')
-            ->set('research_type_id', '')
             ->set('category_id', '')
             ->set('proponents.0.user_id', '')
             ->call('save')
-            ->assertHasErrors(['research_type_id' => 'required', 'category_id' => 'required', 'proponents.0.user_id' => 'required']);
+            ->assertHasErrors(['category_id' => 'required', 'proponents.0.user_id' => 'required']);
     }
 
     public function test_completion_date_must_come_after_the_starting_date(): void
@@ -934,7 +948,6 @@ class SubmissionTest extends TestCase
         return $component
             ->set('title', $title)
             ->set('abstract', 'An abstract.')
-            ->set('research_type_id', ResearchType::firstOrCreate(['name' => 'Thesis'])->id)
             ->set('category_id', Category::firstOrCreate(['name' => 'Computing'])->id)
             ->set('start_date', now()->toDateString())
             ->set('target_date', now()->addYear()->toDateString())

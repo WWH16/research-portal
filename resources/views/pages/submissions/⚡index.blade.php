@@ -144,7 +144,7 @@ new #[Title('Submissions')] class extends Component {
         $filename = 'submissions-'.($filters ? Str::slug(implode(' ', $filters)) : today()->toDateString()).'.csv';
         $yesNo = fn (?bool $value) => $value === null ? '' : ($value ? __('Yes') : __('No'));
 
-        $rows = $this->filtered()->with(['researchType:id,name', 'category:id,name'])->latest()->lazy()->map(fn (Submission $project) => [
+        $rows = $this->filtered()->with('category:id,name')->latest()->lazy()->map(fn (Submission $project) => [
             $project->title,
             $project->year,
             $project->department->code,
@@ -156,7 +156,6 @@ new #[Title('Submissions')] class extends Component {
                 ->map(fn ($rows, $study) => __('Study :number', ['number' => $study]).': '.$rows->map(fn ($row) => $row->user->name.' ('.$row->role.')')->join(', '))
                 ->join('; '),
             $project->proponents->unique('user_id')->count(),
-            $project->researchType->name,
             $project->category->name,
             $project->start_date?->toDateString(),
             $project->target_date?->toDateString(),
@@ -170,7 +169,7 @@ new #[Title('Submissions')] class extends Component {
 
         return response()->csv($filename, [
             __('Title'), __('Year'), __('College'), __('Status'), __('Awaiting review'), __('Delayed'), __('Filed by'),
-            __('Proponents'), __('Faculty count'), __('Research type'), __('Category'), __('Starting date'), __('Completion date'),
+            __('Proponents'), __('Faculty count'), __('Category'), __('Starting date'), __('Completion date'),
             __('Terminal report uploaded'), __('Finished on time'), __('Documents on file'), __('Remarks'), __('Encoded on'), __('Abstract'),
         ], $rows);
     }
@@ -179,7 +178,7 @@ new #[Title('Submissions')] class extends Component {
     public function reviewing(): ?Submission
     {
         return $this->reviewingId
-            ? Submission::with(['user:id,name', 'department:id,code', 'researchType:id,name', 'category:id,name', 'proponents.user:id,name,department_id', 'proponents.user.department:id,code'])->find($this->reviewingId)
+            ? Submission::with(['user:id,name', 'department:id,code', 'category:id,name', 'proponents.user:id,name,department_id', 'proponents.user.department:id,code'])->find($this->reviewingId)
             : null;
     }
 
@@ -520,11 +519,8 @@ new #[Title('Submissions')] class extends Component {
                     @endif
 
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                        <div>
-                            <dt class="text-zinc-500">{{ __('Type') }}</dt>
-                            <dd class="mt-1 font-medium text-zinc-800">{{ $this->reviewing->researchType->name }}</dd>
-                        </div>
-                        <div>
+                        {{-- Full width, so year and encoded date, then the two project dates, stay paired below --}}
+                        <div class="col-span-2">
                             <dt class="text-zinc-500">{{ __('Category') }}</dt>
                             <dd class="mt-1 font-medium text-zinc-800">{{ $this->reviewing->category->name }}</dd>
                         </div>

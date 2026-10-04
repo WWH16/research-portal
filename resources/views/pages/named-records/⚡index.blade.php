@@ -2,7 +2,6 @@
 
 use App\Models\ActivityLog;
 use App\Models\Category;
-use App\Models\ResearchType;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -13,17 +12,12 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /*
- * Research types and categories are both plain named lists that submissions point at,
- * so one page manages either. The route picks which one through its "type" default.
+ * Plain named lists that submissions point at, such as categories, managed on one page.
+ * The route picks the list through its "type" default. Research types were one until proposals stopped
+ * picking a type; their old rows stay in the database for the projects filed with them.
  */
 new class extends Component {
     public const TYPES = [
-        'research-types' => [
-            'model' => ResearchType::class,
-            'title' => 'Research Types',
-            'description' => 'Kinds of research a proposal can be filed as.',
-            'singular' => 'research type',
-        ],
         'categories' => [
             'model' => Category::class,
             'title' => 'Categories',

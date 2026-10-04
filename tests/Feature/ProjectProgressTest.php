@@ -94,8 +94,14 @@ class ProjectProgressTest extends TestCase
     {
         $this->actingAs($this->maria);
 
-        $returned = $this->project(['status' => 'Concept', 'awaiting_review' => false, 'detailed_path' => 'submissions/detailed.pdf']);
+        $returned = $this->project(['status' => 'Concept', 'awaiting_review' => false, 'detailed_path' => 'submissions/detailed.pdf', 'remarks' => 'Add the budget table.']);
         $this->get(route('drive.show', $returned))->assertSee('Returned with remarks. Waiting for a corrected detailed proposal.');
+
+        // Moved back, or accepted only as far as Concept, without remarks: nothing to go looking for.
+        $unremarked = $this->project(['status' => 'Concept', 'awaiting_review' => false, 'detailed_path' => 'submissions/detailed.pdf']);
+        $this->get(route('drive.show', $unremarked))
+            ->assertSee('The detailed proposal was reviewed without moving the project to Detailed. Upload a new one when it’s ready.')
+            ->assertDontSee('Returned with remarks');
 
         $waiting = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf']);
         $this->get(route('drive.show', $waiting))->assertSee('The concept proposal is waiting for the Research Office to review.');

@@ -32,7 +32,10 @@
                 @php($document = \Illuminate\Support\Str::lower(__(\App\Models\Submission::DOCUMENTS[$step['document']])))
                 {{ match ($step['state']) {
                     'review' => __('The :document is waiting for the Research Office to review.', ['document' => $document]),
-                    'returned' => __('Returned with remarks. Waiting for a corrected :document.', ['document' => $document]),
+                    // A review can also move a project back, or stop short of a document already on file, without remarks.
+                    'returned' => $submission->remarks
+                        ? __('Returned with remarks. Waiting for a corrected :document.', ['document' => $document])
+                        : __('The :document was reviewed without moving the project to :stage. Upload a new one when it’s ready.', ['document' => $document, 'stage' => __($step['stage'])]),
                     default => __('Next: the :document, to move to :stage.', ['document' => $document, 'stage' => __($step['stage'])]),
                 } }}
             @endif

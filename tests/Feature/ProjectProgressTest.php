@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\ResearchType;
@@ -112,6 +113,66 @@ class ProjectProgressTest extends TestCase
             ->call('review', $project->id)
             ->assertSee('data-test="project-stages"', false)
             ->assertDontSee('data-test="project-next-step"', false);
+    }
+
+    public function test_the_drive_page_lists_uploads_and_reviews_newest_first(): void
+    {
+        $project = $this->project(['status' => 'Concept', 'awaiting_review' => false]);
+
+        ActivityLog::record('submission.created', $project, ['documents' => ['concept']], $this->maria);
+        ActivityLog::record('submission.reviewed', $project, ['status' => ['Submitted', 'Submitted'], 'remarks' => 'Add the budget table.'], $this->admin);
+        ActivityLog::record('submission.updated', $project, ['documents' => ['concept']], $this->maria);
+        ActivityLog::record('submission.reviewed', $project, ['status' => ['Submitted', 'Concept']], $this->admin);
+
+        $this->actingAs($this->maria)
+            ->get(route('drive.show', $project))
+            ->assertSee('data-test="drive-history"', false)
+            ->assertSeeInOrder([
+                'Research Office', 'Moved the project from Submitted to Concept',
+                'Maria Santos', 'Updated the project', 'Uploaded the concept proposal',
+                'Research Office', 'Returned it with remarks, kept at Submitted', 'Remarks: Add the budget table.',
+                'Maria Santos', 'Submitted the proposal', 'Uploaded the concept proposal',
+            ])
+            // Reviews are the office's, not one staff member's.
+            ->assertDontSee('Ana Admin');
+    }
+
+    public function test_history_holds_only_this_projects_entries(): void
+    {
+        $project = $this->project(['status' => 'Submitted', 'awaiting_review' => false]);
+        $other = $this->project(['status' => 'Submitted', 'awaiting_review' => false]);
+
+        ActivityLog::record('submission.created', $project, [], $this->maria);
+        ActivityLog::record('submission.created', $other, [], $this->maria);
+        // A college or account logged under the same id number is not part of the project.
+        ActivityLog::create(['action' => 'filing.updated', 'subject_id' => $project->id, 'subject_label' => 'CCS', 'properties' => ['kind' => 'college']]);
+        ActivityLog::create(['action' => 'user.updated', 'subject_id' => $project->id, 'subject_label' => 'Maria Santos']);
+
+        $history = $project->history();
+
+        $this->assertSame(['submission.created'], $history->pluck('action')->all());
+        $this->assertSame([$project->id], $history->pluck('subject_id')->all());
+    }
+
+    public function test_history_text_typed_by_people_is_escaped(): void
+    {
+        $project = $this->project(['status' => 'Submitted', 'awaiting_review' => false]);
+        ActivityLog::record('submission.reviewed', $project, ['status' => ['Submitted', 'Submitted'], 'remarks' => '<b>Fix this</b>'], $this->admin);
+
+        $this->actingAs($this->maria)
+            ->get(route('drive.show', $project))
+            ->assertSee('Remarks: <b>Fix this</b>')
+            ->assertDontSee('<b>Fix this</b>', false);
+    }
+
+    public function test_a_project_with_no_recorded_history_says_so(): void
+    {
+        $project = $this->project(['status' => 'Submitted', 'awaiting_review' => false]);
+
+        $this->actingAs($this->maria)
+            ->get(route('drive.show', $project))
+            ->assertSee('Nothing recorded yet.')
+            ->assertDontSee('data-test="drive-history"', false);
     }
 
     private function project(array $attributes = []): Submission

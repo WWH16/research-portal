@@ -271,6 +271,34 @@ class ActivityLog extends Model
     }
 
     /**
+     * Who to name for an entry in a project's history. Reviews and date changes are the Research Office's,
+     * so faculty see the office rather than one staff member.
+     */
+    public function historyActor(): string
+    {
+        return in_array($this->action, ['submission.reviewed', 'submission.dates_changed'], true)
+            ? __('Research Office')
+            : ($this->actor_name ?? __('Unknown'));
+    }
+
+    /**
+     * What happened, as a line in the project's own history, where naming the project would only repeat the page.
+     */
+    public function historyHeadline(): string
+    {
+        $status = $this->properties['status'] ?? [null, null];
+
+        return match (true) {
+            $this->action === 'submission.created' => __('Submitted the proposal'),
+            $this->action === 'submission.updated' => __('Updated the project'),
+            $this->action === 'submission.dates_changed' => __('Changed the dates'),
+            $this->change() !== null => __('Moved the project from :from to :to', ['from' => __($status[0]), 'to' => __($status[1])]),
+            $this->remarks() !== null => __('Returned it with remarks, kept at :status', ['status' => __((string) $status[1])]),
+            default => __('Reviewed it, kept at :status', ['status' => __((string) $status[1])]),
+        };
+    }
+
+    /**
      * A project's Drive page, so the subject line can link to it.
      */
     public function subjectUrl(): ?string
@@ -309,7 +337,7 @@ class ActivityLog extends Model
                 isset($p['no_account']) => __('No account uses this email'),
                 default => __('Wrong password'),
             },
-            in_array($this->action, ['submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? []),
+            in_array($this->action, ['submission.created', 'submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? []),
             $this->action === 'submission.reviewed' && isset($p['status']) && $p['status'][0] === $p['status'][1] => __('Kept at :status', ['status' => $p['status'][1]]),
             $this->action === 'user.created' && is_string($p['role'] ?? null) => __(':role role', ['role' => Str::ucfirst($p['role'])]),
             $this->action === 'user.updated' && isset($p['password']) => __('New password set'),

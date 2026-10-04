@@ -35,6 +35,7 @@ new #[Title('Research Drive')] class extends Component {
     $project = $submission;
     $admin = auth()->user()->isAdmin();
     $onTime = $project->completedOnTime();
+    $history = $project->history();
 @endphp
 
 <section class="mx-auto w-full max-w-4xl">
@@ -144,5 +145,31 @@ new #[Title('Research Drive')] class extends Component {
                 </div>
             @endforeach
         </div>
+    </section>
+
+    <section class="mt-10" aria-labelledby="history-heading">
+        <flux:heading level="2" id="history-heading">{{ __('History') }}</flux:heading>
+        @if ($history->isEmpty())
+            <flux:text class="mt-3 text-sm">{{ __('Nothing recorded yet.') }}</flux:text>
+        @else
+            <ol class="mt-3 divide-y divide-line border-y border-line" data-test="drive-history">
+                @foreach ($history as $entry)
+                    <li class="py-3">
+                        <p class="text-sm text-zinc-500">
+                            <span class="font-medium text-zinc-700">{{ $entry->historyActor() }}</span>
+                            · <time datetime="{{ $entry->created_at->toIso8601String() }}">{{ $entry->day() }}, {{ $entry->created_at->format('g:i A') }}</time>
+                        </p>
+                        <p class="mt-1 font-medium text-zinc-800">{{ $entry->historyHeadline() }}</p>
+                        {{-- A review's note only repeats the headline's "kept at" --}}
+                        @if ($entry->action !== 'submission.reviewed' && ($note = $entry->note()) !== '')
+                            <p class="mt-1 text-sm text-zinc-600">{{ $note }}</p>
+                        @endif
+                        @if ($remarks = $entry->remarks())
+                            <p class="mt-1 whitespace-pre-line text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                        @endif
+                    </li>
+                @endforeach
+            </ol>
+        @endif
     </section>
 </section>

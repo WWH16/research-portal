@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -209,6 +210,17 @@ class Submission extends Model
             (bool) $this->{$document.'_path'} => ['stage' => $stage, 'document' => $document, 'state' => 'returned'],
             default => ['stage' => $stage, 'document' => $document, 'state' => 'missing'],
         };
+    }
+
+    /**
+     * What happened to the project, newest first, from the activity log. Accounts and colleges are logged
+     * with their own ids in the same column, so only submission.* entries belong to the project.
+     *
+     * @return EloquentCollection<int, ActivityLog>
+     */
+    public function history(): EloquentCollection
+    {
+        return ActivityLog::where('subject_id', $this->id)->where('action', 'like', 'submission.%')->latest('id')->get();
     }
 
     /**

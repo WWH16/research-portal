@@ -3,63 +3,32 @@
 use App\Models\ActivityLog;
 use App\Models\Category;
 use Flux\Flux;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Locked;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /*
- * Plain named lists that submissions point at, such as categories, managed on one page.
- * The route picks the list through its "type" default. Research types were one until proposals stopped
- * picking a type; their old rows stay in the database for the projects filed with them.
+ * The categories a proposal can be filed under. A category in use can be renamed but not deleted.
  */
-new class extends Component {
-    public const TYPES = [
-        'categories' => [
-            'model' => Category::class,
-            'title' => 'Categories',
-            'description' => 'Subject areas a proposal can be filed under.',
-            'singular' => 'category',
-        ],
-    ];
-
-    #[Locked]
-    public string $type;
-
+new #[Title('Categories')] class extends Component {
     public ?int $editingId = null;
     public string $name = '';
 
     public ?int $deletingId = null;
 
-    public function mount(string $type): void
-    {
-        abort_unless(isset(self::TYPES[$type]), 404);
-
-        $this->type = $type;
-    }
-
-    /**
-     * @return array{model: class-string<Model>, title: string, description: string, singular: string}
-     */
-    #[Computed]
-    public function config(): array
-    {
-        return self::TYPES[$this->type];
-    }
-
     #[Computed]
     public function records(): Collection
     {
-        return $this->config['model']::withCount('submissions')->orderBy('name')->get();
+        return Category::withCount('submissions')->orderBy('name')->get();
     }
 
     #[Computed]
-    public function deleting(): ?Model
+    public function deleting(): ?Category
     {
-        return $this->deletingId ? $this->config['model']::withCount('submissions')->find($this->deletingId) : null;
+        return $this->deletingId ? Category::withCount('submissions')->find($this->deletingId) : null;
     }
 
     /**
@@ -78,7 +47,7 @@ new class extends Component {
      */
     public function edit(int $id): void
     {
-        $record = $this->config['model']::findOrFail($id);
+        $record = Category::findOrFail($id);
 
         $this->editingId = $record->id;
         $this->name = $record->name;
@@ -92,28 +61,27 @@ new class extends Component {
      */
     public function save(): void
     {
-        $model = $this->config['model'];
         $this->name = trim($this->name);
 
         $validated = $this->validate([
-            'name' => ['required', 'string', 'max:50', Rule::unique($model)->ignore($this->editingId)],
+            'name' => ['required', 'string', 'max:50', Rule::unique(Category::class)->ignore($this->editingId)],
         ]);
 
         if ($this->editingId) {
             // Each change and its log entry save together, so a failed log write never leaves a change the log missed.
-            DB::transaction(function () use ($model, $validated) {
-                $record = $model::findOrFail($this->editingId);
+            DB::transaction(function () use ($validated) {
+                $record = Category::findOrFail($this->editingId);
                 $record->update($validated);
 
                 if ($record->wasChanged('name')) {
-                    ActivityLog::record('filing.updated', $record, ['kind' => $this->config['singular'], 'from' => $record->getPrevious()['name']]);
+                    ActivityLog::record('filing.updated', $record, ['kind' => 'category', 'from' => $record->getPrevious()['name']]);
                 }
             });
 
-            Flux::toast(variant: 'success', text: __(':Type updated.', ['type' => $this->config['singular']]));
+            Flux::toast(variant: 'success', text: __('Category updated.'));
         } else {
-            DB::transaction(fn () => ActivityLog::record('filing.created', $model::create($validated), ['kind' => $this->config['singular']]));
-            Flux::toast(variant: 'success', text: __(':Type added.', ['type' => $this->config['singular']]));
+            DB::transaction(fn () => ActivityLog::record('filing.created', Category::create($validated), ['kind' => 'category']));
+            Flux::toast(variant: 'success', text: __('Category added.'));
         }
 
         Flux::modal('named-record-form')->close();
@@ -137,7 +105,7 @@ new class extends Component {
      */
     public function delete(): void
     {
-        $record = $this->config['model']::withCount('submissions')->findOrFail($this->deletingId);
+        $record = Category::withCount('submissions')->findOrFail($this->deletingId);
 
         if ($record->submissions_count > 0) {
             return;
@@ -145,18 +113,13 @@ new class extends Component {
 
         DB::transaction(function () use ($record) {
             $record->delete();
-            ActivityLog::record('filing.deleted', $record, ['kind' => $this->config['singular']]);
+            ActivityLog::record('filing.deleted', $record, ['kind' => 'category']);
         });
 
         Flux::modal('named-record-delete')->close();
-        Flux::toast(variant: 'success', text: __(':Type deleted.', ['type' => $this->config['singular']]));
+        Flux::toast(variant: 'success', text: __('Category deleted.'));
         $this->reset('deletingId');
         unset($this->records, $this->deleting);
-    }
-
-    public function rendering($view): void
-    {
-        $view->title(__($this->config['title']));
     }
 }; ?>
 
@@ -164,8 +127,8 @@ new class extends Component {
     <header class="flex items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0">
-            <flux:heading size="xl" level="1">{{ __($this->config['title']) }}</flux:heading>
-            <flux:text class="mt-1">{{ __($this->config['description']) }}</flux:text>
+            <flux:heading size="xl" level="1">{{ __('Categories') }}</flux:heading>
+            <flux:text class="mt-1">{{ __('Subject areas a proposal can be filed under.') }}</flux:text>
         </div>
         <flux:spacer />
         <flux:button variant="primary" icon="plus" wire:click="create" data-test="new-named-record-button">
@@ -175,7 +138,7 @@ new class extends Component {
 
     @if ($this->records->isEmpty())
         <div class="mt-8 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-            <flux:heading>{{ __('No :types yet', ['types' => str($this->config['singular'])->plural()]) }}</flux:heading>
+            <flux:heading>{{ __('No categories yet') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Add one so proposals can be classified when they are submitted.') }}</flux:text>
         </div>
     @else
@@ -209,7 +172,7 @@ new class extends Component {
 
     <flux:modal name="named-record-form" class="w-full sm:w-96">
         <form wire:submit="save" class="flex flex-col gap-6">
-            <flux:heading size="lg">{{ $editingId ? __('Edit :type', ['type' => $this->config['singular']]) : __('New :type', ['type' => $this->config['singular']]) }}</flux:heading>
+            <flux:heading size="lg">{{ $editingId ? __('Edit category') : __('New category') }}</flux:heading>
 
             <flux:input wire:model="name" :label="__('Name')" type="text" maxlength="50" required autofocus />
 
@@ -218,7 +181,7 @@ new class extends Component {
                     <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
                 <flux:button type="submit" variant="primary" data-test="save-named-record-button">
-                    {{ $editingId ? __('Save changes') : __('Add :type', ['type' => $this->config['singular']]) }}
+                    {{ $editingId ? __('Save changes') : __('Add category') }}
                 </flux:button>
             </div>
         </form>
@@ -233,7 +196,7 @@ new class extends Component {
 
                     @if ($this->deleting->submissions_count > 0)
                         <flux:text class="mt-2">
-                            {{ trans_choice('{1} One submission uses this :type, so it can’t be deleted. Rename it instead.|[2,*] :count submissions use this :type, so it can’t be deleted. Rename it instead.', $this->deleting->submissions_count, ['type' => $this->config['singular']]) }}
+                            {{ trans_choice('{1} One submission uses this category, so it can’t be deleted. Rename it instead.|[2,*] :count submissions use this category, so it can’t be deleted. Rename it instead.', $this->deleting->submissions_count) }}
                         </flux:text>
                     @else
                         <flux:text class="mt-2">{{ __('It will no longer be available when submitting proposals.') }}</flux:text>

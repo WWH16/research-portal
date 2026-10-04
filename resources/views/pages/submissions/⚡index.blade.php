@@ -504,7 +504,8 @@ new #[Title('Submissions')] class extends Component {
 
                     @php($latest = $this->reviewing->latestUpload())
                     @php($open = $this->reviewing->reviewableStatuses())
-                    @php($firstLocked = collect(Submission::STATUSES)->first(fn (string $status) => ! in_array($status, $open, true)))
+                    {{-- The open statuses are always the first few in order, so the first locked one comes right after them --}}
+                    @php($firstLocked = Submission::STATUSES[count($open)] ?? null)
                     @if ($this->reviewing->awaiting_review)
                         <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">
                             <flux:callout.heading>
@@ -591,7 +592,7 @@ new #[Title('Submissions')] class extends Component {
                     {{-- Four statuses don't fit one segmented row on phones, so they sit two by two there --}}
                     <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Pick the stage whose document you accept: Concept or Detailed for a proposal, Completed for the terminal report. Saving without a change still takes the project off the review list.')" variant="segmented" class="max-sm:grid max-sm:h-auto max-sm:grid-cols-2 max-sm:gap-1">
                         @foreach (Submission::STATUSES as $option)
-                            @php($locked = ! in_array($option, $open, true))
+                            @php($locked = $loop->index >= count($open))
                             <flux:radio :value="$option" :label="__($option)" :icon="$locked ? 'lock-closed' : null" :disabled="$locked" class="max-sm:h-10" />
                         @endforeach
                     </flux:radio.group>
@@ -600,9 +601,9 @@ new #[Title('Submissions')] class extends Component {
                     @if ($firstLocked)
                         <flux:text class="-mt-3 flex items-center gap-1.5 text-sm" data-test="review-locked-hint">
                             <flux:icon.lock-closed variant="micro" class="shrink-0" />
-                            {{ array_search($firstLocked, Submission::STATUSES, true) === $this->reviewing->stageIndex() + 1
+                            {{ count($open) === $this->reviewing->stageIndex() + 1
                                 ? __(':stage opens once the :document is uploaded.', ['stage' => __($firstLocked), 'document' => Str::lower(__(Submission::DOCUMENTS[Submission::STAGE_DOCUMENTS[$firstLocked]]))])
-                                : __(':stage opens after the project reaches :previous.', ['stage' => __($firstLocked), 'previous' => __(Submission::STATUSES[array_search($firstLocked, Submission::STATUSES, true) - 1])]) }}
+                                : __(':stage opens after the project reaches :previous.', ['stage' => __($firstLocked), 'previous' => __(Submission::STATUSES[count($open) - 1])]) }}
                         </flux:text>
                     @endif
 

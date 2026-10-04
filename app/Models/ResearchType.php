@@ -4,16 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * A research type older projects were filed with. Proposals no longer pick one, so nothing reads these
+ * rows; they stay for the projects that point at them.
+ */
 #[Fillable(['name'])]
-class ResearchType extends Model
-{
-    /**
-     * @return HasMany<Submission, $this>
-     */
-    public function submissions(): HasMany
-    {
-        return $this->hasMany(Submission::class);
-    }
-}
+class ResearchType extends Model {}

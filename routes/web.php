@@ -28,7 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     Route::middleware('admin')->group(function () {
-        Route::livewire('categories', 'pages::named-records.index')->defaults('type', 'categories')->name('categories.index');
+        Route::livewire('categories', 'pages::categories.index')->name('categories.index');
         Route::livewire('departments', 'pages::departments.index')->name('departments.index');
 
         Route::livewire('users', 'pages::users.index')->name('users.index');

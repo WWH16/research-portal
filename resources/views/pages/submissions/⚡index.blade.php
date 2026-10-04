@@ -337,7 +337,7 @@ new #[Title('Submissions')] class extends Component {
         </div>
 
         @unless ($this->monitoring)
-            <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="shrink-0" wire:navigate>
+            <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="shrink-0 max-sm:h-11 max-sm:w-full" wire:navigate>
                 {{ __('New proposal') }}
             </flux:button>
         @endunless
@@ -368,7 +368,7 @@ new #[Title('Submissions')] class extends Component {
         </flux:select>
 
         @if ($this->monitoring)
-            <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button">
+            <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:h-11 max-sm:w-full">
                 {{ __('Export CSV') }}
             </flux:button>
         @endif
@@ -397,7 +397,8 @@ new #[Title('Submissions')] class extends Component {
                 <flux:table.column>{{ __('Year') }}</flux:table.column>
                 <flux:table.column>{{ __('Status') }}</flux:table.column>
                 <flux:table.column>{{ __('Duration') }}</flux:table.column>
-                <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
+                {{-- On phones the actions column stays pinned to the right edge while the table scrolls sideways --}}
+                <flux:table.column class="w-0 max-sm:sticky max-sm:right-0 max-sm:border-l max-sm:border-line max-sm:bg-surface"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
@@ -433,16 +434,16 @@ new #[Title('Submissions')] class extends Component {
                                 <div class="text-sm {{ $onTime ? 'text-green-700' : 'text-amber-800' }}">{{ $onTime ? __('Finished on time') : __('Finished late') }}</div>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell>
+                        <flux:table.cell class="max-sm:sticky max-sm:right-0 max-sm:border-l max-sm:border-line max-sm:bg-surface">
                             @if ($this->monitoring)
                                 <div class="flex items-center gap-1">
-                                    <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button">
+                                    <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button" class="max-sm:h-11">
                                         {{ __('Review') }}
                                     </flux:button>
-                                    <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" />
+                                    <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
                                 </div>
                             @else
-                                <flux:button size="sm" variant="ghost" inset="top bottom" :href="route('submissions.edit', $submission)" wire:navigate data-test="edit-submission-button">
+                                <flux:button size="sm" variant="ghost" inset="top bottom" :href="route('submissions.edit', $submission)" wire:navigate data-test="edit-submission-button" class="max-sm:h-11">
                                     {{ __('Edit') }}
                                 </flux:button>
                             @endif

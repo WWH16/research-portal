@@ -13,7 +13,8 @@
     </div>
 
     @if ($footer)
-        <div class="flex items-center justify-end gap-3 rounded-b-xl border-t border-line bg-canvas px-5 py-3 sm:px-6">
+        {{-- Phones stretch the footer buttons across the card at a 44px touch height --}}
+        <div class="flex items-center justify-end gap-3 rounded-b-xl border-t border-line bg-canvas px-5 py-3 max-sm:*:h-11 max-sm:*:flex-1 sm:px-6">
             {{ $footer }}
         </div>
     @endif

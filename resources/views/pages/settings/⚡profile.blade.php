@@ -170,13 +170,13 @@ new #[Title('My Profile')] class extends Component {
                             aria-hidden="true"
                         />
 
-                        <flux:button size="sm" icon="camera" x-on:click="$refs.photo.click()" wire:loading.attr="disabled" wire:target="photo" id="upload-photo-button" data-test="upload-photo-button">
+                        <flux:button size="sm" icon="camera" x-on:click="$refs.photo.click()" wire:loading.attr="disabled" wire:target="photo" id="upload-photo-button" data-test="upload-photo-button" class="max-sm:h-11 max-sm:px-4">
                             {{ $user->profile_image ? __('Change photo') : __('Upload photo') }}
                         </flux:button>
 
                         @if ($user->profile_image)
                             <flux:modal.trigger name="remove-photo">
-                                <flux:button size="sm" variant="ghost" wire:target="photo" wire:loading.attr="disabled" data-test="remove-photo-button">
+                                <flux:button size="sm" variant="ghost" wire:target="photo" wire:loading.attr="disabled" data-test="remove-photo-button" class="max-sm:h-11 max-sm:px-4">
                                     {{ __('Remove') }}
                                 </flux:button>
                             </flux:modal.trigger>

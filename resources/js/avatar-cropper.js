@@ -12,6 +12,19 @@ const MAX_ZOOM = 3;
 const WORKING_SIZE = OUTPUT_SIZE * MAX_ZOOM;
 
 /**
+ * A canvas of the given size, painted white, since transparent PNGs would otherwise turn black in the JPEG.
+ */
+function whiteCanvas(width, height) {
+    const canvas = Object.assign(document.createElement('canvas'), { width, height });
+    const context = canvas.getContext('2d');
+
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, width, height);
+
+    return { canvas, context };
+}
+
+/**
  * A copy of the chosen photo no larger than the crop needs, as an object URL. Smaller photos come back as they are.
  */
 async function workingCopy(url) {
@@ -23,14 +36,8 @@ async function workingCopy(url) {
 
     if (ratio >= 1) return url;
 
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
+    const { canvas, context } = whiteCanvas(Math.round(image.naturalWidth * ratio), Math.round(image.naturalHeight * ratio));
 
-    canvas.width = Math.round(image.naturalWidth * ratio);
-    canvas.height = Math.round(image.naturalHeight * ratio);
-    // Transparent PNGs would otherwise turn black in the JPEG, as in save().
-    context.fillStyle = '#fff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
     context.imageSmoothingQuality = 'high';
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
@@ -172,16 +179,10 @@ export default (messages) => ({
         this.saving = true;
         this.error = '';
 
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
+        const { canvas, context } = whiteCanvas(OUTPUT_SIZE, OUTPUT_SIZE);
         const { left, top } = this.box;
         const perStagePixel = 1 / this.scale;
 
-        canvas.width = canvas.height = OUTPUT_SIZE;
-
-        // Transparent PNGs would otherwise turn black in the JPEG.
-        context.fillStyle = '#fff';
-        context.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
         context.drawImage(
             this.$refs.image,
             -left * perStagePixel,

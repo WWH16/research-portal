@@ -38,7 +38,8 @@ new #[Title('Research Drive')] class extends Component {
 @endphp
 
 <section class="mx-auto w-full max-w-4xl">
-    <flux:breadcrumbs>
+    {{-- Long titles wrap the trail onto a second line instead of running off narrow screens --}}
+    <flux:breadcrumbs class="flex-wrap gap-y-1">
         <flux:breadcrumbs.item :href="route('drive.index')" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
         @if ($admin)
             <flux:breadcrumbs.item :href="route('drive.index', ['college' => $project->department->code])" wire:navigate>{{ $project->department->code }}</flux:breadcrumbs.item>
@@ -47,16 +48,16 @@ new #[Title('Research Drive')] class extends Component {
     </flux:breadcrumbs>
 
     <header class="mt-4 flex flex-wrap items-start gap-4 border-b border-line pb-6">
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 flex-1 max-sm:basis-full">
             <flux:heading size="xl" level="1" class="text-balance">{{ $project->title }}</flux:heading>
             <div class="mt-3">@include('partials.project-status', ['submission' => $project])</div>
         </div>
 
         @can('update', $project)
-            <flux:button :href="route('submissions.edit', [$project, 'from' => 'drive'])" icon="pencil-square" wire:navigate data-test="drive-edit-button">{{ __('Edit project') }}</flux:button>
+            <flux:button :href="route('submissions.edit', [$project, 'from' => 'drive'])" icon="pencil-square" wire:navigate data-test="drive-edit-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Edit project') }}</flux:button>
         @endcan
         @if ($admin)
-            <flux:button :href="route('submissions.index', ['review' => $project->id, 'from' => 'drive'])" variant="primary" wire:navigate data-test="drive-review-button">{{ __('Review') }}</flux:button>
+            <flux:button :href="route('submissions.index', ['review' => $project->id, 'from' => 'drive'])" variant="primary" wire:navigate data-test="drive-review-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Review') }}</flux:button>
         @endif
     </header>
 
@@ -113,7 +114,7 @@ new #[Title('Research Drive')] class extends Component {
                         </p>
                     </div>
                     @if ($path)
-                        <flux:button size="sm" :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square">{{ __('Open') }}</flux:button>
+                        <flux:button size="sm" :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11 max-sm:px-4">{{ __('Open') }}</flux:button>
                     @endif
                 </li>
             @endforeach

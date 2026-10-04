@@ -99,7 +99,7 @@ new #[Title('Research Drive')] class extends Component {
                 @foreach ($this->folders as $department)
                     <flux:table.row :key="$department->id">
                         <flux:table.cell>
-                            <a href="{{ route('drive.index', array_filter(['college' => $department->code, 'year' => $year])) }}" wire:navigate class="flex items-center gap-3 font-medium text-zinc-800 hover:underline">
+                            <a href="{{ route('drive.index', array_filter(['college' => $department->code, 'year' => $year])) }}" wire:navigate class="flex items-center gap-3 font-medium text-zinc-800 hover:underline max-sm:-my-3 max-sm:py-3">
                                 <flux:icon.folder variant="mini" class="shrink-0 text-isu-green-700" />
                                 {{ $department->code }}
                             </a>
@@ -139,7 +139,7 @@ new #[Title('Research Drive')] class extends Component {
                 @else
                     <flux:heading>{{ __('You’re not on any projects yet') }}</flux:heading>
                     <flux:text class="mt-1">{{ __('Projects appear here once you submit one or a colleague lists you as a proponent.') }}</flux:text>
-                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="mt-4" wire:navigate>{{ __('New proposal') }}</flux:button>
+                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="mt-4 max-sm:h-11" wire:navigate>{{ __('New proposal') }}</flux:button>
                 @endif
             </div>
         @else
@@ -153,10 +153,10 @@ new #[Title('Research Drive')] class extends Component {
                 <flux:table.rows>
                     @foreach ($this->projects as $submission)
                         <flux:table.row :key="$submission->id">
-                            <flux:table.cell class="max-w-sm">
-                                <a href="{{ route('drive.show', $submission) }}" wire:navigate class="flex min-w-0 items-center gap-3 font-medium text-zinc-800 hover:underline">
+                            <flux:table.cell class="max-w-sm max-sm:whitespace-normal">
+                                <a href="{{ route('drive.show', $submission) }}" wire:navigate class="flex min-w-0 items-center gap-3 font-medium text-zinc-800 hover:underline max-sm:-my-3 max-sm:py-3">
                                     <flux:icon.folder variant="mini" class="shrink-0 text-isu-green-700" />
-                                    <span class="truncate">{{ $submission->title }}</span>
+                                    <span class="max-sm:line-clamp-2 sm:truncate">{{ $submission->title }}</span>
                                 </a>
                             </flux:table.cell>
                             <flux:table.cell class="max-sm:hidden">

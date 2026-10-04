@@ -89,6 +89,14 @@ class ProjectProgressTest extends TestCase
         $this->assertSame('Reviewed the project', $entry->historyHeadline());
     }
 
+    public function test_reopening_for_uploads_reads_as_its_own_step(): void
+    {
+        $entry = ActivityLog::record('submission.reviewed', $this->project(), ['status' => ['Completed', 'Completed'], 'reopened' => true], $this->admin);
+
+        $this->assertSame('Reopened it for a corrected upload', $entry->historyHeadline());
+        $this->assertSame('Reopened for a corrected upload', $entry->note());
+    }
+
     public function test_a_status_outside_the_stages_counts_as_submitted(): void
     {
         $project = $this->project(['status' => 'Pending', 'awaiting_review' => false]);

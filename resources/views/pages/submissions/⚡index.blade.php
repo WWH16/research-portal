@@ -27,6 +27,9 @@ new #[Title('Submissions')] class extends Component {
     public string $status = '';
     public string $remarks = '';
 
+    /** Lets the proponents of a Completed project upload one corrected document. */
+    public bool $reopenUploads = false;
+
     /** The project's files when the review panel showed them, so a save never clears an upload the reviewer hasn't seen. */
     #[Locked]
     public array $reviewedFiles = [];
@@ -194,6 +197,7 @@ new #[Title('Submissions')] class extends Component {
 
         $this->status = $submission->status;
         $this->remarks = (string) $submission->remarks;
+        $this->reopenUploads = $submission->uploads_reopened;
         $this->reviewedFiles = $this->documentPaths($submission);
         $this->resetValidation();
 
@@ -312,12 +316,15 @@ new #[Title('Submissions')] class extends Component {
                 'status' => $validated['status'],
                 'remarks' => $validated['remarks'] ?: null,
                 'awaiting_review' => false,
+                // Only a Completed project is closed to uploads, so the flag means nothing on any other status.
+                'uploads_reopened' => $validated['status'] === 'Completed' && $this->reopenUploads,
             ]);
 
             // The project keeps only the latest remarks, so the log holds each review's own copy.
             ActivityLog::record('submission.reviewed', $submission, array_filter([
                 'status' => [$submission->getPrevious()['status'] ?? $submission->status, $submission->status],
                 'remarks' => $submission->remarks,
+                'reopened' => $submission->wasChanged('uploads_reopened') && $submission->uploads_reopened,
             ]));
         });
 
@@ -586,6 +593,10 @@ new #[Title('Submissions')] class extends Component {
                             <flux:radio :value="$option" :label="__($option)" class="max-sm:h-10" />
                         @endforeach
                     </flux:radio.group>
+
+                    @if ($this->reviewing->status === 'Completed')
+                        <flux:checkbox wire:model="reopenUploads" :label="__('Reopen for a corrected upload')" :description="__('Lets the proponents upload one more document while the project stays Completed. Uploads close again once it comes in.')" data-test="reopen-uploads" />
+                    @endif
 
                     <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. Everyone on the project sees these.')" rows="4" maxlength="2000" />
 

@@ -115,10 +115,19 @@ new #[Title('Research Project')] class extends Component {
             'proponents.*.study' => ['required', 'integer', 'between:1,20'],
             'proponents.*.user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'faculty')],
             'proponents.*.role' => ['required', Rule::in(Proponent::ROLES)],
-            'documents' => [$this->submission ? 'nullable' : 'required', 'array:'.implode(',', array_keys(Submission::DOCUMENTS))],
+            // A Completed project takes documents only after the Research Office reopens it.
+            'documents' => [
+                match (true) {
+                    ! $this->submission => 'required',
+                    $this->submission->acceptsUploads() => 'nullable',
+                    default => 'prohibited',
+                },
+                'array:'.implode(',', array_keys(Submission::DOCUMENTS)),
+            ],
             'documents.*' => ['file', 'mimes:pdf,doc,docx', 'max:10240'],
         ], [
             'documents.required' => __('Upload at least one document.'),
+            'documents.prohibited' => __('This project is Completed. Ask the Research Office to reopen it for a corrected upload.'),
         ], [
             'research_type_id' => __('research type'),
             'category_id' => __('category'),
@@ -403,22 +412,33 @@ new #[Title('Research Project')] class extends Component {
 
         <flux:fieldset>
             <flux:legend>{{ __('Documents') }}</flux:legend>
-            <flux:description>
-                {{ $submission
-                    ? __('Upload the next document here when it’s ready. A new upload replaces the earlier file and goes back to the Research Office for review.')
-                    : __('Upload the document you have now. Add the rest to this same project later.') }}
-            </flux:description>
+            @php($uploadsOpen = $submission?->acceptsUploads() ?? true)
+            @if ($uploadsOpen)
+                <flux:description>
+                    {{ $submission
+                        ? __('Upload the next document here when it’s ready. A new upload replaces the earlier file and goes back to the Research Office for review.')
+                        : __('Upload the document you have now. Add the rest to this same project later.') }}
+                </flux:description>
+            @else
+                <flux:callout icon="lock-closed" class="mt-2" :heading="__('Uploads are closed')" :text="__('This project is Completed. Ask the Research Office to reopen it if a document needs correcting.')" />
+            @endif
 
             <div class="mt-4 grid gap-4">
                 @foreach (Submission::DOCUMENTS as $stage => $label)
+                    {{-- Closed uploads still list the files on record, so they can be opened --}}
+                    @continue (! $uploadsOpen && ! $submission->{$stage.'_path'})
                     <div>
-                        <flux:input
-                            wire:model="documents.{{ $stage }}"
-                            :label="__($label)"
-                            :description:trailing="__('PDF or Word, up to 10 MB')"
-                            type="file"
-                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        />
+                        @if ($uploadsOpen)
+                            <flux:input
+                                wire:model="documents.{{ $stage }}"
+                                :label="__($label)"
+                                :description:trailing="__('PDF or Word, up to 10 MB')"
+                                type="file"
+                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            />
+                        @else
+                            <flux:heading size="sm">{{ __($label) }}</flux:heading>
+                        @endif
 
                         @if ($submission?->{$stage.'_path'})
                             <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="mt-2 inline-block text-sm">{{ __('Open current file') }}</flux:link>

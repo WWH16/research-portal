@@ -441,6 +441,77 @@ class SubmissionTest extends TestCase
         $this->assertSame('Submitted', $project->status);
     }
 
+    public function test_a_completed_project_takes_no_new_documents_until_the_research_office_reopens_it(): void
+    {
+        Storage::fake('submissions');
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $project->update(['status' => 'Completed', 'awaiting_review' => false]);
+        $this->actingAs($maria);
+
+        // The form says uploads are closed and offers no file fields, and a forged upload is refused.
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->assertSee('Uploads are closed')
+            ->assertDontSee('type="file"', false)
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasErrors(['documents' => 'prohibited']);
+        $this->assertNull($project->fresh()->terminal_path);
+
+        // Other edits still save.
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('title', 'Maria Proposal, revised')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        // The Research Office reopens it for one corrected upload, without moving the status.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertSee('Reopen for a corrected upload')
+            ->set('reopenUploads', true)
+            ->call('saveReview')
+            ->assertHasNoErrors();
+        $this->assertTrue($project->fresh()->uploads_reopened);
+        $this->assertSame('Completed', $project->fresh()->status);
+        $this->assertTrue(ActivityLog::latest('id')->first()->properties['reopened']);
+
+        $this->actingAs($maria);
+        $this->get(route('drive.show', $project))->assertSee('The Research Office reopened it for a corrected upload.');
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->assertDontSee('Uploads are closed')
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $project->refresh();
+        Storage::disk('submissions')->assertExists($project->terminal_path);
+        $this->assertTrue($project->awaiting_review);
+        $this->assertFalse($project->uploads_reopened, 'One upload, then it closes again.');
+    }
+
+    public function test_only_a_completed_project_can_be_reopened_for_uploads(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $project->update(['status' => 'Completed', 'awaiting_review' => false, 'uploads_reopened' => true]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        // Moving it back to Detailed opens uploads anyway, so the flag doesn't linger for a later Completed.
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->set('status', 'Detailed')
+            ->call('saveReview')
+            ->assertHasNoErrors();
+        $this->assertFalse($project->fresh()->uploads_reopened);
+
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertDontSee('Reopen for a corrected upload');
+    }
+
     public function test_a_review_never_clears_a_document_uploaded_while_it_was_open(): void
     {
         Storage::fake('submissions');

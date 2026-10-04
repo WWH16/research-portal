@@ -29,6 +29,8 @@
             @if ($step === null && ($reviewing = $submission->documentUnderReview()))
                 {{-- A Completed project can still take a corrected upload --}}
                 {{ __('The :document is waiting for the Research Office to review.', ['document' => \Illuminate\Support\Str::lower(__(\App\Models\Submission::DOCUMENTS[$reviewing]))]) }}
+            @elseif ($step === null && $submission->uploads_reopened)
+                {{ __('All stages are done. The Research Office reopened it for a corrected upload.') }}
             @elseif ($step === null)
                 {{ __('All stages are done.') }}
             @else

@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
  * @property CarbonInterface|null $target_date
  * @property CarbonInterface|null $terminal_uploaded_at
  * @property bool $awaiting_review
+ * @property bool $uploads_reopened
  */
 #[Fillable([
     'user_id',
@@ -43,6 +44,7 @@ use Illuminate\Support\Facades\Storage;
     'terminal_uploaded_at',
     'status',
     'awaiting_review',
+    'uploads_reopened',
     'remarks',
 ])]
 class Submission extends Model
@@ -72,6 +74,7 @@ class Submission extends Model
             'target_date' => 'date',
             'terminal_uploaded_at' => 'datetime',
             'awaiting_review' => 'boolean',
+            'uploads_reopened' => 'boolean',
         ];
     }
 
@@ -179,6 +182,15 @@ class Submission extends Model
     }
 
     /**
+     * Whether proponents can upload a document. A Completed project is closed unless the Research Office
+     * reopened it for a corrected upload.
+     */
+    public function acceptsUploads(): bool
+    {
+        return $this->status !== 'Completed' || $this->uploads_reopened;
+    }
+
+    /**
      * Where the project is in STATUSES, counting from 0. A status outside the list, such as one left
      * from before the stages existed, counts as Submitted.
      */
@@ -265,6 +277,8 @@ class Submission extends Model
 
         $this->{$stage.'_path'} = $new;
         $this->awaiting_review = true;
+        // A reopened Completed project takes one corrected upload, then closes again.
+        $this->uploads_reopened = false;
 
         if ($stage === 'terminal') {
             $this->terminal_uploaded_at = now();

@@ -101,6 +101,15 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
+        // A Completed project takes documents only after the Research Office reopens it. The file is dropped,
+        // since a project closed while the form was open no longer shows the field that could clear it.
+        if ($this->submission && ! $this->submission->acceptsUploads() && $this->documents !== []) {
+            $this->reset('documents');
+            $this->addError('documents', __('This project is Completed. Ask the Research Office to reopen it for a corrected upload.'));
+
+            return;
+        }
+
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             // A MySQL TEXT column holds 65,535 bytes, so 10,000 characters fit even when each takes four.
@@ -115,20 +124,10 @@ new #[Title('Research Project')] class extends Component {
             'proponents.*.study' => ['required', 'integer', 'between:1,20'],
             'proponents.*.user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'faculty')],
             'proponents.*.role' => ['required', Rule::in(Proponent::ROLES)],
-            // A Completed project takes documents only after the Research Office reopens it.
-            'documents' => [
-                match (true) {
-                    ! $this->submission => 'required',
-                    $this->submission->acceptsUploads() => 'nullable',
-                    default => 'prohibited',
-                },
-                'array:'.implode(',', array_keys(Submission::DOCUMENTS)),
-            ],
+            'documents' => [$this->submission ? 'nullable' : 'required', 'array:'.implode(',', array_keys(Submission::DOCUMENTS))],
             'documents.*' => ['file', 'mimes:pdf,doc,docx', 'max:10240'],
         ], [
-            'documents.required' => __('Upload at least one document.'),
-            'documents.prohibited' => __('This project is Completed. Ask the Research Office to reopen it for a corrected upload.'),
-        ], [
+            'documents.required' => __('Upload at least one document.'),        ], [
             'research_type_id' => __('research type'),
             'category_id' => __('category'),
             'start_date' => __('starting date'),

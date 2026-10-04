@@ -456,7 +456,7 @@ class SubmissionTest extends TestCase
             ->assertDontSee('type="file"', false)
             ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
             ->call('save')
-            ->assertHasErrors(['documents' => 'prohibited']);
+            ->assertHasErrors('documents');
         $this->assertNull($project->fresh()->terminal_path);
 
         // Other edits still save.
@@ -489,6 +489,31 @@ class SubmissionTest extends TestCase
         Storage::disk('submissions')->assertExists($project->terminal_path);
         $this->assertTrue($project->awaiting_review);
         $this->assertFalse($project->uploads_reopened, 'One upload, then it closes again.');
+    }
+
+    public function test_a_file_picked_before_the_project_closed_never_blocks_saving(): void
+    {
+        Storage::fake('submissions');
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs($maria);
+
+        $form = Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('title', 'Maria Proposal, revised')
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'));
+
+        // The Research Office marks it Completed while the form is open; the file field disappears on the next render.
+        $project->update(['status' => 'Completed', 'awaiting_review' => false]);
+
+        $form->call('save')
+            ->assertHasErrors('documents')
+            ->assertSet('documents', []);
+        $this->assertNull($project->fresh()->terminal_path);
+
+        // The stranded file is dropped, so saving again keeps the other edits.
+        $form->call('save')->assertHasNoErrors();
+        $this->assertSame('Maria Proposal, revised', $project->fresh()->title);
     }
 
     public function test_only_a_completed_project_can_be_reopened_for_uploads(): void

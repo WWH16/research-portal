@@ -1,6 +1,6 @@
 <div class="mx-auto w-full max-w-4xl">
     <header class="flex items-center gap-4">
-        <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ $heading ?? '' }}</flux:heading>
             <flux:text class="mt-1">{{ $subheading ?? '' }}</flux:text>

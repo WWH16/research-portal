@@ -2,7 +2,7 @@
 @php
     // Sent mail carries the seal inside it (cid:), so it shows even before the portal has a public address.
     // Only the HTML copy has this header, so the seal is attached once. Previews link the public file instead.
-    $seal = $sealFrom ? $sealFrom->embed(public_path('images/isu_seal.png')) : asset('images/isu_seal.png');
+    $seal = $sealFrom ? $sealFrom->embed(public_path('images/isu_seal-128.png')) : asset('images/isu_seal-128.png');
 @endphp
 <tr>
 <td class="header">

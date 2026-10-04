@@ -308,7 +308,7 @@ new #[Title('Research Project')] class extends Component {
     <header class="flex items-center gap-4 border-b border-line pb-6">
         @php($backLabel = $this->backUrl === route('submissions.index') ? __('Back to Submissions') : __('Back to Research Drive'))
         <flux:button :href="$this->backUrl" variant="ghost" icon="arrow-left" wire:navigate :aria-label="$backLabel" :tooltip="$backLabel" class="-ms-2 shrink-0" data-test="back-to-submissions" />
-        <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <flux:heading size="xl" level="1">{{ $submission ? __('Edit Project') : __('Submit Proposal') }}</flux:heading>
     </header>
 

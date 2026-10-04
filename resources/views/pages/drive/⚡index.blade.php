@@ -75,7 +75,7 @@ new #[Title('Research Drive')] class extends Component {
 
 <section class="mx-auto w-full max-w-5xl">
     <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ __('Research Drive') }}</flux:heading>
             <flux:text class="mt-1">{{ $this->isAdmin ? __('Documents for every project, filed under its college.') : __('Documents for the projects you filed or are a proponent on.') }}</flux:text>

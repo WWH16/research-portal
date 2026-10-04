@@ -14,7 +14,8 @@
                 </div>
 
                 <div class="flex flex-col items-center gap-8">
-                    {{-- The seal, faded into the green, sits directly above the headline and never behind it. --}}
+                    {{-- The seal, faded into the green, sits directly above the headline and never behind it. It shows up
+                         to 256px wide here, so this is the full-size file; every smaller spot uses isu_seal-128.png. --}}
                     <img
                         src="{{ asset('images/isu_seal.png') }}"
                         alt=""

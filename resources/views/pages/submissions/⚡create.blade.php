@@ -313,7 +313,7 @@ new #[Title('Research Project')] class extends Component {
 
     {{-- Only an existing project has a stage; a new proposal starts at Submitted once it's saved --}}
     @if ($submission)
-        <div class="mt-6">@include('partials.project-stages')</div>
+        <div class="mt-6">@include('partials.project-stages', ['submission' => $submission])</div>
     @endif
 
     <form wire:submit="save" class="mt-8 flex flex-col gap-6">

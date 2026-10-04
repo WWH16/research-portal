@@ -26,7 +26,10 @@
     @if ($next ?? true)
         @php($step = $submission->nextStep())
         <flux:text class="mt-3 text-sm" data-test="project-next-step">
-            @if ($step === null)
+            @if ($step === null && ($reviewing = $submission->documentUnderReview()))
+                {{-- A Completed project can still take a corrected upload --}}
+                {{ __('The :document is waiting for the Research Office to review.', ['document' => \Illuminate\Support\Str::lower(__(\App\Models\Submission::DOCUMENTS[$reviewing]))]) }}
+            @elseif ($step === null)
                 {{ __('All stages are done.') }}
             @else
                 @php($document = \Illuminate\Support\Str::lower(__(\App\Models\Submission::DOCUMENTS[$step['document']])))

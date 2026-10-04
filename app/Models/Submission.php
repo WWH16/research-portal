@@ -206,10 +206,24 @@ class Submission extends Model
 
         return match (true) {
             // The upload under review can be a later stage's document, when a project skips ahead.
-            $this->awaiting_review === true => ['stage' => $stage, 'document' => $this->latestUpload()['stage'] ?? $document, 'state' => 'review'],
+            $this->awaiting_review === true => ['stage' => $stage, 'document' => $this->documentUnderReview() ?? $document, 'state' => 'review'],
             (bool) $this->{$document.'_path'} => ['stage' => $stage, 'document' => $document, 'state' => 'returned'],
             default => ['stage' => $stage, 'document' => $document, 'state' => 'missing'],
         };
+    }
+
+    /**
+     * The stage of the upload waiting for the Research Office, or null when nothing waits. Read from the
+     * stored files' times; when a file is gone from the disk, the furthest stage on file is the best guess.
+     */
+    public function documentUnderReview(): ?string
+    {
+        if ($this->awaiting_review !== true) {
+            return null;
+        }
+
+        return $this->latestUpload()['stage']
+            ?? collect(array_keys(self::DOCUMENTS))->reverse()->first(fn (string $stage) => $this->{$stage.'_path'});
     }
 
     /**

@@ -63,6 +63,32 @@ class ProjectProgressTest extends TestCase
         $this->assertSame(['stage' => 'Concept', 'document' => 'detailed', 'state' => 'review'], $project->nextStep());
     }
 
+    public function test_an_upload_missing_from_disk_is_still_named_by_its_own_stage(): void
+    {
+        // Only the detailed proposal is on file, but its file is gone from the disk.
+        $project = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'detailed_path' => 'submissions/lost.pdf']);
+
+        $this->assertSame('detailed', $project->nextStep()['document']);
+    }
+
+    public function test_a_completed_project_with_a_new_upload_says_it_waits_for_review(): void
+    {
+        Storage::disk('submissions')->put('submissions/terminal.pdf', '%PDF');
+        $project = $this->project(['status' => 'Completed', 'awaiting_review' => true, 'terminal_path' => 'submissions/terminal.pdf']);
+
+        $this->actingAs($this->maria)
+            ->get(route('drive.show', $project))
+            ->assertSee('The terminal report is waiting for the Research Office to review.')
+            ->assertDontSee('All stages are done.');
+    }
+
+    public function test_a_review_entry_without_a_status_still_reads_cleanly(): void
+    {
+        $entry = ActivityLog::record('submission.reviewed', $this->project(), [], $this->admin);
+
+        $this->assertSame('Reviewed the project', $entry->historyHeadline());
+    }
+
     public function test_a_status_outside_the_stages_counts_as_submitted(): void
     {
         $project = $this->project(['status' => 'Pending', 'awaiting_review' => false]);

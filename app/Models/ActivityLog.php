@@ -287,15 +287,16 @@ class ActivityLog extends Model
      */
     public function historyHeadline(): string
     {
-        $status = $this->properties['status'] ?? [null, null];
+        $status = $this->properties['status'] ?? null;
 
         return match (true) {
             $this->action === 'submission.created' => __('Submitted the proposal'),
             $this->action === 'submission.updated' => __('Updated the project'),
             $this->action === 'submission.dates_changed' => __('Changed the dates'),
+            $status === null => __('Reviewed the project'),
             $this->change() !== null => __('Moved the project from :from to :to', ['from' => __($status[0]), 'to' => __($status[1])]),
-            $this->remarks() !== null => __('Returned it with remarks, kept at :status', ['status' => __((string) $status[1])]),
-            default => __('Reviewed it, kept at :status', ['status' => __((string) $status[1])]),
+            $this->remarks() !== null => __('Returned it with remarks, kept at :status', ['status' => __($status[1])]),
+            default => __('Reviewed it, kept at :status', ['status' => __($status[1])]),
         };
     }
 

@@ -7,7 +7,6 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
-use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
@@ -73,21 +72,6 @@ class FortifyServiceProvider extends ServiceProvider
         Event::listen(TwoFactorAuthenticationConfirmed::class, fn ($event) => $log('auth.two_factor_enabled', $event->user));
         Event::listen(TwoFactorAuthenticationDisabled::class, fn ($event) => $log('auth.two_factor_disabled', $event->user));
         Event::listen(RecoveryCodesGenerated::class, fn ($event) => $log('auth.recovery_codes', $event->user));
-
-        // Tied to the account when the email matches one, so that member's activity shows attempts on it.
-        // Whether it matched is saved too, since a later account deletion clears the user.
-        // People sometimes type their password into the email box, so anything that isn't an email is never saved.
-        // Emails are saved lowercase, so searching the log finds them whatever case was typed.
-        Event::listen(Failed::class, function (Failed $event) {
-            $typed = (string) ($event->credentials[Fortify::username()] ?? '');
-            $email = filter_var($typed, FILTER_VALIDATE_EMAIL) ? Str::lower($typed) : null;
-
-            ActivityLog::record('auth.failed', properties: array_filter([
-                'email' => $email,
-                'not_email' => $email === null,
-                'no_account' => ! $event->user instanceof User,
-            ]), user: $event->user instanceof User ? $event->user : null);
-        });
     }
 
     /**

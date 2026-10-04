@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * The page shows each entry in parts, so a long project title never buries what happened: the actor,
  * a short summary(), then the subject() with its change() and note() in their own column.
  *
- * @property array{email?: string, not_email?: true, no_account?: true, status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, remarks?: string, reopened?: true, kind?: string, from?: string, to?: string}|null $properties
+ * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, remarks?: string, reopened?: true, kind?: string, from?: string, to?: string}|null $properties
  */
 #[Fillable(['user_id', 'actor_name', 'action', 'subject_id', 'subject_label', 'properties'])]
 class ActivityLog extends Model
@@ -92,12 +92,12 @@ class ActivityLog extends Model
     }
 
     /**
-     * Failed sign-ins, two-factor turned off, and admin rights handed out: the entries worth a second look.
+     * Two-factor turned off and admin rights handed out: the entries worth a second look.
      */
     public function isWarning(): bool
     {
         return match ($this->action) {
-            'auth.failed', 'auth.two_factor_disabled' => true,
+            'auth.two_factor_disabled' => true,
             'user.created' => ($this->properties['role'] ?? null) === 'admin',
             'user.updated' => isset($this->properties['role']),
             default => false,
@@ -166,8 +166,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * What happened, in a few words that follow the actor's name. A failed sign-in has no actor, so
-     * its summary stands alone as the headline.
+     * What happened, in a few words that follow the actor's name.
      */
     public function summary(): string
     {
@@ -177,7 +176,6 @@ class ActivityLog extends Model
         return match ($this->action) {
             'auth.login' => __('signed in'),
             'auth.logout' => __('signed out'),
-            'auth.failed' => __('Failed sign-in'),
             'auth.registered' => __('created an account'),
             'auth.verified' => __('verified their email'),
             'auth.password_reset' => __('reset their password by email link'),
@@ -205,11 +203,11 @@ class ActivityLog extends Model
     }
 
     /**
-     * The project, account or filing option the entry is about, or the email a failed sign-in used.
+     * The project, account or filing option the entry is about.
      */
     public function subject(): ?string
     {
-        return $this->subject_label ?? $this->properties['email'] ?? null;
+        return $this->subject_label;
     }
 
     /**
@@ -328,18 +326,13 @@ class ActivityLog extends Model
     }
 
     /**
-     * A short fact the change doesn't cover, such as why a sign-in failed or which documents came in, or an empty string.
+     * A short fact the change doesn't cover, such as which documents came in, or an empty string.
      */
     public function note(): string
     {
         $p = $this->properties ?? [];
 
         return match (true) {
-            $this->action === 'auth.failed' => match (true) {
-                isset($p['not_email']) => __('Something other than an email was typed'),
-                isset($p['no_account']) => __('No account uses this email'),
-                default => __('Wrong password'),
-            },
             in_array($this->action, ['submission.created', 'submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? []),
             $this->action === 'submission.reviewed' && isset($p['reopened']) => __('Reopened for a corrected upload'),
             $this->action === 'submission.reviewed' && isset($p['status']) && $p['status'][0] === $p['status'][1] => __('Kept at :status', ['status' => $p['status'][1]]),

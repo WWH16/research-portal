@@ -119,9 +119,7 @@ new #[Title('Activity Log')] class extends Component {
 
                 $query->where(fn ($query) => $query
                     ->where('actor_name', 'like', $term)
-                    ->orWhere('subject_label', 'like', $term)
-                    // Saved lowercase; JSON values compare case-sensitively on MySQL.
-                    ->orWhere('properties->email', 'like', Str::lower($term)));
+                    ->orWhere('subject_label', 'like', $term));
             })
             ->latest()
             ->latest('id');
@@ -150,7 +148,7 @@ new #[Title('Activity Log')] class extends Component {
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
-            :placeholder="__('Search names, project titles, or emails')"
+            :placeholder="__('Search names or project titles')"
             :aria-label="__('Search activity')"
             clearable
             class="lg:flex-1"

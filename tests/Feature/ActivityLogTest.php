@@ -26,24 +26,17 @@ class ActivityLogTest extends TestCase
         $this->admin = User::factory()->create(['name' => 'Research Office', 'role' => 'admin']);
     }
 
-    public function test_sign_ins_and_failed_attempts_are_recorded(): void
+    public function test_sign_ins_are_recorded_and_failed_attempts_are_not(): void
     {
         $maria = User::factory()->create(['name' => 'Maria Santos', 'email' => 'maria@isu.edu.ph']);
 
         $this->post(route('login.store'), ['email' => 'maria@isu.edu.ph', 'password' => 'wrong-password']);
         $this->post(route('login.store'), ['email' => 'maria@isu.edu.ph', 'password' => 'password']);
-
         $this->post(route('logout'));
         $this->post(route('login.store'), ['email' => 'nobody@isu.edu.ph', 'password' => 'password']);
 
-        $this->assertSame(['auth.failed', 'auth.login', 'auth.logout', 'auth.failed'], ActivityLog::orderBy('id')->pluck('action')->all());
+        $this->assertSame(['auth.login', 'auth.logout'], ActivityLog::orderBy('id')->pluck('action')->all());
         $this->assertTrue(ActivityLog::where('user_id', $maria->id)->where('actor_name', 'Maria Santos')->where('action', 'auth.login')->exists());
-
-        [$wrongPassword, $noAccount] = ActivityLog::where('action', 'auth.failed')->orderBy('id')->get();
-        $this->assertSame(['email' => 'maria@isu.edu.ph'], $wrongPassword->properties);
-        $this->assertSame(['Failed sign-in', 'maria@isu.edu.ph', 'Wrong password'], [$wrongPassword->summary(), $wrongPassword->subject(), $wrongPassword->note()]);
-        $this->assertSame(['email' => 'nobody@isu.edu.ph', 'no_account' => true], $noAccount->properties);
-        $this->assertSame('No account uses this email', $noAccount->note());
     }
 
     public function test_a_review_records_the_status_change(): void
@@ -187,25 +180,6 @@ class ActivityLogTest extends TestCase
         $this->assertSame('11:37 – 11:38 AM', ActivityLog::runSpan(collect([$last, $first])));
         $this->assertSame('11:38 AM', ActivityLog::runSpan(collect([$last])));
         $this->assertSame('11:37 AM – 1:05 PM', ActivityLog::runSpan(collect([$afternoon, $last, $first])));
-    }
-
-    public function test_a_failed_sign_in_never_saves_text_that_isnt_an_email(): void
-    {
-        User::factory()->create(['email' => 'maria@isu.edu.ph']);
-
-        $this->post(route('login.store'), ['email' => 'MySecretPassw0rd!', 'password' => 'x']);
-        $this->post(route('login.store'), ['email' => 'Maria@ISU.edu.ph', 'password' => 'wrong-password']);
-
-        [$typo, $wrongPassword] = ActivityLog::orderBy('id')->get();
-        $this->assertSame(['not_email' => true, 'no_account' => true], $typo->properties);
-        $this->assertSame('Something other than an email was typed', $typo->note());
-        $this->assertSame(['email' => 'maria@isu.edu.ph'], $wrongPassword->properties);
-
-        $this->actingAs($this->admin);
-        Livewire::test('pages::activity-log.index')
-            ->set('search', 'MARIA@isu')
-            ->assertSee('maria@isu.edu.ph')
-            ->assertDontSee('MySecretPassw0rd!');
     }
 
     public function test_entries_older_than_the_retention_period_are_pruned(): void

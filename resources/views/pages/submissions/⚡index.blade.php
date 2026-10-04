@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
@@ -296,15 +297,15 @@ new #[Title('Submissions')] class extends Component {
         ]);
 
         // The review and its log entry save together, so a failed log write never leaves a review the log missed.
-        $saved = DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated) {
             // Locked until the review saves, so an upload can't slip in between the check and the save.
             $submission = Submission::lockForUpdate()->findOrFail($this->reviewingId);
 
             // A document came in after the panel opened. Show it instead of clearing it unseen.
-            if ($this->documentPaths($submission) !== $this->reviewedFiles) {
-                $this->reviewedFiles = $this->documentPaths($submission);
+            if (($paths = $this->documentPaths($submission)) !== $this->reviewedFiles) {
+                $this->reviewedFiles = $paths;
 
-                return false;
+                throw ValidationException::withMessages(['review' => __('A new document came in while this was open. Check it, then save the review again.')]);
             }
 
             $submission->update([
@@ -318,15 +319,7 @@ new #[Title('Submissions')] class extends Component {
                 'status' => [$submission->getPrevious()['status'] ?? $submission->status, $submission->status],
                 'remarks' => $submission->remarks,
             ]));
-
-            return true;
         });
-
-        if (! $saved) {
-            $this->addError('review', __('A new document came in while this was open. Check it, then save the review again.'));
-
-            return;
-        }
 
         if ($this->from === 'drive') {
             session()->flash('status', __('Review saved.'));

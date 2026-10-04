@@ -25,6 +25,19 @@ class LoginPageTest extends TestCase
             ->assertSee(route('register'));
     }
 
+    public function test_a_shared_link_previews_with_the_university_seal(): void
+    {
+        // Messenger, Facebook and X follow a shared link to the sign-in page and read these tags for the preview card.
+        $this->assertFileExists(public_path('images/share-preview.jpg'));
+
+        $this->get(route('login'))
+            ->assertSee('<meta property="og:image" content="'.asset('images/share-preview.jpg').'">', escape: false)
+            ->assertSee('<meta property="og:image:width" content="1200">', escape: false)
+            ->assertSee('<meta property="og:image:height" content="630">', escape: false)
+            ->assertSee('<meta property="og:title" content="Sign in - ISU Research Portal">', escape: false)
+            ->assertSee('<meta name="twitter:card" content="summary_large_image">', escape: false);
+    }
+
     public function test_sign_in_button_shows_a_loading_state_while_submitting(): void
     {
         $this->get(route('login'))

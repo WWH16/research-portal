@@ -491,6 +491,8 @@ new #[Title('Submissions')] class extends Component {
                         <flux:text class="mt-1">{{ __('Filed by :name · :college', ['name' => $this->reviewing->user->name, 'college' => $this->reviewing->department->code]) }}</flux:text>
                     </div>
 
+                    @include('partials.project-stages', ['submission' => $this->reviewing, 'next' => false])
+
                     @php($latest = $this->reviewing->latestUpload())
                     @if ($this->reviewing->awaiting_review)
                         <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">

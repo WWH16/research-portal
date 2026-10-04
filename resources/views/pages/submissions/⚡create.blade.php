@@ -311,6 +311,11 @@ new #[Title('Research Project')] class extends Component {
         <flux:callout icon="chat-bubble-left-ellipsis" class="mt-6" :heading="__('Remarks from the Research Office')" :text="$submission->remarks" />
     @endif
 
+    {{-- Only an existing project has a stage; a new proposal starts at Submitted once it's saved --}}
+    @if ($submission)
+        <div class="mt-6">@include('partials.project-stages')</div>
+    @endif
+
     <form wire:submit="save" class="mt-8 flex flex-col gap-6">
         <flux:input wire:model="title" :label="__('Title')" type="text" required autofocus />
 

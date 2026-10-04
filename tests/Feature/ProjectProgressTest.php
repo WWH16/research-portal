@@ -9,6 +9,7 @@ use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -67,6 +68,50 @@ class ProjectProgressTest extends TestCase
 
         $this->assertSame(0, $project->stageIndex());
         $this->assertSame('Concept', $project->nextStep()['stage']);
+    }
+
+    public function test_the_drive_page_and_edit_form_show_the_stages_and_the_next_step(): void
+    {
+        $project = $this->project(['status' => 'Concept', 'awaiting_review' => false]);
+        $this->actingAs($this->maria);
+
+        $this->get(route('drive.show', $project))
+            ->assertOk()
+            ->assertSee('data-test="project-stages"', false)
+            ->assertSeeInOrder(['Submitted', 'aria-current="step"', 'Concept', 'Detailed', 'Completed'], false)
+            ->assertSee('Next: the detailed proposal, to move to Detailed.');
+
+        // The edit route reuses the create component (see routes/web.php).
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->assertSee('Next: the detailed proposal, to move to Detailed.');
+
+        // A new proposal has no stage yet.
+        Livewire::test('pages::submissions.create')->assertDontSee('data-test="project-stages"', false);
+    }
+
+    public function test_the_next_step_says_when_a_document_was_returned_or_all_stages_are_done(): void
+    {
+        $this->actingAs($this->maria);
+
+        $returned = $this->project(['status' => 'Concept', 'awaiting_review' => false, 'detailed_path' => 'submissions/detailed.pdf']);
+        $this->get(route('drive.show', $returned))->assertSee('Returned with remarks. Waiting for a corrected detailed proposal.');
+
+        $waiting = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf']);
+        $this->get(route('drive.show', $waiting))->assertSee('The concept proposal is waiting for the Research Office to review.');
+
+        $done = $this->project(['status' => 'Completed', 'awaiting_review' => false]);
+        $this->get(route('drive.show', $done))->assertSee('All stages are done.');
+    }
+
+    public function test_the_review_panel_shows_the_stages_without_repeating_what_to_review(): void
+    {
+        $project = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf']);
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertSee('data-test="project-stages"', false)
+            ->assertDontSee('data-test="project-next-step"', false);
     }
 
     private function project(array $attributes = []): Submission

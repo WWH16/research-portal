@@ -90,6 +90,11 @@ new #[Title('Research Drive')] class extends Component {
         @endif
     </dl>
 
+    <section class="mt-8" aria-labelledby="progress-heading">
+        <flux:heading level="2" id="progress-heading">{{ __('Progress') }}</flux:heading>
+        <div class="mt-3">@include('partials.project-stages', ['submission' => $project])</div>
+    </section>
+
     @if ($project->remarks && ! $project->awaiting_review)
         <flux:callout icon="chat-bubble-left-ellipsis" class="mt-6" :heading="__('Remarks from the Research Office')" :text="$project->remarks" />
     @endif

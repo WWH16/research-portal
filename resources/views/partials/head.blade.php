@@ -8,12 +8,11 @@
 
 {{-- A shared link (Messenger, Facebook, X, Slack) previews with the university seal. Every portal page needs a
      sign-in, so link crawlers land on the sign-in page and read these there. The image URL comes from APP_URL. --}}
-<meta name="description" content="{{ __('Research proposals, reviews, and records in one place.') }}">
-<meta property="og:type" content="website">
+@php($summary = __('Research proposals, reviews, and records in one place.'))
+<meta name="description" content="{{ $summary }}">
 <meta property="og:site_name" content="{{ config('app.name') }}">
 <meta property="og:title" content="{{ $pageTitle }}">
-<meta property="og:description" content="{{ __('Research proposals, reviews, and records in one place.') }}">
-<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:description" content="{{ $summary }}">
 <meta property="og:image" content="{{ asset('images/share-preview.jpg') }}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">

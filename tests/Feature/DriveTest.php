@@ -160,7 +160,7 @@ class DriveTest extends TestCase
 
         Livewire::withQueryParams(['review' => $this->smart->id, 'from' => 'drive'])
             ->test('pages::submissions.index')
-            ->set('status', 'Completed')
+            ->set('status', 'Concept')
             ->call('saveReview')
             ->assertRedirect(route('drive.show', $this->smart));
 
@@ -194,7 +194,7 @@ class DriveTest extends TestCase
         Livewire::test('pages::submissions.index')
             ->call('review', $this->smart->id)
             ->assertSee('Tabago (Leader, CAS)')
-            ->set('status', 'Completed')
+            ->set('status', 'Concept')
             ->call('saveReview')
             ->assertHasNoErrors();
 

@@ -296,8 +296,11 @@ new #[Title('Submissions')] class extends Component {
         $this->remarks = trim($this->remarks);
 
         $validated = $this->validate([
-            'status' => ['required', Rule::in(Submission::STATUSES)],
+            // Back to an earlier stage, or one stage forward once its document is on file; the panel locks the rest.
+            'status' => ['required', Rule::in(Submission::findOrFail($this->reviewingId)->reviewableStatuses())],
             'remarks' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'status.in' => __('That stage isn’t open yet. A project moves forward one stage at a time, once its document is on file.'),
         ]);
 
         // The review and its log entry save together, so a failed log write never leaves a review the log missed.
@@ -501,6 +504,8 @@ new #[Title('Submissions')] class extends Component {
                     @include('partials.project-stages', ['submission' => $this->reviewing, 'next' => false])
 
                     @php($latest = $this->reviewing->latestUpload())
+                    @php($open = $this->reviewing->reviewableStatuses())
+                    @php($firstLocked = collect(Submission::STATUSES)->first(fn (string $status) => ! in_array($status, $open, true)))
                     @if ($this->reviewing->awaiting_review)
                         <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">
                             <flux:callout.heading>
@@ -590,9 +595,20 @@ new #[Title('Submissions')] class extends Component {
                     {{-- Four statuses don't fit one segmented row on phones, so they sit two by two there --}}
                     <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Pick the stage whose document you accept: Concept or Detailed for a proposal, Completed for the terminal report. Saving without a change still takes the project off the review list.')" variant="segmented" class="max-sm:grid max-sm:h-auto max-sm:grid-cols-2 max-sm:gap-1">
                         @foreach (Submission::STATUSES as $option)
-                            <flux:radio :value="$option" :label="__($option)" class="max-sm:h-10" />
+                            @php($locked = ! in_array($option, $open, true))
+                            <flux:radio :value="$option" :label="__($option)" :icon="$locked ? 'lock-closed' : null" :disabled="$locked" class="max-sm:h-10" />
                         @endforeach
                     </flux:radio.group>
+
+                    {{-- Says why the first locked stage is locked: its document isn't in yet, or the stage before it isn't reached --}}
+                    @if ($firstLocked)
+                        <flux:text class="-mt-3 flex items-center gap-1.5 text-sm" data-test="review-locked-hint">
+                            <flux:icon.lock-closed variant="micro" class="shrink-0" />
+                            {{ array_search($firstLocked, Submission::STATUSES, true) === $this->reviewing->stageIndex() + 1
+                                ? __(':stage opens once the :document is uploaded.', ['stage' => __($firstLocked), 'document' => Str::lower(__(Submission::DOCUMENTS[Submission::STAGE_DOCUMENTS[$firstLocked]]))])
+                                : __(':stage opens after the project reaches :previous.', ['stage' => __($firstLocked), 'previous' => __(Submission::STATUSES[array_search($firstLocked, Submission::STATUSES, true) - 1])]) }}
+                        </flux:text>
+                    @endif
 
                     @if ($this->reviewing->status === 'Completed')
                         <flux:checkbox wire:model="reopenUploads" :label="__('Reopen for a corrected upload')" :description="__('Lets the proponents upload one more document while the project stays Completed. Uploads close again once it comes in.')" data-test="reopen-uploads" />

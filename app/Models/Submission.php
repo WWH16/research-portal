@@ -191,6 +191,32 @@ class Submission extends Model
     }
 
     /**
+     * The documents proponents can upload now, as DOCUMENTS keys. Each opens once the project reaches the
+     * stage before it, so nothing is uploaded ahead of an unreviewed document; a new project starts with
+     * the concept proposal. A Completed project takes none until the Research Office reopens it.
+     *
+     * @return list<string>
+     */
+    public function uploadableStages(): array
+    {
+        return $this->acceptsUploads() ? array_slice(array_keys(self::DOCUMENTS), 0, $this->stageIndex() + 1) : [];
+    }
+
+    /**
+     * The statuses the Research Office can set in a review: back to any earlier one to correct a mistake,
+     * or one stage forward once that stage's document is on file. Nothing further ahead.
+     *
+     * @return list<string>
+     */
+    public function reviewableStatuses(): array
+    {
+        $next = $this->stageIndex() + 1;
+        $document = self::STAGE_DOCUMENTS[self::STATUSES[$next] ?? ''] ?? null;
+
+        return array_slice(self::STATUSES, 0, $document && $this->{$document.'_path'} ? $next + 1 : $next);
+    }
+
+    /**
      * Where the project is in STATUSES, counting from 0. A status outside the list, such as one left
      * from before the stages existed, counts as Submitted.
      */

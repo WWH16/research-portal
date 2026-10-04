@@ -12,14 +12,18 @@
         @foreach (\App\Models\Submission::STATUSES as $index => $stage)
             <li class="flex min-w-0 flex-col gap-1.5" @if ($index === $current) aria-current="step" @endif>
                 <span class="h-1.5 rounded-full {{ $index <= $current ? 'bg-isu-green-700' : 'bg-zinc-200' }}" aria-hidden="true"></span>
+                {{-- Past the next stage, the document can't be uploaded until the one before it is accepted --}}
                 <span @class([
-                    'truncate text-sm',
+                    'flex min-w-0 items-center gap-1 text-sm',
                     'font-semibold text-zinc-800' => $index === $current,
-                    'text-zinc-600' => $index < $current,
-                    'text-zinc-400' => $index > $current,
+                    'text-zinc-600' => $index < $current || $index === $current + 1,
+                    'text-zinc-500' => $index > $current + 1,
                 ])>
-                    {{ __($stage) }}
-                    <span class="sr-only">{{ match (true) { $index < $current => __('(done)'), $index === $current => __('(current stage)'), default => __('(not reached)') } }}</span>
+                    @if ($index > $current + 1)
+                        <flux:icon.lock-closed variant="micro" class="shrink-0" aria-hidden="true" />
+                    @endif
+                    <span class="truncate">{{ __($stage) }}</span>
+                    <span class="sr-only">{{ match (true) { $index < $current => __('(done)'), $index === $current => __('(current stage)'), $index === $current + 1 => __('(next)'), default => __('(locked)') } }}</span>
                 </span>
             </li>
         @endforeach

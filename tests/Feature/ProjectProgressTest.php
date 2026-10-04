@@ -122,6 +122,15 @@ class ProjectProgressTest extends TestCase
         Livewire::test('pages::submissions.create')->assertDontSee('data-test="project-stages"', false);
     }
 
+    public function test_stages_past_the_next_one_show_as_locked(): void
+    {
+        $project = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf']);
+
+        $this->actingAs($this->maria)
+            ->get(route('drive.show', $project))
+            ->assertSeeInOrder(['Concept', '(next)', 'Detailed', '(locked)', 'Completed', '(locked)']);
+    }
+
     public function test_the_next_step_says_when_a_document_was_returned_or_all_stages_are_done(): void
     {
         $this->actingAs($this->maria);

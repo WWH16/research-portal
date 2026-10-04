@@ -101,11 +101,13 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
-        // A Completed project takes documents only after the Research Office reopens it. The file is dropped,
-        // since a project closed while the form was open no longer shows the field that could clear it.
-        if ($this->submission && ! $this->submission->acceptsUploads() && $this->documents !== []) {
-            $this->reset('documents');
-            $this->addError('documents', __('This project is Completed. Ask the Research Office to reopen it for a corrected upload.'));
+        // Each document opens once the one before it is accepted, and a Completed project takes none until reopened.
+        // Locked files are dropped, since a project that moved while the form was open no longer shows their fields.
+        if ($locked = array_diff(array_keys($this->documents), $this->uploadable)) {
+            $this->documents = Arr::except($this->documents, $locked);
+            $this->addError('documents', $this->submission?->acceptsUploads() === false
+                ? __('This project is Completed. Ask the Research Office to reopen it for a corrected upload.')
+                : __('That document isn’t open yet. Each one opens once the document before it is accepted.'));
 
             return;
         }
@@ -239,6 +241,17 @@ new #[Title('Research Project')] class extends Component {
      * Where Back, Cancel and Save lead: the Drive project the form was opened from, or the Submissions list.
      * Only the literal "drive" is honoured, so the query string can't point anywhere else.
      */
+    /**
+     * The documents that can be uploaded now. A new project starts with the concept proposal.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function uploadable(): array
+    {
+        return ($this->submission ?? new Submission)->uploadableStages();
+    }
+
     #[Computed]
     public function backUrl(): string
     {
@@ -416,7 +429,7 @@ new #[Title('Research Project')] class extends Component {
                 <flux:description>
                     {{ $submission
                         ? __('Upload the next document here when it’s ready. A new upload replaces the earlier file and goes back to the Research Office for review.')
-                        : __('Upload the document you have now. Add the rest to this same project later.') }}
+                        : __('Start with the concept proposal. The detailed proposal and terminal report open as each earlier document is accepted.') }}
                 </flux:description>
             @else
                 <flux:callout icon="lock-closed" class="mt-2" :heading="__('Uploads are closed')" :text="__('This project is Completed. Ask the Research Office to reopen it if a document needs correcting.')" />
@@ -427,7 +440,7 @@ new #[Title('Research Project')] class extends Component {
                     {{-- Closed uploads still list the files on record, so they can be opened --}}
                     @continue (! $uploadsOpen && ! $submission->{$stage.'_path'})
                     <div>
-                        @if ($uploadsOpen)
+                        @if (in_array($stage, $this->uploadable, true))
                             <flux:input
                                 wire:model="documents.{{ $stage }}"
                                 :label="__($label)"
@@ -437,6 +450,13 @@ new #[Title('Research Project')] class extends Component {
                             />
                         @else
                             <flux:heading size="sm">{{ __($label) }}</flux:heading>
+                            {{-- Locked until the document before it is accepted; a closed Completed project says so above instead --}}
+                            @if ($uploadsOpen)
+                                <flux:text class="mt-1 flex items-center gap-1.5 text-sm" data-test="document-locked">
+                                    <flux:icon.lock-closed variant="micro" class="shrink-0" />
+                                    {{ __('Opens after the :document is accepted.', ['document' => Str::lower(__(Submission::DOCUMENTS[array_keys(Submission::DOCUMENTS)[$loop->index - 1]]))]) }}
+                                </flux:text>
+                            @endif
                         @endif
 
                         @if ($submission?->{$stage.'_path'})

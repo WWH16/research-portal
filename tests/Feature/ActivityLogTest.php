@@ -395,6 +395,8 @@ class ActivityLogTest extends TestCase
             'start_date' => today()->toDateString(),
             'target_date' => today()->addYear()->toDateString(),
             'status' => 'Submitted',
+            // Every project starts with its concept proposal, which a review can accept.
+            'concept_path' => 'submissions/concept.pdf',
         ]);
     }
 }

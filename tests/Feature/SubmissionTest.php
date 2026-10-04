@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\ResearchType;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Exceptions\PublicPropertyNotFoundException;
 use Livewire\Livewire;
+use RuntimeException;
 use Tests\TestCase;
 
 class SubmissionTest extends TestCase
@@ -213,6 +215,19 @@ class SubmissionTest extends TestCase
             ]);
 
         $this->assertSame(0, Submission::count());
+    }
+
+    public function test_abstract_must_fit_its_column(): void
+    {
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+
+        $this->actingAs(User::factory()->create(['department_id' => $department->id]));
+
+        // A MySQL TEXT column holds 65,535 bytes, so 10,000 characters fit even when each takes four.
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->set('abstract', str_repeat('é', 10001))
+            ->call('save')
+            ->assertHasErrors(['abstract' => 'max']);
     }
 
     public function test_blank_choices_are_real_options_and_still_required(): void
@@ -424,6 +439,56 @@ class SubmissionTest extends TestCase
         Storage::disk('submissions')->assertExists($project->detailed_path);
         $this->assertTrue($project->awaiting_review);
         $this->assertSame('Submitted', $project->status);
+    }
+
+    public function test_a_review_never_clears_a_document_uploaded_while_it_was_open(): void
+    {
+        Storage::fake('submissions');
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $review = Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->set('status', 'Concept');
+
+        // Maria uploads the detailed proposal while the Research Office still has the concept open.
+        $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'));
+
+        $review->call('saveReview')->assertHasErrors('review');
+        $project->refresh();
+        $this->assertTrue($project->awaiting_review);
+        $this->assertSame('Submitted', $project->status);
+
+        // The panel now shows the new upload, so saving again is a review of it.
+        $review->call('saveReview')->assertHasNoErrors();
+        $this->assertFalse($project->fresh()->awaiting_review);
+    }
+
+    public function test_a_save_that_fails_keeps_the_earlier_file(): void
+    {
+        Storage::fake('submissions');
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        Storage::disk('submissions')->put($project->concept_path, 'first version');
+        $this->actingAs($maria);
+
+        // The log write runs after the files are stored, so a failure there rolls the whole save back.
+        ActivityLog::creating(fn () => throw new RuntimeException('Log write failed.'));
+
+        try {
+            Livewire::test('pages::submissions.create', ['submission' => $project])
+                ->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))
+                ->call('save');
+            $this->fail('The save should have failed.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('Log write failed.', $e->getMessage());
+        }
+
+        $this->assertSame('submissions/sample.pdf', $project->fresh()->concept_path);
+        $this->assertSame(['submissions/sample.pdf'], Storage::disk('submissions')->allFiles());
     }
 
     public function test_a_review_never_changes_the_year_or_college(): void

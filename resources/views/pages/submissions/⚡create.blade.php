@@ -103,7 +103,8 @@ new #[Title('Research Project')] class extends Component {
 
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
-            'abstract' => ['required', 'string'],
+            // A MySQL TEXT column holds 65,535 bytes, so 10,000 characters fit even when each takes four.
+            'abstract' => ['required', 'string', 'max:10000'],
             'research_type_id' => ['required', 'integer', 'exists:research_types,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'designation' => ['nullable', 'string', 'max:100'],

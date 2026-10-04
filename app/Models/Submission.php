@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -190,13 +191,16 @@ class Submission extends Model
 
     /**
      * Store a document for one stage, replacing the earlier file so only one version exists,
-     * and put the project back on the Research Office's review list.
+     * and put the project back on the Research Office's review list. Inside a transaction, the
+     * earlier file is deleted only once it commits, so a save that rolls back keeps it.
      */
     public function attachDocument(string $stage, UploadedFile $file): void
     {
         $old = $this->{$stage.'_path'};
+        $new = $file->store('submissions', 'submissions');
+        DB::afterRollBack(fn () => Storage::disk('submissions')->delete($new));
 
-        $this->{$stage.'_path'} = $file->store('submissions', 'submissions');
+        $this->{$stage.'_path'} = $new;
         $this->awaiting_review = true;
 
         if ($stage === 'terminal') {
@@ -206,7 +210,7 @@ class Submission extends Model
         $this->save();
 
         if ($old) {
-            Storage::disk('submissions')->delete($old);
+            DB::afterCommit(fn () => Storage::disk('submissions')->delete($old));
         }
     }
 }

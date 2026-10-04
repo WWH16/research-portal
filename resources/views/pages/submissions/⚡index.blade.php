@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -24,6 +25,10 @@ new #[Title('Submissions')] class extends Component {
     public ?int $reviewingId = null;
     public string $status = '';
     public string $remarks = '';
+
+    /** The project's files when the review panel showed them, so a save never clears an upload the reviewer hasn't seen. */
+    #[Locked]
+    public array $reviewedFiles = [];
 
     /** The project open in the Change dates dialog. */
     public ?int $datingId = null;
@@ -188,6 +193,7 @@ new #[Title('Submissions')] class extends Component {
 
         $this->status = $submission->status;
         $this->remarks = (string) $submission->remarks;
+        $this->reviewedFiles = $this->documentPaths($submission);
         $this->resetValidation();
 
         Flux::modal('review-submission')->show();
@@ -290,8 +296,17 @@ new #[Title('Submissions')] class extends Component {
         ]);
 
         // The review and its log entry save together, so a failed log write never leaves a review the log missed.
-        DB::transaction(function () use ($validated) {
-            $submission = Submission::findOrFail($this->reviewingId);
+        $saved = DB::transaction(function () use ($validated) {
+            // Locked until the review saves, so an upload can't slip in between the check and the save.
+            $submission = Submission::lockForUpdate()->findOrFail($this->reviewingId);
+
+            // A document came in after the panel opened. Show it instead of clearing it unseen.
+            if ($this->documentPaths($submission) !== $this->reviewedFiles) {
+                $this->reviewedFiles = $this->documentPaths($submission);
+
+                return false;
+            }
+
             $submission->update([
                 'status' => $validated['status'],
                 'remarks' => $validated['remarks'] ?: null,
@@ -303,7 +318,15 @@ new #[Title('Submissions')] class extends Component {
                 'status' => [$submission->getPrevious()['status'] ?? $submission->status, $submission->status],
                 'remarks' => $submission->remarks,
             ]));
+
+            return true;
         });
+
+        if (! $saved) {
+            $this->addError('review', __('A new document came in while this was open. Check it, then save the review again.'));
+
+            return;
+        }
 
         if ($this->from === 'drive') {
             session()->flash('status', __('Review saved.'));
@@ -323,6 +346,16 @@ new #[Title('Submissions')] class extends Component {
 
         // Saving runs inside the review island, which only redraws itself; the list has to show the new status too.
         $this->renderIsland('list');
+    }
+
+    /**
+     * The stored file for each stage. A new upload always gets a new path, so a changed path means a new document.
+     *
+     * @return array<string, string|null>
+     */
+    private function documentPaths(Submission $submission): array
+    {
+        return $submission->only(array_map(fn (string $stage) => $stage.'_path', array_keys(Submission::DOCUMENTS)));
     }
 }; ?>
 
@@ -560,6 +593,8 @@ new #[Title('Submissions')] class extends Component {
                     </flux:radio.group>
 
                     <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. Everyone on the project sees these.')" rows="4" maxlength="2000" />
+
+                    <flux:error name="review" />
 
                     <div class="flex justify-end gap-2">
                         <flux:modal.close>

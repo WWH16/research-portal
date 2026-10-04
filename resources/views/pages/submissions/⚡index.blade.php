@@ -397,8 +397,7 @@ new #[Title('Submissions')] class extends Component {
                 <flux:table.column>{{ __('Year') }}</flux:table.column>
                 <flux:table.column>{{ __('Status') }}</flux:table.column>
                 <flux:table.column>{{ __('Duration') }}</flux:table.column>
-                {{-- On phones the actions column stays pinned to the right edge while the table scrolls sideways --}}
-                <flux:table.column class="w-0 max-sm:sticky max-sm:right-0 max-sm:border-l max-sm:border-line max-sm:bg-surface"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
+                <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
@@ -434,7 +433,7 @@ new #[Title('Submissions')] class extends Component {
                                 <div class="text-sm {{ $onTime ? 'text-green-700' : 'text-amber-800' }}">{{ $onTime ? __('Finished on time') : __('Finished late') }}</div>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell class="max-sm:sticky max-sm:right-0 max-sm:border-l max-sm:border-line max-sm:bg-surface">
+                        <flux:table.cell>
                             @if ($this->monitoring)
                                 <div class="flex items-center gap-1">
                                     <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button" class="max-sm:h-11">

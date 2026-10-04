@@ -9,6 +9,7 @@ use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -93,6 +94,22 @@ class ProjectProgressTest extends TestCase
 
         $this->assertSame('Reopened it for a corrected upload', $entry->historyHeadline());
         $this->assertSame('Reopened for a corrected upload', $entry->note());
+    }
+
+    public function test_a_projects_file_times_are_read_once_per_request(): void
+    {
+        Storage::disk('submissions')->put('submissions/concept.pdf', '%PDF');
+        $project = $this->project(['status' => 'Submitted', 'awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf']);
+
+        $this->assertSame('concept', $project->latestUpload()['stage']);
+
+        // The tracker and the document list both need the times; later calls reuse them instead of asking the disk again.
+        Storage::disk('submissions')->delete('submissions/concept.pdf');
+        $this->assertSame('concept', $project->latestUpload()['stage']);
+
+        // A new upload changes the files, so the times are read afresh.
+        $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 10, 'application/pdf'));
+        $this->assertSame(['detailed'], array_keys($project->uploadTimes()));
     }
 
     public function test_a_status_outside_the_stages_counts_as_submitted(): void

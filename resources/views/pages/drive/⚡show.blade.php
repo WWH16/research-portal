@@ -2,7 +2,6 @@
 
 use App\Models\Submission;
 use Flux\Flux;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -110,8 +109,9 @@ new #[Title('Research Drive')] class extends Component {
                     <div class="min-w-0 flex-1">
                         <p class="font-medium text-zinc-800">{{ __($label) }}</p>
                         <p class="text-sm text-zinc-500">
-                            @if ($path && Storage::disk('submissions')->exists($path))
-                                {{ __('Uploaded :date', ['date' => date('M j, Y', Storage::disk('submissions')->lastModified($path))]) }}
+                            {{-- Times come from the project, which reads the disk once for this whole page --}}
+                            @if ($uploaded = $project->uploadTimes()[$stage] ?? null)
+                                {{ __('Uploaded :date', ['date' => $uploaded->format('M j, Y')]) }}
                             @elseif ($path)
                                 {{ __('Uploaded') }}
                             @else

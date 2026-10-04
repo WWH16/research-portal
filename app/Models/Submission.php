@@ -49,6 +49,9 @@ use Illuminate\Support\Facades\Storage;
 ])]
 class Submission extends Model
 {
+    /** @var array<string, Carbon>|null Each stored document's time, read once per request by uploadTimes(). */
+    private ?array $uploadTimes = null;
+
     /** The stages the Research Office moves a project through, in order. */
     public const STATUSES = ['Submitted', 'Concept', 'Detailed', 'Completed'];
 
@@ -263,6 +266,21 @@ class Submission extends Model
     }
 
     /**
+     * When each document on disk was uploaded, keyed by stage. A page asks for these in several places (the
+     * stage tracker, the document list), so the disk is read once per request; on a cloud disk each read is
+     * a network call. A file missing from the disk is left out.
+     *
+     * @return array<string, Carbon>
+     */
+    public function uploadTimes(): array
+    {
+        return $this->uploadTimes ??= collect(array_keys(self::DOCUMENTS))
+            ->filter(fn (string $stage) => $this->{$stage.'_path'} && Storage::disk('submissions')->exists($this->{$stage.'_path'}))
+            ->mapWithKeys(fn (string $stage) => [$stage => Carbon::createFromTimestamp(Storage::disk('submissions')->lastModified($this->{$stage.'_path'}))])
+            ->all();
+    }
+
+    /**
      * The most recently uploaded document, read from the stored files' times since a new upload
      * replaces the file. Null when no file is on disk.
      *
@@ -270,11 +288,10 @@ class Submission extends Model
      */
     public function latestUpload(): ?array
     {
-        return collect(array_keys(self::DOCUMENTS))
-            ->filter(fn (string $stage) => $this->{$stage.'_path'} && Storage::disk('submissions')->exists($this->{$stage.'_path'}))
-            ->map(fn (string $stage) => ['stage' => $stage, 'at' => Carbon::createFromTimestamp(Storage::disk('submissions')->lastModified($this->{$stage.'_path'}))])
-            ->sortByDesc('at')
-            ->first();
+        $times = $this->uploadTimes();
+        arsort($times);
+
+        return $times ? ['stage' => array_key_first($times), 'at' => reset($times)] : null;
     }
 
     /**
@@ -289,6 +306,7 @@ class Submission extends Model
         DB::afterRollBack(fn () => Storage::disk('submissions')->delete($new));
 
         $this->{$stage.'_path'} = $new;
+        $this->uploadTimes = null;
         $this->awaiting_review = true;
         // A reopened Completed project takes one corrected upload, then closes again.
         $this->uploads_reopened = false;

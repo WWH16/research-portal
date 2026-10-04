@@ -208,7 +208,7 @@ new #[Title('My Profile')] class extends Component {
                                 x-on:wheel.prevent="setZoom(zoom - $event.deltaY * 0.002)"
                                 x-on:keydown="key($event)"
                             >
-                                <img x-ref="image" x-show="src" :src="src" x-on:load="loaded()" alt="" draggable="false" class="absolute top-0 left-0 max-w-none" :style="imageStyle" />
+                                <img x-ref="image" x-show="src" :src="src" x-on:load="loaded()" alt="" draggable="false" class="absolute top-0 left-0 max-w-none origin-top-left will-change-transform" :style="imageStyle" />
                                 <div class="pointer-events-none absolute inset-0 rounded-full ring-[999px] ring-zinc-950/50"></div>
                             </div>
 

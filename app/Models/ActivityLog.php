@@ -27,7 +27,7 @@ class ActivityLog extends Model
 {
     use MassPrunable;
 
-    /** How long entries are kept. The daily model:prune run deletes anything older. */
+    /** How long entries are kept. The daily model:prune run deletes anything older, except project entries. */
     public const KEEP_MONTHS = 12;
 
     /** The filters on the Activity Log page, keyed by the action prefix each one covers. */
@@ -45,13 +45,14 @@ class ActivityLog extends Model
     ];
 
     /**
-     * Entries older than KEEP_MONTHS, for the daily model:prune run.
+     * Entries older than KEEP_MONTHS, for the daily model:prune run. Project entries stay: a project can run
+     * for years, and its Drive page shows the whole history.
      *
      * @return Builder<self>
      */
     public function prunable(): Builder
     {
-        return static::where('created_at', '<', now()->subMonths(self::KEEP_MONTHS));
+        return static::where('created_at', '<', now()->subMonths(self::KEEP_MONTHS))->where('action', 'not like', 'submission.%');
     }
 
     protected function casts(): array

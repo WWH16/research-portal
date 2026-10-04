@@ -8,5 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Deletes activity log entries past ActivityLog::KEEP_MONTHS.
+// Deletes activity log entries past ActivityLog::KEEP_MONTHS, except each project's history.
 Schedule::command('model:prune')->daily();

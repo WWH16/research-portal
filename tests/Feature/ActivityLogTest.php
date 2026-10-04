@@ -220,6 +220,21 @@ class ActivityLogTest extends TestCase
         $this->assertSame([$recent->id], ActivityLog::pluck('id')->all());
     }
 
+    public function test_project_entries_outlive_the_retention_period(): void
+    {
+        $project = $this->project('Solar Dryer Study');
+
+        $this->travelTo(now()->subMonths(ActivityLog::KEEP_MONTHS)->subDay());
+        $review = ActivityLog::record('submission.reviewed', $project, ['status' => ['Submitted', 'Concept']], $this->admin);
+        ActivityLog::record('auth.login', user: $this->admin);
+        $this->travelBack();
+
+        $this->artisan('model:prune', ['--model' => [ActivityLog::class]])->assertSuccessful();
+
+        // A project can run for years, and its Drive page shows the whole history.
+        $this->assertSame([$review->id], ActivityLog::pluck('id')->all());
+    }
+
     public function test_bad_dates_in_the_url_are_ignored_and_a_reversed_range_is_swapped(): void
     {
         $this->travelTo(today()->setDate(2026, 10, 1)->setTime(9, 0));

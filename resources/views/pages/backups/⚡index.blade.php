@@ -26,7 +26,7 @@ new #[Title('Backup and Restore')] class extends Component {
     @if (app()->isProduction() && ! ($this->inBucket('submissions') && $this->inBucket('public')))
         <flux:callout variant="danger" icon="exclamation-triangle" class="mt-6" data-test="files-on-server">
             <flux:callout.heading>{{ __('Uploaded files are on the server disk') }}</flux:callout.heading>
-            <flux:callout.text>{{ __('Laravel Cloud clears this disk on every deploy. Attach a private bucket named "submissions" and a public bucket named "public" to the environment, then redeploy.') }}</flux:callout.text>
+            <flux:callout.text>{{ __('Laravel Cloud clears this disk on every deploy. Attach a private bucket under the disk name "submissions" and a public bucket under the disk name "public", then redeploy.') }}</flux:callout.text>
         </flux:callout>
     @endif
 

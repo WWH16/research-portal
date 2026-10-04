@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * The page shows each entry in parts, so a long project title never buries what happened: the actor,
  * a short summary(), then the subject() with its change() and note() in their own column.
  *
- * @property array{email?: string, not_email?: true, no_account?: true, status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, remarks?: string, kind?: string, from?: string, to?: string}|null $properties
+ * @property array{email?: string, not_email?: true, no_account?: true, status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, remarks?: string, reopened?: true, kind?: string, from?: string, to?: string}|null $properties
  */
 #[Fillable(['user_id', 'actor_name', 'action', 'subject_id', 'subject_label', 'properties'])]
 class ActivityLog extends Model

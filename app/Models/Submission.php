@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * A research project. The researcher enters it once, lists its proponents per study, and
@@ -229,13 +230,12 @@ class Submission extends Model
      */
     public function nextStep(): ?array
     {
-        $stage = self::STATUSES[$this->stageIndex() + 1] ?? null;
+        $stage = self::STATUSES[$this->stageIndex() + 1] ?? '';
+        $document = self::STAGE_DOCUMENTS[$stage] ?? null;
 
-        if ($stage === null) {
+        if ($document === null) {
             return null;
         }
-
-        $document = self::STAGE_DOCUMENTS[$stage];
 
         return ['stage' => $stage, 'document' => $document, 'state' => $this->{$document.'_path'} ? 'returned' : 'missing'];
     }
@@ -302,7 +302,8 @@ class Submission extends Model
     public function attachDocument(string $stage, UploadedFile $file): void
     {
         $old = $this->{$stage.'_path'};
-        $new = $file->store('submissions', 'submissions');
+        // The disk doesn't throw, so a failed write returns false; stop before saving that as the path.
+        $new = $file->store('submissions', 'submissions') ?: throw new RuntimeException('The document could not be stored.');
         DB::afterRollBack(fn () => Storage::disk('submissions')->delete($new));
 
         $this->{$stage.'_path'} = $new;

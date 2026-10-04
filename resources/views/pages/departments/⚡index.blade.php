@@ -199,7 +199,7 @@ new #[Title('Colleges')] class extends Component {
         </flux:table>
     @endif
 
-    <flux:modal name="department-form" class="w-full md:w-[28rem]">
+    <flux:modal name="department-form" class="w-full sm:w-[28rem]">
         <form wire:submit="save" class="flex flex-col gap-6">
             <flux:heading size="lg">{{ $editingId ? __('Edit college') : __('New college') }}</flux:heading>
 
@@ -219,7 +219,7 @@ new #[Title('Colleges')] class extends Component {
     </flux:modal>
 
     {{-- Closing forgets the college without a request, so later actions don't reload it --}}
-    <flux:modal name="department-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96" aria-labelledby="department-delete-heading">
+    <flux:modal name="department-delete" wire:close="$set('deletingId', null, false)" class="w-full sm:w-96" aria-labelledby="department-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>

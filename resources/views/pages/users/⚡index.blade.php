@@ -367,8 +367,7 @@ new #[Title('Manage Users')] class extends Component {
     @endif
 
     {{-- Closing either dialog forgets its account without a request, so later searches don't reload it --}}
-    {{-- Phones get a 12px gutter instead of the browser's wide dialog margin; from sm up both dialogs keep their fixed width --}}
-    <flux:modal name="user-form" wire:close="$set('editingId', null, false)" class="w-full max-sm:min-w-0 max-sm:max-w-[calc(100%-1.5rem)] max-sm:p-5 sm:w-[34rem]">
+    <flux:modal name="user-form" wire:close="$set('editingId', null, false)" class="w-full sm:w-[34rem]">
         <form wire:submit="save" class="flex flex-col gap-6">
             <div>
                 <flux:heading size="lg">{{ $editingId ? __('Edit user') : __('New user') }}</flux:heading>
@@ -427,7 +426,7 @@ new #[Title('Manage Users')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full max-sm:min-w-0 max-sm:max-w-[calc(100%-1.5rem)] max-sm:p-5 sm:w-96" aria-labelledby="user-delete-heading">
+    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full sm:w-96" aria-labelledby="user-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>

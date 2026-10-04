@@ -573,7 +573,7 @@ new #[Title('Submissions')] class extends Component {
         </flux:modal>
 
         {{-- Closing forgets the project without a request, so later filter changes don't reload it --}}
-        <flux:modal name="project-dates" wire:close="$set('datingId', null, false)" class="w-full md:w-96" aria-labelledby="project-dates-heading">
+        <flux:modal name="project-dates" wire:close="$set('datingId', null, false)" class="w-full sm:w-96" aria-labelledby="project-dates-heading">
             @island(name: 'dates', always: true)
             @if ($this->dating)
                 <form wire:submit="saveDates" class="flex flex-col gap-6">

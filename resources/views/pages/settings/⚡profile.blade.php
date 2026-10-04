@@ -189,7 +189,7 @@ new #[Title('My Profile')] class extends Component {
                     <flux:error name="photo" class="mt-2" />
                     <p class="mt-2 text-sm font-medium text-red-500" role="alert" x-show="error" x-text="error"></p>
 
-                    <flux:modal name="adjust-photo" class="w-full md:w-[26rem]" aria-labelledby="adjust-photo-heading" x-on:close="release()">
+                    <flux:modal name="adjust-photo" class="w-full sm:w-[26rem]" aria-labelledby="adjust-photo-heading" x-on:close="release()">
                         <div class="flex flex-col gap-6">
                             <div>
                                 <flux:heading size="lg" id="adjust-photo-heading">{{ __('Adjust your photo') }}</flux:heading>
@@ -237,7 +237,7 @@ new #[Title('My Profile')] class extends Component {
                     {{-- Outside the button row and the photo check, so the dialog closes normally after a removal --}}
                     <flux:modal
                         name="remove-photo"
-                        class="w-full md:w-96"
+                        class="w-full sm:w-96"
                         aria-labelledby="remove-photo-heading"
                         x-on:close="setTimeout(() => { if (! document.activeElement || document.activeElement === document.body) document.getElementById('upload-photo-button')?.focus() })"
                     >

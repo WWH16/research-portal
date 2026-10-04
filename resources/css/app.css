@@ -126,6 +126,15 @@ select:focus[data-flux-control] {
     text-decoration-color: var(--color-highlight);
 }
 
+/* Phones: centred dialogs get a 12px gutter, no 320px minimum, and lighter padding. */
+@media (width < 40rem) {
+    dialog[data-modal]:not([data-flux-flyout]) {
+        min-width: 0;
+        max-width: calc(100% - 1.5rem);
+        padding: 1.25rem;
+    }
+}
+
 /* Settings tabs: gold marks where you are and where you're pointing. */
 .settings-tabs [data-flux-navbar-items]:not([data-current]):hover {
     background-color: var(--color-highlight-soft);

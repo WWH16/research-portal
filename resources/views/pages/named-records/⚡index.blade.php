@@ -213,7 +213,7 @@ new class extends Component {
         </flux:table>
     @endif
 
-    <flux:modal name="named-record-form" class="w-full md:w-96">
+    <flux:modal name="named-record-form" class="w-full sm:w-96">
         <form wire:submit="save" class="flex flex-col gap-6">
             <flux:heading size="lg">{{ $editingId ? __('Edit :type', ['type' => $this->config['singular']]) : __('New :type', ['type' => $this->config['singular']]) }}</flux:heading>
 
@@ -231,7 +231,7 @@ new class extends Component {
     </flux:modal>
 
     {{-- Closing forgets the record without a request, so later actions don't reload it --}}
-    <flux:modal name="named-record-delete" wire:close="$set('deletingId', null, false)" class="w-full md:w-96" aria-labelledby="named-record-delete-heading">
+    <flux:modal name="named-record-delete" wire:close="$set('deletingId', null, false)" class="w-full sm:w-96" aria-labelledby="named-record-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>

@@ -456,7 +456,7 @@ new #[Title('Submissions')] class extends Component {
     @endisland
 
     @if ($this->monitoring)
-        <flux:modal name="review-submission" variant="flyout" wire:close="closeReview" class="w-full md:w-[30rem]" aria-labelledby="review-submission-heading">
+        <flux:modal name="review-submission" variant="flyout" wire:close="closeReview" class="w-full max-sm:p-5 sm:w-[30rem]" aria-labelledby="review-submission-heading">
             {{-- Also redraws on full renders, which is free once a closed review forgets its project --}}
             @island(name: 'review', always: true)
             @if ($this->reviewing)
@@ -540,10 +540,10 @@ new #[Title('Submissions')] class extends Component {
 
                     <div>
                         <p class="text-sm text-zinc-500">{{ __('Documents') }}</p>
-                        <div class="mt-2 flex flex-wrap gap-2">
+                        <div class="mt-2 flex flex-wrap gap-2 max-sm:grid">
                             @foreach (Submission::DOCUMENTS as $stage => $label)
                                 @if ($this->reviewing->{$stage.'_path'})
-                                    <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, $stage])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" :variant="$this->reviewing->awaiting_review && $latest && $latest['stage'] === $stage ? 'primary' : 'outline'">
+                                    <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, $stage])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" :variant="$this->reviewing->awaiting_review && $latest && $latest['stage'] === $stage ? 'primary' : 'outline'" class="max-sm:h-11">
                                         {{ __($label) }}
                                     </flux:button>
                                 @endif
@@ -553,9 +553,10 @@ new #[Title('Submissions')] class extends Component {
 
                     <flux:separator variant="subtle" />
 
-                    <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Pick the stage whose document you accept: Concept or Detailed for a proposal, Completed for the terminal report. Saving without a change still takes the project off the review list.')" variant="segmented">
+                    {{-- Four statuses don't fit one segmented row on phones, so they sit two by two there --}}
+                    <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Pick the stage whose document you accept: Concept or Detailed for a proposal, Completed for the terminal report. Saving without a change still takes the project off the review list.')" variant="segmented" class="max-sm:grid max-sm:h-auto max-sm:grid-cols-2 max-sm:gap-1">
                         @foreach (Submission::STATUSES as $option)
-                            <flux:radio :value="$option" :label="__($option)" />
+                            <flux:radio :value="$option" :label="__($option)" class="max-sm:h-10" />
                         @endforeach
                     </flux:radio.group>
 
@@ -563,9 +564,9 @@ new #[Title('Submissions')] class extends Component {
 
                     <div class="flex justify-end gap-2">
                         <flux:modal.close>
-                            <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                            <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
                         </flux:modal.close>
-                        <flux:button type="submit" variant="primary" data-test="save-review-button">{{ __('Save review') }}</flux:button>
+                        <flux:button type="submit" variant="primary" data-test="save-review-button" class="max-sm:h-11">{{ __('Save review') }}</flux:button>
                     </div>
                 </form>
             @endif

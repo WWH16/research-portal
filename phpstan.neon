@@ -11,3 +11,9 @@ parameters:
         - routes/
 
     level: 7
+
+    ignoreErrors:
+        # Used by the Submissions and Research Drive single-file pages in resources/views/pages, which PHPStan does not analyse.
+        -
+            identifier: trait.unused
+            path: app/Concerns/ReviewsSubmissions.php

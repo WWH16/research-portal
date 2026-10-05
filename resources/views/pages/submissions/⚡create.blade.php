@@ -117,7 +117,7 @@ new #[Title('Research Project')] class extends Component {
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'designation' => ['nullable', 'string', 'max:100'],
             // The researcher proposes the dates once; after that only the Research Office moves them, with Change dates on Submissions.
-            'start_date' => [$this->submission ? 'exclude' : 'required', 'date'],
+            'start_date' => [$this->submission ? 'exclude' : 'required', 'date', 'after_or_equal:today'],
             'target_date' => [$this->submission ? 'exclude' : 'required', 'date', 'after:start_date'],
             'proponents' => ['required', 'array', 'max:60'],
             'proponents.*.study' => ['required', 'integer', 'between:1,20'],
@@ -354,8 +354,8 @@ new #[Title('Research Project')] class extends Component {
 
         <div>
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :required="! $submission" :disabled="(bool) $submission" />
-                <flux:input wire:model="target_date" :label="__('Completion date')" type="date" :required="! $submission" :disabled="(bool) $submission" />
+                <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" />
+                <flux:input wire:model="target_date" :label="__('Completion date')" type="date" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" :required="! $submission" :disabled="(bool) $submission" />
             </div>
             <flux:text class="mt-2 text-sm">
                 {{ $submission

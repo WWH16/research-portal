@@ -279,6 +279,25 @@ class SubmissionTest extends TestCase
         $this->assertSame(0, Submission::count());
     }
 
+    public function test_a_new_project_cannot_start_in_the_past(): void
+    {
+        Storage::fake('submissions');
+
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+
+        $this->actingAs(User::factory()->create(['department_id' => $department->id]));
+
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->assertSeeHtml('min="'.today()->toDateString().'"')
+            ->set('start_date', today()->subDay()->toDateString())
+            ->call('save')
+            ->assertHasErrors(['start_date' => 'after_or_equal']);
+
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->call('save')
+            ->assertHasNoErrors();
+    }
+
     public function test_documents_must_be_pdf_or_word_files_under_ten_megabytes(): void
     {
         Storage::fake('submissions');

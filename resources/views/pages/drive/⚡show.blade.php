@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ReviewsSubmissions;
 use App\Models\Submission;
 use Flux\Flux;
 use Livewire\Attributes\Title;
@@ -8,14 +9,16 @@ use Livewire\Component;
 /*
  * One project in the Research Drive: status, studies with each proponent's role and college, and
  * the documents by stage. The route checks the view policy, so only the Research Office and the
- * project's own people get here. Editing and reviewing stay on Submissions, but return here when done.
+ * project's own people get here. Reviews open over this page; edits stay on Submissions, but return here when done.
  */
 new #[Title('Research Drive')] class extends Component {
+    use ReviewsSubmissions;
+
     public Submission $submission;
 
     public function mount(Submission $submission): void
     {
-        // Edits and reviews opened from here come back with a confirmation.
+        // Edits opened from here, and saved reviews, come back with a confirmation.
         if ($message = session('status')) {
             Flux::toast(variant: 'success', text: $message);
         }
@@ -27,6 +30,15 @@ new #[Title('Research Drive')] class extends Component {
             'proponents.user:id,name,department_id',
             'proponents.user.department:id,code',
         ]);
+    }
+
+    /**
+     * Reload the page, so the status, remarks, and history all show the review.
+     */
+    protected function reviewSaved(): void
+    {
+        session()->flash('status', __('Review saved.'));
+        $this->redirectRoute('drive.show', $this->submission, navigate: true);
     }
 }; ?>
 
@@ -57,7 +69,7 @@ new #[Title('Research Drive')] class extends Component {
             <flux:button :href="route('submissions.edit', [$project, 'from' => 'drive'])" icon="pencil-square" wire:navigate data-test="drive-edit-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Edit project') }}</flux:button>
         @endcan
         @if ($admin)
-            <flux:button :href="route('submissions.index', ['review' => $project->id, 'from' => 'drive'])" variant="primary" wire:navigate data-test="drive-review-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Review') }}</flux:button>
+            <flux:button wire:click="review({{ $project->id }})" wire:island="review" variant="primary" data-test="drive-review-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Review') }}</flux:button>
         @endif
     </header>
 
@@ -172,4 +184,8 @@ new #[Title('Research Drive')] class extends Component {
             </ol>
         @endif
     </section>
+
+    @if ($admin)
+        @include('partials.review-panel')
+    @endif
 </section>

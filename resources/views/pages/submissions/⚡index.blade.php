@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ReviewsSubmissions;
 use App\Models\ActivityLog;
 use App\Models\Submission;
 use Flux\Flux;
@@ -9,11 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Locked;
-use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -21,18 +18,7 @@ use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Title('Submissions')] class extends Component {
-    use WithPagination;
-
-    public ?int $reviewingId = null;
-    public string $status = '';
-    public string $remarks = '';
-
-    /** Lets the proponents of a Completed project upload one corrected document. */
-    public bool $reopenUploads = false;
-
-    /** The project's files when the review panel showed them, so a save never clears an upload the reviewer hasn't seen. */
-    #[Locked]
-    public array $reviewedFiles = [];
+    use ReviewsSubmissions, WithPagination;
 
     /** The project open in the Change dates dialog. */
     public ?int $datingId = null;
@@ -49,10 +35,6 @@ new #[Title('Submissions')] class extends Component {
     /** Admins narrow the list to one college by department code; the dashboard links here with ?dept=. */
     #[Url(as: 'dept', except: '')]
     public string $department = '';
-
-    /** "drive" when an admin came to review from a Research Drive project, so closing the review goes back there. */
-    #[Url(except: '')]
-    public string $from = '';
 
     /** Admins find a faculty member's projects by name. */
     #[Url(as: 'q', except: '')]
@@ -175,51 +157,6 @@ new #[Title('Submissions')] class extends Component {
     }
 
     #[Computed]
-    public function reviewing(): ?Submission
-    {
-        return $this->reviewingId
-            ? Submission::with(['user:id,name', 'department:id,code', 'category:id,name', 'proponents.user:id,name,department_id', 'proponents.user.department:id,code'])->find($this->reviewingId)
-            : null;
-    }
-
-    /**
-     * Open the review panel for a project. Faculty can load this page too, so every
-     * review action checks for an admin on the server, not just in the markup.
-     */
-    public function review(int $id): void
-    {
-        $this->authorize('review', Submission::class);
-
-        $this->reviewingId = $id;
-        unset($this->reviewing);
-        $submission = $this->reviewing ?? abort(404);
-
-        $this->status = $submission->status;
-        $this->remarks = (string) $submission->remarks;
-        $this->reopenUploads = $submission->uploads_reopened;
-        $this->reviewedFiles = $this->documentPaths($submission);
-        $this->resetValidation();
-
-        Flux::modal('review-submission')->show();
-    }
-
-    /**
-     * Closing a review opened from the Drive, saved or not, goes back to that project. Otherwise forget the
-     * project, so later filter and page changes don't reload it. Nothing on screen changes, so skip the render.
-     */
-    #[Renderless]
-    public function closeReview(): void
-    {
-        if ($this->from === 'drive' && $this->reviewingId) {
-            $this->redirectRoute('drive.show', $this->reviewingId, navigate: true);
-
-            return;
-        }
-
-        $this->reviewingId = null;
-    }
-
-    #[Computed]
     public function dating(): ?Submission
     {
         return $this->datingId ? Submission::find($this->datingId, ['id', 'title', 'start_date', 'target_date']) : null;
@@ -285,58 +222,10 @@ new #[Title('Submissions')] class extends Component {
     }
 
     /**
-     * Save the review. Saving takes the project off the review list whether or not the status
-     * moves, so a document found incomplete stays at its old status until a corrected upload.
+     * Close the panel and redraw the list. Saving runs inside the review island, which only redraws itself.
      */
-    public function saveReview(): void
+    protected function reviewSaved(): void
     {
-        $this->authorize('review', Submission::class);
-
-        $this->remarks = trim($this->remarks);
-
-        $validated = $this->validate([
-            // Back to an earlier stage, or one stage forward once its document is on file; the panel locks the rest.
-            'status' => ['required', Rule::in(Submission::findOrFail($this->reviewingId)->reviewableStatuses())],
-            'remarks' => ['nullable', 'string', 'max:2000'],
-        ], [
-            'status.in' => __('That stage isn’t open yet. A project moves forward one stage at a time, once its document is on file.'),
-        ]);
-
-        // The review and its log entry save together, so a failed log write never leaves a review the log missed.
-        DB::transaction(function () use ($validated) {
-            // Locked until the review saves, so an upload can't slip in between the check and the save.
-            $submission = Submission::lockForUpdate()->findOrFail($this->reviewingId);
-
-            // A document came in after the panel opened. Show it instead of clearing it unseen.
-            if (($paths = $this->documentPaths($submission)) !== $this->reviewedFiles) {
-                $this->reviewedFiles = $paths;
-
-                throw ValidationException::withMessages(['review' => __('A new document came in while this was open. Check it, then save the review again.')]);
-            }
-
-            $submission->update([
-                'status' => $validated['status'],
-                'remarks' => $validated['remarks'] ?: null,
-                'awaiting_review' => false,
-                // Only a Completed project is closed to uploads, so the flag means nothing on any other status.
-                'uploads_reopened' => $validated['status'] === 'Completed' && $this->reopenUploads,
-            ]);
-
-            // The project keeps only the latest remarks, so the log holds each review's own copy.
-            ActivityLog::record('submission.reviewed', $submission, array_filter([
-                'status' => [$submission->getPrevious()['status'] ?? $submission->status, $submission->status],
-                'remarks' => $submission->remarks,
-                'reopened' => $submission->wasChanged('uploads_reopened') && $submission->uploads_reopened,
-            ]));
-        });
-
-        if ($this->from === 'drive') {
-            session()->flash('status', __('Review saved.'));
-            $this->closeReview();
-
-            return;
-        }
-
         Flux::modal('review-submission')->close();
         Flux::toast(variant: 'success', text: __('Review saved.'));
         unset($this->submissions, $this->reviewing);
@@ -346,18 +235,7 @@ new #[Title('Submissions')] class extends Component {
             $this->previousPage();
         }
 
-        // Saving runs inside the review island, which only redraws itself; the list has to show the new status too.
         $this->renderIsland('list');
-    }
-
-    /**
-     * The stored file for each stage. A new upload always gets a new path, so a changed path means a new document.
-     *
-     * @return array<string, string|null>
-     */
-    private function documentPaths(Submission $submission): array
-    {
-        return $submission->only(array_map(fn (string $stage) => $stage.'_path', array_keys(Submission::DOCUMENTS)));
     }
 }; ?>
 
@@ -490,141 +368,7 @@ new #[Title('Submissions')] class extends Component {
     @endisland
 
     @if ($this->monitoring)
-        <flux:modal name="review-submission" variant="flyout" wire:close="closeReview" class="w-full max-sm:p-5 sm:w-[30rem]" aria-labelledby="review-submission-heading">
-            {{-- Also redraws on full renders, which is free once a closed review forgets its project --}}
-            @island(name: 'review', always: true)
-            @if ($this->reviewing)
-                <form wire:submit="saveReview" class="flex flex-col gap-6">
-                    <div class="pe-8">
-                        <flux:heading size="lg" id="review-submission-heading">{{ $this->reviewing->title }}</flux:heading>
-                        <flux:text class="mt-1">{{ __('Filed by :name · :college', ['name' => $this->reviewing->user->name, 'college' => $this->reviewing->department->code]) }}</flux:text>
-                    </div>
-
-                    @include('partials.project-stages', ['submission' => $this->reviewing, 'next' => false])
-
-                    @php($latest = $this->reviewing->latestUpload())
-                    @php($open = $this->reviewing->reviewableStatuses())
-                    {{-- The open statuses are always the first few in order, so the first locked one comes right after them --}}
-                    @php($firstLocked = Submission::STATUSES[count($open)] ?? null)
-                    @if ($this->reviewing->awaiting_review)
-                        <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">
-                            <flux:callout.heading>
-                                {{ $latest ? __('To review: :document', ['document' => __(Submission::DOCUMENTS[$latest['stage']])]) : __('Waiting for review') }}
-                            </flux:callout.heading>
-                            @if ($latest)
-                                <flux:callout.text>{{ __('Uploaded :date. Open it below, then set the status or leave remarks.', ['date' => $latest['at']->format('M j, Y, g:i A')]) }}</flux:callout.text>
-                            @endif
-                        </flux:callout>
-                    @else
-                        <flux:text class="text-sm" data-test="review-nothing-new">{{ __('Already reviewed. No new document since then.') }}</flux:text>
-                    @endif
-
-                    <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                        {{-- Full width, so year and encoded date, then the two project dates, stay paired below --}}
-                        <div class="col-span-2">
-                            <dt class="text-zinc-500">{{ __('Category') }}</dt>
-                            <dd class="mt-1 font-medium text-zinc-800">{{ $this->reviewing->category->name }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-zinc-500">{{ __('Year') }}</dt>
-                            <dd class="mt-1 font-medium tabular-nums text-zinc-800">{{ $this->reviewing->year }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-zinc-500">{{ __('Encoded on') }}</dt>
-                            <dd class="mt-1 font-medium tabular-nums text-zinc-800">{{ $this->reviewing->created_at->format('M j, Y') }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-zinc-500">{{ __('Starting date') }}</dt>
-                            <dd class="mt-1 font-medium tabular-nums text-zinc-800">{{ $this->reviewing->start_date?->format('M j, Y') ?? '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-zinc-500">{{ __('Completion date') }}</dt>
-                            <dd class="mt-1 font-medium tabular-nums text-zinc-800">{{ $this->reviewing->target_date?->format('M j, Y') ?? '—' }}</dd>
-                        </div>
-                        @if ($this->reviewing->terminal_uploaded_at)
-                            <div class="col-span-2">
-                                <dt class="text-zinc-500">{{ __('Terminal report uploaded') }}</dt>
-                                <dd class="mt-1 font-medium tabular-nums text-zinc-800">
-                                    {{ $this->reviewing->terminal_uploaded_at->format('M j, Y') }}
-                                    @if (($onTime = $this->reviewing->completedOnTime()) !== null)
-                                        ({{ $onTime ? __('on time') : __('late') }})
-                                    @endif
-                                </dd>
-                            </div>
-                        @endif
-                        @if ($this->reviewing->designation)
-                            <div>
-                                <dt class="text-zinc-500">{{ __('Designation') }}</dt>
-                                <dd class="mt-1 font-medium text-zinc-800">{{ $this->reviewing->designation }}</dd>
-                            </div>
-                        @endif
-                        <div class="col-span-2">
-                            <dt class="text-zinc-500">{{ __('Proponents') }}</dt>
-                            <dd class="mt-1 grid gap-1 text-zinc-800">
-                                @foreach ($this->reviewing->proponents->sortBy('study')->groupBy('study') as $study => $rows)
-                                    <p><span class="font-medium">{{ __('Study :number', ['number' => $study]) }}:</span> {{ $rows->map(fn ($row) => $row->user->name.' ('.__($row->role).', '.($row->user->department?->code ?? __('No college')).')')->join(', ') }}</p>
-                                @endforeach
-                            </dd>
-                        </div>
-                        @if ($this->reviewing->abstract)
-                            <div class="col-span-2">
-                                <dt class="text-zinc-500">{{ __('Abstract') }}</dt>
-                                <dd class="mt-1 whitespace-pre-line text-zinc-800">{{ $this->reviewing->abstract }}</dd>
-                            </div>
-                        @endif
-                    </dl>
-
-                    <div>
-                        <p class="text-sm text-zinc-500">{{ __('Documents') }}</p>
-                        <div class="mt-2 flex flex-wrap gap-2 max-sm:grid">
-                            @foreach (Submission::DOCUMENTS as $stage => $label)
-                                @if ($this->reviewing->{$stage.'_path'})
-                                    <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, $stage])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" :variant="$this->reviewing->awaiting_review && $latest && $latest['stage'] === $stage ? 'primary' : 'outline'" class="max-sm:h-11">
-                                        {{ __($label) }}
-                                    </flux:button>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <flux:separator variant="subtle" />
-
-                    {{-- Four statuses don't fit one segmented row on phones, so they sit two by two there --}}
-                    <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Pick the stage whose document you accept: Concept or Detailed for a proposal, Completed for the terminal report. Saving without a change still takes the project off the review list.')" variant="segmented" class="max-sm:grid max-sm:h-auto max-sm:grid-cols-2 max-sm:gap-1">
-                        @foreach (Submission::STATUSES as $option)
-                            @php($locked = $loop->index >= count($open))
-                            <flux:radio :value="$option" :label="__($option)" :icon="$locked ? 'lock-closed' : null" :disabled="$locked" class="max-sm:h-10" />
-                        @endforeach
-                    </flux:radio.group>
-
-                    {{-- Says why the first locked stage is locked: its document isn't in yet, or the stage before it isn't reached --}}
-                    @if ($firstLocked)
-                        <flux:text class="-mt-3 flex items-center gap-1.5 text-sm" data-test="review-locked-hint">
-                            <flux:icon.lock-closed variant="micro" class="shrink-0" />
-                            {{ count($open) === $this->reviewing->stageIndex() + 1
-                                ? __(':stage opens once the :document is uploaded.', ['stage' => __($firstLocked), 'document' => Str::lower(__(Submission::DOCUMENTS[Submission::STAGE_DOCUMENTS[$firstLocked]]))])
-                                : __(':stage opens after the project reaches :previous.', ['stage' => __($firstLocked), 'previous' => __(Submission::STATUSES[count($open) - 1])]) }}
-                        </flux:text>
-                    @endif
-
-                    @if ($this->reviewing->status === 'Completed')
-                        <flux:checkbox wire:model="reopenUploads" :label="__('Reopen for a corrected upload')" :description="__('Lets the proponents upload one more document while the project stays Completed. Uploads close again once it comes in.')" data-test="reopen-uploads" />
-                    @endif
-
-                    <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. Everyone on the project sees these.')" rows="4" maxlength="2000" />
-
-                    <flux:error name="review" />
-
-                    <div class="flex justify-end gap-2">
-                        <flux:modal.close>
-                            <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
-                        </flux:modal.close>
-                        <flux:button type="submit" variant="primary" data-test="save-review-button" class="max-sm:h-11">{{ __('Save review') }}</flux:button>
-                    </div>
-                </form>
-            @endif
-            @endisland
-        </flux:modal>
+        @include('partials.review-panel')
 
         {{-- Closing forgets the project without a request, so later filter changes don't reload it --}}
         <flux:modal name="project-dates" wire:close="$set('datingId', null, false)" class="w-full sm:w-96" aria-labelledby="project-dates-heading">

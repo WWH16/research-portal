@@ -119,7 +119,7 @@ class DriveTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('drive.show', $this->smart))
             ->assertOk()
-            ->assertSee(route('submissions.index', ['review' => $this->smart->id, 'from' => 'drive']));
+            ->assertSee('data-test="drive-review-button"', escape: false);
     }
 
     public function test_editing_from_the_drive_returns_to_the_drive_project(): void
@@ -154,25 +154,28 @@ class DriveTest extends TestCase
             ->assertRedirect(route('submissions.index'));
     }
 
-    public function test_a_review_opened_from_the_drive_returns_to_the_drive_project(): void
+    public function test_a_review_opens_over_the_drive_project_and_returns_to_it(): void
     {
         $this->actingAs($this->admin());
 
-        Livewire::withQueryParams(['review' => $this->smart->id, 'from' => 'drive'])
-            ->test('pages::submissions.index')
+        Livewire::test('pages::drive.show', ['submission' => $this->smart])
+            ->call('review', $this->smart->id)
+            ->assertSet('reviewingId', $this->smart->id)
+            ->assertSee('Save review')
             ->set('status', 'Concept')
             ->call('saveReview')
+            ->assertHasNoErrors()
             ->assertRedirect(route('drive.show', $this->smart));
 
-        Livewire::withQueryParams(['review' => $this->smart->id, 'from' => 'drive'])
-            ->test('pages::submissions.index')
-            ->call('closeReview')
-            ->assertRedirect(route('drive.show', $this->smart));
+        $this->assertSame('Concept', $this->smart->fresh()->status);
+        $this->get(route('drive.show', $this->smart))->assertSee('Review saved.');
 
-        Livewire::withQueryParams(['review' => $this->smart->id])
-            ->test('pages::submissions.index')
-            ->call('closeReview')
-            ->assertNoRedirect();
+        // Faculty see the page but cannot review from it.
+        $this->actingAs($this->natividad);
+        Livewire::test('pages::drive.show', ['submission' => $this->smart])
+            ->assertDontSee('data-test="drive-review-button"', escape: false)
+            ->call('review', $this->smart->id)
+            ->assertForbidden();
     }
 
     public function test_strangers_cannot_open_the_project_or_its_files(): void

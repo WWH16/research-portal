@@ -184,6 +184,9 @@ new #[Title('Research Project')] class extends Component {
             $submission->proponents()->delete();
             $submission->proponents()->createMany($rows->all());
 
+            // Read before attaching, which overwrites the paths.
+            $replaced = array_values(array_filter(array_keys($this->documents), fn (string $stage) => $submission->{$stage.'_path'} !== null));
+
             foreach ($this->documents as $stage => $file) {
                 $submission->attachDocument($stage, $file);
             }
@@ -192,6 +195,7 @@ new #[Title('Research Project')] class extends Component {
             if (! $this->submission || $properties !== [] || $this->documents !== []) {
                 ActivityLog::record($this->submission ? 'submission.updated' : 'submission.created', $submission, array_filter($properties + [
                     'documents' => array_keys($this->documents),
+                    'replaced' => $replaced,
                 ]));
             }
         });

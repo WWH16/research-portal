@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * The page shows each entry in parts, so a long project title never buries what happened: the actor,
  * a short summary(), then the subject() with its change() and note() in their own column.
  *
- * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, remarks?: string, reopened?: true, kind?: string, from?: string, to?: string}|null $properties
+ * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, replaced?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, remarks?: string, reopened?: true, kind?: string, from?: string, to?: string}|null $properties
  */
 #[Fillable(['user_id', 'actor_name', 'action', 'subject_id', 'subject_label', 'properties'])]
 class ActivityLog extends Model
@@ -220,8 +220,9 @@ class ActivityLog extends Model
      * @param  list<string>  $changed  Other columns, such as the abstract, named without values.
      * @param  array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}  $proponents
      * @param  list<string>  $documents
+     * @param  list<string>  $replaced  The documents that took the place of an earlier file.
      */
-    private function projectEditNote(array $values, array $changed, array $proponents, array $documents): string
+    private function projectEditNote(array $values, array $changed, array $proponents, array $documents, array $replaced): string
     {
         $and = ' '.__('and').' ';
         $date = fn (?string $date) => $date ? Date::parse($date)->format('M j, Y') : null;
@@ -253,9 +254,12 @@ class ActivityLog extends Model
         foreach ($proponents['roles'] ?? [] as [$name, $from, $to]) {
             $parts[] = (string) __('Changed :name from :from to :to', ['name' => $name, 'from' => $from, 'to' => $to]);
         }
-        if ($documents) {
-            $parts[] = (string) __('Uploaded the :documents', ['documents' => Arr::join(
-                array_map(fn (string $stage) => Str::lower(Submission::DOCUMENTS[$stage] ?? $stage), $documents), ', ', $and)]);
+        // Entries saved before replacements were recorded have no list, so they keep reading "Uploaded".
+        foreach (['Uploaded the :documents' => array_diff($documents, $replaced), 'Replaced the :documents' => $replaced] as $line => $stages) {
+            if ($stages) {
+                $parts[] = (string) __($line, ['documents' => Arr::join(
+                    array_map(fn (string $stage) => Str::lower(Submission::DOCUMENTS[$stage] ?? $stage), $stages), ', ', $and)]);
+            }
         }
 
         return implode(' · ', $parts);
@@ -333,7 +337,7 @@ class ActivityLog extends Model
         $p = $this->properties ?? [];
 
         return match (true) {
-            in_array($this->action, ['submission.created', 'submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? []),
+            in_array($this->action, ['submission.created', 'submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? [], $p['replaced'] ?? []),
             $this->action === 'submission.reviewed' && isset($p['reopened']) => __('Reopened for a corrected upload'),
             $this->action === 'submission.reviewed' && isset($p['status']) && $p['status'][0] === $p['status'][1] => __('Kept at :status', ['status' => $p['status'][1]]),
             $this->action === 'user.created' && is_string($p['role'] ?? null) => __(':role role', ['role' => Str::ucfirst($p['role'])]),

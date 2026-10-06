@@ -9,6 +9,8 @@ use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -300,6 +302,23 @@ class ActivityLogTest extends TestCase
 
         $this->assertSame(['changed' => ['abstract', 'designation']], ActivityLog::sole()->properties);
         $this->assertSame('Updated the abstract and designation', ActivityLog::sole()->note());
+    }
+
+    public function test_an_upload_over_an_earlier_file_reads_as_replaced(): void
+    {
+        Storage::fake('submissions');
+        $project = $this->project('Solar Dryer Study');
+        $project->proponents()->create(['user_id' => $project->user->id, 'study' => 1, 'role' => 'Leader']);
+
+        $this->actingAs($project->user);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(['documents' => ['concept'], 'replaced' => ['concept']], ActivityLog::sole()->properties);
+        $this->assertSame('Replaced the concept proposal', ActivityLog::sole()->note());
     }
 
     public function test_only_the_research_office_moves_a_projects_dates_and_the_log_shows_it(): void

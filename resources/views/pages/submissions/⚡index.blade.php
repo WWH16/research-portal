@@ -287,7 +287,7 @@ new #[Title('Submissions')] class extends Component {
                 @endif
                 <flux:table.column>{{ __('Year') }}</flux:table.column>
                 <flux:table.column>{{ __('Status') }}</flux:table.column>
-                <flux:table.column>{{ __('Duration') }}</flux:table.column>
+                <flux:table.column>{{ __('Schedule') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>
 
@@ -296,16 +296,20 @@ new #[Title('Submissions')] class extends Component {
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="max-w-sm">
                             <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
-                            <p class="truncate text-zinc-500">{{ $submission->proponents->pluck('user.name')->unique()->join(', ') }}</p>
+                            <p class="truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->pluck('user.name')->unique()->join(', ') }}</p>
+                            {{-- Every row repeats these links, so screen readers also hear which project each one is for --}}
                             <div class="mt-1 flex flex-wrap gap-x-3 text-sm">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
                                     @if ($submission->{$stage.'_path'})
-                                        <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener">{{ __($label) }}</flux:link>
+                                        <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" :aria-label="__(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title])">
+                                            {{ __($label) }}
+                                            <flux:icon.arrow-top-right-on-square variant="micro" class="inline size-3 align-[-1px]" />
+                                        </flux:link>
                                     @endif
                                 @endforeach
                             </div>
                             @if (! $this->monitoring && $submission->conceptReview() === 'returned')
-                                <p class="mt-1 whitespace-normal text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
+                                <p class="mt-1 whitespace-normal text-sm text-amber-800">{{ __('Research Office remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
                             @endif
                         </flux:table.cell>
                         @if ($this->monitoring)
@@ -318,8 +322,8 @@ new #[Title('Submissions')] class extends Component {
                             @include('partials.project-status')
                         </flux:table.cell>
                         <flux:table.cell class="tabular-nums">
-                            <div class="whitespace-nowrap">{{ $submission->start_date?->format('M j, Y') ?? '—' }} –</div>
-                            <div class="whitespace-nowrap">{{ $submission->target_date?->format('M j, Y') ?? '—' }}</div>
+                            <div class="whitespace-nowrap"><span class="text-zinc-500">{{ __('Starts') }}</span> {{ $submission->start_date?->format('M j, Y') ?? __('Not set') }}</div>
+                            <div class="whitespace-nowrap"><span class="text-zinc-500">{{ __('Due') }}</span> {{ $submission->target_date?->format('M j, Y') ?? __('Not set') }}</div>
                             @if (($onTime = $submission->completedOnTime()) !== null)
                                 <div class="text-sm {{ $onTime ? 'text-green-700' : 'text-amber-800' }}">{{ $onTime ? __('Finished on time') : __('Finished late') }}</div>
                             @endif
@@ -328,7 +332,7 @@ new #[Title('Submissions')] class extends Component {
                             @if ($this->monitoring)
                                 <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
                             @else
-                                <flux:button size="sm" variant="ghost" inset="top bottom" :href="route('submissions.edit', $submission)" wire:navigate data-test="edit-submission-button" class="max-sm:h-11">
+                                <flux:button size="sm" variant="ghost" inset="top bottom" :href="route('submissions.edit', $submission)" wire:navigate :aria-label="__('Edit :title', ['title' => $submission->title])" data-test="edit-submission-button" class="max-sm:h-11">
                                     {{ __('Edit') }}
                                 </flux:button>
                             @endif

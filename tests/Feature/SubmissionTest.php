@@ -464,7 +464,7 @@ class SubmissionTest extends TestCase
             ->assertHasNoErrors();
         $this->assertSame('returned', $project->fresh()->conceptReview());
         $this->assertFalse($project->fresh()->awaiting_review);
-        $this->actingAs($maria)->get(route('submissions.index'))->assertSee('Remarks: Missing the budget section.');
+        $this->actingAs($maria)->get(route('submissions.index'))->assertSee('Research Office remarks: Missing the budget section.');
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
             ->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))
@@ -799,7 +799,9 @@ class SubmissionTest extends TestCase
         $this->assertTrue($onTime->fresh()->completedOnTime());
 
         Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
-        $this->get(route('submissions.index'))->assertSee('Finished on time');
+        $this->get(route('submissions.index'))->assertSee('Finished on time')
+            ->assertSee('Terminal report for Jose Proposal, opens in a new tab')
+            ->assertSeeText('Due '.today()->subDays(14)->format('M j, Y'));
 
         $this->actingAs($maria)->get(route('dashboard'))->assertOk()->assertSee('Target date '.today()->subDay()->format('M j, Y').' has passed');
     }

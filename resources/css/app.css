@@ -69,6 +69,15 @@
     --color-status-completed: var(--color-green-700);
     --color-status-delayed: var(--color-red-600);
 
+    /* An envelope that slides in tilted and settles, as if just posted. Used once: the "link sent" line. */
+    --animate-letter-posted: letter-posted 560ms cubic-bezier(0.25, 1, 0.5, 1) both;
+
+    @keyframes letter-posted {
+        from {
+            transform: translateX(-0.5rem) rotate(-12deg) scale(0.9);
+        }
+    }
+
     /* Flux reads these for primary buttons, links, focus rings and checked controls. */
     --color-accent: var(--color-isu-green-700);
     --color-accent-content: var(--color-isu-green-700);

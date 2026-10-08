@@ -6,7 +6,14 @@
         />
 
         @if (session('status') == 'verification-link-sent')
-            <flux:callout variant="success" icon="check-circle" :heading="__('Verification link sent. Check your inbox and open the link to continue.')" />
+            <div role="status" class="flex items-start gap-3">
+                <flux:icon.envelope variant="mini" class="size-5 shrink-0 text-isu-green-700 motion-safe:animate-letter-posted" />
+
+                <div class="flex flex-col gap-0.5">
+                    <p class="text-sm font-medium text-isu-green-700">{{ __('Verification link sent. Check your inbox and open the link to continue.') }}</p>
+                    <p class="text-xs text-zinc-500">{{ __('Sent at :time', ['time' => now()->format('g:i A')]) }}</p>
+                </div>
+            </div>
         @endif
 
         <div class="flex flex-col gap-3">

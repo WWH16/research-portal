@@ -83,7 +83,11 @@ new #[Title('Concept Reviews')] class extends Component {
                             <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
                             <p class="truncate text-zinc-500">{{ $submission->proponents->pluck('user.name')->unique()->join(', ') }}</p>
                             @if ($submission->concept_path)
-                                <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" class="mt-1 text-sm">{{ __('Concept proposal') }}</flux:link>
+                                {{-- Every row has this link and a Review button, so screen readers also hear which project each one is for --}}
+                                <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" :aria-label="__('Concept proposal for :title, opens in a new tab', ['title' => $submission->title])" class="mt-1 text-sm">
+                                    {{ __('Concept proposal') }}
+                                    <flux:icon.arrow-top-right-on-square variant="micro" class="inline size-3 align-[-1px]" />
+                                </flux:link>
                             @endif
                         </flux:table.cell>
                         <flux:table.cell>{{ $submission->department->code }}</flux:table.cell>
@@ -92,7 +96,7 @@ new #[Title('Concept Reviews')] class extends Component {
                             <div class="text-sm text-zinc-500">{{ $submission->updated_at->diffForHumans() }}</div>
                         </flux:table.cell>
                         <flux:table.cell>
-                            <flux:button size="sm" variant="primary" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button" class="max-sm:h-11">
+                            <flux:button size="sm" variant="primary" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" :aria-label="__('Review :title', ['title' => $submission->title])" data-test="review-submission-button" class="max-sm:h-11">
                                 {{ __('Review') }}
                             </flux:button>
                         </flux:table.cell>

@@ -54,6 +54,16 @@ class ReviewsTest extends TestCase
             ->assertDontSee('Decided Proposal');
     }
 
+    public function test_each_row_names_its_project_for_screen_readers(): void
+    {
+        $this->project('Solar Dryer Study');
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->get(route('reviews.index'))
+            ->assertSeeHtml('aria-label="Review Solar Dryer Study"')
+            ->assertSeeHtml('aria-label="Concept proposal for Solar Dryer Study, opens in a new tab"');
+    }
+
     public function test_faculty_see_no_reviews_link(): void
     {
         $this->actingAs($this->maria)->get(route('dashboard'))->assertDontSeeHtml('data-test="reviews-nav"');

@@ -3,7 +3,16 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-surface">
+    {{-- Open work behind the sidebar badges and the phone menu dot. A saved review sends the new queue size, so the count updates without a reload. --}}
+    @php
+        $toReview = auth()->user()->isAdmin() ? \App\Models\Submission::where('awaiting_review', true)->count() : 0;
+        $toRevise = auth()->user()->isAdmin() ? 0 : \App\Models\Submission::involving(auth()->user())->where('awaiting_review', false)->where('concept_passed', false)->count();
+        $reviewLabel = \App\Models\Submission::reviewQueueLabel($toReview);
+        $revisionLabel = trans_choice('{1} 1 project needs revision|[2,*] :count projects need revision', $toRevise);
+        // Two digits at most, so the badge never crowds the label; the hover title keeps the exact count.
+        $capped = fn (int $count) => $count > 99 ? '99+' : $count;
+    @endphp
+    <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
         <flux:sidebar sticky collapsible="mobile" class="isu-sidebar border-e">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
@@ -26,15 +35,19 @@
 
                 <flux:sidebar.group :heading="__('Projects')" class="grid">
                     @if (auth()->user()->isAdmin())
-                        {{-- The Research Office's open work leads the group, with a count visible from every page --}}
-                        @php($toReview = \App\Models\Submission::where('awaiting_review', true)->count())
-                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ?: null" :badge:title="trans_choice('{1} 1 concept proposal to review|[2,*] :count concept proposals to review', $toReview)" wire:navigate data-test="reviews-nav">
+                        {{-- The Research Office's open work leads the group, with a count visible from every page. Screen readers hear the sentence, not the bare number. --}}
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ? $capped($toReview) : null" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
                             {{ __('Concept Reviews') }}
+                            <span class="sr-only" x-show="toReview" x-text="reviewLabel">{{ $toReview ? $reviewLabel : '' }}</span>
                         </flux:sidebar.item>
                     @endif
 
-                    <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" wire:navigate data-test="submissions-nav">
+                    {{-- Faculty see how many of their projects need a corrected concept proposal, and the item opens straight to them --}}
+                    <flux:sidebar.item icon="document-text" :href="route('submissions.index', $toRevise ? ['status' => 'revision'] : [])" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" :badge="$toRevise ? $capped($toRevise) : null" badge:data-tone="revision" :badge:title="$revisionLabel" badge:aria-hidden="true" wire:navigate data-test="submissions-nav">
                         {{ __('Submissions') }}
+                        @if ($toRevise)
+                            <span class="sr-only">{{ $revisionLabel }}</span>
+                        @endif
                     </flux:sidebar.item>
 
                     <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*') || request('from') === 'drive'" wire:navigate>
@@ -88,7 +101,11 @@
 
         <!-- Mobile User Menu -->
         <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+            {{-- The dot keeps open work in sight while the sidebar is tucked away; the inset moves to the wrapper so the dot lines up with the icon --}}
+            <div class="relative -ms-2.5 lg:hidden">
+                <flux:sidebar.toggle icon="bars-2" />
+                <span x-show="toReview || toRevise" @style(['display: none' => ! ($toReview || $toRevise)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" data-test="sidebar-toggle-dot"></span>
+            </div>
 
             <flux:spacer />
 

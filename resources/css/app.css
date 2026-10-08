@@ -245,6 +245,12 @@ select:focus[data-flux-control] {
     color: var(--color-isu-green-950);
 }
 
+/* Faculty's "needs revision" count is rose, so it never reads as the Research Office's gold review queue. */
+.isu-sidebar [data-flux-navlist-badge][data-tone='revision'] {
+    background-color: var(--color-rose-200);
+    color: var(--color-rose-950);
+}
+
 /* Keyboard focus shows as a pale ring that reads on every sidebar green. */
 .isu-sidebar [data-flux-sidebar-item]:focus-visible,
 .isu-sidebar [data-flux-sidebar-brand]:focus-visible,

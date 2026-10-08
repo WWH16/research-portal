@@ -939,10 +939,11 @@ class SubmissionTest extends TestCase
         $project = Submission::where('title', 'Maria Proposal')->first();
 
         $this->actingAs($maria);
-        $this->assertQueriesAtMost(6, fn () => $this->get(route('submissions.index'))->assertOk());
+        // One of these is the sidebar's count of projects that need revision.
+        $this->assertQueriesAtMost(7, fn () => $this->get(route('submissions.index'))->assertOk());
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        // One more than faculty for the sidebar's count of concept proposals to review.
+        // One of these is the sidebar's count of concept proposals to review.
         $this->assertQueriesAtMost(9, fn () => $this->get(route('submissions.index'))->assertOk());
 
         // Calls the way a click inside the review panel sends them, scoped to the review island.

@@ -365,7 +365,8 @@ class DashboardTest extends TestCase
         $this->assertQueriesAtMost(18, fn () => $this->get(route('dashboard'))->assertOk());
 
         $this->actingAs($maria);
-        $this->assertQueriesAtMost(3, fn () => $this->get(route('dashboard'))->assertOk());
+        // One of these is the sidebar's count of projects that need revision.
+        $this->assertQueriesAtMost(4, fn () => $this->get(route('dashboard'))->assertOk());
     }
 
     private function facultyInDepartment(string $name): User

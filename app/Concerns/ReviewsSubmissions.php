@@ -115,6 +115,10 @@ trait ReviewsSubmissions
             ActivityLog::record('submission.reviewed', $submission, array_filter(['decision' => $validated['decision'], 'remarks' => $submission->remarks]));
         });
 
+        // The sidebar count lives in the layout, outside this component, so send it the new queue size.
+        $toReview = Submission::where('awaiting_review', true)->count();
+        $this->dispatch('review-queue-changed', toReview: $toReview, label: Submission::reviewQueueLabel($toReview));
+
         $this->reviewSaved();
     }
 }

@@ -136,6 +136,14 @@ class Submission extends Model
     }
 
     /**
+     * The sidebar's words for the concept review queue, also sent with each saved review so the count updates in place.
+     */
+    public static function reviewQueueLabel(int $count): string
+    {
+        return trans_choice('{1} 1 concept proposal to review|[2,*] :count concept proposals to review', $count);
+    }
+
+    /**
      * Projects the member filed or is listed on as a proponent.
      *
      * @param  Builder<self>  $query

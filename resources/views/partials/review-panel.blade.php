@@ -99,26 +99,23 @@
                 </div>
             @endif
 
-            {{-- Only an upload waiting for review can be decided, and remarks only go with a return --}}
-            @php($pending = $this->reviewing->conceptReview() === 'pending')
-            @if ($pending)
+            {{-- Only an upload waiting for review can be decided; remarks sit above the Return they go with, and an empty return shows "Say what to fix" under them --}}
+            @if ($this->reviewing->conceptReview() === 'pending')
                 <flux:separator variant="subtle" />
 
-                <flux:textarea wire:model="remarks" :label="__('What to fix')" :description="__('Needed to return it for revision. Everyone on the project sees this. Passing it saves no remarks.')" rows="4" maxlength="2000" />
+                <flux:button wire:click="saveReview('passed')" variant="primary" icon="check" data-test="pass-concept-button" class="w-full max-sm:h-11">{{ __('Pass concept') }}</flux:button>
+
+                <div class="grid gap-3">
+                    <flux:textarea wire:model="remarks" :label="__('What to fix')" :description="__('Needed to return it for revision. Everyone on the project sees this. Passing it saves no remarks.')" rows="4" maxlength="2000" />
+                    <flux:button wire:click="saveReview('returned')" icon="arrow-uturn-left" data-test="return-concept-button" class="w-full max-sm:h-11">{{ __('Return for revision') }}</flux:button>
+                </div>
             @endif
 
             <flux:error name="review" />
 
-            {{-- Pass sits last, where the eye ends; on phones the two decisions stack full width above Cancel --}}
-            <div class="flex flex-wrap justify-end gap-2 max-sm:flex-col-reverse">
-                <flux:modal.close>
-                    <flux:button variant="ghost" class="max-sm:h-11 max-sm:w-full">{{ __('Cancel') }}</flux:button>
-                </flux:modal.close>
-                @if ($pending)
-                    <flux:button wire:click="saveReview('returned')" icon="arrow-uturn-left" data-test="return-concept-button" class="max-sm:h-11 max-sm:w-full">{{ __('Return for revision') }}</flux:button>
-                    <flux:button wire:click="saveReview('passed')" variant="primary" icon="check" data-test="pass-concept-button" class="max-sm:h-11 max-sm:w-full">{{ __('Pass concept') }}</flux:button>
-                @endif
-            </div>
+            <flux:modal.close>
+                <flux:button variant="ghost" class="w-full max-sm:h-11">{{ __('Cancel') }}</flux:button>
+            </flux:modal.close>
         </div>
     @endif
     @endisland

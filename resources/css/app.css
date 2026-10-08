@@ -239,8 +239,13 @@ select:focus[data-flux-control] {
     color: var(--color-white);
 }
 
-/* Count badges are gold, like other "look here" marks; Flux's soft colors vanish on the green. */
+/*
+ * Count badges are gold, like other "look here" marks; Flux's soft colors vanish on the green.
+ * A full pill echoes the rounded item, and wider padding keeps "99+" off the edges.
+ */
 .isu-sidebar [data-flux-navlist-badge] {
+    padding-inline: 0.375rem;
+    border-radius: 9999px;
     background-color: var(--color-highlight);
     color: var(--color-isu-green-950);
 }

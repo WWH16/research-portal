@@ -1,14 +1,17 @@
 {{--
-    A project's status badge, plus "Awaiting review" and "Delayed" when they apply.
+    A project's status badge, plus where its concept proposal review stands and "Delayed" when they apply.
+    A passed concept proposal is the norm, so it gets no badge, like finishing on time.
     Expects: $submission; optional $class for the wrapper, such as flex-row-reverse to keep the stage badge at the right edge;
-    optional $timing to flag completed projects that finished late (judged on the terminal report's upload date) or
-    have no terminal report at all, and to say how many days a delayed project is overdue instead of just "Delayed".
+    optional $timing to flag completed projects that finished late (judged on the terminal report's upload date),
+    and to say how many days a delayed project is overdue instead of just "Delayed".
     On time is the norm, so it gets no badge: an unmarked completed project finished on time.
 --}}
 <div class="flex flex-wrap gap-1 {{ $class ?? '' }}">
     <flux:badge size="sm" inset="top bottom" :color="\App\Models\Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">{{ __($submission->status) }}</flux:badge>
     @if ($submission->awaiting_review)
-        <flux:badge size="sm" inset="top bottom" color="blue">{{ __('Awaiting review') }}</flux:badge>
+        <flux:badge size="sm" inset="top bottom" color="blue" :title="__('The concept proposal is waiting for the Research Office to review')">{{ __('Concept to review') }}</flux:badge>
+    @elseif (! $submission->concept_passed)
+        <flux:badge size="sm" inset="top bottom" color="amber" :title="__('The Research Office returned the concept proposal for revision')">{{ __('Concept needs revision') }}</flux:badge>
     @endif
     @if ($submission->isDelayed())
         @if ($timing ?? false)
@@ -21,9 +24,7 @@
         @endif
     @endif
     @if (($timing ?? false) && $submission->status === 'Completed')
-        @if (! $submission->terminal_path)
-            <flux:badge size="sm" inset="top bottom" color="amber" :title="__('Marked Completed, but no terminal report was uploaded')">{{ __('No terminal report') }}</flux:badge>
-        @elseif ($submission->completedOnTime() === false)
+        @if ($submission->completedOnTime() === false)
             <flux:badge
                 size="sm"
                 inset="top bottom"

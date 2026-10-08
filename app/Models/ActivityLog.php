@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * The page shows each entry in parts, so a long project title never buries what happened: the actor,
  * a short summary(), then the subject() with its change() and note() in their own column.
  *
- * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, replaced?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, remarks?: string, reopened?: true, kind?: string, from?: string, to?: string}|null $properties
+ * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, replaced?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, decision?: 'passed'|'returned', remarks?: string, kind?: string, from?: string, to?: string}|null $properties
  */
 #[Fillable(['user_id', 'actor_name', 'action', 'subject_id', 'subject_label', 'properties'])]
 class ActivityLog extends Model
@@ -188,7 +188,12 @@ class ActivityLog extends Model
             'submission.created' => __('submitted a proposal'),
             'submission.updated' => __('updated a project'),
             'submission.dates_changed' => __('changed a project’s dates'),
-            'submission.reviewed' => __('reviewed a project'),
+            'submission.reviewed' => match ($p['decision'] ?? null) {
+                'passed' => __('passed a concept proposal'),
+                'returned' => __('returned a concept proposal for revision'),
+                // Saved under the old flow, when a review could cover any document and set the status.
+                default => isset($p['status']) ? __('reviewed a project') : __('reviewed a concept proposal'),
+            },
 
             'user.created' => __('added an account'),
             'user.updated' => __('edited an account'),
@@ -266,7 +271,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * The remarks a review left, kept with the entry since the project only holds the latest ones.
+     * The remarks a concept proposal review left, kept with the entry since the project only holds the latest ones.
      */
     public function remarks(): ?string
     {
@@ -274,7 +279,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * Who to name for an entry in a project's history. Reviews and date changes are the Research Office's,
+     * Who to name for an entry in a project's history. Concept reviews and date changes are the Research Office's,
      * so faculty see the office rather than one staff member.
      */
     public function historyActor(): string
@@ -286,20 +291,21 @@ class ActivityLog extends Model
 
     /**
      * What happened, as a line in the project's own history, where naming the project would only repeat the page.
+     * Reviews saved before reviews passed or returned the concept proposal have no decision. Those holding a
+     * status could have covered any document, so they read as a project review; the status is never shown,
+     * since it follows the uploads now.
      */
     public function historyHeadline(): string
     {
-        $status = $this->properties['status'] ?? null;
-
         return match (true) {
             $this->action === 'submission.created' => __('Submitted the proposal'),
             $this->action === 'submission.updated' => __('Updated the project'),
             $this->action === 'submission.dates_changed' => __('Changed the dates'),
-            $status === null => __('Reviewed the project'),
-            isset($this->properties['reopened']) => __('Reopened it for a corrected upload'),
-            $this->change() !== null => __('Moved the project from :from to :to', ['from' => __($status[0]), 'to' => __($status[1])]),
-            $this->remarks() !== null => __('Returned it with remarks, kept at :status', ['status' => __($status[1])]),
-            default => __('Reviewed it, kept at :status', ['status' => __($status[1])]),
+            ($this->properties['decision'] ?? null) === 'passed' => __('Passed the concept proposal'),
+            ($this->properties['decision'] ?? null) === 'returned' => __('Returned the concept proposal for revision'),
+            isset($this->properties['status']) => __('Reviewed the project'),
+            $this->remarks() !== null => __('Reviewed the concept proposal and left remarks'),
+            default => __('Reviewed the concept proposal'),
         };
     }
 
@@ -312,7 +318,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * What moved from one value to another: a status, role, email or name.
+     * What moved from one value to another: a role, email or name.
      *
      * @return array{0: string, 1: string}|null
      */
@@ -321,7 +327,6 @@ class ActivityLog extends Model
         $p = $this->properties ?? [];
 
         return match (true) {
-            $this->action === 'submission.reviewed' && isset($p['status']) && $p['status'][0] !== $p['status'][1] => $p['status'],
             $this->action === 'user.updated' && is_array($p['role'] ?? null) => [Str::ucfirst($p['role'][0]), Str::ucfirst($p['role'][1])],
             $this->action === 'auth.email_changed' => [$p['from'] ?? '', $p['to'] ?? ''],
             $this->action === 'filing.updated' && isset($p['from']) => [$p['from'], $this->subject_label ?? ''],
@@ -338,8 +343,6 @@ class ActivityLog extends Model
 
         return match (true) {
             in_array($this->action, ['submission.created', 'submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? [], $p['replaced'] ?? []),
-            $this->action === 'submission.reviewed' && isset($p['reopened']) => __('Reopened for a corrected upload'),
-            $this->action === 'submission.reviewed' && isset($p['status']) && $p['status'][0] === $p['status'][1] => __('Kept at :status', ['status' => $p['status'][1]]),
             $this->action === 'user.created' && is_string($p['role'] ?? null) => __(':role role', ['role' => Str::ucfirst($p['role'])]),
             $this->action === 'user.updated' && isset($p['password']) => __('New password set'),
             // Only a college has more than its name: an edit that kept the code changed the full name.

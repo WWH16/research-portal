@@ -66,7 +66,7 @@ class DashboardTest extends TestCase
 
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeInOrder(['Waiting for review', 'Proposal 1', 'Proposal 5'])
+            ->assertSeeInOrder(['Concept proposals to review', 'Proposal 1', 'Proposal 5'])
             ->assertDontSee('Proposal 6')
             ->assertDontSee('Already reviewed')
             ->assertSee('View all 6')
@@ -112,7 +112,7 @@ class DashboardTest extends TestCase
         // The proposal-stage list flags what waits on the Research Office, next to the stage.
         Livewire::withQueryParams(['group' => 'proposal'])
             ->test('pages::dashboard')
-            ->assertSeeInOrder(['SMART-ResearchTrack', 'Awaiting review', 'Detailed']);
+            ->assertSeeInOrder(['SMART-ResearchTrack', 'Concept to review', 'Detailed']);
     }
 
     public function test_date_range_filters_the_summary_by_filing_date(): void
@@ -159,7 +159,6 @@ class DashboardTest extends TestCase
         $report = ['awaiting_review' => false, 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()->subDay()];
         $this->submit($natividad, 'Finished Study', 'Completed', $report + ['target_date' => today()]);
         $this->submit($natividad, 'Overdue Study', 'Completed', $report + ['target_date' => today()->subWeek()]);
-        $this->submit($natividad, 'Unreported Study', 'Completed', ['awaiting_review' => false, 'target_date' => today()]);
         $this->submit($siton, 'Ongoing Study', 'Concept', ['awaiting_review' => false]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
@@ -171,8 +170,8 @@ class DashboardTest extends TestCase
             ->assertSee('Completed, '.now()->year)
             ->assertSee('Natividad')
             ->assertSee('Finished Study')
-            // On time is the norm and gets no badge; only late and missing reports are flagged.
-            ->assertSeeInOrder(['Natividad', 'CCS', '· 3', 'projects', 'Finished Study', 'Completed', 'Overdue Study', 'Completed', 'Late', 'Unreported Study', 'Completed', 'No terminal report'])
+            // On time is the norm and gets no badge; only late reports are flagged.
+            ->assertSeeInOrder(['Natividad', 'CCS', '· 2', 'projects', 'Finished Study', 'Completed', 'Overdue Study', 'Completed', 'Late'])
             ->assertDontSee('On time')
             ->assertDontSee('Siton')
             ->call('export')
@@ -193,9 +192,9 @@ class DashboardTest extends TestCase
         User::factory()->unverified()->create(['name' => 'Unverified Person', 'department_id' => $cbm->id]);
 
         // Siton is only a co-proponent, which still counts as submitting; Reyes filed last year only.
-        $this->submit($natividad, 'SMART-ResearchTrack', 'Submitted', ['awaiting_review' => false])
+        $this->submit($natividad, 'SMART-ResearchTrack', 'Concept', ['awaiting_review' => false])
             ->proponents()->create(['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff']);
-        $this->travelTo(now()->subYear(), fn () => $this->submit($reyes, 'Old Study', 'Submitted', ['year' => $year - 1, 'awaiting_review' => false]));
+        $this->travelTo(now()->subYear(), fn () => $this->submit($reyes, 'Old Study', 'Concept', ['year' => $year - 1, 'awaiting_review' => false]));
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
@@ -243,7 +242,7 @@ class DashboardTest extends TestCase
 
         $this->travelTo(now()->subMonthNoOverflow()->startOfMonth()->addDays(3));
         $this->submit($maria, 'Last month A');
-        $this->submit($maria, 'Last month B', 'Concept');
+        $this->submit($maria, 'Last month B', 'Detailed');
         $this->travelTo(now()->subYears(2));
         $this->submit($maria, 'Too old to chart');
         $this->travelBack();
@@ -256,7 +255,7 @@ class DashboardTest extends TestCase
 
         $this->get(route('dashboard', $sinceLastMonth))
             ->assertSee('Submissions per month')
-            ->assertSee("{$lastMonth}: 2 projects, 1 Submitted, 1 Concept, 0 Detailed, 0 Completed")
+            ->assertSee("{$lastMonth}: 2 projects, 1 Concept, 1 Detailed, 0 Completed")
             ->assertSee('Show as table');
 
         // Projects have no research type any more, so the summary charts colleges and categories only.
@@ -281,7 +280,7 @@ class DashboardTest extends TestCase
             ->assertSee('One faculty member has no college')
             ->assertSee('Finish setup')
             ->assertSee(route('categories.index'), escape: false)
-            ->assertSee('Nothing is waiting for review.');
+            ->assertSee('No concept proposals are waiting for review.');
     }
 
     public function test_faculty_see_their_own_progress_and_what_needs_attention(): void
@@ -289,7 +288,7 @@ class DashboardTest extends TestCase
         $maria = $this->facultyInDepartment('Maria Santos');
         $jose = $this->facultyInDepartment('Jose Reyes');
 
-        $this->submit($maria, 'Maria Proposal', 'Submitted', ['awaiting_review' => false, 'remarks' => 'Add a methodology section.']);
+        $this->submit($maria, 'Maria Proposal', 'Concept', ['awaiting_review' => false, 'remarks' => 'Add a methodology section.']);
         $this->submit($maria, 'Late Study', 'Detailed', ['target_date' => today()->subWeek()]);
         $this->submit($jose, 'Jose Proposal');
 
@@ -297,7 +296,8 @@ class DashboardTest extends TestCase
 
         $this->get(route('dashboard'))
             ->assertSee('Needs your attention')
-            ->assertSee('Remarks: Add a methodology section.')
+            ->assertSee('Concept needs revision')
+            ->assertSee('What to fix: Add a methodology section.')
             ->assertSee('Late Study')
             ->assertSee('Target date '.today()->subWeek()->format('M j, Y').' has passed')
             ->assertSee('Maria Proposal')
@@ -334,7 +334,7 @@ class DashboardTest extends TestCase
         Livewire::withQueryParams(['review' => $waiting->id])
             ->test('pages::submissions.index')
             ->assertSet('reviewingId', $waiting->id)
-            ->assertSet('status', 'Submitted');
+            ->assertSee('To review: Concept proposal');
     }
 
     public function test_faculty_tiles_open_the_list_they_count(): void
@@ -342,7 +342,7 @@ class DashboardTest extends TestCase
         $maria = $this->facultyInDepartment('Maria Santos');
         $this->submit($maria, 'Concept Study', 'Concept');
         $this->submit($maria, 'Finished Study', 'Completed');
-        $this->submit($maria, 'Late Study', 'Submitted', ['target_date' => today()->subWeek()]);
+        $this->submit($maria, 'Late Study', 'Detailed', ['target_date' => today()->subWeek()]);
 
         $this->actingAs($maria);
 
@@ -354,7 +354,7 @@ class DashboardTest extends TestCase
 
         Livewire::withQueryParams(['status' => 'proposal'])->test('pages::submissions.index')
             ->assertSeeHtml('data-test="status-filter"')
-            ->assertSee('Concept Study')->assertDontSee('Finished Study')->assertDontSee('Late Study');
+            ->assertSee('Concept Study')->assertSee('Late Study')->assertDontSee('Finished Study');
         Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')
             ->assertSee('Late Study')->assertDontSee('Concept Study');
     }
@@ -365,7 +365,7 @@ class DashboardTest extends TestCase
         $jose = $this->facultyInDepartment('Jose Reyes');
 
         foreach (range(1, 12) as $i) {
-            $this->submit($i % 2 ? $maria : $jose, "Project {$i}", Submission::STATUSES[$i % 4], ['target_date' => today()->subDays($i - 6)]);
+            $this->submit($i % 2 ? $maria : $jose, "Project {$i}", Submission::STATUSES[$i % 3], ['target_date' => today()->subDays($i - 6)]);
         }
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
@@ -382,7 +382,7 @@ class DashboardTest extends TestCase
         return User::factory()->create(['name' => $name, 'department_id' => $department->id]);
     }
 
-    private function submit(User $user, string $title, string $status = 'Submitted', array $attributes = []): Submission
+    private function submit(User $user, string $title, string $status = 'Concept', array $attributes = []): Submission
     {
         $project = $user->submissions()->create([
             'research_type_id' => ResearchType::firstOrCreate(['name' => 'Thesis'])->id,

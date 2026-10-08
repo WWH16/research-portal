@@ -161,13 +161,13 @@ class DriveTest extends TestCase
         Livewire::test('pages::drive.show', ['submission' => $this->smart])
             ->call('review', $this->smart->id)
             ->assertSet('reviewingId', $this->smart->id)
-            ->assertSee('Save review')
-            ->set('status', 'Concept')
-            ->call('saveReview')
+            ->assertSee('Pass concept')
+            ->assertSee('Return for revision')
+            ->call('saveReview', 'passed')
             ->assertHasNoErrors()
             ->assertRedirect(route('drive.show', $this->smart));
 
-        $this->assertSame('Concept', $this->smart->fresh()->status);
+        $this->assertSame('Detailed', $this->smart->fresh()->status, 'A review never moves the status.');
         $this->get(route('drive.show', $this->smart))->assertSee('Review saved.');
 
         // Faculty see the page but cannot review from it.
@@ -197,8 +197,7 @@ class DriveTest extends TestCase
         Livewire::test('pages::submissions.index')
             ->call('review', $this->smart->id)
             ->assertSee('Tabago (Leader, CAS)')
-            ->set('status', 'Concept')
-            ->call('saveReview')
+            ->call('saveReview', 'passed')
             ->assertHasNoErrors();
 
         $this->assertSame($this->ccsict->id, $this->smart->fresh()->department_id);

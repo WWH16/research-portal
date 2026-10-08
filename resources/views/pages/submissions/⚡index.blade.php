@@ -25,7 +25,7 @@ new #[Title('Submissions')] class extends Component {
     public string $start_date = '';
     public string $target_date = '';
 
-    /** A status, "proposal" (Concept or Detailed), "review" or "delayed"; the dashboard tiles link here with ?status=. */
+    /** A status, "proposal" (Concept or Detailed), "review", "revision" (concept returned) or "delayed"; the dashboard tiles link here with ?status=. */
     #[Url(as: 'status', except: '')]
     public string $statusFilter = '';
 
@@ -42,7 +42,7 @@ new #[Title('Submissions')] class extends Component {
 
     /**
      * Confirm a just-submitted proposal with the same toast the rest of the portal uses,
-     * and open the review panel when an admin arrives from the dashboard with ?review=.
+     * and open the concept review panel when an admin arrives from the dashboard with ?review=.
      */
     public function mount(): void
     {
@@ -103,6 +103,7 @@ new #[Title('Submissions')] class extends Component {
             ->tap(fn ($query) => match (true) {
                 $this->statusFilter === 'proposal' => $query->whereIn('status', Submission::PROPOSAL_STAGES),
                 $this->statusFilter === 'review' => $query->where('awaiting_review', true),
+                $this->statusFilter === 'revision' => $query->where('awaiting_review', false)->where('concept_passed', false),
                 $this->statusFilter === 'delayed' => $query->delayed(),
                 in_array($this->statusFilter, Submission::STATUSES, true) => $query->where('status', $this->statusFilter),
                 default => $query,
@@ -131,7 +132,7 @@ new #[Title('Submissions')] class extends Component {
             $project->year,
             $project->department->code,
             $project->status,
-            $yesNo($project->awaiting_review),
+            __(['pending' => 'To review', 'passed' => 'Passed', 'returned' => 'Needs revision'][$project->conceptReview()]),
             $yesNo($project->isDelayed()),
             $project->user->name,
             $project->proponents->sortBy([['study', 'asc'], ['id', 'asc']])->groupBy('study')
@@ -144,13 +145,14 @@ new #[Title('Submissions')] class extends Component {
             $project->terminal_uploaded_at?->toDateString(),
             $yesNo($project->completedOnTime()),
             collect(Submission::DOCUMENTS)->filter(fn ($label, $stage) => $project->{$stage.'_path'})->map(fn ($label, $stage) => ucfirst($stage))->join(', '),
-            $project->remarks,
+            // Remarks are what to fix on a returned concept proposal; once a corrected one is in they no longer apply.
+            $project->conceptReview() === 'returned' ? $project->remarks : '',
             $project->created_at->toDateString(),
             $project->abstract,
         ]);
 
         return response()->csv($filename, [
-            __('Title'), __('Year'), __('College'), __('Status'), __('Awaiting review'), __('Delayed'), __('Filed by'),
+            __('Title'), __('Year'), __('College'), __('Status'), __('Concept review'), __('Delayed'), __('Filed by'),
             __('Proponents'), __('Faculty count'), __('Category'), __('Starting date'), __('Completion date'),
             __('Terminal report uploaded'), __('Finished on time'), __('Documents on file'), __('Remarks'), __('Encoded on'), __('Abstract'),
         ], $rows);
@@ -266,7 +268,8 @@ new #[Title('Submissions')] class extends Component {
         <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-48" data-test="status-filter">
             <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
             <flux:select.option value="proposal">{{ __('At proposal stage') }}</flux:select.option>
-            <flux:select.option value="review">{{ __('Awaiting review') }}</flux:select.option>
+            <flux:select.option value="review">{{ __('Concept to review') }}</flux:select.option>
+            <flux:select.option value="revision">{{ __('Concept needs revision') }}</flux:select.option>
             <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
             @foreach (Submission::STATUSES as $option)
                 <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
@@ -326,7 +329,7 @@ new #[Title('Submissions')] class extends Component {
                                     @endif
                                 @endforeach
                             </div>
-                            @if (! $this->monitoring && $submission->remarks && ! $submission->awaiting_review)
+                            @if (! $this->monitoring && $submission->conceptReview() === 'returned')
                                 <p class="mt-1 whitespace-normal text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
                             @endif
                         </flux:table.cell>
@@ -350,7 +353,7 @@ new #[Title('Submissions')] class extends Component {
                             @if ($this->monitoring)
                                 <div class="flex items-center gap-1">
                                     <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button" class="max-sm:h-11">
-                                        {{ __('Review') }}
+                                        {{ __('Review concept') }}
                                     </flux:button>
                                     <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
                                 </div>

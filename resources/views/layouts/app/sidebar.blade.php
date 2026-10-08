@@ -17,7 +17,9 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" wire:navigate>
+                    {{-- Admins see how many concept proposals wait for them from every page --}}
+                    @php($toReview = auth()->user()->isAdmin() ? \App\Models\Submission::where('awaiting_review', true)->count() : 0)
+                    <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" :badge="$toReview ?: null" badge:color="blue" :badge:title="trans_choice('{1} 1 concept proposal to review|[2,*] :count concept proposals to review', $toReview)" wire:navigate data-test="submissions-nav">
                         {{ __('Submissions') }}
                     </flux:sidebar.item>
 

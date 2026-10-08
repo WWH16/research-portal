@@ -9,7 +9,7 @@ use Livewire\Component;
 /*
  * One project in the Research Drive: status, studies with each proponent's role and college, and
  * the documents by stage. The route checks the view policy, so only the Research Office and the
- * project's own people get here. Reviews open over this page; edits stay on Submissions, but return here when done.
+ * project's own people get here. Concept proposal reviews open over this page; edits stay on Submissions, but return here when done.
  */
 new #[Title('Research Drive')] class extends Component {
     use ReviewsSubmissions;
@@ -18,7 +18,7 @@ new #[Title('Research Drive')] class extends Component {
 
     public function mount(Submission $submission): void
     {
-        // Edits opened from here, and saved reviews, come back with a confirmation.
+        // Edits opened from here, and saved concept reviews, come back with a confirmation.
         if ($message = session('status')) {
             Flux::toast(variant: 'success', text: $message);
         }
@@ -33,7 +33,7 @@ new #[Title('Research Drive')] class extends Component {
     }
 
     /**
-     * Reload the page, so the status, remarks, and history all show the review.
+     * Reload the page, so the remarks and history show the review.
      */
     protected function reviewSaved(): void
     {
@@ -69,7 +69,7 @@ new #[Title('Research Drive')] class extends Component {
             <flux:button :href="route('submissions.edit', [$project, 'from' => 'drive'])" icon="pencil-square" wire:navigate data-test="drive-edit-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Edit project') }}</flux:button>
         @endcan
         @if ($admin)
-            <flux:button wire:click="review({{ $project->id }})" wire:island="review" variant="primary" data-test="drive-review-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Review') }}</flux:button>
+            <flux:button wire:click="review({{ $project->id }})" wire:island="review" variant="primary" data-test="drive-review-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Review concept proposal') }}</flux:button>
         @endif
     </header>
 
@@ -107,9 +107,7 @@ new #[Title('Research Drive')] class extends Component {
         <div class="mt-3">@include('partials.project-stages', ['submission' => $project])</div>
     </section>
 
-    @if ($project->remarks && ! $project->awaiting_review)
-        <flux:callout icon="chat-bubble-left-ellipsis" class="mt-6" :heading="__('Remarks from the Research Office')" :text="$project->remarks" />
-    @endif
+    @include('partials.concept-remarks', ['submission' => $project])
 
     <section class="mt-10" aria-labelledby="documents-heading">
         <flux:heading level="2" id="documents-heading">{{ __('Documents') }}</flux:heading>
@@ -172,8 +170,7 @@ new #[Title('Research Drive')] class extends Component {
                             · <time datetime="{{ $entry->created_at->toIso8601String() }}">{{ $entry->day() }}, {{ $entry->created_at->format('g:i A') }}</time>
                         </p>
                         <p class="mt-1 font-medium text-zinc-800">{{ $entry->historyHeadline() }}</p>
-                        {{-- A review's note only repeats the headline's "kept at" --}}
-                        @if ($entry->action !== 'submission.reviewed' && ($note = $entry->note()) !== '')
+                        @if (($note = $entry->note()) !== '')
                             <p class="mt-1 text-sm text-zinc-600">{{ $note }}</p>
                         @endif
                         @if ($remarks = $entry->remarks())

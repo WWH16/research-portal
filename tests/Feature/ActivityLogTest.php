@@ -41,7 +41,7 @@ class ActivityLogTest extends TestCase
         $this->assertTrue(ActivityLog::where('user_id', $maria->id)->where('actor_name', 'Maria Santos')->where('action', 'auth.login')->exists());
     }
 
-    public function test_a_review_records_the_status_change(): void
+    public function test_a_review_is_recorded_as_a_concept_proposal_review(): void
     {
         $project = $this->project('Solar Dryer Study');
 
@@ -49,18 +49,18 @@ class ActivityLogTest extends TestCase
 
         Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
-            ->set('status', 'Concept')
-            ->call('saveReview')
+            ->set('remarks', 'Add the budget table.')
+            ->call('saveReview', 'returned')
             ->assertHasNoErrors();
 
         $log = ActivityLog::sole();
         $this->assertSame('submission.reviewed', $log->action);
-        $this->assertSame(['status' => ['Submitted', 'Concept']], $log->properties);
+        $this->assertSame(['decision' => 'returned', 'remarks' => 'Add the budget table.'], $log->properties, 'A review never records a status.');
         $this->assertTrue($log->subject_id === $project->id && $log->subject_label === 'Solar Dryer Study');
 
         $this->get(route('activity-log.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Research Office', 'Reviewed a project', 'Solar Dryer Study', 'Submitted', 'to', 'Concept'])
+            ->assertSeeInOrder(['Research Office', 'Returned a concept proposal for revision', 'Solar Dryer Study', 'Remarks: Add the budget table.'])
             ->assertSee(route('drive.show', $project), escape: false);
     }
 
@@ -201,7 +201,7 @@ class ActivityLogTest extends TestCase
         $project = $this->project('Solar Dryer Study');
 
         $this->travelTo(now()->subMonths(ActivityLog::KEEP_MONTHS)->subDay());
-        $review = ActivityLog::record('submission.reviewed', $project, ['status' => ['Submitted', 'Concept']], $this->admin);
+        $review = ActivityLog::record('submission.reviewed', $project, [], $this->admin);
         ActivityLog::record('auth.login', user: $this->admin);
         $this->travelBack();
 
@@ -337,7 +337,7 @@ class ActivityLogTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame($newEnd, $project->fresh()->target_date->toDateString());
-        $this->assertSame('Submitted', $project->fresh()->status, 'Moving dates is not a review.');
+        $this->assertSame('Concept', $project->fresh()->status, 'Moving dates is not a review.');
         $this->assertFalse(ActivityLog::where('action', 'submission.reviewed')->exists());
 
         $moved = ActivityLog::firstWhere('action', 'submission.dates_changed');
@@ -356,14 +356,17 @@ class ActivityLogTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)->set('status', 'Submitted')->set('remarks', 'Add the budget table.')->call('saveReview')
-            ->call('review', $project->id)->set('status', 'Concept')->set('remarks', 'Approved.')->call('saveReview')
+        $panel = Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)->set('remarks', 'Add the budget table.')->call('saveReview', 'returned');
+
+        // A corrected concept proposal puts it back up for review.
+        $project->update(['awaiting_review' => true]);
+        $panel->call('review', $project->id)->set('remarks', 'Fixed now.')->call('saveReview', 'returned')
             ->assertHasNoErrors();
 
-        $this->assertSame(['Approved.', 'Add the budget table.'], ActivityLog::latest('id')->get()->map->remarks()->all());
+        $this->assertSame(['Fixed now.', 'Add the budget table.'], ActivityLog::latest('id')->get()->map->remarks()->all());
 
-        $this->get(route('activity-log.index'))->assertSeeInOrder(['Remarks: Approved.', 'Remarks: Add the budget table.']);
+        $this->get(route('activity-log.index'))->assertSeeInOrder(['Remarks: Fixed now.', 'Remarks: Add the budget table.']);
     }
 
     public function test_manage_users_links_to_each_members_activity(): void
@@ -387,8 +390,7 @@ class ActivityLogTest extends TestCase
             'abstract' => 'An abstract.',
             'start_date' => today()->toDateString(),
             'target_date' => today()->addYear()->toDateString(),
-            'status' => 'Submitted',
-            // Every project starts with its concept proposal, which a review can accept.
+            // Every project starts with its concept proposal, the one document the Research Office reviews.
             'concept_path' => 'submissions/concept.pdf',
         ]);
     }

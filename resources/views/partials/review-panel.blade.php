@@ -1,11 +1,10 @@
-{{-- The review flyout for pages using App\Concerns\ReviewsSubmissions --}}
-@use('App\Models\Submission')
-@use('Illuminate\Support\Str')
+{{-- The concept proposal review flyout for pages using App\Concerns\ReviewsSubmissions --}}
 <flux:modal name="review-submission" variant="flyout" wire:close="closeReview" class="w-full max-sm:p-5 sm:w-[30rem]" aria-labelledby="review-submission-heading">
     {{-- Also redraws on full renders, which is free once a closed review forgets its project --}}
     @island(name: 'review', always: true)
     @if ($this->reviewing)
-        <form wire:submit="saveReview" class="flex flex-col gap-6">
+        {{-- Not a form: Enter must never pass a concept proposal by accident, so each decision is its own button --}}
+        <div class="flex flex-col gap-6">
             <div class="pe-8">
                 <flux:heading size="lg" id="review-submission-heading">{{ $this->reviewing->title }}</flux:heading>
                 <flux:text class="mt-1">{{ __('Filed by :name · :college', ['name' => $this->reviewing->user->name, 'college' => $this->reviewing->department->code]) }}</flux:text>
@@ -13,22 +12,29 @@
 
             @include('partials.project-stages', ['submission' => $this->reviewing, 'next' => false])
 
-            @php($latest = $this->reviewing->latestUpload())
-            @php($open = $this->reviewing->reviewableStatuses())
-            {{-- The open statuses are always the first few in order, so the first locked one comes right after them --}}
-            @php($firstLocked = Submission::STATUSES[count($open)] ?? null)
-            @if ($this->reviewing->awaiting_review)
-                <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">
-                    <flux:callout.heading>
-                        {{ $latest ? __('To review: :document', ['document' => __(Submission::DOCUMENTS[$latest['stage']])]) : __('Waiting for review') }}
-                    </flux:callout.heading>
-                    @if ($latest)
-                        <flux:callout.text>{{ __('Uploaded :date. Open it below, then set the status or leave remarks.', ['date' => $latest['at']->format('M j, Y, g:i A')]) }}</flux:callout.text>
-                    @endif
-                </flux:callout>
-            @else
-                <flux:text class="text-sm" data-test="review-nothing-new">{{ __('Already reviewed. No new document since then.') }}</flux:text>
-            @endif
+            @php($uploaded = $this->reviewing->uploadTimes()['concept'] ?? null)
+            @switch ($this->reviewing->conceptReview())
+                @case ('pending')
+                    <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">
+                        <flux:callout.heading>{{ __('To review: Concept proposal') }}</flux:callout.heading>
+                        <flux:callout.text>
+                            {{ $uploaded ? __('Uploaded :date.', ['date' => $uploaded->format('M j, Y, g:i A')]) : '' }}
+                            {{ __('Open it, then pass it or return it for revision. The detailed proposal stays locked until it passes.') }}
+                        </flux:callout.text>
+                    </flux:callout>
+                    @break
+                @case ('passed')
+                    <flux:callout color="green" icon="check-circle" data-test="review-nothing-new">
+                        <flux:callout.heading>{{ __('Concept proposal passed') }}</flux:callout.heading>
+                        <flux:callout.text>{{ __('The proponents can upload the detailed proposal. A replaced concept proposal stays passed.') }}</flux:callout.text>
+                    </flux:callout>
+                    @break
+                @default
+                    <flux:callout color="amber" icon="arrow-uturn-left" data-test="review-nothing-new">
+                        <flux:callout.heading>{{ __('Returned for revision') }}</flux:callout.heading>
+                        <flux:callout.text>{{ __('Waiting for the proponents to upload a corrected concept proposal.') }}</flux:callout.text>
+                    </flux:callout>
+            @endswitch
 
             <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
                 {{-- Full width, so year and encoded date, then the two project dates, stay paired below --}}
@@ -85,54 +91,35 @@
                 @endif
             </dl>
 
-            <div>
-                <p class="text-sm text-zinc-500">{{ __('Documents') }}</p>
-                <div class="mt-2 flex flex-wrap gap-2 max-sm:grid">
-                    @foreach (Submission::DOCUMENTS as $stage => $label)
-                        @if ($this->reviewing->{$stage.'_path'})
-                            <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, $stage])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" :variant="$this->reviewing->awaiting_review && $latest && $latest['stage'] === $stage ? 'primary' : 'outline'" class="max-sm:h-11">
-                                {{ __($label) }}
-                            </flux:button>
-                        @endif
-                    @endforeach
+            @if ($this->reviewing->concept_path)
+                <div>
+                    <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, 'concept'])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" :variant="$this->reviewing->awaiting_review ? 'primary' : 'outline'" class="max-sm:h-11">
+                        {{ __('Open concept proposal') }}
+                    </flux:button>
                 </div>
-            </div>
-
-            <flux:separator variant="subtle" />
-
-            {{-- Four statuses don't fit one segmented row on phones, so they sit two by two there --}}
-            <flux:radio.group wire:model="status" :label="__('Status')" :description="__('Pick the stage whose document you accept: Concept or Detailed for a proposal, Completed for the terminal report. Saving without a change still takes the project off the review list.')" variant="segmented" class="max-sm:grid max-sm:h-auto max-sm:grid-cols-2 max-sm:gap-1">
-                @foreach (Submission::STATUSES as $option)
-                    @php($locked = $loop->index >= count($open))
-                    <flux:radio :value="$option" :label="__($option)" :icon="$locked ? 'lock-closed' : null" :disabled="$locked" class="max-sm:h-10" />
-                @endforeach
-            </flux:radio.group>
-
-            {{-- Says why the first locked stage is locked: its document isn't in yet, or the stage before it isn't reached --}}
-            @if ($firstLocked)
-                <flux:text class="-mt-3 flex items-center gap-1.5 text-sm" data-test="review-locked-hint">
-                    <flux:icon.lock-closed variant="micro" class="shrink-0" />
-                    {{ count($open) === $this->reviewing->stageIndex() + 1
-                        ? __(':stage opens once the :document is uploaded.', ['stage' => __($firstLocked), 'document' => Str::lower(__(Submission::DOCUMENTS[Submission::STAGE_DOCUMENTS[$firstLocked]]))])
-                        : __(':stage opens after the project reaches :previous.', ['stage' => __($firstLocked), 'previous' => __(Submission::STATUSES[count($open) - 1])]) }}
-                </flux:text>
             @endif
 
-            @if ($this->reviewing->status === 'Completed')
-                <flux:checkbox wire:model="reopenUploads" :label="__('Reopen for a corrected upload')" :description="__('Lets the proponents upload one more document while the project stays Completed. Uploads close again once it comes in.')" data-test="reopen-uploads" />
-            @endif
+            {{-- Only an upload waiting for review can be decided, and remarks only go with a return --}}
+            @php($pending = $this->reviewing->conceptReview() === 'pending')
+            @if ($pending)
+                <flux:separator variant="subtle" />
 
-            <flux:textarea wire:model="remarks" :label="__('Remarks')" :description="__('Say what to fix when a document is incomplete. Everyone on the project sees these.')" rows="4" maxlength="2000" />
+                <flux:textarea wire:model="remarks" :label="__('What to fix')" :description="__('Needed to return it for revision. Everyone on the project sees this. Passing it saves no remarks.')" rows="4" maxlength="2000" />
+            @endif
 
             <flux:error name="review" />
 
-            <div class="flex justify-end gap-2">
+            {{-- Pass sits last, where the eye ends; on phones the two decisions stack full width above Cancel --}}
+            <div class="flex flex-wrap justify-end gap-2 max-sm:flex-col-reverse">
                 <flux:modal.close>
-                    <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
+                    <flux:button variant="ghost" class="max-sm:h-11 max-sm:w-full">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="primary" data-test="save-review-button" class="max-sm:h-11">{{ __('Save review') }}</flux:button>
+                @if ($pending)
+                    <flux:button wire:click="saveReview('returned')" icon="arrow-uturn-left" data-test="return-concept-button" class="max-sm:h-11 max-sm:w-full">{{ __('Return for revision') }}</flux:button>
+                    <flux:button wire:click="saveReview('passed')" variant="primary" icon="check" data-test="pass-concept-button" class="max-sm:h-11 max-sm:w-full">{{ __('Pass concept') }}</flux:button>
+                @endif
             </div>
-        </form>
+        </div>
     @endif
     @endisland
 </flux:modal>

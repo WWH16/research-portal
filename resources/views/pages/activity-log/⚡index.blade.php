@@ -200,7 +200,7 @@ new #[Title('Activity Log')] class extends Component {
                 <flux:button variant="ghost" size="sm" class="mt-4" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
             @else
                 <flux:heading>{{ __('No activity recorded yet') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Entries appear here as members sign in, submit or review projects, and change accounts or filing options.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('Entries appear here as members sign in, submit projects or review concept proposals, and change accounts or filing options.') }}</flux:text>
             @endif
         </div>
     @else

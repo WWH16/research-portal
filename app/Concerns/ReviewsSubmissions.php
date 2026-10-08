@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Submission;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -13,23 +14,18 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 
 /**
- * The review panel, shared by Submissions and the Research Drive project page so a review opens over
+ * The concept proposal review panel, shared by Submissions and the Research Drive project page so a review opens over
  * the page it started from. Pair it with the partials.review-panel flyout and a reviewSaved() method.
  */
 trait ReviewsSubmissions
 {
     public ?int $reviewingId = null;
 
-    public string $status = '';
-
     public string $remarks = '';
 
-    /** Lets the proponents of a Completed project upload one corrected document. */
-    public bool $reopenUploads = false;
-
-    /** The project's files when the review panel showed them, so a save never clears an upload the reviewer hasn't seen. */
+    /** The concept proposal's file when the review panel showed it, so a save never clears an upload the reviewer hasn't seen. */
     #[Locked]
-    public array $reviewedFiles = [];
+    public ?string $reviewedConcept = null;
 
     /** What the page does once a review saves, such as redrawing its list. */
     abstract protected function reviewSaved(): void;
@@ -54,10 +50,9 @@ trait ReviewsSubmissions
         unset($this->reviewing);
         $submission = $this->reviewing ?? abort(404);
 
-        $this->status = $submission->status;
-        $this->remarks = (string) $submission->remarks;
-        $this->reopenUploads = $submission->uploads_reopened;
-        $this->reviewedFiles = $this->documentPaths($submission);
+        // Each upload gets its own decision, so a pass never carries the remarks of an earlier return.
+        $this->remarks = '';
+        $this->reviewedConcept = $submission->concept_path;
         $this->resetValidation();
 
         Flux::modal('review-submission')->show();
@@ -73,61 +68,53 @@ trait ReviewsSubmissions
     }
 
     /**
-     * Save the review. Saving takes the project off the review list whether or not the status
-     * moves, so a document found incomplete stays at its old status until a corrected upload.
+     * Pass the concept proposal, which opens the detailed proposal, or return it for revision with remarks
+     * saying what to fix. Either way the project leaves the review list. The review never touches the
+     * status, which follows the documents the proponents upload.
+     *
+     * @param  'passed'|'returned'  $decision
      */
-    public function saveReview(): void
+    public function saveReview(string $decision): void
     {
         $this->authorize('review', Submission::class);
 
         $this->remarks = trim($this->remarks);
 
-        $validated = $this->validate([
-            // Back to an earlier stage, or one stage forward once its document is on file; the panel locks the rest.
-            'status' => ['required', Rule::in(Submission::findOrFail($this->reviewingId)->reviewableStatuses())],
-            'remarks' => ['nullable', 'string', 'max:2000'],
+        $validated = Validator::make(['decision' => $decision, 'remarks' => $this->remarks], [
+            'decision' => ['required', Rule::in(['passed', 'returned'])],
+            // Remarks only go with a return; a pass ignores whatever was typed.
+            'remarks' => ['exclude_unless:decision,returned', 'required', 'string', 'max:2000'],
         ], [
-            'status.in' => __('That stage isn’t open yet. A project moves forward one stage at a time, once its document is on file.'),
-        ]);
+            'remarks.required' => __('Say what to fix, so the proponents know what to change.'),
+        ])->validate();
 
         // The review and its log entry save together, so a failed log write never leaves a review the log missed.
         DB::transaction(function () use ($validated) {
             // Locked until the review saves, so an upload can't slip in between the check and the save.
             $submission = Submission::lockForUpdate()->findOrFail($this->reviewingId);
 
-            // A document came in after the panel opened. Show it instead of clearing it unseen.
-            if (($paths = $this->documentPaths($submission)) !== $this->reviewedFiles) {
-                $this->reviewedFiles = $paths;
+            // A decided concept stays decided; only a new upload puts it back up for review.
+            if (! $submission->awaiting_review) {
+                throw ValidationException::withMessages(['review' => __('Nothing to review. The concept proposal was already decided.')]);
+            }
 
-                throw ValidationException::withMessages(['review' => __('A new document came in while this was open. Check it, then save the review again.')]);
+            // A new concept proposal came in after the panel opened. Show it instead of clearing it unseen.
+            if ($submission->concept_path !== $this->reviewedConcept) {
+                $this->reviewedConcept = $submission->concept_path;
+
+                throw ValidationException::withMessages(['review' => __('A new concept proposal came in while this was open. Check it, then save the review again.')]);
             }
 
             $submission->update([
-                'status' => $validated['status'],
-                'remarks' => $validated['remarks'] ?: null,
+                'remarks' => $validated['remarks'] ?? null,
                 'awaiting_review' => false,
-                // Only a Completed project is closed to uploads, so the flag means nothing on any other status.
-                'uploads_reopened' => $validated['status'] === 'Completed' && $this->reopenUploads,
+                'concept_passed' => $validated['decision'] === 'passed',
             ]);
 
             // The project keeps only the latest remarks, so the log holds each review's own copy.
-            ActivityLog::record('submission.reviewed', $submission, array_filter([
-                'status' => [$submission->getPrevious()['status'] ?? $submission->status, $submission->status],
-                'remarks' => $submission->remarks,
-                'reopened' => $submission->wasChanged('uploads_reopened') && $submission->uploads_reopened,
-            ]));
+            ActivityLog::record('submission.reviewed', $submission, array_filter(['decision' => $validated['decision'], 'remarks' => $submission->remarks]));
         });
 
         $this->reviewSaved();
-    }
-
-    /**
-     * The stored file for each stage. A new upload always gets a new path, so a changed path means a new document.
-     *
-     * @return array<string, string|null>
-     */
-    private function documentPaths(Submission $submission): array
-    {
-        return $submission->only(array_map(fn (string $stage) => $stage.'_path', array_keys(Submission::DOCUMENTS)));
     }
 }

@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /*
  * Admins get the summary for a filing-date range first: faculty counts per stage, each opening the faculty behind it
  * and exportable as a report. Below it, the monthly trend as stacked columns, "where from / what
- * about" as ranked horizontal bars, and the review queue. Faculty get their own progress.
+ * about" as ranked horizontal bars, and the concept proposal review queue. Faculty get their own progress.
  */
 new #[Title('Dashboard')] class extends Component {
     /** First and last filing date the admin summary covers, as Y-m-d. Defaults to this calendar year. */
@@ -283,7 +283,7 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Projects with a new or corrected document the Research Office hasn't reviewed, longest waiting first.
+     * Projects with a new or corrected concept proposal the Research Office hasn't reviewed, longest waiting first.
      */
     #[Computed]
     public function waiting(): Collection
@@ -341,13 +341,13 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * The member's projects that are past their target date, or reviewed with remarks to act on.
+     * The member's projects that are past their target date, or whose concept proposal was returned for revision.
      */
     #[Computed]
     public function needsAttention(): Collection
     {
         return $this->myProjects
-            ->filter(fn ($project) => $project->isDelayed() || ($project->remarks !== null && ! $project->awaiting_review && $project->status !== 'Completed'))
+            ->filter(fn ($project) => $project->isDelayed() || $project->conceptReview() === 'returned')
             ->sortByDesc('updated_at')
             ->take(5);
     }
@@ -355,7 +355,7 @@ new #[Title('Dashboard')] class extends Component {
 
 @php
     // Stage colours come from the status tokens in app.css; written out in full so Tailwind keeps them.
-    $bars = ['Submitted' => 'bg-status-submitted', 'Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Completed' => 'bg-status-completed'];
+    $bars = ['Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Completed' => 'bg-status-completed'];
 @endphp
 
 <section class="mx-auto w-full max-w-6xl">
@@ -408,7 +408,7 @@ new #[Title('Dashboard')] class extends Component {
             $kpis = [
                 'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed in :range|{1} Across one project in :range|[2,*] Across :count projects in :range', $projects['projects'], ['range' => $scope])],
                 'pending' => ['label' => __('Not yet submitted'), 'note' => __('Verified faculty on no project yet')],
-                'proposal' => ['label' => __('At proposal stage'), 'note' => __('Concept or detailed proposal accepted'), 'swatch' => $bars['Detailed']],
+                'proposal' => ['label' => __('At proposal stage'), 'note' => __('Concept or detailed proposal uploaded'), 'swatch' => $bars['Detailed']],
                 'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
                 'delayed' => ['label' => __('Delayed'), 'note' => __('Past target date, no terminal report'), 'swatch' => 'bg-status-delayed'],
             ];
@@ -567,17 +567,17 @@ new #[Title('Dashboard')] class extends Component {
                 </flux:card>
             @endforeach
 
-            {{-- The review queue: new and corrected uploads, longest waiting first, so nothing waits forever --}}
+            {{-- The review queue: new and corrected concept proposals, longest waiting first, so nothing waits forever --}}
             <flux:card class="lg:col-span-12" data-test="waiting-tile">
                 <div class="flex items-baseline justify-between gap-4">
-                    <flux:heading level="2">{{ __('Waiting for review') }}</flux:heading>
+                    <flux:heading level="2">{{ __('Concept proposals to review') }}</flux:heading>
                     @if ($this->waitingCount > 0)
                         <flux:link :href="route('submissions.index', ['status' => 'review'])" wire:navigate class="shrink-0 text-sm">{{ __('View all :count', ['count' => $this->waitingCount]) }}</flux:link>
                     @endif
                 </div>
 
                 @if ($this->waiting->isEmpty())
-                    <flux:text class="mt-4">{{ __('Nothing is waiting for review.') }}</flux:text>
+                    <flux:text class="mt-4">{{ __('No concept proposals are waiting for review.') }}</flux:text>
                 @else
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->waiting as $submission)
@@ -604,8 +604,8 @@ new #[Title('Dashboard')] class extends Component {
 
             $kpis = [
                 ['label' => __('My projects'), 'value' => $total, 'note' => __('Filed or listed as proponent'), 'href' => route('submissions.index')],
-                ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal accepted'), 'href' => route('submissions.index', ['status' => 'proposal']), 'swatch' => $bars['Detailed']],
-                ['label' => __('Completed'), 'value' => $counts['Completed'], 'note' => __('Terminal report accepted'), 'href' => route('submissions.index', ['status' => 'Completed']), 'swatch' => $bars['Completed']],
+                ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal uploaded'), 'href' => route('submissions.index', ['status' => 'proposal']), 'swatch' => $bars['Detailed']],
+                ['label' => __('Completed'), 'value' => $counts['Completed'], 'note' => __('Terminal report uploaded'), 'href' => route('submissions.index', ['status' => 'Completed']), 'swatch' => $bars['Completed']],
                 ['label' => __('Delayed'), 'value' => $this->myProjects->filter->isDelayed()->count(), 'note' => __('Past target date, no terminal report'), 'href' => route('submissions.index', ['status' => 'delayed']), 'swatch' => 'bg-status-delayed'],
             ];
         @endphp
@@ -628,6 +628,9 @@ new #[Title('Dashboard')] class extends Component {
                             <li class="py-3 first:pt-0 last:pb-0">
                                 <div class="flex items-center gap-3">
                                     <p class="min-w-0 flex-1 truncate font-medium text-zinc-800">{{ $submission->title }}</p>
+                                    @if ($submission->conceptReview() === 'returned')
+                                        <flux:badge size="sm" color="amber">{{ __('Concept needs revision') }}</flux:badge>
+                                    @endif
                                     @if ($submission->isDelayed())
                                         <flux:badge size="sm" color="red">{{ __('Delayed') }}</flux:badge>
                                     @endif
@@ -635,8 +638,8 @@ new #[Title('Dashboard')] class extends Component {
                                 @if ($submission->isDelayed())
                                     <p class="mt-1 text-sm text-zinc-600">{{ __('Target date :date has passed. Upload the terminal report when it’s ready.', ['date' => $submission->target_date->format('M j, Y')]) }}</p>
                                 @endif
-                                @if ($submission->remarks && ! $submission->awaiting_review)
-                                    <p class="mt-1 text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
+                                @if ($submission->conceptReview() === 'returned')
+                                    <p class="mt-1 text-sm text-amber-800">{{ __('What to fix: :remarks', ['remarks' => $submission->remarks]) }}</p>
                                 @endif
                                 <flux:link :href="route('submissions.edit', $submission)" wire:navigate class="mt-2 inline-block text-sm">{{ __('Open project') }}</flux:link>
                             </li>

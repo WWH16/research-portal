@@ -4,50 +4,44 @@
     where the "To review" callout already says what came in.
 --}}
 @php
-    $current = $submission->stageIndex();
+    $current = (int) array_search($submission->status, \App\Models\Submission::STATUSES, true);
+    $open = $submission->uploadableStages();
 @endphp
 <div data-test="project-stages">
-    {{-- A bar per stage with its name under it, so four stages fit side by side on phones --}}
-    <ol class="grid grid-cols-4 gap-2">
+    {{-- A bar per stage with its name under it, so the stages fit side by side on phones --}}
+    <ol class="grid grid-cols-3 gap-2">
         @foreach (\App\Models\Submission::STATUSES as $index => $stage)
             <li class="flex min-w-0 flex-col gap-1.5" @if ($index === $current) aria-current="step" @endif>
                 <span class="h-1.5 rounded-full {{ $index <= $current ? 'bg-isu-green-700' : 'bg-zinc-200' }}" aria-hidden="true"></span>
-                {{-- Past the next stage, the document can't be uploaded until the one before it is accepted --}}
+                {{-- A stage whose document can't be uploaded yet: the concept proposal hasn't passed, or the document before it isn't in --}}
+                @php($locked = $index > $current && ! in_array(\App\Models\Submission::STAGE_DOCUMENTS[$stage], $open, true))
                 <span @class([
                     'flex min-w-0 items-center gap-1 text-sm',
                     'font-semibold text-zinc-800' => $index === $current,
-                    'text-zinc-600' => $index < $current || $index === $current + 1,
-                    'text-zinc-500' => $index > $current + 1,
+                    'text-zinc-600' => $index !== $current && ! $locked,
+                    'text-zinc-500' => $locked,
                 ])>
-                    @if ($index > $current + 1)
+                    @if ($locked)
                         <flux:icon.lock-closed variant="micro" class="shrink-0" aria-hidden="true" />
                     @endif
                     <span class="truncate">{{ __($stage) }}</span>
-                    <span class="sr-only">{{ match (true) { $index < $current => __('(done)'), $index === $current => __('(current stage)'), $index === $current + 1 => __('(next)'), default => __('(locked)') } }}</span>
+                    <span class="sr-only">{{ match (true) { $index < $current => __('(done)'), $index === $current => __('(current stage)'), $locked => __('(locked)'), default => __('(next)') } }}</span>
                 </span>
             </li>
         @endforeach
     </ol>
 
     @if ($next ?? true)
-        @php
-            $step = $submission->nextStep();
-            // The upload under review can be a later stage's document when a project skips ahead, or a Completed project's correction.
-            $reviewing = $submission->documentUnderReview();
-            $document = \Illuminate\Support\Str::lower(__(\App\Models\Submission::DOCUMENTS[$reviewing ?? $step['document'] ?? 'terminal']));
-        @endphp
+        @php($document = $submission->nextDocument())
         <flux:text class="mt-3 text-sm" data-test="project-next-step">
-            @if ($reviewing)
-                {{ __('The :document is waiting for the Research Office to review.', ['document' => $document]) }}
-            @elseif ($step === null)
-                {{ $submission->uploads_reopened ? __('All stages are done. The Research Office reopened it for a corrected upload.') : __('All stages are done.') }}
-            @elseif ($step['state'] === 'missing')
-                {{ __('Next: the :document, to move to :stage.', ['document' => $document, 'stage' => __($step['stage'])]) }}
-            {{-- A review can also move a project back, or stop short of a document already on file, without remarks --}}
-            @elseif ($submission->remarks)
-                {{ __('Returned with remarks. Waiting for a corrected :document.', ['document' => $document]) }}
+            @if ($submission->awaiting_review)
+                {{ __('The concept proposal is waiting for the Research Office to review. The detailed proposal opens once it passes.') }}
+            @elseif (! $submission->concept_passed)
+                {{ __('The Research Office returned the concept proposal for revision. Upload a corrected one to send it back for review.') }}
+            @elseif ($document)
+                {{ __('Next: upload the :document.', ['document' => \Illuminate\Support\Str::lower(__(\App\Models\Submission::DOCUMENTS[$document]))]) }}
             @else
-                {{ __('The :document was reviewed without moving the project to :stage. Upload a new one when it’s ready.', ['document' => $document, 'stage' => __($step['stage'])]) }}
+                {{ __('All documents are uploaded.') }}
             @endif
         </flux:text>
     @endif

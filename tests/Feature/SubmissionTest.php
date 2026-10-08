@@ -151,7 +151,7 @@ class SubmissionTest extends TestCase
 
         $this->assertSame($natividad->id, $project->user_id);
         $this->assertSame($department->id, $project->department_id);
-        $this->assertSame('Submitted', $project->fresh()->status);
+        $this->assertSame('Concept', $project->fresh()->status);
         $this->assertTrue($project->fresh()->awaiting_review);
         $this->assertSame(now()->year, $project->year);
         $this->assertSame(6, $project->proponents()->count());
@@ -403,7 +403,7 @@ class SubmissionTest extends TestCase
         $this->actingAs($maria)->get(route('submissions.edit', $project))->assertOk();
     }
 
-    public function test_next_document_goes_on_the_same_project_and_only_admins_move_the_status(): void
+    public function test_next_document_goes_on_the_same_project_and_moves_the_status_without_review(): void
     {
         Storage::fake('submissions');
 
@@ -412,8 +412,12 @@ class SubmissionTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
 
         $this->actingAs($admin);
-        $this->reviewAs($project, 'Concept');
-        $this->assertSame('Concept', $project->fresh()->status);
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertSee('To review: Concept proposal')
+            ->assertDontSeeHtml('data-test="review-nothing-new"');
+        $this->reviewAs($project);
+        $this->assertSame('Concept', $project->fresh()->status, 'A review never moves the status.');
         $this->assertFalse($project->fresh()->awaiting_review);
 
         $this->actingAs($maria);
@@ -424,115 +428,98 @@ class SubmissionTest extends TestCase
 
         $project->refresh();
         $this->assertSame(2, Submission::count(), 'The next document goes on the same record.');
-        $this->assertSame('Project updated. The new document is waiting for the Research Office to review.', session('status'));
-        $this->assertSame('Concept', $project->status, 'Uploading never moves the status.');
-        $this->assertTrue($project->awaiting_review);
+        $this->assertSame('Project updated. The document is uploaded.', session('status'));
+        $this->assertSame('Detailed', $project->status, 'The upload moves the status.');
+        $this->assertFalse($project->awaiting_review, 'The detailed proposal is not reviewed.');
         Storage::disk('submissions')->assertExists($project->detailed_path);
 
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertSame('Completed', $project->fresh()->status);
+        $this->assertFalse($project->fresh()->awaiting_review, 'The terminal report is not reviewed.');
+
         $this->actingAs($admin);
-
-        // The review panel names the document that is new, and says so plainly once it is reviewed.
         Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
-            ->assertSee('To review: Detailed proposal')
-            ->assertDontSeeHtml('data-test="review-nothing-new"');
-
-        $this->reviewAs($project, 'Detailed');
-        $this->assertSame('Detailed', $project->fresh()->status);
-
-        Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)
-            ->assertSee('Already reviewed. No new document since then.')
+            ->assertSee('Concept proposal passed')
             ->assertDontSeeHtml('data-test="review-to-check"');
     }
 
-    public function test_corrected_upload_replaces_the_file_and_goes_back_for_review(): void
+    public function test_corrected_concept_proposal_replaces_the_file_and_goes_back_for_review(): void
     {
         Storage::fake('submissions');
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        // The concept proposal was accepted, so the detailed proposal is open.
-        $project->update(['status' => 'Concept', 'awaiting_review' => false]);
         $this->actingAs($maria);
 
-        Livewire::test('pages::submissions.create', ['submission' => $project])
-            ->set('documents.detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'))
-            ->call('save');
-        $first = $project->fresh()->detailed_path;
-
-        // The Research Office finds it incomplete: remarks, no status change.
+        // The Research Office finds the concept proposal incomplete and leaves remarks.
         $this->actingAs(User::factory()->create(['role' => 'admin']));
         Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
             ->set('remarks', 'Missing the budget section.')
-            ->call('saveReview')
+            ->call('saveReview', 'returned')
             ->assertHasNoErrors();
+        $this->assertSame('returned', $project->fresh()->conceptReview());
         $this->assertFalse($project->fresh()->awaiting_review);
         $this->actingAs($maria)->get(route('submissions.index'))->assertSee('Remarks: Missing the budget section.');
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
-            ->set('documents.detailed', UploadedFile::fake()->create('detailed-v2.pdf', 100, 'application/pdf'))
+            ->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))
             ->call('save');
 
         $project->refresh();
-        Storage::disk('submissions')->assertMissing($first);
-        Storage::disk('submissions')->assertExists($project->detailed_path);
+        Storage::disk('submissions')->assertExists($project->concept_path);
+        $this->assertNotSame('submissions/sample.pdf', $project->concept_path);
         $this->assertTrue($project->awaiting_review);
+        $this->assertSame('Project updated. The new concept proposal is waiting for the Research Office to review.', session('status'));
         $this->assertSame('Concept', $project->status);
+
+        // Once the concept proposal passes, a corrected detailed proposal replaces the file, with no review.
+        $project->update(['awaiting_review' => false, 'concept_passed' => true]);
+        foreach (['detailed.pdf', 'detailed-v2.pdf'] as $name) {
+            Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+                ->set('documents.detailed', UploadedFile::fake()->create($name, 100, 'application/pdf'))
+                ->call('save')
+                ->assertHasNoErrors();
+            $paths[] = $project->fresh()->detailed_path;
+        }
+        Storage::disk('submissions')->assertMissing($paths[0]);
+        Storage::disk('submissions')->assertExists($paths[1]);
+        $this->assertFalse($project->fresh()->awaiting_review);
     }
 
-    public function test_a_completed_project_takes_no_new_documents_until_the_research_office_reopens_it(): void
+    public function test_a_completed_project_still_takes_corrected_documents(): void
     {
         Storage::fake('submissions');
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        $project->update(['status' => 'Completed', 'awaiting_review' => false]);
+        $project->update(['status' => 'Completed', 'awaiting_review' => false, 'detailed_path' => 'submissions/detailed.pdf', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()]);
         $this->actingAs($maria);
 
-        // The form says uploads are closed and offers no file fields, and a forged upload is refused.
         Livewire::test('pages::submissions.create', ['submission' => $project])
-            ->assertSee('Uploads are closed')
-            ->assertDontSee('type="file"', false)
-            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
-            ->call('save')
-            ->assertHasErrors('documents');
-        $this->assertNull($project->fresh()->terminal_path);
-
-        // Other edits still save.
-        Livewire::test('pages::submissions.create', ['submission' => $project])
-            ->set('title', 'Maria Proposal, revised')
-            ->call('save')
-            ->assertHasNoErrors();
-
-        // The Research Office reopens it for one corrected upload, without moving the status.
-        $this->actingAs(User::factory()->create(['role' => 'admin']));
-        Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)
-            ->assertSee('Reopen for a corrected upload')
-            ->set('reopenUploads', true)
-            ->call('saveReview')
-            ->assertHasNoErrors();
-        $this->assertTrue($project->fresh()->uploads_reopened);
-        $this->assertSame('Completed', $project->fresh()->status);
-        $this->assertTrue(ActivityLog::latest('id')->first()->properties['reopened']);
-
-        $this->actingAs($maria);
-        $this->get(route('drive.show', $project))->assertSee('The Research Office reopened it for a corrected upload.');
-        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
             ->assertDontSee('Uploads are closed')
-            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->assertDontSeeHtml('data-test="document-locked"')
+            ->set('documents.terminal', UploadedFile::fake()->create('report-v2.pdf', 100, 'application/pdf'))
             ->call('save')
             ->assertHasNoErrors();
 
         $project->refresh();
-        Storage::disk('submissions')->assertExists($project->terminal_path);
-        $this->assertTrue($project->awaiting_review);
-        $this->assertFalse($project->uploads_reopened, 'One upload, then it closes again.');
+        $this->assertNotSame('submissions/report.pdf', $project->terminal_path);
+        $this->assertSame('Completed', $project->status);
+        $this->assertFalse($project->awaiting_review);
+
+        // The Research Office has nothing to reopen.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertDontSee('Reopen for a corrected upload');
     }
 
-    public function test_each_document_opens_once_the_one_before_it_is_accepted(): void
+    public function test_each_document_opens_once_the_one_before_it_is_ready(): void
     {
         Storage::fake('submissions');
 
@@ -540,25 +527,99 @@ class SubmissionTest extends TestCase
         $project = $maria->submissions()->sole();
         $this->actingAs($maria);
 
-        // The concept proposal is still waiting for review, so the later documents stay locked, and a forged upload is dropped.
+        // The concept proposal still waits for review, so both later documents stay locked, and a forged upload is dropped.
         Livewire::test('pages::submissions.create', ['submission' => $project])
-            ->assertSee('Opens after the concept proposal is accepted.')
-            ->assertSee('Opens after the detailed proposal is accepted.')
+            ->assertSee('Opens after the Research Office passes the concept proposal.')
+            ->assertSee('Opens after the detailed proposal is uploaded.')
             ->set('documents.detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'))
             ->call('save')
             ->assertHasErrors('documents')
             ->assertSet('documents', []);
         $this->assertNull($project->fresh()->detailed_path);
 
-        // Accepting the concept proposal opens the detailed proposal, not the terminal report.
-        $project->update(['status' => 'Concept', 'awaiting_review' => false]);
+        // Returned for revision, it stays locked.
+        $project->update(['awaiting_review' => false, 'concept_passed' => false]);
         Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
-            ->assertDontSee('Opens after the concept proposal is accepted.')
-            ->assertSee('Opens after the detailed proposal is accepted.')
+            ->assertSee('Opens after the Research Office passes the concept proposal.');
+
+        // Passing the concept proposal opens the detailed proposal, not the terminal report.
+        $project->update(['concept_passed' => true]);
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->assertDontSee('Opens after the Research Office passes the concept proposal.')
+            ->assertSee('Opens after the detailed proposal is uploaded.')
             ->set('documents.detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'))
             ->call('save')
             ->assertHasNoErrors();
         $this->assertNotNull($project->fresh()->detailed_path);
+
+        // Uploading the detailed proposal opens the terminal report.
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->assertDontSeeHtml('data-test="document-locked"')
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertNotNull($project->fresh()->terminal_path);
+    }
+
+    public function test_the_research_office_passes_or_returns_the_concept_proposal(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        // The sidebar counts what waits, and the panel offers both decisions.
+        $this->get(route('dashboard'))->assertSeeInOrder(['data-test="submissions-nav"', 'Submissions', '2'], false);
+        $panel = Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertSee('To review: Concept proposal')
+            ->assertSeeHtml('data-test="pass-concept-button"')
+            ->assertSeeHtml('data-test="return-concept-button"');
+
+        // Returning needs remarks, so the proponents know what to fix; a made-up decision is refused.
+        $panel->call('saveReview', 'returned')->assertHasErrors(['remarks' => 'required']);
+        $panel->call('saveReview', 'approved')->assertHasErrors(['decision' => 'in']);
+        $this->assertTrue($project->fresh()->awaiting_review);
+
+        $panel->set('remarks', 'Add the budget table.')->call('saveReview', 'returned')->assertHasNoErrors();
+        $project->refresh();
+        $this->assertSame('returned', $project->conceptReview());
+        $this->assertSame(['concept'], $project->uploadableStages());
+        $this->assertSame('Returned the concept proposal for revision', ActivityLog::latest('id')->first()->historyHeadline());
+
+        // The returned project is easy to find, and the faculty see what to fix.
+        Livewire::withQueryParams(['status' => 'revision'])->test('pages::submissions.index')
+            ->assertSee('Maria Proposal')->assertDontSee('Jose Proposal')->assertSee('Concept needs revision');
+        $this->actingAs($maria)->get(route('drive.show', $project))
+            ->assertSee('Concept proposal returned for revision')
+            ->assertSee('The Research Office returned the concept proposal for revision.');
+
+        // A corrected upload goes back for review; passing it opens the detailed proposal.
+        $project->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'));
+        $this->assertSame('pending', $project->fresh()->conceptReview());
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->set('remarks', '')
+            ->call('saveReview', 'passed')
+            ->assertHasNoErrors();
+        $project->refresh();
+        $this->assertSame('passed', $project->conceptReview());
+        $this->assertNull($project->remarks);
+        $this->assertSame(['concept', 'detailed'], $project->uploadableStages());
+        $this->assertSame('Concept', $project->status, 'Passing never moves the status.');
+        $this->assertSame('Passed the concept proposal', ActivityLog::latest('id')->first()->historyHeadline());
+        $this->get(route('dashboard'))->assertDontSeeHtml('data-test="submissions-nav" data-flux-navlist-badge');
+
+        // A passed concept stays passed: no decision buttons, and a crafted request is refused.
+        Livewire::test('pages::submissions.index')
+            ->call('review', $project->id)
+            ->assertSee('Concept proposal passed')
+            ->assertDontSeeHtml('data-test="pass-concept-button"')
+            ->assertDontSeeHtml('data-test="return-concept-button"')
+            ->set('remarks', 'Changed my mind.')
+            ->call('saveReview', 'returned')
+            ->assertHasErrors('review');
+        $this->assertSame('passed', $project->fresh()->conceptReview());
     }
 
     public function test_a_new_proposal_starts_with_the_concept_proposal(): void
@@ -569,7 +630,7 @@ class SubmissionTest extends TestCase
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         $this->fillProject(Livewire::test('pages::submissions.create'))
-            ->assertSee('Opens after the concept proposal is accepted.')
+            ->assertSee('Opens after the Research Office passes the concept proposal.')
             ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
             ->call('save')
             ->assertHasErrors('documents');
@@ -577,34 +638,32 @@ class SubmissionTest extends TestCase
         $this->assertSame(0, Submission::count());
     }
 
-    public function test_the_research_office_moves_a_project_back_or_one_stage_forward(): void
+    public function test_the_research_office_reviews_the_concept_proposal_without_setting_the_status(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
+        $project->update(['detailed_path' => 'submissions/detailed.pdf', 'status' => 'Detailed']);
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        // Only the concept proposal is on file: it can be accepted, but the project can't skip to Detailed.
-        Livewire::test('pages::submissions.index')
+        $panel = Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
-            ->assertSee('Detailed opens after the project reaches Concept.')
-            ->set('status', 'Detailed')
-            ->call('saveReview')
-            ->assertHasErrors(['status' => 'in']);
-        $this->assertSame('Submitted', $project->fresh()->status);
-
-        $this->reviewAs($project, 'Concept');
-
-        // At Concept with no detailed proposal yet, Detailed waits for that upload; moving back still works.
-        Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)
-            ->assertSee('Detailed opens once the detailed proposal is uploaded.')
-            ->set('status', 'Submitted')
-            ->call('saveReview')
+            ->assertSee('Open concept proposal')
+            ->assertDontSeeHtml('wire:model="status"')
+            ->set('remarks', 'Tighten the objectives.')
+            ->call('saveReview', 'passed')
             ->assertHasNoErrors();
-        $this->assertSame('Submitted', $project->fresh()->status);
+
+        $project->refresh();
+        $this->assertSame('Detailed', $project->status);
+        $this->assertNull($project->remarks, 'Remarks only go with a return.');
+        $this->assertSame(['decision' => 'passed'], ActivityLog::latest('id')->first()->properties);
+
+        // There is no status on the review form for a crafted request to set.
+        $this->expectException(PublicPropertyNotFoundException::class);
+        $panel->set('status', 'Completed');
     }
 
-    public function test_a_file_picked_before_the_project_closed_never_blocks_saving(): void
+    public function test_a_locked_file_is_dropped_so_saving_again_works(): void
     {
         Storage::fake('submissions');
 
@@ -616,41 +675,17 @@ class SubmissionTest extends TestCase
             ->set('title', 'Maria Proposal, revised')
             ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'));
 
-        // The Research Office marks it Completed while the form is open; the file field disappears on the next render.
-        $project->update(['status' => 'Completed', 'awaiting_review' => false]);
-
         $form->call('save')
             ->assertHasErrors('documents')
             ->assertSet('documents', []);
         $this->assertNull($project->fresh()->terminal_path);
 
-        // The stranded file is dropped, so saving again keeps the other edits.
+        // The locked file is dropped, so saving again keeps the other edits.
         $form->call('save')->assertHasNoErrors();
         $this->assertSame('Maria Proposal, revised', $project->fresh()->title);
     }
 
-    public function test_only_a_completed_project_can_be_reopened_for_uploads(): void
-    {
-        [$maria] = $this->twoFacultyWithSubmissions();
-        $project = $maria->submissions()->sole();
-        $project->update(['status' => 'Completed', 'awaiting_review' => false, 'uploads_reopened' => true]);
-
-        $this->actingAs(User::factory()->create(['role' => 'admin']));
-
-        // Moving it back to Detailed opens uploads anyway, so the flag doesn't linger for a later Completed.
-        Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)
-            ->set('status', 'Detailed')
-            ->call('saveReview')
-            ->assertHasNoErrors();
-        $this->assertFalse($project->fresh()->uploads_reopened);
-
-        Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)
-            ->assertDontSee('Reopen for a corrected upload');
-    }
-
-    public function test_a_review_never_clears_a_document_uploaded_while_it_was_open(): void
+    public function test_a_review_never_clears_a_concept_proposal_uploaded_while_it_was_open(): void
     {
         Storage::fake('submissions');
 
@@ -658,20 +693,23 @@ class SubmissionTest extends TestCase
         $project = $maria->submissions()->sole();
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $review = Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)
-            ->set('status', 'Concept');
+        $review = Livewire::test('pages::submissions.index')->call('review', $project->id);
 
-        // Maria uploads the detailed proposal while the Research Office still has the concept open.
-        $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'));
+        // Maria replaces the concept proposal while the Research Office still has the old one open.
+        $project->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'));
 
-        $review->call('saveReview')->assertHasErrors('review');
-        $project->refresh();
-        $this->assertTrue($project->awaiting_review);
-        $this->assertSame('Submitted', $project->status);
+        $review->call('saveReview', 'passed')->assertHasErrors('review');
+        $this->assertTrue($project->fresh()->awaiting_review);
 
         // The panel now shows the new upload, so saving again is a review of it.
-        $review->call('saveReview')->assertHasNoErrors();
+        $review->call('saveReview', 'passed')->assertHasNoErrors();
+        $this->assertFalse($project->fresh()->awaiting_review);
+
+        // A detailed proposal isn't reviewed, so one that comes in meanwhile doesn't stop the review.
+        $project->refresh()->update(['awaiting_review' => true]);
+        $review = Livewire::test('pages::submissions.index')->call('review', $project->id);
+        $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'));
+        $review->call('saveReview', 'passed')->assertHasNoErrors();
         $this->assertFalse($project->fresh()->awaiting_review);
     }
 
@@ -713,8 +751,7 @@ class SubmissionTest extends TestCase
             ->assertSee(now()->year)
             ->assertDontSeeHtml('wire:model="year"')
             ->assertDontSeeHtml('data-test="review-college-select"')
-            ->set('status', 'Concept')
-            ->call('saveReview')
+            ->call('saveReview', 'passed')
             ->assertHasNoErrors();
 
         $this->assertSame(now()->year, $project->fresh()->year);
@@ -723,22 +760,6 @@ class SubmissionTest extends TestCase
         // There is no year or college on the review form for a crafted request to set.
         $this->expectException(PublicPropertyNotFoundException::class);
         $component->set('departmentId', $cas->id);
-    }
-
-    public function test_review_status_is_validated(): void
-    {
-        [$maria] = $this->twoFacultyWithSubmissions();
-        $project = $maria->submissions()->sole();
-
-        $this->actingAs(User::factory()->create(['role' => 'admin']));
-
-        Livewire::test('pages::submissions.index')
-            ->call('review', $project->id)
-            ->set('status', 'Rejected')
-            ->call('saveReview')
-            ->assertHasErrors(['status' => 'in']);
-
-        $this->assertSame('Submitted', $project->fresh()->status);
     }
 
     public function test_faculty_cannot_review_projects(): void
@@ -755,11 +776,12 @@ class SubmissionTest extends TestCase
 
         Livewire::test('pages::submissions.index')
             ->set('reviewingId', $project->id)
-            ->set('status', 'Completed')
-            ->call('saveReview')
+            ->set('remarks', 'Looks fine.')
+            ->call('saveReview', 'passed')
             ->assertForbidden();
 
-        $this->assertSame('Submitted', $project->fresh()->status);
+        $this->assertTrue($project->fresh()->awaiting_review);
+        $this->assertNull($project->fresh()->remarks);
     }
 
     public function test_delayed_and_on_time_are_judged_on_the_terminal_report_upload_date(): void
@@ -768,15 +790,13 @@ class SubmissionTest extends TestCase
         $late = $maria->submissions()->sole();
         $late->update(['target_date' => today()->subDay()]);
         $onTime = $jose->submissions()->sole();
-        $onTime->update(['target_date' => today()->subDays(14), 'status' => 'Detailed', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => today()->subDays(15)->setTime(16, 0)]);
+        $onTime->update(['target_date' => today()->subDays(14), 'status' => 'Completed', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => today()->subDays(15)->setTime(16, 0)]);
 
         $this->assertTrue($late->fresh()->isDelayed());
         $this->assertFalse($onTime->fresh()->isDelayed());
         $this->assertSame([$late->id], Submission::delayed()->pluck('id')->all());
 
-        // Reviewed two weeks after the target date, it still counts as finished on time.
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        $this->reviewAs($onTime, 'Completed');
         $this->assertTrue($onTime->fresh()->completedOnTime());
 
         Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
@@ -915,7 +935,7 @@ class SubmissionTest extends TestCase
         // Reviewing the only project on the last filtered page steps back to a page with rows.
         $last = $component->call('nextPage')->instance()->submissions->sole();
         $component->call('review', $last->id)
-            ->call('saveReview')
+            ->call('saveReview', 'passed')
             ->assertHasNoErrors()
             ->assertSet('paginators.page', 1);
     }
@@ -929,7 +949,8 @@ class SubmissionTest extends TestCase
         $this->assertQueriesAtMost(6, fn () => $this->get(route('submissions.index'))->assertOk());
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        $this->assertQueriesAtMost(8, fn () => $this->get(route('submissions.index'))->assertOk());
+        // One more than faculty for the sidebar's count of concept proposals to review.
+        $this->assertQueriesAtMost(9, fn () => $this->get(route('submissions.index'))->assertOk());
 
         // Calls the way a click inside the review panel sends them, scoped to the review island.
         $component = Livewire::test('pages::submissions.index');
@@ -941,15 +962,14 @@ class SubmissionTest extends TestCase
         $this->assertStringContainsString('Filed by Maria Santos', $fragments);
         $this->assertStringNotContainsString('Jose Proposal', $fragments);
 
-        // Saving from inside the panel also redraws the list, so the new status shows without a reload.
-        $component->set('status', 'Concept');
-        $inReviewIsland('saveReview');
+        // Saving from inside the panel also redraws the list, so the cleared review flag shows without a reload.
+        $inReviewIsland('saveReview', 'passed');
         $this->assertStringContainsString('data-test="status-filter"', implode('', $component->effects['islandFragments'] ?? []));
-        $this->assertSame('Concept', $project->fresh()->status);
+        $this->assertFalse($project->fresh()->awaiting_review);
 
         // Once the panel closes, filtering the list no longer reloads the reviewed project.
         $component->call('closeReview')->assertSet('reviewingId', null);
-        $this->assertQueriesAtMost(8, fn () => $component->set('statusFilter', 'Submitted'));
+        $this->assertQueriesAtMost(8, fn () => $component->set('statusFilter', 'Concept'));
     }
 
     /**
@@ -973,12 +993,11 @@ class SubmissionTest extends TestCase
             ->set('documents.concept', UploadedFile::fake()->create('proposal.pdf', 500, 'application/pdf'));
     }
 
-    private function reviewAs(Submission $project, string $status): void
+    private function reviewAs(Submission $project): void
     {
         Livewire::test('pages::submissions.index')
             ->call('review', $project->id)
-            ->set('status', $status)
-            ->call('saveReview')
+            ->call('saveReview', 'passed')
             ->assertHasNoErrors();
     }
 

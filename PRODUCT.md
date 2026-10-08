@@ -8,16 +8,17 @@ web
 
 ## Users
 
-- **Admins (Research Office staff).** They manage users, colleges/departments and categories. They review project documents, read the activity log and look after backups.
+- **Admins (Research Office staff).** They manage users, colleges/departments and categories. They review concept proposals (pass or return for revision), read the activity log and look after backups.
 - **Faculty (proponents).** They submit research projects and upload each stage's document as the project moves forward.
 
 ## Product Purpose
 
-The ISU Research Portal tracks Isabela State University research projects from proposal to terminal report. It gives the Research Office one place to review documents, see which colleges have submitted, and keep a history of what changed.
+The ISU Research Portal tracks Isabela State University research projects from proposal to terminal report. It gives the Research Office one place to review concept proposals, see which colleges have submitted, and keep a history of what changed.
 
 ## Operating Context
 
-- A project moves through four stages: Submitted, Concept, Detailed, Completed. Each stage after Submitted opens when the Research Office accepts the document before it (concept proposal, detailed proposal, terminal report).
+- A project moves through three stages, Concept, Detailed and Completed, set by the furthest document uploaded. The Research Office never sets the status.
+- Only the concept proposal is reviewed: the Research Office passes it or returns it for revision with remarks. The detailed proposal opens once the concept proposal passes; the terminal report opens once the detailed proposal is uploaded. Neither is reviewed.
 - Proponents upload documents. A new upload replaces the earlier file for that stage.
 - Research Drive groups projects by college and year.
 - The portal runs on Laravel Cloud. The database and the uploaded-file buckets are Laravel Cloud resources.

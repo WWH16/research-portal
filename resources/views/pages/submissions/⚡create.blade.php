@@ -6,13 +6,17 @@ use App\Models\Department;
 use App\Models\Proponent;
 use App\Models\Submission;
 use App\Models\User;
+use Flux\Flux;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -39,6 +43,10 @@ new #[Title('Research Project')] class extends Component {
 
     /** New uploads keyed by stage (concept, detailed, terminal). */
     public array $documents = [];
+
+    /** The refusal message for each document whose last pick the server refused, keyed by stage, so Save can't report success while one is missing. */
+    #[Locked]
+    public array $failedUploads = [];
 
     /** Similar projects already in the portal, shown before a new one is saved. */
     public array $duplicates = [];
@@ -99,13 +107,21 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
-        // Each document opens once the one before it is accepted, and a Completed project takes none until reopened.
-        // Locked files are dropped, since a project that moved while the form was open no longer shows their fields.
+        // A refused pick leaves the field empty, or holding an earlier file, so saving now would say "updated"
+        // without the document the member just chose. Stop once to say so; the next Save goes ahead without it.
+        if ($stage = array_key_first($this->failedUploads)) {
+            $this->addError("documents.$stage", $this->failedUploads[$stage]);
+            Flux::toast(variant: 'danger', text: $this->failedUploads[$stage].' '.__('Save again to keep your other changes without it.'));
+            $this->failedUploads = [];
+
+            return;
+        }
+
+        // The detailed proposal opens once the concept proposal passes, the terminal report once the detailed
+        // proposal is uploaded. Locked files are dropped, since the form doesn't show their fields.
         if ($locked = array_diff(array_keys($this->documents), $this->uploadable)) {
             $this->documents = Arr::except($this->documents, $locked);
-            $this->addError('documents', $this->submission?->acceptsUploads() === false
-                ? __('This project is Completed. Ask the Research Office to reopen it for a corrected upload.')
-                : __('That document isn’t open yet. Each one opens once the document before it is accepted.'));
+            $this->addError('documents', __('That document isn’t open yet. The detailed proposal opens once the concept proposal passes review, and the terminal report once the detailed proposal is uploaded.'));
 
             return;
         }
@@ -121,7 +137,9 @@ new #[Title('Research Project')] class extends Component {
             'target_date' => [$this->submission ? 'exclude' : 'required', 'date', 'after:start_date'],
             'proponents' => ['required', 'array', 'max:60'],
             'proponents.*.study' => ['required', 'integer', 'between:1,20'],
-            'proponents.*.user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'faculty')],
+            'proponents.*.user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'faculty')
+                // New names must be verified faculty, as in the picker; one already listed stays even while re-verifying a changed email.
+                ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))],
             'proponents.*.role' => ['required', Rule::in(Proponent::ROLES)],
             'documents' => [$this->submission ? 'nullable' : 'required', 'array:'.implode(',', array_keys(Submission::DOCUMENTS))],
             'documents.*' => ['file', 'mimes:pdf,doc,docx', 'max:10240'],
@@ -200,9 +218,11 @@ new #[Title('Research Project')] class extends Component {
             }
         });
 
+        // Only the concept proposal goes to the Research Office; the other documents are filed as they come in.
         session()->flash('status', match (true) {
-            ! $this->submission => __('Proposal submitted. It’s now waiting for the Research Office to review.'),
-            $this->documents !== [] => __('Project updated. The new document is waiting for the Research Office to review.'),
+            ! $this->submission => __('Proposal submitted. The concept proposal is now waiting for the Research Office to review.'),
+            isset($this->documents['concept']) && $this->submission->awaiting_review => __('Project updated. The new concept proposal is waiting for the Research Office to review.'),
+            $this->documents !== [] => __('Project updated. The document is uploaded.'),
             default => __('Project updated.'),
         });
 
@@ -240,7 +260,7 @@ new #[Title('Research Project')] class extends Component {
      * Only the literal "drive" is honoured, so the query string can't point anywhere else.
      */
     /**
-     * The documents that can be uploaded now. A new project starts with the concept proposal.
+     * The documents that can be uploaded now: the ones on file and the next. A new project starts with the concept proposal.
      *
      * @return list<string>
      */
@@ -248,6 +268,44 @@ new #[Title('Research Project')] class extends Component {
     public function uploadable(): array
     {
         return ($this->submission ?? new Submission)->uploadableStages();
+    }
+
+    /**
+     * The largest document that gets through, in MB: the 10 MB rule, or less when PHP's upload_max_filesize
+     * or post_max_size is lower, since PHP drops a bigger file before Laravel sees it.
+     */
+    #[Computed]
+    public function maxUploadMb(): int
+    {
+        return min(10, intdiv(UploadedFile::getMaxFilesize(), 1024 * 1024));
+    }
+
+    /**
+     * A file refused before it reached the form. Livewire's own message names the field key ("documents.detailed").
+     * A file over PHP's limit and a dropped connection look the same here (no errors either way), so name the
+     * document and both things to check rather than guess.
+     */
+    public function _uploadErrored($name, $errorsInJson, $isMultiple): void
+    {
+        $this->dispatch('upload:errored', name: $name)->self();
+        $stage = Str::after($name, 'documents.');
+
+        $message = __('The :document couldn’t be uploaded. Check it is a PDF or Word file of :size MB or less and your connection is on, then try again.', [
+            'document' => Str::lower(__(Submission::DOCUMENTS[$stage] ?? 'document')),
+            'size' => $this->maxUploadMb,
+        ]);
+        $this->failedUploads[$stage] = $message;
+        Flux::toast(variant: 'danger', text: $message);
+
+        throw ValidationException::withMessages([$name => $message]);
+    }
+
+    /**
+     * A file that did upload replaces a refused pick for the same document.
+     */
+    public function updatedDocuments(mixed $value, string $stage): void
+    {
+        unset($this->failedUploads[$stage]);
     }
 
     #[Computed]
@@ -303,7 +361,19 @@ new #[Title('Research Project')] class extends Component {
     public function faculty(): Collection
     {
         // ponytail: one plain select of every verified faculty member; switch to a searchable picker past a few hundred.
-        return User::where('role', 'faculty')->whereNotNull('email_verified_at')->orderBy('name')->get(['id', 'name']);
+        return User::where('role', 'faculty')
+            ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))
+            ->orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
+     * Who is already on the project. They stay listed, and pickable, while re-verifying a changed email.
+     *
+     * @return list<int>
+     */
+    private function listedIds(): array
+    {
+        return $this->submission?->proponents()->pluck('user_id')->all() ?? [];
     }
 }; ?>
 
@@ -320,16 +390,26 @@ new #[Title('Research Project')] class extends Component {
         <flux:callout variant="warning" icon="exclamation-triangle" class="mt-6" :heading="__('Your account has no college yet')" :text="__('Proposals are filed under your college. Contact the Research Office to have one assigned, then come back to submit.')" />
     @endunless
 
-    @if ($submission?->remarks && ! $submission->awaiting_review)
-        <flux:callout icon="chat-bubble-left-ellipsis" class="mt-6" :heading="__('Remarks from the Research Office')" :text="$submission->remarks" />
-    @endif
+    @includeWhen($submission, 'partials.concept-remarks', ['submission' => $submission])
 
-    {{-- Only an existing project has a stage; a new proposal starts at Submitted once it's saved --}}
+    {{-- Only an existing project has a stage; a new proposal starts at Concept once it's saved --}}
     @if ($submission)
         <div class="mt-6">@include('partials.project-stages', ['submission' => $submission])</div>
     @endif
 
-    <form wire:submit="save" class="mt-8 flex flex-col gap-6">
+    {{-- Livewire sets no loading state while a file is still uploading, so the form counts uploads from their
+         events and stops Save (button or Enter) until they finish; otherwise Save beats the file to the server.
+         The guard listens in the capture phase so it runs before wire:submit, which still disables the form. --}}
+    <form
+        wire:submit="save"
+        x-data="{ uploading: 0 }"
+        x-on:livewire-upload-start="uploading++"
+        x-on:livewire-upload-finish="uploading--"
+        x-on:livewire-upload-error="uploading--"
+        x-on:livewire-upload-cancel="uploading--"
+        x-on:submit.capture="uploading && ($event.preventDefault(), $event.stopImmediatePropagation())"
+        class="mt-8 flex flex-col gap-6"
+    >
         <flux:input wire:model="title" :label="__('Title')" type="text" required autofocus />
 
         <flux:textarea wire:model="abstract" :label="__('Abstract')" rows="6" required />
@@ -408,39 +488,31 @@ new #[Title('Research Project')] class extends Component {
 
         <flux:fieldset>
             <flux:legend>{{ __('Documents') }}</flux:legend>
-            @php($uploadsOpen = $submission?->acceptsUploads() ?? true)
-            @if ($uploadsOpen)
-                <flux:description>
-                    {{ $submission
-                        ? __('Upload the next document here when it’s ready. A new upload replaces the earlier file and goes back to the Research Office for review.')
-                        : __('Start with the concept proposal. The detailed proposal and terminal report open as each earlier document is accepted.') }}
-                </flux:description>
-            @else
-                <flux:callout icon="lock-closed" class="mt-2" :heading="__('Uploads are closed')" :text="__('This project is Completed. Ask the Research Office to reopen it if a document needs correcting.')" />
-            @endif
+            <flux:description>
+                {{ $submission
+                    ? __('Upload the next document here when it’s ready. A new upload replaces the earlier file. Only the concept proposal goes to the Research Office for review.')
+                    : __('Start with the concept proposal. The detailed proposal opens once the Research Office passes it, and the terminal report once the detailed proposal is uploaded.') }}
+            </flux:description>
 
             <div class="mt-4 grid gap-4">
                 @foreach (Submission::DOCUMENTS as $stage => $label)
-                    {{-- Closed uploads still list the files on record, so they can be opened --}}
-                    @continue (! $uploadsOpen && ! $submission->{$stage.'_path'})
                     <div>
                         @if (in_array($stage, $this->uploadable, true))
                             <flux:input
                                 wire:model="documents.{{ $stage }}"
                                 :label="__($label)"
-                                :description:trailing="__('PDF or Word, up to 10 MB')"
+                                :description:trailing="__('PDF or Word, up to :size MB', ['size' => $this->maxUploadMb])"
                                 type="file"
                                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             />
                         @else
                             <flux:heading size="sm">{{ __($label) }}</flux:heading>
-                            {{-- Locked until the document before it is accepted; a closed Completed project says so above instead --}}
-                            @if ($uploadsOpen)
-                                <flux:text class="mt-1 flex items-center gap-1.5 text-sm" data-test="document-locked">
-                                    <flux:icon.lock-closed variant="micro" class="shrink-0" />
-                                    {{ __('Opens after the :document is accepted.', ['document' => Str::lower(__(Submission::DOCUMENTS[array_keys(Submission::DOCUMENTS)[$loop->index - 1]]))]) }}
-                                </flux:text>
-                            @endif
+                            <flux:text class="mt-1 flex items-center gap-1.5 text-sm" data-test="document-locked">
+                                <flux:icon.lock-closed variant="micro" class="shrink-0" />
+                                {{ $stage === 'detailed'
+                                    ? __('Opens after the Research Office passes the concept proposal.')
+                                    : __('Opens after the detailed proposal is uploaded.') }}
+                            </flux:text>
                         @endif
 
                         @if ($submission?->{$stage.'_path'})
@@ -450,10 +522,10 @@ new #[Title('Research Project')] class extends Component {
                 @endforeach
             </div>
 
-            <flux:error name="documents" class="mt-2" />
+            <flux:error name="documents" :deep="false" class="mt-2" />
 
-            <flux:text wire:loading wire:target="documents" class="mt-2 text-sm">
-                {{ __('Uploading…') }}
+            <flux:text x-show="uploading" x-cloak class="mt-2 text-sm" data-test="uploading">
+                {{ __('Uploading… Save waits until the file is in.') }}
             </flux:text>
         </flux:fieldset>
 

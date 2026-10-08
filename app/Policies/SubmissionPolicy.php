@@ -16,7 +16,7 @@ class SubmissionPolicy
     }
 
     /**
-     * Only the Research Office reviews: sets the status, leaves remarks, clears the review flag.
+     * Only the Research Office reviews the concept proposal: leaves remarks and clears the review flag.
      */
     public function review(User $user): bool
     {
@@ -24,7 +24,7 @@ class SubmissionPolicy
     }
 
     /**
-     * Admins review every project; faculty open the ones they filed or are listed on.
+     * Admins open every project to review its concept proposal; faculty open the ones they filed or are listed on.
      */
     public function view(User $user, Submission $submission): bool
     {
@@ -33,7 +33,7 @@ class SubmissionPolicy
 
     /**
      * Any faculty member on the project can edit its details, proponents and documents.
-     * Admins review instead, so they never edit the researcher's entry.
+     * Admins only review the concept proposal, so they never edit the researcher's entry.
      */
     public function update(User $user, Submission $submission): bool
     {

@@ -187,7 +187,7 @@ class ConceptReviewEdgeTest extends TestCase
         $project = $this->project->fresh();
         $this->assertSame('Detailed', $project->status, 'A status never moves back.');
         $this->assertSame('passed', $project->conceptReview(), 'A passed concept proposal stays passed.');
-        $this->assertSame(['concept', 'detailed', 'terminal'], $project->uploadableStages());
+        $this->assertSame(['concept', 'detailed', 'midyear'], $project->uploadableStages());
     }
 
     public function test_a_review_of_a_project_that_is_gone_is_not_found(): void

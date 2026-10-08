@@ -17,8 +17,8 @@ The ISU Research Portal tracks Isabela State University research projects from p
 
 ## Operating Context
 
-- A project moves through three stages, Concept, Detailed and Completed, set by the furthest document uploaded. The Research Office never sets the status.
-- Only the concept proposal is reviewed: the Research Office passes it or returns it for revision with remarks. The detailed proposal opens once the concept proposal passes; the terminal report opens once the detailed proposal is uploaded. Neither is reviewed.
+- A project moves through four stages, Concept, Detailed, Mid-year and Completed, set by the furthest document uploaded. The Research Office never sets the status.
+- Only the concept proposal is reviewed: the Research Office passes it or returns it for revision with remarks. The detailed proposal opens once the concept proposal passes; the mid-year progress report opens once the detailed proposal is uploaded; the terminal report opens once the mid-year progress report is uploaded. None of these three is reviewed.
 - Proponents upload documents. A new upload replaces the earlier file for that stage.
 - Research Drive groups projects by college and year.
 - The portal runs on Laravel Cloud. The database and the uploaded-file buckets are Laravel Cloud resources.

@@ -42,7 +42,10 @@ class ProjectProgressTest extends TestCase
     {
         $this->assertSame('concept', $this->project()->nextDocument());
         $this->assertSame('detailed', $this->project(['concept_path' => 'submissions/concept.pdf'])->nextDocument());
-        $this->assertSame('terminal', $this->project(['concept_path' => 'submissions/concept.pdf', 'detailed_path' => 'submissions/detailed.pdf'])->nextDocument());
+        $this->assertSame('midyear', $this->project(['concept_path' => 'submissions/concept.pdf', 'detailed_path' => 'submissions/detailed.pdf'])->nextDocument());
+        $this->assertSame('terminal', $this->project(['concept_path' => 'submissions/c.pdf', 'detailed_path' => 'submissions/d.pdf', 'midyear_path' => 'submissions/m.pdf'])->nextDocument());
+        $this->assertNull($this->project(['concept_path' => 'submissions/c.pdf', 'detailed_path' => 'submissions/d.pdf', 'midyear_path' => 'submissions/m.pdf', 'terminal_path' => 'submissions/t.pdf'])->nextDocument());
+        // A project completed before the mid-year progress report existed isn't asked for one.
         $this->assertNull($this->project(['concept_path' => 'submissions/c.pdf', 'detailed_path' => 'submissions/d.pdf', 'terminal_path' => 'submissions/t.pdf'])->nextDocument());
     }
 
@@ -52,9 +55,12 @@ class ProjectProgressTest extends TestCase
         // The detailed proposal waits for the Research Office to pass the concept proposal.
         $this->assertSame(['concept'], $this->project(['concept_path' => 'submissions/concept.pdf', 'awaiting_review' => true])->uploadableStages());
         $this->assertSame(['concept', 'detailed'], $this->project(['concept_path' => 'submissions/concept.pdf', 'awaiting_review' => false, 'concept_passed' => true])->uploadableStages());
-        $this->assertSame(['concept', 'detailed', 'terminal'], $this->project(['concept_path' => 'submissions/concept.pdf', 'concept_passed' => true, 'detailed_path' => 'submissions/detailed.pdf'])->uploadableStages());
+        $this->assertSame(['concept', 'detailed', 'midyear'], $this->project(['concept_path' => 'submissions/concept.pdf', 'concept_passed' => true, 'detailed_path' => 'submissions/detailed.pdf'])->uploadableStages());
+        $this->assertSame(['concept', 'detailed', 'midyear', 'terminal'], $this->project(['concept_path' => 'submissions/concept.pdf', 'concept_passed' => true, 'detailed_path' => 'submissions/detailed.pdf', 'midyear_path' => 'submissions/midyear.pdf'])->uploadableStages());
         // A concept proposal replaced later doesn't lock a detailed proposal already on file.
-        $this->assertSame(['concept', 'detailed', 'terminal'], $this->project(['concept_path' => 'submissions/concept.pdf', 'awaiting_review' => true, 'detailed_path' => 'submissions/detailed.pdf'])->uploadableStages());
+        $this->assertSame(['concept', 'detailed', 'midyear'], $this->project(['concept_path' => 'submissions/concept.pdf', 'awaiting_review' => true, 'detailed_path' => 'submissions/detailed.pdf'])->uploadableStages());
+        // A terminal report filed before the mid-year progress report existed can still be replaced.
+        $this->assertSame(['concept', 'detailed', 'midyear', 'terminal'], $this->project(['concept_path' => 'submissions/concept.pdf', 'concept_passed' => true, 'detailed_path' => 'submissions/detailed.pdf', 'terminal_path' => 'submissions/terminal.pdf'])->uploadableStages());
     }
 
     public function test_the_status_follows_the_uploads_and_only_the_concept_proposal_goes_for_review(): void
@@ -68,6 +74,9 @@ class ProjectProgressTest extends TestCase
         $project->update(['awaiting_review' => false]);
         $project->attachDocument('detailed', $file('detailed.pdf'));
         $this->assertSame(['Detailed', false], [$project->status, $project->awaiting_review]);
+
+        $project->attachDocument('midyear', $file('midyear.pdf'));
+        $this->assertSame(['Mid-year', false], [$project->status, $project->awaiting_review]);
 
         $project->attachDocument('terminal', $file('terminal.pdf'));
         $this->assertSame(['Completed', false], [$project->status, $project->awaiting_review]);
@@ -125,7 +134,7 @@ class ProjectProgressTest extends TestCase
         $this->get(route('drive.show', $project))
             ->assertOk()
             ->assertSee('data-test="project-stages"', false)
-            ->assertSeeInOrder(['aria-current="step"', 'Concept', 'Detailed', 'Completed'], false)
+            ->assertSeeInOrder(['aria-current="step"', 'Concept', 'Detailed', 'Mid-year', 'Completed'], false)
             ->assertSee('Next: upload the detailed proposal.');
 
         // The edit route reuses the create component (see routes/web.php).
@@ -142,11 +151,16 @@ class ProjectProgressTest extends TestCase
 
         $this->actingAs($this->maria)
             ->get(route('drive.show', $project))
-            ->assertSeeInOrder(['Concept', '(current stage)', 'Detailed', '(locked)', 'Completed', '(locked)']);
+            ->assertSeeInOrder(['Concept', '(current stage)', 'Detailed', '(locked)', 'Mid-year', '(locked)', 'Completed', '(locked)']);
 
         $project->update(['awaiting_review' => false, 'concept_passed' => true]);
         $this->get(route('drive.show', $project))
-            ->assertSeeInOrder(['Concept', '(current stage)', 'Detailed', '(next)', 'Completed', '(locked)']);
+            ->assertSeeInOrder(['Concept', '(current stage)', 'Detailed', '(next)', 'Mid-year', '(locked)', 'Completed', '(locked)']);
+
+        // The terminal report waits for the mid-year progress report.
+        $project->update(['status' => 'Detailed', 'detailed_path' => 'submissions/detailed.pdf']);
+        $this->get(route('drive.show', $project))
+            ->assertSeeInOrder(['Detailed', '(current stage)', 'Mid-year', '(next)', 'Completed', '(locked)']);
     }
 
     public function test_the_next_step_says_what_waits_for_review_and_when_everything_is_uploaded(): void
@@ -165,11 +179,14 @@ class ProjectProgressTest extends TestCase
         $passed = $this->project(['awaiting_review' => false, 'concept_passed' => true, 'concept_path' => 'submissions/concept.pdf']);
         $this->get(route('drive.show', $passed))->assertSee('Next: upload the detailed proposal.');
 
-        // The detailed proposal and terminal report are filed, never reviewed.
+        // The later documents are filed, never reviewed.
         $detailed = $this->project(['status' => 'Detailed', 'awaiting_review' => false, 'concept_passed' => true, 'concept_path' => 'submissions/concept.pdf', 'detailed_path' => 'submissions/detailed.pdf']);
         $this->get(route('drive.show', $detailed))
-            ->assertSee('Next: upload the terminal report.')
+            ->assertSee('Next: upload the mid-year progress report.')
             ->assertDontSee('waiting for the Research Office');
+
+        $midyear = $this->project(['status' => 'Mid-year', 'awaiting_review' => false, 'concept_passed' => true, 'concept_path' => 'submissions/c.pdf', 'detailed_path' => 'submissions/d.pdf', 'midyear_path' => 'submissions/m.pdf']);
+        $this->get(route('drive.show', $midyear))->assertSee('Next: upload the terminal report.');
 
         $done = $this->project(['status' => 'Completed', 'awaiting_review' => false, 'concept_passed' => true, 'concept_path' => 'submissions/c.pdf', 'detailed_path' => 'submissions/d.pdf', 'terminal_path' => 'submissions/t.pdf']);
         $this->get(route('drive.show', $done))->assertSee('All documents are uploaded.');

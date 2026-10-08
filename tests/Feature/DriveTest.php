@@ -112,7 +112,7 @@ class DriveTest extends TestCase
             ->assertOk()
             ->assertSee('Detailed')
             ->assertSeeInOrder(['Study 1', 'Natividad', 'Leader', 'CCSICT', 'Siton', 'Staff', 'CCSICT', 'Study 3', 'Tabago', 'Leader', 'CAS'])
-            ->assertSeeInOrder(['Concept proposal', 'Uploaded', 'Detailed proposal', 'Terminal report', 'Not uploaded yet'])
+            ->assertSeeInOrder(['Concept proposal', 'Uploaded', 'Detailed proposal', 'Mid-year progress report', 'Terminal report', 'Not uploaded yet'])
             ->assertSee(route('submissions.document', [$this->smart, 'concept']), escape: false)
             ->assertSee(route('submissions.edit', [$this->smart, 'from' => 'drive']), escape: false);
 

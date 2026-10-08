@@ -439,6 +439,13 @@ class SubmissionTest extends TestCase
         Storage::disk('submissions')->assertExists($project->detailed_path);
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.midyear', UploadedFile::fake()->create('midyear.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertSame('Mid-year', $project->fresh()->status);
+        $this->assertFalse($project->fresh()->awaiting_review, 'The mid-year progress report is not reviewed.');
+
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
             ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
             ->call('save')
             ->assertHasNoErrors();
@@ -557,7 +564,22 @@ class SubmissionTest extends TestCase
             ->assertHasNoErrors();
         $this->assertNotNull($project->fresh()->detailed_path);
 
-        // Uploading the detailed proposal opens the terminal report.
+        // Uploading the detailed proposal opens the mid-year progress report, not the terminal report.
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->assertDontSee('Opens after the detailed proposal is uploaded.')
+            ->assertSee('Opens after the mid-year progress report is uploaded.')
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasErrors('documents');
+        $this->assertNull($project->fresh()->terminal_path);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->set('documents.midyear', UploadedFile::fake()->create('midyear.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertNotNull($project->fresh()->midyear_path);
+
+        // Uploading the mid-year progress report opens the terminal report.
         Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
             ->assertDontSeeHtml('data-test="document-locked"')
             ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))

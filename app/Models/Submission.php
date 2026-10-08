@@ -42,6 +42,7 @@ use RuntimeException;
     'designation',
     'concept_path',
     'detailed_path',
+    'midyear_path',
     'terminal_path',
     'terminal_uploaded_at',
     'status',
@@ -55,7 +56,7 @@ class Submission extends Model
     private ?array $uploadTimes = null;
 
     /** The stages a project moves through as its documents are uploaded, in order. */
-    public const STATUSES = ['Concept', 'Detailed', 'Completed'];
+    public const STATUSES = ['Concept', 'Detailed', 'Mid-year', 'Completed'];
 
     /** The year the portal went live. Pickers and the dashboard start here; nothing earlier is tracked. */
     public const FIRST_YEAR = 2026;
@@ -64,13 +65,13 @@ class Submission extends Model
     public const PROPOSAL_STAGES = ['Concept', 'Detailed'];
 
     /** Flux badge colour for each status, shared by every list that shows one. */
-    public const STATUS_COLORS = ['Concept' => 'sky', 'Detailed' => 'amber', 'Completed' => 'green'];
+    public const STATUS_COLORS = ['Concept' => 'sky', 'Detailed' => 'amber', 'Mid-year' => 'violet', 'Completed' => 'green'];
 
     /** The documents a project collects, keyed by the prefix of the column that holds each one. */
-    public const DOCUMENTS = ['concept' => 'Concept proposal', 'detailed' => 'Detailed proposal', 'terminal' => 'Terminal report'];
+    public const DOCUMENTS = ['concept' => 'Concept proposal', 'detailed' => 'Detailed proposal', 'midyear' => 'Mid-year progress report', 'terminal' => 'Terminal report'];
 
     /** The document whose upload moves a project into each stage. */
-    public const STAGE_DOCUMENTS = ['Concept' => 'concept', 'Detailed' => 'detailed', 'Completed' => 'terminal'];
+    public const STAGE_DOCUMENTS = ['Concept' => 'concept', 'Detailed' => 'detailed', 'Mid-year' => 'midyear', 'Completed' => 'terminal'];
 
     protected function casts(): array
     {
@@ -188,8 +189,8 @@ class Submission extends Model
     /**
      * The documents proponents can upload now, as DOCUMENTS keys: every one already on file, so it can be
      * replaced, plus the next one. A new project starts with the concept proposal, the detailed proposal
-     * opens once the Research Office passes the concept proposal, and the terminal report once the
-     * detailed proposal is uploaded.
+     * opens once the Research Office passes the concept proposal, the mid-year progress report once the
+     * detailed proposal is uploaded, and the terminal report once the mid-year progress report is uploaded.
      *
      * @return list<string>
      */
@@ -198,7 +199,8 @@ class Submission extends Model
         return array_keys(array_filter([
             'concept' => true,
             'detailed' => $this->concept_passed || $this->detailed_path,
-            'terminal' => (bool) $this->detailed_path,
+            'midyear' => (bool) $this->detailed_path,
+            'terminal' => $this->midyear_path || $this->terminal_path,
         ]));
     }
 
@@ -217,11 +219,12 @@ class Submission extends Model
     }
 
     /**
-     * The document to upload next, as a DOCUMENTS key, or null once the terminal report is in.
+     * The document to upload next, as a DOCUMENTS key, or null once the terminal report is in. A project
+     * completed before the mid-year progress report existed isn't asked for one.
      */
     public function nextDocument(): ?string
     {
-        return collect(array_keys(self::DOCUMENTS))->first(fn (string $stage) => ! $this->{$stage.'_path'});
+        return $this->terminal_path ? null : collect(array_keys(self::DOCUMENTS))->first(fn (string $stage) => ! $this->{$stage.'_path'});
     }
 
     /**

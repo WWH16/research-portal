@@ -9,7 +9,7 @@
 @endphp
 <div data-test="project-stages">
     {{-- A bar per stage with its name under it, so the stages fit side by side on phones --}}
-    <ol class="grid grid-cols-3 gap-2">
+    <ol class="grid grid-cols-4 gap-2">
         @foreach (\App\Models\Submission::STATUSES as $index => $stage)
             <li class="flex min-w-0 flex-col gap-1.5" @if ($index === $current) aria-current="step" @endif>
                 <span class="h-1.5 rounded-full {{ $index <= $current ? 'bg-isu-green-700' : 'bg-zinc-200' }}" aria-hidden="true"></span>

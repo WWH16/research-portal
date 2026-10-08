@@ -66,6 +66,7 @@
        so a bar or swatch reads as a shape (WCAG 1.4.11). Badges use the matching Flux hues. */
     --color-status-concept: var(--color-sky-600);
     --color-status-detailed: var(--color-amber-600);
+    --color-status-midyear: var(--color-violet-600);
     --color-status-completed: var(--color-green-700);
     --color-status-delayed: var(--color-red-600);
 

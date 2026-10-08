@@ -355,7 +355,7 @@ new #[Title('Dashboard')] class extends Component {
 
 @php
     // Stage colours come from the status tokens in app.css; written out in full so Tailwind keeps them.
-    $bars = ['Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Completed' => 'bg-status-completed'];
+    $bars = ['Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Mid-year' => 'bg-status-midyear', 'Completed' => 'bg-status-completed'];
 @endphp
 
 <section class="mx-auto w-full max-w-6xl">

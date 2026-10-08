@@ -117,11 +117,11 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
-        // The detailed proposal opens once the concept proposal passes, the terminal report once the detailed
-        // proposal is uploaded. Locked files are dropped, since the form doesn't show their fields.
+        // Each document opens once the one before it is in; the detailed proposal waits for the concept proposal
+        // to pass. Locked files are dropped, since the form doesn't show their fields.
         if ($locked = array_diff(array_keys($this->documents), $this->uploadable)) {
             $this->documents = Arr::except($this->documents, $locked);
-            $this->addError('documents', __('That document isn’t open yet. The detailed proposal opens once the concept proposal passes review, and the terminal report once the detailed proposal is uploaded.'));
+            $this->addError('documents', __('That document isn’t open yet. The detailed proposal opens once the concept proposal passes review, the mid-year progress report once the detailed proposal is uploaded, and the terminal report once the mid-year progress report is uploaded.'));
 
             return;
         }
@@ -491,7 +491,7 @@ new #[Title('Research Project')] class extends Component {
             <flux:description>
                 {{ $submission
                     ? __('Upload the next document here when it’s ready. A new upload replaces the earlier file. Only the concept proposal goes to the Research Office for review.')
-                    : __('Start with the concept proposal. The detailed proposal opens once the Research Office passes it, and the terminal report once the detailed proposal is uploaded.') }}
+                    : __('Start with the concept proposal. The detailed proposal opens once the Research Office passes it. Each later document opens once the one before it is uploaded.') }}
             </flux:description>
 
             <div class="mt-4 grid gap-4">
@@ -509,9 +509,11 @@ new #[Title('Research Project')] class extends Component {
                             <flux:heading size="sm">{{ __($label) }}</flux:heading>
                             <flux:text class="mt-1 flex items-center gap-1.5 text-sm" data-test="document-locked">
                                 <flux:icon.lock-closed variant="micro" class="shrink-0" />
-                                {{ $stage === 'detailed'
-                                    ? __('Opens after the Research Office passes the concept proposal.')
-                                    : __('Opens after the detailed proposal is uploaded.') }}
+                                {{ match ($stage) {
+                                    'detailed' => __('Opens after the Research Office passes the concept proposal.'),
+                                    'midyear' => __('Opens after the detailed proposal is uploaded.'),
+                                    default => __('Opens after the mid-year progress report is uploaded.'),
+                                } }}
                             </flux:text>
                         @endif
 

@@ -39,3 +39,4 @@ yarn-error.log
 /opencode.jsonc
 /database/schema.sql
 .ai/
+.impeccable

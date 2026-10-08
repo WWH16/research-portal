@@ -80,11 +80,15 @@ trait ReviewsSubmissions
 
         $this->remarks = trim($this->remarks);
 
+        // A cleared-up retry, such as passing once the remarks are gone, must not keep the last attempt's error.
+        $this->resetValidation();
+
         $validated = Validator::make(['decision' => $decision, 'remarks' => $this->remarks], [
             'decision' => ['required', Rule::in(['passed', 'returned'])],
-            // Remarks only go with a return; a pass ignores whatever was typed.
-            'remarks' => ['exclude_unless:decision,returned', 'required', 'string', 'max:2000'],
+            // Remarks only go with a return. A pass carrying remarks is refused, so typed remarks are never dropped unseen.
+            'remarks' => ['prohibited_if:decision,passed', 'exclude_unless:decision,returned', 'required', 'string', 'max:2000'],
         ], [
+            'remarks.prohibited_if' => __('You wrote remarks. Return it for revision, or clear them to pass.'),
             'remarks.required' => __('Say what to fix, so the proponents know what to change.'),
         ])->validate();
 

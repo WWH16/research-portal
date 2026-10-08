@@ -572,8 +572,8 @@ class SubmissionTest extends TestCase
         $panel = Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('To review: Concept proposal')
-            ->assertSeeHtml('data-test="pass-concept-button"')
-            ->assertSeeHtml('data-test="return-concept-button"');
+            ->assertSeeHtml('data-test="review-decision"')
+            ->assertSeeHtml('data-test="save-review-button"');
 
         // Returning needs remarks, so the proponents know what to fix; a made-up decision is refused.
         $panel->call('saveReview', 'returned')->assertHasErrors(['remarks' => 'required']);
@@ -614,8 +614,8 @@ class SubmissionTest extends TestCase
         Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('Concept proposal passed')
-            ->assertDontSeeHtml('data-test="pass-concept-button"')
-            ->assertDontSeeHtml('data-test="return-concept-button"')
+            ->assertDontSeeHtml('data-test="review-decision"')
+            ->assertDontSeeHtml('data-test="save-review-button"')
             ->set('remarks', 'Changed my mind.')
             ->call('saveReview', 'returned')
             ->assertHasErrors('review');
@@ -649,7 +649,6 @@ class SubmissionTest extends TestCase
             ->call('review', $project->id)
             ->assertSee('Open concept proposal')
             ->assertDontSeeHtml('wire:model="status"')
-            ->set('remarks', 'Tighten the objectives.')
             ->call('saveReview', 'passed')
             ->assertHasNoErrors();
 

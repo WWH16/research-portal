@@ -99,15 +99,29 @@
                 </div>
             @endif
 
-            {{-- Only an upload waiting for review can be decided; remarks sit above the Return they go with, and an empty return shows "Say what to fix" under them --}}
+            {{--
+                Only an upload waiting for review can be decided. Nothing is picked at first, so a pass is always a
+                choice, never the nearest button. The remarks show for a return, or while they hold text, so a pass
+                refused for carrying remarks shows its error under them. Keyed by project, so each review starts unpicked.
+            --}}
             @if ($this->reviewing->conceptReview() === 'pending')
                 <flux:separator variant="subtle" />
 
-                <flux:button wire:click="saveReview('passed')" variant="primary" icon="check" data-test="pass-concept-button" class="w-full max-sm:h-11">{{ __('Pass concept') }}</flux:button>
+                <div x-data="{ decision: '' }" wire:key="decision-{{ $this->reviewing->id }}" class="grid gap-4">
+                    <flux:radio.group x-model="decision" variant="segmented" :label="__('Your decision')" data-test="review-decision" class="*:transition-colors *:not-data-checked:hover:bg-white/60 dark:*:not-data-checked:hover:bg-white/10">
+                        <flux:radio value="passed" icon="check" :label="__('Pass')" />
+                        <flux:radio value="returned" icon="arrow-uturn-left" :label="__('Return for revision')" />
+                    </flux:radio.group>
 
-                <div class="grid gap-3">
-                    <flux:textarea wire:model="remarks" :label="__('What to fix')" :description="__('Needed to return it for revision. Everyone on the project sees this. Passing it saves no remarks.')" rows="4" maxlength="2000" />
-                    <flux:button wire:click="saveReview('returned')" icon="arrow-uturn-left" data-test="return-concept-button" class="w-full max-sm:h-11">{{ __('Return for revision') }}</flux:button>
+                    <div x-show="decision === 'returned' || $wire.remarks.trim()" x-cloak>
+                        <flux:textarea wire:model="remarks" :label="__('What to fix')" :description="__('Everyone on the project sees this.')" rows="4" maxlength="2000" />
+                    </div>
+
+                    <flux:text x-show="decision === 'passed'" x-cloak>{{ __('The proponents can then upload the detailed proposal. A pass can\'t be undone.') }}</flux:text>
+
+                    <flux:button wire:click="saveReview(decision)" x-bind:disabled="! decision" variant="primary" data-test="save-review-button" class="w-full max-sm:h-11">
+                        <span x-text="{ passed: @js(__('Pass concept')), returned: @js(__('Return for revision')) }[decision] ?? @js(__('Pick a decision'))">{{ __('Pick a decision') }}</span>
+                    </flux:button>
                 </div>
             @endif
 

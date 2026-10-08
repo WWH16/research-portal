@@ -160,14 +160,19 @@ class ConceptReviewEdgeTest extends TestCase
         $this->actingAs($this->maria)->get(route('drive.show', $project))->assertDontSeeHtml('data-test="concept-remarks"');
     }
 
-    public function test_a_pass_saves_no_remarks_and_the_decided_panel_has_no_remarks_box(): void
+    public function test_a_pass_with_remarks_is_refused_and_a_clean_pass_saves_no_remarks(): void
     {
         $panel = Livewire::actingAs($this->admin())->test('pages::reviews.index')
             ->call('review', $this->project->id)
             ->assertSeeHtml('wire:model="remarks"')
+            ->assertSeeHtml('wire:click="saveReview(decision)"')
             ->set('remarks', 'Nice work.')
             ->call('saveReview', 'passed')
-            ->assertHasNoErrors();
+            ->assertHasErrors(['remarks' => 'prohibited_if']);
+
+        $this->assertTrue($this->project->fresh()->awaiting_review, 'A refused pass leaves the concept waiting for review.');
+
+        $panel->set('remarks', '')->call('saveReview', 'passed')->assertHasNoErrors();
 
         $this->assertNull($this->project->fresh()->remarks);
         $panel->call('review', $this->project->id)->assertDontSeeHtml('wire:model="remarks"');

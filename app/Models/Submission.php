@@ -236,9 +236,11 @@ class Submission extends Model
      */
     public function uploadTimes(): array
     {
-        return $this->uploadTimes ??= collect(array_keys(self::DOCUMENTS))
-            ->filter(fn (string $stage) => $this->{$stage.'_path'} && Storage::disk('submissions')->exists($this->{$stage.'_path'}))
-            ->mapWithKeys(fn (string $stage) => [$stage => Carbon::createFromTimestamp(Storage::disk('submissions')->lastModified($this->{$stage.'_path'}))])
+        return $this->uploadTimes ??= collect(self::DOCUMENTS)
+            ->map(fn (string $label, string $stage) => ($path = $this->{$stage.'_path'})
+                ? rescue(fn () => Carbon::createFromTimestamp(Storage::disk('submissions')->lastModified($path)), report: false)
+                : null)
+            ->filter()
             ->all();
     }
 

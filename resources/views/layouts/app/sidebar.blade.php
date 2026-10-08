@@ -28,7 +28,7 @@
                     @if (auth()->user()->isAdmin())
                         {{-- The Research Office's open work leads the group, with a count visible from every page --}}
                         @php($toReview = \App\Models\Submission::where('awaiting_review', true)->count())
-                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ?: null" badge:color="blue" :badge:title="trans_choice('{1} 1 concept proposal to review|[2,*] :count concept proposals to review', $toReview)" wire:navigate data-test="reviews-nav">
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ?: null" :badge:title="trans_choice('{1} 1 concept proposal to review|[2,*] :count concept proposals to review', $toReview)" wire:navigate data-test="reviews-nav">
                             {{ __('Concept Reviews') }}
                         </flux:sidebar.item>
                     @endif

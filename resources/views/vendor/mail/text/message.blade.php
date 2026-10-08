@@ -21,7 +21,10 @@
     {{-- Footer --}}
     <x-slot:footer>
         <x-mail::footer>
-            © {{ date('Y') }} {{ __('Isabela State University') }} · {{ __('Research Portal') }}
+            {{ __('Research Portal · Isabela State University, Cauayan Campus') }}
+            {{ __('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela') }}
+
+            {{ __('You received this email because this address was used on the Research Portal.') }}
         </x-mail::footer>
     </x-slot:footer>
 </x-mail::layout>

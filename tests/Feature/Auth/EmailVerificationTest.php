@@ -45,14 +45,21 @@ class EmailVerificationTest extends TestCase
         $html = (string) $mail->render();
 
         $this->assertSame('Verify your email for the Research Portal', $mail->subject);
-        $this->assertSame('Verify email address', $mail->actionText);
-        $this->assertStringContainsString('Hello, Maria Santos', $html);
-        $this->assertStringContainsString('This link expires in 60 minutes.', $html);
-        $this->assertStringContainsString('Regards,<br>Research Office, Isabela State University', $html);
+        $this->assertSame('Verify email', $mail->actionText);
+        $this->assertStringContainsString('Verify your email', $html);
+        $this->assertStringContainsString('Confirm '.$user->email.' to activate your Research Portal account.', $html);
+        $this->assertStringContainsString('images/mail/envelope.png', $html);
+        $this->assertStringContainsString('Link expires in 60 minutes.', $html);
+        $this->assertMatchesRegularExpression('/<a href="mailto:'.preg_quote(config('mail.from.address'), '/').'"[^>]*>Contact the Research Office<\/a>/', $html);
+        $this->assertStringContainsString('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela', $html);
         $this->assertStringContainsString('Button not working? Paste this link into your browser:', $html);
         $this->assertStringContainsString('Isabela State University', $html);
         $this->assertStringNotContainsString('All rights reserved', $html);
-        $this->assertStringContainsString('class="brand-bar"', $html);
+        $this->assertStringContainsString('class="sheet"', $html);
+
+        // The first line is the inbox preview, and the seal is not a nameless link.
+        $this->assertMatchesRegularExpression('/<div style="[^"]*display: none;[^>]*>Confirm \S+ to activate/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<a [^>]*>\s*<img/', $html);
     }
 
     public function test_sent_verification_email_carries_the_seal_inside_it(): void
@@ -65,7 +72,7 @@ class EmailVerificationTest extends TestCase
         // Embedded (cid:), not linked, so the seal shows even before the portal has a public address.
         $email = Mail::mailer('array')->getSymfonyTransport()->messages()->first()->getOriginalMessage();
         $this->assertStringContainsString('src="cid:', $email->getHtmlBody());
-        $this->assertCount(1, $email->getAttachments());
+        $this->assertCount(2, $email->getAttachments());
     }
 
     public function test_unverified_users_are_redirected_to_the_email_verification_prompt(): void

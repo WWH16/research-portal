@@ -1,20 +1,10 @@
-@props(['sealFrom' => null])
+@props(['sealFrom' => null, 'preheader' => null])
 <x-mail::layout>
-{{-- On phones the brand bar narrows with the card below it --}}
-<x-slot:head>
-<style>
-@media only screen and (max-width: 600px) {
-.brand-bar {
-width: 100% !important;
-}
-}
-</style>
-</x-slot:head>
-
-{{-- Header: the portal sidebar's lockup on its seal green, joined to the card below --}}
+{{-- Masthead: the seal over the university's name, centered at the top of the sheet --}}
 <x-slot:header>
-<x-mail::header :url="config('app.url')" :seal-from="$sealFrom">
-{{ __('Research Portal') }}<br><span class="brand-subtitle">{{ __('Isabela State University') }}</span>
+<x-mail::header :seal-from="$sealFrom" :preheader="$preheader">
+<p class="masthead-institution">{{ __('Isabela State University') }}</p>
+<p class="masthead-name">{{ __('Research Portal') }}</p>
 </x-mail::header>
 </x-slot:header>
 
@@ -30,10 +20,13 @@ width: 100% !important;
 </x-slot:subcopy>
 @endisset
 
-{{-- Footer --}}
+{{-- Footer: who sent it, where they are, and why this address got it --}}
 <x-slot:footer>
 <x-mail::footer>
-© {{ date('Y') }} {{ __('Isabela State University') }} · {{ __('Research Portal') }}
+{{ __('Research Portal · Isabela State University, Cauayan Campus') }}<br>
+{{ __('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela') }}
+
+{{ __('You received this email because this address was used on the Research Portal.') }}
 </x-mail::footer>
 </x-slot:footer>
 </x-mail::layout>

@@ -1,7 +1,9 @@
 /*
- * Portal mail theme. It mirrors the app shell: the sidebar's seal green (#094b2b) as a brand bar,
- * a white card on a near-white canvas, green-tinted neutrals, and one accent, the button green (#0b5e36).
- * Class names are Laravel's mail components'; Laravel inlines these rules into each email.
+ * Portal mail theme: one plain white sheet on a pale green-grey canvas, everything centered. The seal and the
+ * university's name, then an icon, a short headline, one line, the button and its fine print.
+ * The plain link sits in a quiet strip at the foot. Seal green (#094b2b) marks only the masthead and the button
+ * (#0b5e36). Class names are Laravel's mail components' plus the layout's own; Laravel inlines these
+ * rules into each email.
  */
 
 /* Base */
@@ -15,7 +17,7 @@ body *:not(html):not(style):not(br):not(tr):not(code) {
 
 body {
     -webkit-text-size-adjust: none;
-    background-color: #f6f8f7;
+    background-color: #eef2f0;
     color: #3d4541;
     height: 100%;
     line-height: 1.5;
@@ -29,7 +31,7 @@ ul,
 ol,
 blockquote {
     line-height: 1.6;
-    text-align: start;
+    text-align: center;
 }
 
 a {
@@ -40,33 +42,17 @@ a img {
     border: none;
 }
 
-/* Typography */
+/* Typography: the headline says what to do in plain words; headings stay neutral. */
 
 h1 {
-    color: #094b2b;
-    font-size: 20px;
+    color: #1f2622;
+    font-size: 22px;
     font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1.3;
     margin-top: 0;
-    margin-bottom: 16px;
-    text-align: start;
-}
-
-h2 {
-    color: #094b2b;
-    font-size: 16px;
-    font-weight: 600;
-    margin-top: 0;
-    text-align: start;
-}
-
-h3 {
-    color: #094b2b;
-    font-size: 14px;
-    font-weight: 600;
-    margin-top: 0;
-    text-align: start;
+    margin-bottom: 8px;
+    text-align: center;
 }
 
 p {
@@ -74,11 +60,7 @@ p {
     line-height: 1.6;
     margin-top: 0;
     margin-bottom: 16px;
-    text-align: start;
-}
-
-p.sub {
-    font-size: 12px;
+    text-align: center;
 }
 
 img {
@@ -91,9 +73,9 @@ img {
     -premailer-cellpadding: 0;
     -premailer-cellspacing: 0;
     -premailer-width: 100%;
-    background-color: #f6f8f7;
+    background-color: #eef2f0;
     margin: 0;
-    padding: 0 16px;
+    padding: 0 12px;
     width: 100%;
 }
 
@@ -106,110 +88,116 @@ img {
     width: 100%;
 }
 
-/* Header: the brand bar is the top of the card, like the portal's green sidebar beside its pages. */
-
-.header {
+.sheet-row {
     padding: 32px 0 0;
 }
 
-.brand-bar {
-    -premailer-cellpadding: 0;
-    -premailer-cellspacing: 0;
-    -premailer-width: 570px;
-    background-color: #094b2b;
-    border-radius: 12px 12px 0 0;
-    margin: 0 auto;
-    width: 570px;
-}
-
-/* 28px of padding plus the 40px seal. Cells size border-box here, so a narrower width squeezes the seal. */
-.brand-seal {
-    padding: 18px 0 18px 28px;
-    width: 68px;
-}
-
-/* The seal's outer ring is green too, so a thin white disc keeps its edge visible, as in the sidebar. */
-.seal {
-    background-color: #ffffff;
-    border-radius: 50%;
-    display: block;
-    height: 40px;
-    max-width: none;
-    padding: 1px;
-    width: 40px;
-}
-
-.brand-name {
-    padding: 18px 28px 18px 12px;
-    text-align: start;
-}
-
-.brand-name a {
-    color: #ffffff;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.3;
-    text-decoration: none;
-}
-
-/* Pale green on the seal green: about 7:1. */
-.brand-subtitle {
-    color: #a8d8bb;
-    font-size: 13px;
-    font-weight: 400;
-}
-
-/* Body */
-
-.body {
-    -premailer-cellpadding: 0;
-    -premailer-cellspacing: 0;
-    -premailer-width: 100%;
-    background-color: #f6f8f7;
-    border-bottom: 1px solid #f6f8f7;
-    border-top: 1px solid #f6f8f7;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-}
-
-.inner-body {
+/* The sheet: square corners and a hairline edge against the canvas. */
+.sheet {
     -premailer-cellpadding: 0;
     -premailer-cellspacing: 0;
     -premailer-width: 570px;
     background-color: #ffffff;
-    border: 1px solid #e3e7e5;
-    border-top: 0;
-    border-radius: 0 0 12px 12px;
+    border: 1px solid #d9e1dd;
     margin: 0 auto;
-    padding: 0;
     width: 570px;
-}
-
-.inner-body a {
-    word-break: break-all;
 }
 
 .content-cell {
     max-width: 100vw;
-    padding: 32px 28px;
+    padding: 32px 48px 36px;
 }
 
-/* Subcopy: the plain link, set apart and quieter than the message. */
+/* Icon: a 56px disc with the action's glyph, above the headline. */
 
-.subcopy {
+.icon {
+    margin: 0 0 16px;
+}
+
+.icon img {
+    display: block;
+    height: 56px;
+    margin: 0 auto;
+    width: 56px;
+}
+
+/* Masthead: the seal, a tracked institution line and the portal's name in Georgia, ruled off by a hairline. */
+
+.masthead {
+    border-bottom: 1px solid #e3e7e5;
+    padding: 28px 48px 24px;
+    text-align: center;
+}
+
+.seal {
+    display: block;
+    height: 48px;
+    margin: 0 auto 12px;
+    max-width: none;
+    width: 48px;
+}
+
+.masthead-institution {
+    color: #094b2b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    line-height: 1.4;
+    margin: 0 0 2px;
+    text-transform: uppercase;
+}
+
+.masthead-name {
+    color: #1f2622;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 19px;
+    font-weight: 400;
+    line-height: 1.3;
+    margin: 0;
+}
+
+/* Fine print: the outro lines right under the button, small and quiet, no box. */
+
+.panel {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    width: 100%;
+}
+
+.panel-content {
+    padding: 0;
+}
+
+.panel-item p {
+    color: #5f6763;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+/* Help strip: the plain link in its own tinted band at the foot of the sheet, quieter than the message. The long
+   signed link breaks anywhere so it never overflows. */
+
+.help-cell {
+    background-color: #f6f9f7;
     border-top: 1px solid #e3e7e5;
-    margin-top: 8px;
-    padding-top: 20px;
+    padding: 18px 48px 20px;
 }
 
 .subcopy p {
     color: #5f6763;
-    font-size: 13px;
+    font-size: 12px;
     margin-bottom: 0;
 }
 
-/* Footer: outside the card, on the canvas. #5f6763 holds 5.5:1 there at 12px. */
+.subcopy a {
+    color: #5f6763;
+    word-break: break-all;
+}
+
+/* Footer: outside the sheet, on the canvas: the sender, the address, and why this address got the email.
+   #59615d holds 5.6:1 there at 12px. */
 
 .footer {
     -premailer-cellpadding: 0;
@@ -222,28 +210,22 @@ img {
 }
 
 .footer .content-cell {
-    padding: 24px 28px 32px;
+    padding: 20px 28px 32px;
 }
 
 .footer p {
-    color: #5f6763;
+    color: #59615d;
     font-size: 12px;
-    margin-bottom: 0;
-    text-align: center;
+    margin-bottom: 8px;
 }
 
-.footer a {
-    color: #5f6763;
-    text-decoration: underline;
-}
-
-/* Buttons: the portal's primary button, green with white text and an 8px radius. */
+/* Buttons: the portal's primary button, green with white text, centered under the line. */
 
 .action {
     -premailer-cellpadding: 0;
     -premailer-cellspacing: 0;
     -premailer-width: 100%;
-    margin: 8px 0 24px;
+    margin: 24px 0 16px;
     padding: 0;
     width: 100%;
     float: unset;
@@ -251,7 +233,7 @@ img {
 
 .button {
     -webkit-text-size-adjust: none;
-    border-radius: 8px;
+    border-radius: 4px;
     color: #ffffff;
     display: inline-block;
     font-size: 15px;
@@ -265,14 +247,8 @@ img {
    button is styled; add success/error colors when an email needs them. */
 .button-primary {
     background-color: #0b5e36;
-    border-bottom: 12px solid #0b5e36;
-    border-left: 22px solid #0b5e36;
-    border-right: 22px solid #0b5e36;
-    border-top: 12px solid #0b5e36;
-}
-
-/* Utilities */
-
-.break-all {
-    word-break: break-all;
+    border-bottom: 13px solid #0b5e36;
+    border-left: 28px solid #0b5e36;
+    border-right: 28px solid #0b5e36;
+    border-top: 13px solid #0b5e36;
 }

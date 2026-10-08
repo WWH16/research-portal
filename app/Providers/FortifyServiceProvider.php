@@ -19,7 +19,6 @@ use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Events\RecoveryCodesGenerated;
@@ -79,26 +78,29 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureEmails(): void
     {
-        // Two lines like Laravel's own "Regards," sign-off; built per email so it's translated at send time.
-        $signOff = fn () => new HtmlString(e(__('Regards,')).'<br>'.e(__('Research Office, Isabela State University')));
+        // The body is parsed as Markdown, so an address like first_last@isu.edu.ph must not turn into italics.
+        $md = fn (string $text) => addcslashes($text, '\\`*_[]<>');
+
+        $expires = fn (int $minutes) => __('Link expires in :count minutes.', ['count' => $minutes]);
 
         VerifyEmail::toMailUsing(fn ($user, string $url) => (new MailMessage)
             ->subject(__('Verify your email for the Research Portal'))
-            ->greeting(__('Hello, :name', ['name' => $user->name]))
-            ->line(__('Confirm this is your email address to finish setting up your Research Portal account.'))
-            ->action(__('Verify email address'), $url)
-            ->line(__('This link expires in :count minutes.', ['count' => config('auth.verification.expire', 60)]))
-            ->line(__('If you didn’t create an account, you can ignore this email.'))
-            ->salutation($signOff()));
+            ->greeting(__('Verify your email'))
+            ->line(__('Confirm :email to activate your Research Portal account.', ['email' => $md($user->email)]))
+            ->action(__('Verify email'), $url)
+            ->line($expires(config('auth.verification.expire', 60)))
+            // A Markdown mailto link to the sender, so it reaches the Research Office and reads as a link in plain text.
+            ->line(__('Didn’t sign up?').' ['.__('Contact the Research Office').'](mailto:'.config('mail.from.address').').')
+            ->markdown('notifications::email', ['icon' => 'envelope']));
 
         ResetPassword::toMailUsing(fn ($user, string $token) => (new MailMessage)
             ->subject(__('Reset your Research Portal password'))
-            ->greeting(__('Hello, :name', ['name' => $user->name]))
-            ->line(__('We got a request to reset the password for your Research Portal account.'))
+            ->greeting(__('Reset your password'))
+            ->line(__('Set a new password for :email.', ['email' => $md($user->getEmailForPasswordReset())]))
             ->action(__('Reset password'), url(route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()], false)))
-            ->line(__('This link expires in :count minutes.', ['count' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire')]))
-            ->line(__('If you didn’t ask for this, you can ignore this email. Your password stays the same.'))
-            ->salutation($signOff()));
+            ->line($expires(config('auth.passwords.'.config('auth.defaults.passwords').'.expire')))
+            ->line(__('Didn’t ask for this? Ignore this email. Your password stays the same.'))
+            ->markdown('notifications::email', ['icon' => 'lock-closed']));
     }
 
     /**

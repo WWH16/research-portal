@@ -205,7 +205,25 @@ class ProjectProgressTest extends TestCase
                 'Maria Santos', 'Submitted the proposal', 'Uploaded the concept proposal',
             ])
             // Reviews are the office's, not one staff member's.
-            ->assertDontSee('Ana Admin');
+            ->assertDontSee('Ana Admin')
+            // Five entries or fewer need no toggle.
+            ->assertDontSee('data-test="drive-history-toggle"', false);
+    }
+
+    public function test_a_long_history_folds_entries_after_the_latest_five(): void
+    {
+        $project = $this->project(['awaiting_review' => false]);
+
+        foreach (range(1, 7) as $i) {
+            ActivityLog::record('submission.updated', $project, [], $this->maria);
+        }
+
+        $response = $this->actingAs($this->maria)->get(route('drive.show', $project));
+
+        $response->assertSee('Show 2 earlier entries');
+        // All seven render; only the two oldest start hidden.
+        $this->assertSame(7, substr_count($response->getContent(), '<li class="py-3"'));
+        $this->assertSame(2, preg_match_all('/<li class="py-3"\s+x-show="all"/', $response->getContent()));
     }
 
     public function test_history_holds_only_this_projects_entries(): void

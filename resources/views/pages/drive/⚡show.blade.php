@@ -162,23 +162,33 @@ new #[Title('Research Drive')] class extends Component {
         @if ($history->isEmpty())
             <flux:text class="mt-3 text-sm">{{ __('Nothing recorded yet.') }}</flux:text>
         @else
-            <ol class="mt-3 divide-y divide-line border-y border-line" data-test="drive-history">
-                @foreach ($history as $entry)
-                    <li class="py-3">
-                        <p class="text-sm text-zinc-500">
-                            <span class="font-medium text-zinc-700">{{ $entry->historyActor() }}</span>
-                            · <time datetime="{{ $entry->created_at->toIso8601String() }}">{{ $entry->day() }}, {{ $entry->created_at->format('g:i A') }}</time>
-                        </p>
-                        <p class="mt-1 font-medium text-zinc-800">{{ $entry->historyHeadline() }}</p>
-                        @if (($note = $entry->note()) !== '')
-                            <p class="mt-1 text-sm text-zinc-600">{{ $note }}</p>
-                        @endif
-                        @if ($remarks = $entry->remarks())
-                            <p class="mt-1 whitespace-pre-line text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
-                        @endif
-                    </li>
-                @endforeach
-            </ol>
+            {{-- The latest five show; older entries open in place, so a long history does not stretch the page --}}
+            <div x-data="{ all: false }">
+                <ol id="history-entries" class="mt-3 divide-y divide-line border-y border-line" data-test="drive-history">
+                    @foreach ($history as $entry)
+                        <li class="py-3" @if ($loop->iteration > 5) x-show="all" x-cloak @endif>
+                            <p class="text-sm text-zinc-500">
+                                <span class="font-medium text-zinc-700">{{ $entry->historyActor() }}</span>
+                                · <time datetime="{{ $entry->created_at->toIso8601String() }}">{{ $entry->day() }}, {{ $entry->created_at->format('g:i A') }}</time>
+                            </p>
+                            <p class="mt-1 font-medium text-zinc-800">{{ $entry->historyHeadline() }}</p>
+                            @if (($note = $entry->note()) !== '')
+                                <p class="mt-1 text-sm text-zinc-600">{{ $note }}</p>
+                            @endif
+                            @if ($remarks = $entry->remarks())
+                                <p class="mt-1 whitespace-pre-line text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                            @endif
+                        </li>
+                    @endforeach
+                </ol>
+                @if ($history->count() > 5)
+                    <button type="button" x-on:click="all = ! all" x-bind:aria-expanded="all ? 'true' : 'false'" aria-expanded="false" aria-controls="history-entries" class="mt-3 flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-800 max-sm:min-h-11" data-test="drive-history-toggle">
+                        <flux:icon.chevron-down variant="micro" class="transition-transform motion-reduce:transition-none" x-bind:class="all && 'rotate-180'" />
+                        <span x-show="! all">{{ trans_choice('{1} Show 1 earlier entry|[2,*] Show :count earlier entries', $history->count() - 5) }}</span>
+                        <span x-show="all" x-cloak>{{ __('Show fewer') }}</span>
+                    </button>
+                @endif
+            </div>
         @endif
     </section>
 

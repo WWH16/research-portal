@@ -142,7 +142,7 @@ new #[Title('Research Project')] class extends Component {
                 ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))],
             'proponents.*.role' => ['required', Rule::in(Proponent::ROLES)],
             'documents' => [$this->submission ? 'nullable' : 'required', 'array:'.implode(',', array_keys(Submission::DOCUMENTS))],
-            'documents.*' => ['file', 'mimes:pdf,doc,docx', 'max:10240'],
+            'documents.*' => ['file', 'mimes:pdf,doc,docx', 'max:25600'],
         ], [
             'documents.required' => __('Upload at least one document.'),        ], [
             'category_id' => __('category'),
@@ -271,13 +271,13 @@ new #[Title('Research Project')] class extends Component {
     }
 
     /**
-     * The largest document that gets through, in MB: the 10 MB rule, or less when PHP's upload_max_filesize
+     * The largest document that gets through, in MB: the 25 MB rule, or less when PHP's upload_max_filesize
      * or post_max_size is lower, since PHP drops a bigger file before Laravel sees it.
      */
     #[Computed]
     public function maxUploadMb(): int
     {
-        return min(10, intdiv(UploadedFile::getMaxFilesize(), 1024 * 1024));
+        return min(25, intdiv(UploadedFile::getMaxFilesize(), 1024 * 1024));
     }
 
     /**

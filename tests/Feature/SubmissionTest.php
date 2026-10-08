@@ -298,7 +298,7 @@ class SubmissionTest extends TestCase
             ->assertHasNoErrors();
     }
 
-    public function test_documents_must_be_pdf_or_word_files_under_ten_megabytes(): void
+    public function test_documents_must_be_pdf_or_word_files_of_25_megabytes_or_less(): void
     {
         Storage::fake('submissions');
 
@@ -320,9 +320,14 @@ class SubmissionTest extends TestCase
             ->assertHasErrors(['documents.concept' => 'mimes']);
 
         Livewire::test('pages::submissions.create')
-            ->set('documents.concept', UploadedFile::fake()->create('proposal.pdf', 10241, 'application/pdf'))
+            ->set('documents.concept', UploadedFile::fake()->create('proposal.pdf', 25600, 'application/pdf'))
             ->call('save')
-            ->assertHasErrors(['documents.concept' => 'max']);
+            ->assertHasNoErrors(['documents', 'documents.concept']);
+
+        // Livewire's temporary-upload rule (config/livewire.php) refuses it first, so the error is the upload message.
+        Livewire::test('pages::submissions.create')
+            ->set('documents.concept', UploadedFile::fake()->create('proposal.pdf', 25601, 'application/pdf'))
+            ->assertHasErrors('documents.concept');
     }
 
     public function test_similar_projects_are_flagged_before_saving(): void

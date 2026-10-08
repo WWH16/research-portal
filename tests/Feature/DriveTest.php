@@ -120,6 +120,12 @@ class DriveTest extends TestCase
             ->get(route('drive.show', $this->smart))
             ->assertOk()
             ->assertSee('data-test="drive-review-button"', escape: false);
+
+        // Once the concept proposal is decided, nothing waits for review, so the button goes.
+        $this->smart->update(['awaiting_review' => false, 'concept_passed' => true]);
+        $this->get(route('drive.show', $this->smart))
+            ->assertOk()
+            ->assertDontSee('data-test="drive-review-button"', escape: false);
     }
 
     public function test_editing_from_the_drive_returns_to_the_drive_project(): void

@@ -50,27 +50,32 @@ new #[Title('Research Drive')] class extends Component {
 @endphp
 
 <section class="mx-auto w-full max-w-4xl">
-    {{-- Long titles wrap the trail onto a second line instead of running off narrow screens --}}
-    <flux:breadcrumbs class="flex-wrap gap-y-1">
-        <flux:breadcrumbs.item :href="route('drive.index')" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
-        @if ($admin)
-            <flux:breadcrumbs.item :href="route('drive.index', ['college' => $project->department->code])" wire:navigate>{{ $project->department->code }}</flux:breadcrumbs.item>
-        @endif
-        <flux:breadcrumbs.item>{{ str($project->title)->limit(40) }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
+    {{-- The buttons share the breadcrumb row, so the title gets the full width. On phones they drop below the title, as before. --}}
+    <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        {{-- Long titles wrap the trail onto a second line instead of running off narrow screens --}}
+        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
+            <flux:breadcrumbs.item :href="route('drive.index')" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
+            @if ($admin)
+                <flux:breadcrumbs.item :href="route('drive.index', ['college' => $project->department->code])" wire:navigate>{{ $project->department->code }}</flux:breadcrumbs.item>
+            @endif
+            <flux:breadcrumbs.item>{{ str($project->title)->limit(40) }}</flux:breadcrumbs.item>
+        </flux:breadcrumbs>
 
-    <header class="mt-4 flex flex-wrap items-start gap-4 border-b border-line pb-6">
-        <div class="min-w-0 flex-1 max-sm:basis-full">
-            <flux:heading size="xl" level="1" class="text-balance">{{ $project->title }}</flux:heading>
+        <div class="min-w-0 sm:col-span-2 sm:row-start-2">
+            {{-- A title pasted without spaces still breaks instead of overflowing --}}
+            <flux:heading size="xl" level="1" class="text-balance wrap-anywhere">{{ $project->title }}</flux:heading>
             <div class="mt-3">@include('partials.project-status', ['submission' => $project])</div>
         </div>
 
-        @can('update', $project)
-            <flux:button :href="route('submissions.edit', [$project, 'from' => 'drive'])" icon="pencil-square" wire:navigate data-test="drive-edit-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Edit project') }}</flux:button>
-        @endcan
-        @if ($admin)
-            <flux:button wire:click="review({{ $project->id }})" wire:island="review" variant="primary" data-test="drive-review-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Review concept proposal') }}</flux:button>
-        @endif
+        <div class="flex gap-2 sm:col-start-2 sm:row-start-1">
+            @can('update', $project)
+                <flux:button :href="route('submissions.edit', [$project, 'from' => 'drive'])" icon="pencil-square" wire:navigate data-test="drive-edit-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Edit project') }}</flux:button>
+            @endcan
+            {{-- Only the concept proposal is reviewed, so the button shows only while one waits --}}
+            @if ($admin && $project->awaiting_review)
+                <flux:button wire:click="review({{ $project->id }})" wire:island="review" variant="primary" data-test="drive-review-button" class="max-sm:h-11 max-sm:flex-1">{{ __('Review concept proposal') }}</flux:button>
+            @endif
+        </div>
     </header>
 
     <dl class="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">

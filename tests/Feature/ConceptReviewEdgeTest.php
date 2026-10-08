@@ -64,7 +64,7 @@ class ConceptReviewEdgeTest extends TestCase
 
     public function test_whitespace_only_remarks_cannot_return_a_concept(): void
     {
-        Livewire::actingAs($this->admin())->test('pages::submissions.index')
+        Livewire::actingAs($this->admin())->test('pages::reviews.index')
             ->call('review', $this->project->id)
             ->set('remarks', "   \n  ")
             ->call('saveReview', 'returned')
@@ -75,7 +75,7 @@ class ConceptReviewEdgeTest extends TestCase
 
     public function test_remarks_over_2000_characters_are_refused(): void
     {
-        Livewire::actingAs($this->admin())->test('pages::submissions.index')
+        Livewire::actingAs($this->admin())->test('pages::reviews.index')
             ->call('review', $this->project->id)
             ->set('remarks', str_repeat('a', 2001))
             ->call('saveReview', 'returned')
@@ -84,8 +84,8 @@ class ConceptReviewEdgeTest extends TestCase
 
     public function test_two_admins_cannot_both_decide_the_same_upload(): void
     {
-        $first = Livewire::actingAs($this->admin())->test('pages::submissions.index')->call('review', $this->project->id);
-        $second = Livewire::actingAs($this->admin())->test('pages::submissions.index')->call('review', $this->project->id);
+        $first = Livewire::actingAs($this->admin())->test('pages::reviews.index')->call('review', $this->project->id);
+        $second = Livewire::actingAs($this->admin())->test('pages::reviews.index')->call('review', $this->project->id);
 
         $first->call('saveReview', 'passed')->assertHasNoErrors();
         $second->set('remarks', 'Redo it.')->call('saveReview', 'returned')->assertHasErrors('review');
@@ -143,12 +143,12 @@ class ConceptReviewEdgeTest extends TestCase
     public function test_passing_a_revision_drops_the_remarks_of_the_earlier_return(): void
     {
         $admin = $this->admin();
-        Livewire::actingAs($admin)->test('pages::submissions.index')
+        Livewire::actingAs($admin)->test('pages::reviews.index')
             ->call('review', $this->project->id)->set('remarks', 'Fix the objectives.')->call('saveReview', 'returned');
 
         $this->project->refresh()->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 10, 'application/pdf'));
 
-        Livewire::actingAs($admin)->test('pages::submissions.index')
+        Livewire::actingAs($admin)->test('pages::reviews.index')
             ->call('review', $this->project->id)
             ->assertSet('remarks', '')
             ->call('saveReview', 'passed')
@@ -162,7 +162,7 @@ class ConceptReviewEdgeTest extends TestCase
 
     public function test_a_pass_saves_no_remarks_and_the_decided_panel_has_no_remarks_box(): void
     {
-        $panel = Livewire::actingAs($this->admin())->test('pages::submissions.index')
+        $panel = Livewire::actingAs($this->admin())->test('pages::reviews.index')
             ->call('review', $this->project->id)
             ->assertSeeHtml('wire:model="remarks"')
             ->set('remarks', 'Nice work.')
@@ -187,7 +187,7 @@ class ConceptReviewEdgeTest extends TestCase
 
     public function test_a_review_of_a_project_that_is_gone_is_not_found(): void
     {
-        $panel = Livewire::actingAs($this->admin())->test('pages::submissions.index')->call('review', $this->project->id);
+        $panel = Livewire::actingAs($this->admin())->test('pages::reviews.index')->call('review', $this->project->id);
         $this->project->proponents()->delete();
         $this->project->delete();
 

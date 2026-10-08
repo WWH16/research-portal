@@ -14,7 +14,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 
 /**
- * The concept proposal review panel, shared by Submissions and the Research Drive project page so a review opens over
+ * The concept proposal review panel, shared by Reviews and the Research Drive project page so a review opens over
  * the page it started from. Pair it with the partials.review-panel flyout and a reviewSaved() method.
  */
 trait ReviewsSubmissions

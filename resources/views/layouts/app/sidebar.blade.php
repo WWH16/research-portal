@@ -10,37 +10,41 @@
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            {{-- Ordered by how often each page is used: daily work first, setup lower, rare system tasks last. My Profile lives in the user menu. --}}
             <flux:sidebar.nav>
-                {{-- Headed only for admins, where it sits above the admin groups; faculty have just this one group. --}}
-                <flux:sidebar.group :heading="auth()->user()->isAdmin() ? __('General') : null" class="grid">
+                <flux:sidebar.group :heading="__('Overview')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
-                    {{-- Admins see how many concept proposals wait for them from every page --}}
-                    @php($toReview = auth()->user()->isAdmin() ? \App\Models\Submission::where('awaiting_review', true)->count() : 0)
-                    <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" :badge="$toReview ?: null" badge:color="blue" :badge:title="trans_choice('{1} 1 concept proposal to review|[2,*] :count concept proposals to review', $toReview)" wire:navigate data-test="submissions-nav">
+                    <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
+                        {{ __('Announcements') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:separator variant="subtle" />
+
+                <flux:sidebar.group :heading="__('Projects')" class="grid">
+                    @if (auth()->user()->isAdmin())
+                        {{-- The Research Office's open work leads the group, with a count visible from every page --}}
+                        @php($toReview = \App\Models\Submission::where('awaiting_review', true)->count())
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ?: null" badge:color="blue" :badge:title="trans_choice('{1} 1 concept proposal to review|[2,*] :count concept proposals to review', $toReview)" wire:navigate data-test="reviews-nav">
+                            {{ __('Concept Reviews') }}
+                        </flux:sidebar.item>
+                    @endif
+
+                    <flux:sidebar.item icon="document-text" :href="route('submissions.index')" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" wire:navigate data-test="submissions-nav">
                         {{ __('Submissions') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="user-circle" :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>
-                        {{ __('My Profile') }}
+                    <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*') || request('from') === 'drive'" wire:navigate>
+                        {{ __('Research Drive') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 @if (auth()->user()->isAdmin())
-                    <flux:sidebar.group :heading="__('Filing options')" class="grid">
-                        <flux:sidebar.item icon="tag" :href="route('categories.index')" :current="request()->routeIs('categories.*')" wire:navigate>
-                            {{ __('Categories') }}
-                        </flux:sidebar.item>
+                    <flux:separator variant="subtle" />
 
-                        <flux:sidebar.item icon="building-library" :href="route('departments.index')" :current="request()->routeIs('departments.*')" wire:navigate>
-                            {{ __('Colleges') }}
-                        </flux:sidebar.item>
-                    </flux:sidebar.group>
-                @endif
-
-                @if (auth()->user()->isAdmin())
                     <flux:sidebar.group :heading="__('Administration')" class="grid">
                         <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
                             {{ __('Manage Users') }}
@@ -49,9 +53,18 @@
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log.index')" :current="request()->routeIs('activity-log.*')" wire:navigate>
                             {{ __('Activity Log') }}
                         </flux:sidebar.item>
+                    </flux:sidebar.group>
 
-                        <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
-                            {{ __('Backup and Restore') }}
+                    <flux:separator variant="subtle" />
+
+                    {{-- The lists a project is filed under; set up once, changed rarely --}}
+                    <flux:sidebar.group :heading="__('Filing options')" class="grid">
+                        <flux:sidebar.item icon="building-library" :href="route('departments.index')" :current="request()->routeIs('departments.*')" wire:navigate>
+                            {{ __('Colleges') }}
+                        </flux:sidebar.item>
+
+                        <flux:sidebar.item icon="tag" :href="route('categories.index')" :current="request()->routeIs('categories.*')" wire:navigate>
+                            {{ __('Categories') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endif
@@ -59,15 +72,16 @@
 
             <flux:spacer />
 
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
-                    {{ __('Announcements') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*') || request('from') === 'drive'" wire:navigate>
-                    {{ __('Research Drive') }}
-                </flux:sidebar.item>
-            </flux:sidebar.nav>
+            {{-- Rare and high-stakes, so it sits apart at the bottom, away from everyday clicks --}}
+            @if (auth()->user()->isAdmin())
+                <flux:sidebar.nav>
+                    <flux:sidebar.group :heading="__('System')" class="grid">
+                        <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
+                            {{ __('Backup and Restore') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                </flux:sidebar.nav>
+            @endif
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>

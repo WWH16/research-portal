@@ -180,7 +180,7 @@ class ProjectProgressTest extends TestCase
         $project = $this->project(['awaiting_review' => true, 'concept_path' => 'submissions/concept.pdf']);
         $this->actingAs($this->admin);
 
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('data-test="project-stages"', false)
             ->assertDontSee('data-test="project-next-step"', false);

@@ -412,7 +412,7 @@ class SubmissionTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
 
         $this->actingAs($admin);
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('To review: Concept proposal')
             ->assertDontSeeHtml('data-test="review-nothing-new"');
@@ -441,7 +441,7 @@ class SubmissionTest extends TestCase
         $this->assertFalse($project->fresh()->awaiting_review, 'The terminal report is not reviewed.');
 
         $this->actingAs($admin);
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('Concept proposal passed')
             ->assertDontSeeHtml('data-test="review-to-check"');
@@ -457,7 +457,7 @@ class SubmissionTest extends TestCase
 
         // The Research Office finds the concept proposal incomplete and leaves remarks.
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->set('remarks', 'Missing the budget section.')
             ->call('saveReview', 'returned')
@@ -514,7 +514,7 @@ class SubmissionTest extends TestCase
 
         // The Research Office has nothing to reopen.
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertDontSee('Reopen for a corrected upload');
     }
@@ -568,8 +568,8 @@ class SubmissionTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         // The sidebar counts what waits, and the panel offers both decisions.
-        $this->get(route('dashboard'))->assertSeeInOrder(['data-test="submissions-nav"', 'Submissions', '2'], false);
-        $panel = Livewire::test('pages::submissions.index')
+        $this->get(route('dashboard'))->assertSeeInOrder(['data-test="reviews-nav"', 'Reviews', '2'], false);
+        $panel = Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('To review: Concept proposal')
             ->assertSeeHtml('data-test="pass-concept-button"')
@@ -597,7 +597,7 @@ class SubmissionTest extends TestCase
         $project->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'));
         $this->assertSame('pending', $project->fresh()->conceptReview());
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->set('remarks', '')
             ->call('saveReview', 'passed')
@@ -608,10 +608,10 @@ class SubmissionTest extends TestCase
         $this->assertSame(['concept', 'detailed'], $project->uploadableStages());
         $this->assertSame('Concept', $project->status, 'Passing never moves the status.');
         $this->assertSame('Passed the concept proposal', ActivityLog::latest('id')->first()->historyHeadline());
-        $this->get(route('dashboard'))->assertDontSeeHtml('data-test="submissions-nav" data-flux-navlist-badge');
+        $this->get(route('dashboard'))->assertDontSeeHtml('data-test="reviews-nav" data-flux-navlist-badge');
 
         // A passed concept stays passed: no decision buttons, and a crafted request is refused.
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('Concept proposal passed')
             ->assertDontSeeHtml('data-test="pass-concept-button"')
@@ -645,7 +645,7 @@ class SubmissionTest extends TestCase
         $project->update(['detailed_path' => 'submissions/detailed.pdf', 'status' => 'Detailed']);
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $panel = Livewire::test('pages::submissions.index')
+        $panel = Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee('Open concept proposal')
             ->assertDontSeeHtml('wire:model="status"')
@@ -693,7 +693,7 @@ class SubmissionTest extends TestCase
         $project = $maria->submissions()->sole();
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $review = Livewire::test('pages::submissions.index')->call('review', $project->id);
+        $review = Livewire::test('pages::reviews.index')->call('review', $project->id);
 
         // Maria replaces the concept proposal while the Research Office still has the old one open.
         $project->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'));
@@ -707,7 +707,7 @@ class SubmissionTest extends TestCase
 
         // A detailed proposal isn't reviewed, so one that comes in meanwhile doesn't stop the review.
         $project->refresh()->update(['awaiting_review' => true]);
-        $review = Livewire::test('pages::submissions.index')->call('review', $project->id);
+        $review = Livewire::test('pages::reviews.index')->call('review', $project->id);
         $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'));
         $review->call('saveReview', 'passed')->assertHasNoErrors();
         $this->assertFalse($project->fresh()->awaiting_review);
@@ -746,7 +746,7 @@ class SubmissionTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $component = Livewire::test('pages::submissions.index')
+        $component = Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSee(now()->year)
             ->assertDontSeeHtml('wire:model="year"')
@@ -768,13 +768,13 @@ class SubmissionTest extends TestCase
         $project = $maria->submissions()->sole();
 
         $this->actingAs($maria);
+        $this->get(route('reviews.index'))->assertForbidden();
 
-        Livewire::test('pages::submissions.index')
-            ->assertDontSee('data-test="review-submission-button"', escape: false)
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertForbidden();
 
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->set('reviewingId', $project->id)
             ->set('remarks', 'Looks fine.')
             ->call('saveReview', 'passed')
@@ -930,14 +930,7 @@ class SubmissionTest extends TestCase
         $this->assertCount(1, $component->instance()->submissions);
 
         // A new filter starts from the first page.
-        $component->set('statusFilter', 'review')->assertSet('paginators.page', 1);
-
-        // Reviewing the only project on the last filtered page steps back to a page with rows.
-        $last = $component->call('nextPage')->instance()->submissions->sole();
-        $component->call('review', $last->id)
-            ->call('saveReview', 'passed')
-            ->assertHasNoErrors()
-            ->assertSet('paginators.page', 1);
+        $component->set('statusFilter', 'revision')->assertSet('paginators.page', 1);
     }
 
     public function test_the_list_and_the_review_panel_load_only_what_they_show(): void
@@ -953,7 +946,7 @@ class SubmissionTest extends TestCase
         $this->assertQueriesAtMost(9, fn () => $this->get(route('submissions.index'))->assertOk());
 
         // Calls the way a click inside the review panel sends them, scoped to the review island.
-        $component = Livewire::test('pages::submissions.index');
+        $component = Livewire::test('pages::reviews.index');
         $inReviewIsland = fn (string $method, ...$params) => $component->update(calls: [['method' => $method, 'params' => $params, 'path' => '', 'metadata' => ['island' => ['name' => 'review', 'mode' => 'morph']]]]);
 
         // Opening a review from its button redraws only the review island, not the list.
@@ -964,12 +957,8 @@ class SubmissionTest extends TestCase
 
         // Saving from inside the panel also redraws the list, so the cleared review flag shows without a reload.
         $inReviewIsland('saveReview', 'passed');
-        $this->assertStringContainsString('data-test="status-filter"', implode('', $component->effects['islandFragments'] ?? []));
+        $this->assertStringContainsString('Jose Proposal', implode('', $component->effects['islandFragments'] ?? []));
         $this->assertFalse($project->fresh()->awaiting_review);
-
-        // Once the panel closes, filtering the list no longer reloads the reviewed project.
-        $component->call('closeReview')->assertSet('reviewingId', null);
-        $this->assertQueriesAtMost(8, fn () => $component->set('statusFilter', 'Concept'));
     }
 
     /**
@@ -995,7 +984,7 @@ class SubmissionTest extends TestCase
 
     private function reviewAs(Submission $project): void
     {
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->call('saveReview', 'passed')
             ->assertHasNoErrors();

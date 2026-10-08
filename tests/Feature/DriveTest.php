@@ -194,7 +194,7 @@ class DriveTest extends TestCase
     {
         $this->actingAs($this->admin());
 
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $this->smart->id)
             ->assertSee('Tabago (Leader, CAS)')
             ->call('saveReview', 'passed')

@@ -70,8 +70,8 @@ class DashboardTest extends TestCase
             ->assertDontSee('Proposal 6')
             ->assertDontSee('Already reviewed')
             ->assertSee('View all 6')
-            ->assertSee(route('submissions.index', ['review' => Submission::firstWhere('title', 'Proposal 1')->id]), escape: false)
-            ->assertSee(route('submissions.index', ['status' => 'review']), escape: false);
+            ->assertSee(route('reviews.index', ['review' => Submission::firstWhere('title', 'Proposal 1')->id]), escape: false)
+            ->assertSee(route('reviews.index'), escape: false);
     }
 
     public function test_yearly_summary_counts_each_faculty_member_once_per_group(): void
@@ -318,21 +318,14 @@ class DashboardTest extends TestCase
             ->assertDontSee(route('submissions.create'), escape: false);
     }
 
-    public function test_admins_arrive_on_submissions_filtered_or_reviewing(): void
+    public function test_admins_arrive_on_reviews_reviewing(): void
     {
-        $maria = $this->facultyInDepartment('Maria Santos');
-        $waiting = $this->submit($maria, 'Waiting Proposal');
-        $this->submit($maria, 'Reviewed Proposal', 'Concept', ['awaiting_review' => false]);
+        $waiting = $this->submit($this->facultyInDepartment('Maria Santos'), 'Waiting Proposal');
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        Livewire::withQueryParams(['status' => 'review'])
-            ->test('pages::submissions.index')
-            ->assertSee('Waiting Proposal')
-            ->assertDontSee('Reviewed Proposal');
-
         Livewire::withQueryParams(['review' => $waiting->id])
-            ->test('pages::submissions.index')
+            ->test('pages::reviews.index')
             ->assertSet('reviewingId', $waiting->id)
             ->assertSee('To review: Concept proposal');
     }

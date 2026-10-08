@@ -523,7 +523,7 @@ new #[Title('Dashboard')] class extends Component {
                                     <ul class="grid gap-1.5">
                                         @foreach ($member->projects as $project)
                                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                                                <flux:link :href="route('submissions.index', ['review' => $project->id])" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
+                                                <flux:link :href="route('drive.show', $project)" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
                                                 {{-- Stage plus Awaiting review / Delayed; reversed so the stage keeps its column at the right edge --}}
                                                 @include('partials.project-status', ['submission' => $project, 'class' => 'flex-row-reverse', 'timing' => true])
                                             </li>
@@ -572,7 +572,7 @@ new #[Title('Dashboard')] class extends Component {
                 <div class="flex items-baseline justify-between gap-4">
                     <flux:heading level="2">{{ __('Concept proposals to review') }}</flux:heading>
                     @if ($this->waitingCount > 0)
-                        <flux:link :href="route('submissions.index', ['status' => 'review'])" wire:navigate class="shrink-0 text-sm">{{ __('View all :count', ['count' => $this->waitingCount]) }}</flux:link>
+                        <flux:link :href="route('reviews.index')" wire:navigate class="shrink-0 text-sm">{{ __('View all :count', ['count' => $this->waitingCount]) }}</flux:link>
                     @endif
                 </div>
 
@@ -590,7 +590,7 @@ new #[Title('Dashboard')] class extends Component {
                                         {{ __('At :status, updated :when', ['status' => __($submission->status), 'when' => $submission->updated_at->diffForHumans()]) }}
                                     </p>
                                 </div>
-                                <flux:button size="sm" :href="route('submissions.index', ['review' => $submission->id])" wire:navigate class="shrink-0 max-sm:h-11 max-sm:px-4">{{ __('Review') }}</flux:button>
+                                <flux:button size="sm" :href="route('reviews.index', ['review' => $submission->id])" wire:navigate class="shrink-0 max-sm:h-11 max-sm:px-4">{{ __('Review') }}</flux:button>
                             </li>
                         @endforeach
                     </ul>

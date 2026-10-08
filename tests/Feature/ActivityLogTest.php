@@ -47,7 +47,7 @@ class ActivityLogTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        Livewire::test('pages::submissions.index')
+        Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->set('remarks', 'Add the budget table.')
             ->call('saveReview', 'returned')
@@ -356,7 +356,7 @@ class ActivityLogTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        $panel = Livewire::test('pages::submissions.index')
+        $panel = Livewire::test('pages::reviews.index')
             ->call('review', $project->id)->set('remarks', 'Add the budget table.')->call('saveReview', 'returned');
 
         // A corrected concept proposal puts it back up for review.

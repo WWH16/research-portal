@@ -1,6 +1,5 @@
 <?php
 
-use App\Concerns\ReviewsSubmissions;
 use App\Models\ActivityLog;
 use App\Models\Submission;
 use Flux\Flux;
@@ -18,14 +17,14 @@ use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Title('Submissions')] class extends Component {
-    use ReviewsSubmissions, WithPagination;
+    use WithPagination;
 
     /** The project open in the Change dates dialog. */
     public ?int $datingId = null;
     public string $start_date = '';
     public string $target_date = '';
 
-    /** A status, "proposal" (Concept or Detailed), "review", "revision" (concept returned) or "delayed"; the dashboard tiles link here with ?status=. */
+    /** A status, "proposal" (Concept or Detailed), "revision" (concept returned) or "delayed"; the dashboard tiles link here with ?status=. */
     #[Url(as: 'status', except: '')]
     public string $statusFilter = '';
 
@@ -41,17 +40,12 @@ new #[Title('Submissions')] class extends Component {
     public string $search = '';
 
     /**
-     * Confirm a just-submitted proposal with the same toast the rest of the portal uses,
-     * and open the concept review panel when an admin arrives from the dashboard with ?review=.
+     * Confirm a just-submitted proposal with the same toast the rest of the portal uses.
      */
     public function mount(): void
     {
         if ($message = session('status')) {
             Flux::toast(variant: 'success', text: $message);
-        }
-
-        if ($this->monitoring && ($id = request()->integer('review'))) {
-            $this->review($id);
         }
     }
 
@@ -102,7 +96,6 @@ new #[Title('Submissions')] class extends Component {
             ->when($this->monitoring && $this->department !== '', fn ($query) => $query->whereRelation('department', 'code', $this->department))
             ->tap(fn ($query) => match (true) {
                 $this->statusFilter === 'proposal' => $query->whereIn('status', Submission::PROPOSAL_STAGES),
-                $this->statusFilter === 'review' => $query->where('awaiting_review', true),
                 $this->statusFilter === 'revision' => $query->where('awaiting_review', false)->where('concept_passed', false),
                 $this->statusFilter === 'delayed' => $query->delayed(),
                 in_array($this->statusFilter, Submission::STATUSES, true) => $query->where('status', $this->statusFilter),
@@ -222,23 +215,6 @@ new #[Title('Submissions')] class extends Component {
         // Saving runs inside the dates island, which only redraws itself; the list has to show the new dates too.
         $this->renderIsland('list');
     }
-
-    /**
-     * Close the panel and redraw the list. Saving runs inside the review island, which only redraws itself.
-     */
-    protected function reviewSaved(): void
-    {
-        Flux::modal('review-submission')->close();
-        Flux::toast(variant: 'success', text: __('Review saved.'));
-        unset($this->submissions, $this->reviewing);
-
-        // Under a filter, the saved project can leave the last page empty; step back to one with rows.
-        if ($this->submissions->isEmpty() && $this->getPage() > 1) {
-            $this->previousPage();
-        }
-
-        $this->renderIsland('list');
-    }
 }; ?>
 
 <section class="mx-auto w-full {{ $this->monitoring ? 'max-w-5xl' : 'max-w-4xl' }}">
@@ -258,7 +234,7 @@ new #[Title('Submissions')] class extends Component {
         @endunless
     </header>
 
-    {{-- Filters and results redraw together; opening a review redraws only the review island below --}}
+    {{-- Filters and results redraw together; opening the dates dialog redraws only the dates island below --}}
     @island(name: 'list', always: true)
     <div class="mt-6 flex flex-wrap gap-3">
         @if ($this->monitoring)
@@ -268,7 +244,6 @@ new #[Title('Submissions')] class extends Component {
         <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-48" data-test="status-filter">
             <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
             <flux:select.option value="proposal">{{ __('At proposal stage') }}</flux:select.option>
-            <flux:select.option value="review">{{ __('Concept to review') }}</flux:select.option>
             <flux:select.option value="revision">{{ __('Concept needs revision') }}</flux:select.option>
             <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
             @foreach (Submission::STATUSES as $option)
@@ -351,12 +326,7 @@ new #[Title('Submissions')] class extends Component {
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($this->monitoring)
-                                <div class="flex items-center gap-1">
-                                    <flux:button size="sm" variant="ghost" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" data-test="review-submission-button" class="max-sm:h-11">
-                                        {{ __('Review concept') }}
-                                    </flux:button>
-                                    <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
-                                </div>
+                                <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
                             @else
                                 <flux:button size="sm" variant="ghost" inset="top bottom" :href="route('submissions.edit', $submission)" wire:navigate data-test="edit-submission-button" class="max-sm:h-11">
                                     {{ __('Edit') }}
@@ -371,8 +341,6 @@ new #[Title('Submissions')] class extends Component {
     @endisland
 
     @if ($this->monitoring)
-        @include('partials.review-panel')
-
         {{-- Closing forgets the project without a request, so later filter changes don't reload it --}}
         <flux:modal name="project-dates" wire:close="$set('datingId', null, false)" class="w-full sm:w-96" aria-labelledby="project-dates-heading">
             @island(name: 'dates', always: true)

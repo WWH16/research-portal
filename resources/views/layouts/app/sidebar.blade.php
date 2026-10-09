@@ -55,6 +55,21 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
+                <flux:separator variant="subtle" />
+
+                {{-- Faculty keep their own record; the Research Office reads everyone's --}}
+                <flux:sidebar.group :heading="__('Publications')" class="grid">
+                    @if (auth()->user()->isAdmin())
+                        <flux:sidebar.item icon="book-open" :href="route('faculty.index')" :current="request()->routeIs('faculty.*', 'publications.*')" wire:navigate data-test="publications-nav">
+                            {{ __('Faculty Publications') }}
+                        </flux:sidebar.item>
+                    @else
+                        <flux:sidebar.item icon="book-open" :href="route('faculty.show', auth()->user())" :current="request()->routeIs('faculty.*', 'publications.*')" wire:navigate data-test="publications-nav">
+                            {{ __('My Publications') }}
+                        </flux:sidebar.item>
+                    @endif
+                </flux:sidebar.group>
+
                 @if (auth()->user()->isAdmin())
                     <flux:separator variant="subtle" />
 

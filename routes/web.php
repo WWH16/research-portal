@@ -19,6 +19,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('submissions/create', 'pages::submissions.create')->middleware('faculty')->name('submissions.create');
     Route::livewire('submissions/{submission}/edit', 'pages::submissions.create')->middleware(['faculty', 'can:update,submission'])->name('submissions.edit');
 
+    // "create" comes before {publication}, so the binding never catches the word.
+    Route::livewire('publications/create', 'pages::publications.create')->middleware('faculty')->name('publications.create');
+    Route::livewire('publications/{publication}', 'pages::publications.show')->middleware('can:view,publication')->name('publications.show');
+    Route::livewire('publications/{publication}/edit', 'pages::publications.create')->middleware(['faculty', 'can:update,publication'])->name('publications.edit');
+    Route::livewire('faculty/{user}', 'pages::faculty.show')->middleware('can:viewPublications,user')->name('faculty.show');
+
     // Documents live on the private "submissions" disk, so only the project's proponents and admins can open one.
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
         $path = $submission->{$stage.'_path'};
@@ -33,6 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('categories', 'pages::categories.index')->name('categories.index');
         Route::livewire('departments', 'pages::departments.index')->name('departments.index');
 
+        Route::livewire('faculty', 'pages::faculty.index')->name('faculty.index');
         Route::livewire('users', 'pages::users.index')->name('users.index');
         Route::livewire('activity-log', 'pages::activity-log.index')->name('activity-log.index');
         Route::livewire('backups', 'pages::backups.index')->name('backups.index');

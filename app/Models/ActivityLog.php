@@ -31,7 +31,7 @@ class ActivityLog extends Model
     public const KEEP_MONTHS = 12;
 
     /** The filters on the Activity Log page, keyed by the action prefix each one covers. */
-    public const GROUPS = ['auth' => 'Sign-ins and security', 'submission' => 'Projects', 'user' => 'Users', 'filing' => 'Filing options'];
+    public const GROUPS = ['auth' => 'Sign-ins and security', 'submission' => 'Projects', 'publication' => 'Publications', 'user' => 'Users', 'filing' => 'Filing options'];
 
     /** How a project edit names each field it changed, keyed by the column. */
     public const PROJECT_FIELDS = [
@@ -84,7 +84,7 @@ class ActivityLog extends Model
             'subject_id' => $subject?->getKey(),
             'subject_label' => $subject?->getAttribute(match (true) {
                 $subject instanceof Department => 'code',
-                $subject instanceof Submission => 'title',
+                $subject instanceof Submission, $subject instanceof Publication => 'title',
                 default => 'name',
             }),
             'properties' => $properties ?: null,
@@ -197,6 +197,12 @@ class ActivityLog extends Model
                 // Saved under the old flow, when a review could cover any document and set the status.
                 default => isset($p['status']) ? __('reviewed a project') : __('reviewed a concept proposal'),
             },
+
+            'publication.created' => __('added a publication'),
+            'publication.updated' => __('edited a publication'),
+            'publication.deleted' => __('deleted a publication'),
+            'publication.citation_added' => __('added a citing paper'),
+            'publication.citation_removed' => __('removed a citing paper'),
 
             'user.created' => __('added an account'),
             'user.updated' => __('edited an account'),

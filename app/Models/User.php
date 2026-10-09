@@ -157,6 +157,16 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * Papers the member is tagged on as a portal author.
+     *
+     * @return BelongsToMany<Publication, $this>
+     */
+    public function publications(): BelongsToMany
+    {
+        return $this->belongsToMany(Publication::class);
+    }
+
+    /**
      * @return HasMany<DriveItem, $this>
      */
     public function driveItems(): HasMany

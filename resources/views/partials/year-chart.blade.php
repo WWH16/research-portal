@@ -1,9 +1,10 @@
 {{--
     Columns of citing papers per year, with hover and focus tooltips and a table view: the single-series
-    sibling of monthly-chart. Expects: $years (year => count, in order, from Citation::perYear()) and $since, the first year asked for, so the chart can say when older years were cut off. $heading is
-    optional: leave it out when the section around the chart already names it. $level sets the heading
-    level; it defaults to 2, so pass 3 when the chart sits under another h2. Pass $compact for an
-    unboxed short chart, only as wide as its years need, with a baseline and no scale.
+    sibling of monthly-chart. Expects: $years (year => count, in order, from Citation::perYear()) and $since,
+    the first year asked for, so the chart can say when older years were cut off. $heading is optional: leave
+    it out when the section around the chart already names it. $level sets the heading level; it defaults to
+    2, so pass 3 when the chart sits under another h2. Pass $compact for an unboxed short chart, only as wide
+    as its years need, with a baseline, no scale, and a count over each bar.
 --}}
 @php
     $cited = array_sum($years);
@@ -15,9 +16,11 @@
     $columns = count($years);
     $first = array_key_first($years);
     $compact ??= false;
-    $plot = $compact ? 'h-32' : 'h-48';
-    // With no scale to read, the tallest bar reaches the top instead of stopping short under empty space.
-    $axisMax = $compact ? $peak : $axisMax;
+    // Compact keeps room above the plot for the count over a full-height bar.
+    $plot = $compact ? 'mt-4 h-20' : 'h-48';
+    // With no scale to read, bar height alone shows size: the top stands for 5 citations or the peak, whichever
+    // is more, so a single citation draws a short bar instead of a full one.
+    $axisMax = $compact ? max($peak, 5) : $axisMax;
     // About 2.75rem per year, never narrower than 12rem or wider than the row.
     $width = $compact ? 'width: min(100%, max(12rem, '.(2.75 * $columns).'rem))' : null;
 @endphp
@@ -41,7 +44,7 @@
         {{-- Older citations can still count toward the total, so a cut-off chart says which years are empty --}}
         <flux:text class="mt-6">{{ $since < $first ? __('No citations from :from to :to.', ['from' => $first, 'to' => now()->year]) : __('No citations yet.') }}</flux:text>
     @else
-        <div class="{{ $compact ? (isset($heading) || $since < $first ? 'mt-2' : '') : 'mt-6' }} flex gap-3">
+        <div class="{{ $compact ? '' : 'mt-6' }} flex gap-3">
             @unless ($compact)
                 <div class="flex {{ $plot }} flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
                     @foreach ($ticks as $tick)
@@ -71,9 +74,14 @@
                             <li class="group flex h-full items-end justify-center outline-none" tabindex="-1">
                                 @if ($count > 0)
                                     <div
-                                        class="w-2.5 rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
+                                        class="relative w-2.5 rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
                                         style="height: {{ $count / $axisMax * 100 }}%"
-                                    ></div>
+                                    >
+                                        {{-- With no scale, each bar carries its own count --}}
+                                        @if ($compact)
+                                            <span class="absolute bottom-full left-1/2 mb-0.5 -translate-x-1/2 whitespace-nowrap text-xs tabular-nums text-zinc-600" data-test="bar-count">{{ $count }}</span>
+                                        @endif
+                                    </div>
                                 @endif
 
                                 {{-- Beside the pointer, on the side facing the middle so it never leaves the card --}}
@@ -96,7 +104,7 @@
         </div>
 
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
-        <details class="mt-2 text-sm">
+        <details class="mt-2 text-sm" @if (! isset($heading)) aria-label="{{ __('Citations per year') }}" @endif>
             <summary class="cursor-pointer py-2 text-zinc-600 hover:text-zinc-900">{{ __('Show as table') }}</summary>
             <flux:table class="mt-3 tabular-nums">
                 <flux:table.columns>

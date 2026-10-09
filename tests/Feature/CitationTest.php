@@ -62,6 +62,23 @@ class CitationTest extends TestCase
             ->assertDontSeeHtml('-my-2">');
     }
 
+    public function test_the_compact_chart_drops_its_heading_and_labels_each_bar(): void
+    {
+        Citation::factory()->for($this->paper)->create(['year' => 2026]);
+        $this->actingAs($this->rivera);
+
+        // One citation stays short against the axis floor of 5, and its count sits over the bar.
+        Livewire::test('pages::publications.show', ['publication' => $this->paper])
+            ->assertDontSeeHtml('>Citations per year<')
+            ->assertSeeHtml('style="height: 20%"')
+            ->assertSeeHtml('data-test="bar-count">1<');
+
+        // The profile chart keeps its heading and its scale, with no per-bar counts.
+        $this->get(route('faculty.show', $this->rivera))
+            ->assertSee('Citations per year')
+            ->assertDontSee('data-test="bar-count"', false);
+    }
+
     public function test_a_paper_without_citing_papers_says_so_once(): void
     {
         $this->actingAs($this->rivera);

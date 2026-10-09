@@ -31,6 +31,9 @@ new #[Title('Publications')] class extends Component {
     public string $link = '';
     public ?int $submission_id = null;
 
+    /** @var list<string> Keys of Publication::INDEXES. */
+    public array $indexed_in = [];
+
     /** @var list<int|string|null> The portal faculty who wrote it, one select per row. */
     public array $authorIds = [];
 
@@ -47,6 +50,7 @@ new #[Title('Publications')] class extends Component {
         $this->fill(collect($publication->only(['title', 'authors', 'journal', 'volume', 'issue', 'pages', 'description', 'link']))->map(fn ($value) => (string) $value)->all());
         $this->published_on = $publication->published_on->toDateString();
         $this->submission_id = $publication->submission_id;
+        $this->indexed_in = $publication->indexed_in ?? [];
         $this->authorIds = $publication->faculty()->orderBy('name')->pluck('users.id')->all();
     }
 
@@ -79,6 +83,8 @@ new #[Title('Publications')] class extends Component {
             'description' => ['nullable', 'string', 'max:10000'],
             'link' => ['required', 'url:http,https', 'max:500', Rule::unique('publications', 'link')->ignore($this->publication)],
             'submission_id' => ['nullable', 'integer', Rule::in($this->projects->pluck('id'))],
+            'indexed_in' => ['array'],
+            'indexed_in.*' => [Rule::in(array_keys(Publication::INDEXES))],
             'authorIds' => ['required', 'array', 'max:30'],
             'authorIds.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->where('role', 'faculty')
                 ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))],
@@ -107,9 +113,12 @@ new #[Title('Publications')] class extends Component {
             return;
         }
 
+        // Kept in the list's order, so ticking boxes in another order is not an edit.
+        $validated['indexed_in'] = array_values(array_intersect(array_keys(Publication::INDEXES), $validated['indexed_in']));
+
         $publication = DB::transaction(function () use ($validated) {
             $publication = $this->publication ?? new Publication;
-            $publication->fill(array_map(fn ($value) => $value === '' ? null : $value, Arr::except($validated, 'authorIds')));
+            $publication->fill(array_map(fn ($value) => $value === '' || $value === [] ? null : $value, Arr::except($validated, 'authorIds')));
             $changed = array_keys($publication->getDirty());
             $publication->save();
 
@@ -211,6 +220,12 @@ new #[Title('Publications')] class extends Component {
             </div>
             <flux:text class="mt-2 text-sm">{{ __('Printed on the paper’s first page or the journal’s website, for example Vol. 12, Issue 3, pages 45–60. Leave a box empty if the paper doesn’t have one.') }}</flux:text>
         </div>
+
+        <flux:checkbox.group wire:model="indexed_in" variant="pills" :label="__('Indexed in')" :badge="__('Optional')" :description:trailing="__('The databases that list the journal or proceedings. Check the journal’s website if you’re not sure. Leave all unticked if it isn’t indexed.')" data-test="indexed-in">
+            @foreach (Publication::INDEXES as $key => $label)
+                <flux:checkbox :value="$key" :label="__($label)" />
+            @endforeach
+        </flux:checkbox.group>
 
         <div class="grid gap-6 sm:grid-cols-2">
             <flux:input wire:model="published_on" :label="__('Date published')" :description:trailing="__('If you only know the month or year, pick the first day.')" type="date" :max="today()->toDateString()" required />

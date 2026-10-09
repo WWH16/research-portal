@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonInterface $published_on
  * @property string|null $description
  * @property string $link
+ * @property list<string>|null $indexed_in Keys of INDEXES.
  */
 #[Fillable([
     'submission_id',
@@ -38,16 +39,27 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'published_on',
     'description',
     'link',
+    'indexed_in',
 ])]
 class Publication extends Model
 {
     /** @use HasFactory<PublicationFactory> */
     use HasFactory;
 
+    /** The databases a paper can be listed in, keyed by what is stored, in the order they are shown. */
+    public const INDEXES = [
+        'scopus' => 'Scopus',
+        'web_of_science' => 'Web of Science',
+        'aci' => 'ASEAN Citation Index (ACI)',
+        'google_scholar' => 'Google Scholar',
+        'other' => 'Other',
+    ];
+
     protected function casts(): array
     {
         return [
             'published_on' => 'date',
+            'indexed_in' => 'array',
         ];
     }
 

@@ -116,6 +116,12 @@ new #[Title('Publications')] class extends Component {
             <dd class="mt-1 font-medium tabular-nums text-zinc-800">{{ $publication->published_on->format('M j, Y') }}</dd>
         </div>
         <div class="col-span-2 sm:col-span-3">
+            <dt class="text-zinc-500">{{ __('Indexed in') }}</dt>
+            <dd class="mt-1 font-medium text-zinc-800" data-test="indexed-in">
+                {{ collect($publication->indexed_in)->map(fn ($key) => __(Publication::INDEXES[$key] ?? $key))->join(', ') ?: __('Not indexed') }}
+            </dd>
+        </div>
+        <div class="col-span-2 sm:col-span-3">
             <dt class="text-zinc-500">{{ __('DOI or link') }}</dt>
             <dd class="mt-1 wrap-anywhere"><flux:link :href="$publication->link" target="_blank" rel="noopener noreferrer">{{ $publication->link }}</flux:link></dd>
         </div>

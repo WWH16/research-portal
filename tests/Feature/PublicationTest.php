@@ -164,6 +164,24 @@ class PublicationTest extends TestCase
         $this->assertSame('Renamed Journal', $paper->fresh()->journal);
     }
 
+    public function test_indexed_in_takes_only_listed_databases_and_shows_on_the_paper(): void
+    {
+        $this->actingAs($this->rocel);
+
+        Livewire::test('pages::publications.create')->set($this->fields(['indexed_in' => ['scopus', 'made-up']]))->call('save')->assertHasErrors('indexed_in.1');
+
+        // Ticked out of order, stored in the list's order.
+        Livewire::test('pages::publications.create')->set($this->fields(['indexed_in' => ['aci', 'scopus']]))->call('save')->assertHasNoErrors();
+        $paper = Publication::sole();
+        $this->assertSame(['scopus', 'aci'], $paper->indexed_in);
+        $this->get(route('publications.show', $paper))->assertSeeInOrder(['Indexed in', 'Scopus, ASEAN Citation Index (ACI)']);
+
+        // Unticking every box clears it.
+        Livewire::test('pages::publications.create', ['publication' => $paper])->assertSet('indexed_in', ['scopus', 'aci'])->set('indexed_in', [])->call('save')->assertHasNoErrors();
+        $this->assertNull($paper->fresh()->indexed_in);
+        $this->get(route('publications.show', $paper))->assertSee('Not indexed');
+    }
+
     public function test_only_authors_open_the_edit_form(): void
     {
         $paper = $this->publication([$this->rocel]);

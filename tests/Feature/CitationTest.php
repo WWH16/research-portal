@@ -40,9 +40,7 @@ class CitationTest extends TestCase
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->assertSee('Cited by 3')
             ->assertSee('data-test="year-chart"', escape: false)
-            ->assertSee('2024: 1 citation')
-            ->assertSee('2025: no citations')
-            ->assertSee('2026: 2 citations');
+            ->assertSeeInOrder(['2024', '1 citation', '2025', 'No citations', '2026', '2 citations']);
 
         $this->actingAs(User::factory()->create())->get(route('publications.show', $this->paper))->assertForbidden();
     }

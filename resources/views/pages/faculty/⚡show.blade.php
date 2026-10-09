@@ -51,6 +51,9 @@ new class extends Component {
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         @if ($mine)
             <flux:heading size="xl" level="1" class="sm:row-start-1">{{ __('My Publications') }}</flux:heading>
+
+            {{-- Straight after the title, so on phones it comes before the summary rather than under it --}}
+            <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 sm:col-start-2 sm:row-start-1" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
         @else
             <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
                 <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty Publications') }}</flux:breadcrumbs.item>
@@ -71,7 +74,7 @@ new class extends Component {
                     {{-- The college's full name, so nobody has to decode the short code --}}
                     <flux:text>{{ $user->department?->name ?? __('No college') }}</flux:text>
                     @if ($user->researcher_id)
-                        <flux:text class="tabular-nums">{{ $user->researcher_id }}</flux:text>
+                        <flux:text class="tabular-nums">{{ __('Researcher ID: :id', ['id' => $user->researcher_id]) }}</flux:text>
                     @endif
                 </div>
             </div>
@@ -89,12 +92,6 @@ new class extends Component {
                 </dl>
             @endif
         </div>
-
-        @if ($mine)
-            <div class="flex gap-2 sm:col-start-2 sm:row-start-1">
-                <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 max-sm:flex-1" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
-            </div>
-        @endif
     </header>
 
     {{-- The list leads; on wide screens the chart rides beside it and stays in view while a long list scrolls.
@@ -110,8 +107,9 @@ new class extends Component {
                     @endif
                 </div>
             @else
-                <div class="h-full rounded-xl border border-line bg-surface px-6 py-2">
-                    <flux:table class="[&_td]:py-4 [&_td]:align-top" data-test="publications">
+                {{-- The table bleeds to the panel's edges, so a hovered row lights up its full width --}}
+                <div class="h-full rounded-xl border border-line bg-surface px-(--flux-bleed) py-2 [--flux-bleed:--spacing(4)] sm:[--flux-bleed:--spacing(6)]">
+                    <flux:table bleed class="[&_td]:py-4 [&_td]:align-top" data-test="publications">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Title') }}</flux:table.column>
                             <flux:table.column align="end">{{ __('Cited by') }}</flux:table.column>
@@ -121,8 +119,9 @@ new class extends Component {
                         <flux:table.rows>
                             @foreach ($this->publications as $publication)
                                 {{-- The title link stretches over the whole row, so the row is one big tap target --}}
-                                <flux:table.row :key="$publication->id" class="relative">
-                                    <flux:table.cell class="min-w-56 whitespace-normal">
+                                <flux:table.row :key="$publication->id" class="relative hover:bg-canvas">
+                                    {{-- No floor on phones, so the title wraps and the count and year stay on screen --}}
+                                    <flux:table.cell class="whitespace-normal sm:min-w-56">
                                         <a href="{{ route('publications.show', $publication) }}" wire:navigate class="font-medium text-zinc-800 wrap-anywhere after:absolute after:inset-0 hover:underline">{{ $publication->title }}</a>
                                         <p class="mt-0.5 text-zinc-600 wrap-anywhere">{{ $publication->authors }}</p>
                                         <p class="text-zinc-600 wrap-anywhere">{{ $publication->journal }}</p>

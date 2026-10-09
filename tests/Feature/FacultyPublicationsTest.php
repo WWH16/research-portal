@@ -55,9 +55,7 @@ class FacultyPublicationsTest extends TestCase
             ->assertSeeHtml('data-test="publication-total">2<')
             ->assertSeeHtml('data-test="citation-total">4<')
             // Citations per year add up across both papers, from the earliest one's year.
-            ->assertSee('2024: 1 citation')
-            ->assertSee('2025: 1 citation')
-            ->assertSee('2026: 2 citations');
+            ->assertSeeInOrder(['2024', '1 citation', '2025', '1 citation', '2026', '2 citations']);
     }
 
     public function test_a_shared_paper_shows_on_each_co_authors_profile_with_the_same_count(): void

@@ -40,24 +40,20 @@
                         <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
 
-                    <ol class="relative grid h-full gap-1" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))">
+                    {{-- Hidden from screen readers: the table below carries the same numbers once --}}
+                    <ol class="relative grid h-full gap-1" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
                         @foreach ($years as $year => $count)
                             @php($tooltipSide = match (true) { $loop->index < 2 => 'left-0', $loop->index > $columns - 3 => 'right-0', default => 'left-1/2 -translate-x-1/2' })
                             {{-- The whole column is the hover and tap target. Out of the tab order: keyboard users get the table below --}}
-                            <li
-                                class="group relative flex h-full items-end justify-center outline-none"
-                                tabindex="-1"
-                                aria-label="{{ trans_choice('{0} :year: no citations|{1} :year: 1 citation|[2,*] :year: :count citations', $count, ['year' => $year]) }}"
-                            >
+                            <li class="group relative flex h-full items-end justify-center outline-none" tabindex="-1">
                                 @if ($count > 0)
                                     <div
                                         class="w-2.5 rounded-t-sm bg-isu-green-400 transition group-hover:brightness-110"
                                         style="height: {{ $count / $axisMax * 100 }}%"
-                                        aria-hidden="true"
                                     ></div>
                                 @endif
 
-                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block pointer-coarse:group-focus:block {{ $tooltipSide }}" aria-hidden="true">
+                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block pointer-coarse:group-focus:block {{ $tooltipSide }}">
                                     <p class="text-zinc-500">{{ $year }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No citations|{1} 1 citation|[2,*] :count citations', $count) }}</p>
                                 </div>
@@ -76,8 +72,8 @@
         </div>
 
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
-        <details class="mt-4 text-sm">
-            <summary class="cursor-pointer text-zinc-600 hover:text-zinc-900">{{ __('Show as table') }}</summary>
+        <details class="mt-2 text-sm">
+            <summary class="cursor-pointer py-2 text-zinc-600 hover:text-zinc-900">{{ __('Show as table') }}</summary>
             <flux:table class="mt-3 tabular-nums">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Year') }}</flux:table.column>

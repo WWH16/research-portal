@@ -43,6 +43,13 @@ class PublicationTest extends TestCase
         $this->assertSame('https://journal.example/paper/12', Publication::normalizeLink('https://journal.example/paper/12'));
     }
 
+    public function test_the_list_prints_each_author_as_initials_and_last_name(): void
+    {
+        $paper = new Publication(['authors' => 'Juan Dela T. Cruz; John Ansley Rocel; Siton; John Ansley Rocel Jr.; Mario Siton III']);
+
+        $this->assertSame('JDT Cruz, JA Rocel, Siton, JA Rocel Jr., M Siton III', $paper->shortAuthors());
+    }
+
     public function test_deleting_a_publication_takes_its_citing_papers_and_deleting_its_project_keeps_it(): void
     {
         $project = $this->project($this->rocel);
@@ -99,14 +106,17 @@ class PublicationTest extends TestCase
 
         Livewire::test('pages::publications.create')
             ->set($this->fields(['link' => 'doi:10.1000/smart']))
+            ->call('addAuthor', true)
+            ->set('authorRows.1.name', 'Garcia, P.')
             ->call('addAuthor')
-            ->set('authorIds.1', $this->siton->id)
+            ->set('authorRows.2.user_id', $this->siton->id)
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('publications.show', Publication::first()));
 
         $paper = Publication::first();
         $this->assertSame('https://doi.org/10.1000/smart', $paper->link);
+        $this->assertSame('Rocel; Garcia, P.; Siton', $paper->authors);
         $this->assertEqualsCanonicalizing([$this->rocel->id, $this->siton->id], $paper->faculty()->pluck('users.id')->all());
         $this->assertSame('publication.created', ActivityLog::latest('id')->first()->action);
         $this->assertSame('SMART-ResearchTrack', ActivityLog::latest('id')->first()->subject_label);
@@ -119,10 +129,12 @@ class PublicationTest extends TestCase
         $this->actingAs($this->rocel);
         $form = fn () => Livewire::test('pages::publications.create')->set($this->fields());
 
-        $form()->set('authorIds', [$this->siton->id])->call('save')->assertHasErrors('authorIds');
-        $form()->set('authorIds', [$this->rocel->id, User::factory()->unverified()->create()->id])->call('save')->assertHasErrors('authorIds.1');
-        $form()->set('authorIds', [$this->rocel->id, User::factory()->create(['role' => 'admin'])->id])->call('save')->assertHasErrors('authorIds.1');
-        $form()->set('authorIds', [$this->rocel->id, $this->rocel->id])->call('save')->assertHasErrors('authorIds.0');
+        $form()->set('authorRows', [['user_id' => $this->siton->id], ['name' => 'Garcia, P.']])->call('save')->assertHasErrors('authorRows');
+        $form()->set('authorRows', [['user_id' => $this->rocel->id], ['user_id' => User::factory()->unverified()->create()->id]])->call('save')->assertHasErrors('authorRows.1.user_id');
+        $form()->set('authorRows', [['user_id' => $this->rocel->id], ['user_id' => User::factory()->create(['role' => 'admin'])->id]])->call('save')->assertHasErrors('authorRows.1.user_id');
+        $form()->set('authorRows', [['user_id' => $this->rocel->id], ['user_id' => $this->rocel->id]])->call('save')->assertHasErrors('authorRows.0.user_id');
+        $form()->set('authorRows', [['user_id' => $this->rocel->id], ['name' => '']])->call('save')->assertHasErrors('authorRows.1.name');
+        $form()->set('authorRows', [['user_id' => $this->rocel->id], ['name' => 'Garcia, P.; Cruz, R.']])->call('save')->assertHasErrors('authorRows.1.name');
 
         $this->assertSame(0, Publication::count());
     }
@@ -152,7 +164,7 @@ class PublicationTest extends TestCase
 
         Livewire::test('pages::publications.create')
             ->set($this->fields(['submission_id' => $completed->id]))
-            ->set('authorIds', [$this->rocel->id, $this->siton->id])
+            ->set('authorRows', [['user_id' => $this->rocel->id], ['user_id' => $this->siton->id]])
             ->call('save')
             ->assertHasNoErrors();
 
@@ -162,6 +174,20 @@ class PublicationTest extends TestCase
         Livewire::test('pages::publications.create', ['publication' => $paper])->set('journal', 'Renamed Journal')->call('save')->assertHasNoErrors();
         $this->assertSame($completed->id, $paper->fresh()->submission_id);
         $this->assertSame('Renamed Journal', $paper->fresh()->journal);
+    }
+
+    public function test_editing_rebuilds_the_author_rows_in_the_printed_order(): void
+    {
+        $paper = $this->publication([$this->rocel, $this->siton], ['authors' => 'Garcia, P.; Siton; Rocel']);
+        $this->actingAs($this->rocel);
+
+        Livewire::test('pages::publications.create', ['publication' => $paper])
+            ->assertSet('authorRows', [['name' => 'Garcia, P.'], ['user_id' => $this->siton->id], ['user_id' => $this->rocel->id]])
+            ->call('removeAuthor', 0)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Siton; Rocel', $paper->fresh()->authors);
     }
 
     public function test_indexed_in_takes_only_listed_databases_and_shows_on_the_paper(): void
@@ -246,7 +272,6 @@ class PublicationTest extends TestCase
     {
         return [
             'title' => 'SMART-ResearchTrack',
-            'authors' => 'Rocel, J. A.; Siton, M.',
             'journal' => 'ISU Research Journal',
             'volume' => '4',
             'published_on' => '2025-06-01',

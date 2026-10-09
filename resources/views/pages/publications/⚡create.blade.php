@@ -21,7 +21,6 @@ new #[Title('Publications')] class extends Component {
     public ?Publication $publication = null;
 
     public string $title = '';
-    public string $authors = '';
     public string $journal = '';
     public string $volume = '';
     public string $issue = '';
@@ -34,35 +33,47 @@ new #[Title('Publications')] class extends Component {
     /** @var list<string> Keys of Publication::INDEXES. */
     public array $indexed_in = [];
 
-    /** @var list<int|string|null> The portal faculty who wrote it, one select per row. */
-    public array $authorIds = [];
+    /**
+     * Everyone who wrote it, in the printed order: a portal member picked from a select, or someone outside the portal typed by name.
+     *
+     * @var list<array{user_id: int|string|null}|array{name: string}>
+     */
+    public array $authorRows = [];
 
     public function mount(?Publication $publication = null): void
     {
         if (! $publication?->exists) {
             $this->publication = null;
-            $this->authorIds = [Auth::id()];
+            $this->authorRows = [['user_id' => Auth::id()]];
 
             return;
         }
 
         $this->publication = $publication;
-        $this->fill(collect($publication->only(['title', 'authors', 'journal', 'volume', 'issue', 'pages', 'description', 'link']))->map(fn ($value) => (string) $value)->all());
+        $this->fill(collect($publication->only(['title', 'journal', 'volume', 'issue', 'pages', 'description', 'link']))->map(fn ($value) => (string) $value)->all());
         $this->published_on = $publication->published_on->toDateString();
         $this->submission_id = $publication->submission_id;
         $this->indexed_in = $publication->indexed_in ?? [];
-        $this->authorIds = $publication->faculty()->orderBy('name')->pluck('users.id')->all();
+
+        // The stored list names portal members as their profile does; a tagged member it doesn't name goes at the end.
+        $tagged = $publication->faculty()->orderBy('name')->pluck('name', 'users.id');
+        foreach (array_filter(array_map('trim', explode(';', $publication->authors))) as $name) {
+            $id = $tagged->search($name);
+            $this->authorRows[] = $id === false ? ['name' => $name] : ['user_id' => $id];
+            $tagged->forget($id === false ? [] : $id);
+        }
+        $this->authorRows = [...$this->authorRows, ...$tagged->keys()->map(fn ($id) => ['user_id' => $id])->all()];
     }
 
-    public function addAuthor(): void
+    public function addAuthor(bool $outside = false): void
     {
-        $this->authorIds[] = null;
+        $this->authorRows[] = $outside ? ['name' => ''] : ['user_id' => null];
     }
 
     public function removeAuthor(int $index): void
     {
-        unset($this->authorIds[$index]);
-        $this->authorIds = array_values($this->authorIds);
+        unset($this->authorRows[$index]);
+        $this->authorRows = array_values($this->authorRows);
     }
 
     public function save(): void
@@ -74,7 +85,6 @@ new #[Title('Publications')] class extends Component {
 
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
-            'authors' => ['required', 'string', 'max:1000'],
             'journal' => ['required', 'string', 'max:255'],
             'volume' => ['nullable', 'string', 'max:50'],
             'issue' => ['nullable', 'string', 'max:50'],
@@ -85,22 +95,36 @@ new #[Title('Publications')] class extends Component {
             'submission_id' => ['nullable', 'integer', Rule::in($this->projects->pluck('id'))],
             'indexed_in' => ['array'],
             'indexed_in.*' => [Rule::in(array_keys(Publication::INDEXES))],
-            'authorIds' => ['required', 'array', 'max:30'],
-            'authorIds.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->where('role', 'faculty')
+            'authorRows' => ['required', 'array', 'max:30'],
+            'authorRows.*.user_id' => ['sometimes', 'required', 'integer', 'distinct', Rule::exists('users', 'id')->where('role', 'faculty')
                 ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))],
+            // The names are stored joined by semicolons, so one inside a name would split it in two.
+            'authorRows.*.name' => ['sometimes', 'required', 'string', 'max:100', 'not_regex:/;/'],
         ], [
             'link.unique' => __('This paper is already in the portal. Ask its authors to add you as a co-author.'),
-            'authorIds.*.distinct' => __('A faculty member is listed twice. Remove one of the rows.'),
+            'authorRows.*.user_id.distinct' => __('A faculty member is listed twice. Remove one of the rows.'),
+            'authorRows.*.name.not_regex' => __('Type one name per row, without semicolons.'),
             'submission_id.in' => __('Pick one of your completed projects.'),
         ], [
             'published_on' => __('date published'),
             'link' => __('DOI or link'),
             'submission_id' => __('project'),
-            'authorIds.*' => __('author'),
+            'authorRows.*.user_id' => __('author'),
+            'authorRows.*.name' => __('name'),
         ]);
 
-        if (! in_array(Auth::id(), array_map('intval', $validated['authorIds']), true)) {
-            $this->addError('authorIds', __('Add yourself to the authors, so the paper shows on your profile.'));
+        // Read from the form rather than $validated, which regroups the rows by rule and loses the printed order.
+        $authorIds = array_map('intval', array_filter(array_column($this->authorRows, 'user_id')));
+        if (! in_array(Auth::id(), $authorIds, true)) {
+            $this->addError('authorRows', __('Add yourself to the authors, so the paper shows on your profile.'));
+
+            return;
+        }
+
+        $names = $this->faculty->pluck('name', 'id');
+        $validated['authors'] = collect($this->authorRows)->map(fn ($row) => isset($row['user_id']) ? $names[$row['user_id']] : trim($row['name']))->join('; ');
+        if (mb_strlen($validated['authors']) > 1000) {
+            $this->addError('authorRows', __('The author names are too long to save. Shorten the names typed outside the portal.'));
 
             return;
         }
@@ -116,13 +140,13 @@ new #[Title('Publications')] class extends Component {
         // Kept in the list's order, so ticking boxes in another order is not an edit.
         $validated['indexed_in'] = array_values(array_intersect(array_keys(Publication::INDEXES), $validated['indexed_in']));
 
-        $publication = DB::transaction(function () use ($validated) {
+        $publication = DB::transaction(function () use ($validated, $authorIds) {
             $publication = $this->publication ?? new Publication;
-            $publication->fill(array_map(fn ($value) => $value === '' || $value === [] ? null : $value, Arr::except($validated, 'authorIds')));
+            $publication->fill(array_map(fn ($value) => $value === '' || $value === [] ? null : $value, Arr::except($validated, 'authorRows')));
             $changed = array_keys($publication->getDirty());
             $publication->save();
 
-            $authors = $publication->faculty()->sync(array_map('intval', $validated['authorIds']));
+            $authors = $publication->faculty()->sync($authorIds);
             $authorsChanged = array_filter($authors) !== [];
 
             // Saving an edit that changed nothing is left out of the log.
@@ -208,8 +232,6 @@ new #[Title('Publications')] class extends Component {
     <form wire:submit="save" class="mt-8 flex flex-col gap-6">
         <flux:input wire:model="title" :label="__('Title')" type="text" maxlength="255" required autofocus />
 
-        <flux:input wire:model="authors" :label="__('Authors')" :description:trailing="__('Everyone who wrote the paper, in the order printed on it, including authors outside ISU. For example: Rocel, J. A.; Siton, M.')" type="text" maxlength="1000" required />
-
         <flux:input wire:model="journal" :label="__('Journal')" :description:trailing="__('Where the paper was published: the journal, or the conference proceedings.')" type="text" maxlength="255" required />
 
         <div>
@@ -242,28 +264,36 @@ new #[Title('Publications')] class extends Component {
         </flux:select>
 
         <flux:fieldset>
-            <flux:legend>{{ __('Authors with a portal account') }}</flux:legend>
-            <flux:description>{{ __('Of the authors above, pick each one who has a portal account, starting with you. The paper shows on each of their profiles, and any of them can edit it. Authors outside the portal stay in the Authors field only.') }}</flux:description>
+            <flux:legend>{{ __('Authors') }}</flux:legend>
+            <flux:description>{{ __('Everyone who wrote the paper, in the order printed on it, starting with you. Pick each author who has a portal account: the paper shows on each of their profiles, and any of them can edit it. Type the names of authors outside the portal.') }}</flux:description>
 
             <div class="mt-4 grid gap-3">
-                @foreach ($authorIds as $index => $id)
-                    <div class="grid grid-cols-[minmax(0,1fr)_2.5rem] items-start gap-2" wire:key="author-{{ $index }}" data-test="author-row">
-                        <flux:select wire:model="authorIds.{{ $index }}" :aria-label="__('Author')">
-                            <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
-                            @foreach ($this->faculty as $member)
-                                <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
+                @foreach ($authorRows as $index => $row)
+                    @php($field = array_key_exists('name', $row) ? 'name' : 'user_id')
+                    <div class="grid grid-cols-[minmax(0,1fr)_2.5rem] items-start gap-2" wire:key="author-{{ $index }}-{{ $field }}" data-test="author-row">
+                        @if ($field === 'name')
+                            <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('Full name, for example Juan Dela T. Cruz')" type="text" maxlength="100" />
+                        @else
+                            <flux:select wire:model="authorRows.{{ $index }}.user_id" :aria-label="__('Author')">
+                                <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
+                                @foreach ($this->faculty as $member)
+                                    <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        @endif
 
-                        <flux:button variant="ghost" icon="x-mark" wire:click="removeAuthor({{ $index }})" :aria-label="__('Remove author')" :disabled="count($authorIds) === 1" />
+                        <flux:button variant="ghost" icon="x-mark" wire:click="removeAuthor({{ $index }})" :aria-label="__('Remove author')" :disabled="count($authorRows) === 1" />
                     </div>
-                    <flux:error name="authorIds.{{ $index }}" />
+                    <flux:error name="authorRows.{{ $index }}.{{ $field }}" />
                 @endforeach
             </div>
 
-            <flux:error name="authorIds" class="mt-2" />
+            <flux:error name="authorRows" class="mt-2" />
 
-            <flux:button size="sm" icon="plus" wire:click="addAuthor" class="mt-3">{{ __('Add co-author') }}</flux:button>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <flux:button size="sm" icon="plus" wire:click="addAuthor">{{ __('Add co-author') }}</flux:button>
+                <flux:button size="sm" icon="plus" wire:click="addAuthor(true)">{{ __('Add co-author outside the portal') }}</flux:button>
+            </div>
         </flux:fieldset>
 
         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6">

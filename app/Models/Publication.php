@@ -93,6 +93,22 @@ class Publication extends Model
         return $this->belongsTo(Submission::class);
     }
 
+    /**
+     * The authors as the publication list prints them: initials, then the last name, so "Juan Dela T. Cruz" reads "JDT Cruz".
+     */
+    public function shortAuthors(): string
+    {
+        // ponytail: the last word is taken as the surname, so a two-word surname comes out wrong; store surnames apart if that matters.
+        return collect(explode(';', $this->authors))->map(function (string $name) {
+            $words = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            // A suffix such as Jr. or III follows the surname instead of being taken for it.
+            $suffix = count($words) > 1 && preg_match('/^(jr|sr|ii|iii|iv)\.?$/i', end($words)) ? ' '.array_pop($words) : '';
+            $last = array_pop($words);
+
+            return trim(implode('', array_map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)), $words)).' '.$last.$suffix);
+        })->filter()->join(', ');
+    }
+
     public function authoredBy(User $user): bool
     {
         return $this->faculty()->whereKey($user->id)->exists();

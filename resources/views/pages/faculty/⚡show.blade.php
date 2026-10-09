@@ -160,8 +160,12 @@ new class extends Component {
 
                     @if ($this->paperIds->count() > $this->publications->count())
                         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line py-3">
-                            <flux:text class="tabular-nums">{{ __('Showing :shown of :total', ['shown' => number_format($this->publications->count()), 'total' => number_format($this->paperIds->count())]) }}</flux:text>
-                            <flux:button wire:click="showMore" size="sm" icon="chevron-down" class="max-sm:h-11 max-sm:w-full" data-test="show-more-publications">{{ __('Show more') }}</flux:button>
+                            <flux:text class="tabular-nums" aria-live="polite">{{ __('Showing :shown of :total', ['shown' => number_format($this->publications->count()), 'total' => number_format($this->paperIds->count())]) }}</flux:text>
+                            {{-- Focus moves to the first newly shown paper, so keyboard users carry on reading there instead of
+                                 landing back at the top when this button disappears --}}
+                            <flux:button size="sm" icon="chevron-down" class="max-sm:h-11 max-sm:w-full" data-test="show-more-publications"
+                                wire:loading.attr="disabled" wire:target="showMore"
+                                x-on:click="$wire.showMore().then(() => document.querySelectorAll('[data-test=publications] a')[{{ $this->publications->count() }}]?.focus())">{{ __('Show more') }}</flux:button>
                         </div>
                     @endif
                 </div>

@@ -120,74 +120,76 @@ new class extends Component {
 
     {{-- A record view: each label sits in a column as wide as the longest label, with its value beside it. Every row
          spans both columns through a subgrid, so the values line up. Labels align right, against their values, and
-         the longest one starts on the page's left edge. --}}
+         the longest one starts on the page's left edge. The citations total shares the grid, so "Total citations"
+         lines up with the labels above it, and its value and chart with their values. --}}
     @php
         $row = 'col-span-2 grid grid-cols-subgrid';
         $label = 'text-end text-zinc-500 text-balance';
         $value = 'text-zinc-900 wrap-anywhere';
     @endphp
-    <dl class="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm sm:gap-x-8" data-test="publication-details">
-        <div class="{{ $row }}">
-            <dt class="{{ $label }}">{{ __('Authors') }}</dt>
-            <dd class="{{ $value }}">{{ $publication->authors }}</dd>
-        </div>
-        <div class="{{ $row }}">
-            <dt class="{{ $label }}">{{ __('Publication date') }}</dt>
-            <dd class="{{ $value }} tabular-nums">{{ $publication->published_on->format('M j, Y') }}</dd>
-        </div>
-        <div class="{{ $row }}">
-            <dt class="{{ $label }}">{{ __('Journal') }}</dt>
-            <dd class="{{ $value }}">{{ $publication->journal }}</dd>
-        </div>
-        @foreach (['volume' => __('Volume'), 'issue' => __('Issue'), 'pages' => __('Pages')] as $field => $name)
-            @if ($publication->$field)
-                <div class="{{ $row }}">
-                    <dt class="{{ $label }}">{{ $name }}</dt>
-                    <dd class="{{ $value }} tabular-nums">{{ $publication->$field }}</dd>
-                </div>
-            @endif
-        @endforeach
-        <div class="{{ $row }}">
-            <dt class="{{ $label }}">{{ __('Indexed in') }}</dt>
-            <dd class="{{ $value }}" data-test="indexed-in">
-                {{ collect($publication->indexed_in)->map(fn ($key) => __(Publication::INDEXES[$key] ?? $key))->join(', ') ?: __('Not indexed') }}
-            </dd>
-        </div>
-        <div class="{{ $row }}">
-            <dt class="{{ $label }}">{{ __('DOI or link') }}</dt>
-            <dd class="{{ $value }}"><flux:link :href="$publication->link" target="_blank" rel="noopener noreferrer">{{ $publication->link }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link></dd>
-        </div>
-        @if ($publication->submission)
+    <div class="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 text-sm sm:gap-x-8">
+        <dl class="{{ $row }} gap-y-3" data-test="publication-details">
             <div class="{{ $row }}">
-                <dt class="{{ $label }}">{{ __('Research project') }}</dt>
-                <dd class="{{ $value }}">
-                    @can('view', $publication->submission)
-                        <flux:link :href="route('drive.show', $publication->submission)" wire:navigate>{{ $publication->submission->title }}</flux:link>
-                    @else
-                        {{ $publication->submission->title }}
-                    @endcan
+                <dt class="{{ $label }}">{{ __('Authors') }}</dt>
+                <dd class="{{ $value }}">{{ $publication->authors }}</dd>
+            </div>
+            <div class="{{ $row }}">
+                <dt class="{{ $label }}">{{ __('Publication date') }}</dt>
+                <dd class="{{ $value }} tabular-nums">{{ $publication->published_on->format('M j, Y') }}</dd>
+            </div>
+            <div class="{{ $row }}">
+                <dt class="{{ $label }}">{{ __('Journal') }}</dt>
+                <dd class="{{ $value }}">{{ $publication->journal }}</dd>
+            </div>
+            @foreach (['volume' => __('Volume'), 'issue' => __('Issue'), 'pages' => __('Pages')] as $field => $name)
+                @if ($publication->$field)
+                    <div class="{{ $row }}">
+                        <dt class="{{ $label }}">{{ $name }}</dt>
+                        <dd class="{{ $value }} tabular-nums">{{ $publication->$field }}</dd>
+                    </div>
+                @endif
+            @endforeach
+            <div class="{{ $row }}">
+                <dt class="{{ $label }}">{{ __('Indexed in') }}</dt>
+                <dd class="{{ $value }}" data-test="indexed-in">
+                    {{ collect($publication->indexed_in)->map(fn ($key) => __(Publication::INDEXES[$key] ?? $key))->join(', ') ?: __('Not indexed') }}
                 </dd>
             </div>
-        @endif
-        @if ($publication->description)
             <div class="{{ $row }}">
-                <dt class="{{ $label }}">{{ __('Description') }}</dt>
-                <dd class="{{ $value }} max-w-prose whitespace-pre-line">{{ $publication->description }}</dd>
+                <dt class="{{ $label }}">{{ __('DOI or link') }}</dt>
+                <dd class="{{ $value }}"><flux:link :href="$publication->link" target="_blank" rel="noopener noreferrer">{{ $publication->link }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link></dd>
             </div>
-        @endif
-    </dl>
+            @if ($publication->submission)
+                <div class="{{ $row }}">
+                    <dt class="{{ $label }}">{{ __('Research project') }}</dt>
+                    <dd class="{{ $value }}">
+                        @can('view', $publication->submission)
+                            <flux:link :href="route('drive.show', $publication->submission)" wire:navigate>{{ $publication->submission->title }}</flux:link>
+                        @else
+                            {{ $publication->submission->title }}
+                        @endcan
+                    </dd>
+                </div>
+            @endif
+            @if ($publication->description)
+                <div class="{{ $row }}">
+                    <dt class="{{ $label }}">{{ __('Description') }}</dt>
+                    <dd class="{{ $value }} max-w-prose whitespace-pre-line">{{ $publication->description }}</dd>
+                </div>
+            @endif
+        </dl>
 
-    {{-- The total leads in the brand green, with the short chart below it --}}
-    <section class="mt-10" aria-labelledby="cited-heading">
-        <h2 id="cited-heading" class="text-sm text-zinc-600">{{ __('Total citations') }}</h2>
-        <p class="mt-1 text-4xl font-semibold tabular-nums text-isu-green-700" data-test="cited-by">{{ number_format($total) }}</p>
-        {{-- No chart for a paper nobody has cited yet: a total of 0 already says so --}}
-        @if ($total)
-            <div class="mt-6">
-                @include('partials.year-chart', ['years' => Citation::perYear($publication->citations(), $first), 'since' => $first, 'heading' => __('Citations per year'), 'level' => 3, 'compact' => true])
-            </div>
-        @endif
-    </section>
+        <section class="{{ $row }} mt-10 items-baseline" aria-labelledby="cited-heading">
+            <h2 id="cited-heading" class="{{ $label }}">{{ __('Total citations') }}</h2>
+            <p class="text-4xl font-semibold tabular-nums text-isu-green-700" data-test="cited-by">{{ number_format($total) }}</p>
+            {{-- No chart for a paper nobody has cited yet: a total of 0 already says so --}}
+            @if ($total)
+                <div class="col-start-2 mt-4">
+                    @include('partials.year-chart', ['years' => Citation::perYear($publication->citations(), $first), 'since' => $first, 'heading' => __('Citations per year'), 'level' => 3, 'compact' => true])
+                </div>
+            @endif
+        </section>
+    </div>
 
     @if ($canEdit || $total)
         <section class="mt-10" aria-labelledby="citing-heading">
@@ -196,8 +198,8 @@ new class extends Component {
 
             @if ($canEdit)
                 <form wire:submit="addCitation" class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-start" data-test="add-citation-form">
-                    <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required />
-                    <flux:select wire:model="year" :label="__('Citing paper’s year')">
+                    <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required class:input="max-sm:h-11" />
+                    <flux:select wire:model="year" :label="__('Citing paper’s year')" class="max-sm:h-11">
                         @foreach (range(now()->year, $first) as $option)
                             <flux:select.option :value="$option">{{ $option }}</flux:select.option>
                         @endforeach
@@ -224,8 +226,12 @@ new class extends Component {
 
                     @if ($total > $citations->count())
                         <div class="flex flex-wrap items-center justify-between gap-3 py-3">
-                            <flux:text class="tabular-nums">{{ __('Showing :shown of :total', ['shown' => number_format($citations->count()), 'total' => number_format($total)]) }}</flux:text>
-                            <flux:button wire:click="showMore" size="sm" icon="chevron-down" class="max-sm:h-11 max-sm:w-full" data-test="show-more-citations">{{ __('Show more') }}</flux:button>
+                            <flux:text class="tabular-nums" aria-live="polite">{{ __('Showing :shown of :total', ['shown' => number_format($citations->count()), 'total' => number_format($total)]) }}</flux:text>
+                            {{-- Focus moves to the first newly shown paper, so keyboard users carry on reading there instead of
+                                 landing back at the top when this button disappears --}}
+                            <flux:button size="sm" icon="chevron-down" class="max-sm:h-11 max-sm:w-full" data-test="show-more-citations"
+                                wire:loading.attr="disabled" wire:target="showMore"
+                                x-on:click="$wire.showMore().then(() => document.querySelectorAll('[data-test=citations] a')[{{ $citations->count() }}]?.focus())">{{ __('Show more') }}</flux:button>
                         </div>
                     @endif
 

@@ -141,6 +141,28 @@ class FacultyPublicationsTest extends TestCase
     /**
      * @param  list<int>  $citedIn  The year of each citing paper.
      */
+    public function test_the_list_shows_20_more_at_a_time_while_the_totals_and_chart_count_every_paper(): void
+    {
+        $this->publication('Top paper', '2024-01-01', [2024, 2025], $this->rocel);
+        foreach (range(1, 25) as $n) {
+            $this->publication("Uncited paper $n", '2025-01-01', [], $this->rocel);
+        }
+        $this->actingAs($this->rocel);
+
+        Livewire::test('pages::faculty.show', ['user' => $this->rocel])
+            ->assertSee('Top paper')
+            ->assertDontSee('Uncited paper 9')
+            ->assertSeeHtml('data-test="publication-total">26<')
+            ->assertSeeHtml('data-test="citation-total">2<')
+            ->assertSeeInOrder(['2024', '1 citation', '2025', '1 citation'])
+            ->assertSee('Showing 20 of 26')
+            ->call('showMore')
+            ->assertSee('Uncited paper 9')
+            ->assertSee('Top paper')
+            ->assertDontSeeHtml('data-test="show-more-publications"')
+            ->assertSeeHtml('data-test="publication-total">26<');
+    }
+
     private function publication(string $title, string $published, array $citedIn, User ...$authors): Publication
     {
         $publication = Publication::factory()->create(['title' => $title, 'published_on' => $published]);

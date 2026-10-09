@@ -14,6 +14,9 @@ use Livewire\Component;
 new class extends Component {
     public User $user;
 
+    /** How many papers the list shows; Show more adds the next 20. */
+    public int $shown = 20;
+
     public function mount(User $user): void
     {
         // Admins record no publications, so only faculty accounts have a profile.
@@ -31,7 +34,21 @@ new class extends Component {
     public function publications(): Collection
     {
         // Most-cited first; ties go to the newer paper.
-        return $this->user->publications()->withCount('citations')->orderByDesc('citations_count')->orderByDesc('published_on')->orderBy('title')->get();
+        return $this->user->publications()->withCount('citations')->orderByDesc('citations_count')->orderByDesc('published_on')->orderBy('title')->limit($this->shown)->get();
+    }
+
+    public function showMore(): void
+    {
+        $this->shown += 20;
+    }
+
+    /**
+     * Every paper's id, not just this page's, so the totals and the chart cover them all.
+     */
+    #[Computed]
+    public function paperIds(): Collection
+    {
+        return $this->user->publications()->pluck('publications.id');
     }
 
     // Named per member, so an admin with several profiles open can tell the tabs apart.
@@ -44,7 +61,8 @@ new class extends Component {
 }; ?>
 
 @php
-    $first = $this->publications->min(fn ($publication) => $publication->published_on->year);
+    $earliest = $user->publications()->min('published_on');
+    $first = $earliest ? (int) substr($earliest, 0, 4) : null;
 @endphp
 
 <section class="mx-auto w-full max-w-6xl">
@@ -90,11 +108,11 @@ new class extends Component {
                 <dl class="flex shrink-0 gap-8 sm:border-s sm:border-line sm:ps-8" data-test="profile-totals">
                     <div>
                         <dt class="text-sm text-zinc-600">{{ __('Publications') }}</dt>
-                        <dd class="text-2xl font-semibold tabular-nums text-zinc-900" data-test="publication-total">{{ number_format($this->publications->count()) }}</dd>
+                        <dd class="text-2xl font-semibold tabular-nums text-zinc-900" data-test="publication-total">{{ number_format($this->paperIds->count()) }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm text-zinc-600">{{ __('Total citations') }}</dt>
-                        <dd class="text-2xl font-semibold tabular-nums text-zinc-900" data-test="citation-total">{{ number_format($this->publications->sum('citations_count')) }}</dd>
+                        <dd class="text-2xl font-semibold tabular-nums text-zinc-900" data-test="citation-total">{{ number_format(Citation::whereIn('publication_id', $this->paperIds)->count()) }}</dd>
                     </div>
                 </dl>
             @endif
@@ -139,13 +157,20 @@ new class extends Component {
                             @endforeach
                         </flux:table.rows>
                     </flux:table>
+
+                    @if ($this->paperIds->count() > $this->publications->count())
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line py-3">
+                            <flux:text class="tabular-nums">{{ __('Showing :shown of :total', ['shown' => number_format($this->publications->count()), 'total' => number_format($this->paperIds->count())]) }}</flux:text>
+                            <flux:button wire:click="showMore" size="sm" icon="chevron-down" class="max-sm:h-11 max-sm:w-full" data-test="show-more-publications">{{ __('Show more') }}</flux:button>
+                        </div>
+                    @endif
                 </div>
             @endif
         </section>
 
         @if ($first)
             <aside class="xl:sticky xl:top-8 xl:self-start">
-                @include('partials.year-chart', ['years' => Citation::perYear(Citation::whereIn('publication_id', $this->publications->modelKeys()), $first), 'since' => $first, 'heading' => __('Citations per year')])
+                @include('partials.year-chart', ['years' => Citation::perYear(Citation::whereIn('publication_id', $this->paperIds), $first), 'since' => $first, 'heading' => __('Citations per year')])
             </aside>
         @endif
     </div>

@@ -184,8 +184,8 @@ new class extends Component {
             <p class="text-4xl font-semibold tabular-nums text-isu-green-700" data-test="cited-by">{{ number_format($total) }}</p>
             {{-- No chart for a paper nobody has cited yet: a total of 0 already says so --}}
             @if ($total)
-                <div class="col-start-2 mt-4">
-                    @include('partials.year-chart', ['years' => Citation::perYear($publication->citations(), $first), 'since' => $first, 'heading' => __('Citations per year'), 'level' => 3, 'compact' => true])
+                <div class="col-start-2 mt-3">
+                    @include('partials.year-chart', ['years' => Citation::perYear($publication->citations(), $first), 'since' => $first, 'compact' => true])
                 </div>
             @endif
         </section>

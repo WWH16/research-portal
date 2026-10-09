@@ -8,7 +8,8 @@
         data-test="sidebar-menu-button"
     >
         <x-slot name="name">
-            <span class="block truncate text-start">{{ auth()->user()->name }}</span>
+            {{-- Long names wrap to a second line instead of cutting off --}}
+            <span class="line-clamp-2 text-start break-words">{{ auth()->user()->name }}</span>
             <span class="block truncate text-start text-xs font-normal text-isu-green-200">
                 @if (auth()->user()->isAdmin())
                     {{ __('Administrator') }}

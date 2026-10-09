@@ -51,7 +51,7 @@
                             >
                                 @if ($count > 0)
                                     <div
-                                        class="w-2.5 rounded-t-sm bg-isu-green-600 transition group-hover:brightness-110"
+                                        class="w-2.5 rounded-t-sm bg-isu-green-400 transition group-hover:brightness-110"
                                         style="height: {{ $count / $axisMax * 100 }}%"
                                         aria-hidden="true"
                                     ></div>

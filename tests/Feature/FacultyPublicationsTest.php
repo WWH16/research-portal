@@ -43,14 +43,15 @@ class FacultyPublicationsTest extends TestCase
         $this->actingAs($this->admin)->get(route('faculty.show', $this->admin))->assertNotFound();
     }
 
-    public function test_the_profile_lists_papers_newest_first_with_their_counts_and_totals(): void
+    public function test_the_profile_lists_the_most_cited_papers_first_with_their_counts_and_totals(): void
     {
         $older = $this->publication('Older paper', '2024-03-01', [2024, 2025, 2026], $this->rocel);
         $newer = $this->publication('Newer paper', '2025-08-01', [2026], $this->rocel);
         $this->actingAs($this->rocel);
 
         Livewire::test('pages::faculty.show', ['user' => $this->rocel])
-            ->assertSeeInOrder(['Newer paper', '2025', '1', 'Older paper', '2024', '3'])
+            ->assertSee('College of Computing Studies')
+            ->assertSeeInOrder(['Older paper', '3', '2024', 'Newer paper', '1', '2025'])
             ->assertSeeHtml('data-test="publication-total">2<')
             ->assertSeeHtml('data-test="citation-total">4<')
             // Citations per year add up across both papers, from the earliest one's year.

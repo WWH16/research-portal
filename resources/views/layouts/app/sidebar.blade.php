@@ -33,7 +33,8 @@
 
                 <flux:separator variant="subtle" />
 
-                <flux:sidebar.group :heading="__('Projects')" class="grid">
+                {{-- Projects and papers are both research records, so they share one group --}}
+                <flux:sidebar.group :heading="__('Research')" class="grid">
                     @if (auth()->user()->isAdmin())
                         {{-- The Research Office's open work leads the group, with a count visible from every page. Screen readers hear the sentence, not the bare number. --}}
                         <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ? $capped($toReview) : null" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
@@ -53,12 +54,8 @@
                     <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*') || request('from') === 'drive'" wire:navigate>
                         {{ __('Research Drive') }}
                     </flux:sidebar.item>
-                </flux:sidebar.group>
 
-                <flux:separator variant="subtle" />
-
-                {{-- Faculty keep their own record; the Research Office reads everyone's --}}
-                <flux:sidebar.group :heading="__('Publications')" class="grid">
+                    {{-- Faculty keep their own record; the Research Office reads everyone's --}}
                     @if (auth()->user()->isAdmin())
                         <flux:sidebar.item icon="book-open" :href="route('faculty.index')" :current="request()->routeIs('faculty.*', 'publications.*')" wire:navigate data-test="publications-nav">
                             {{ __('Faculty Publications') }}

@@ -40,12 +40,19 @@
                         <div class="absolute inset-x-0 border-t {{ $tick ? 'border-line' : 'border-zinc-300' }}" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
 
-                    {{-- Hidden from screen readers: the table below carries the same numbers once --}}
-                    <ol class="relative grid h-full gap-1" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
+                    {{-- Hidden from screen readers: the table below carries the same numbers once.
+                         The pointer's spot is kept in --x and --y, so the tooltip rides beside it instead of on a tall bar's top. --}}
+                    <ol
+                        class="relative grid h-full gap-1"
+                        style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))"
+                        aria-hidden="true"
+                        x-data="{ follow(e) { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--x', e.clientX - r.left + 'px'); e.currentTarget.style.setProperty('--y', e.clientY - r.top + 'px') } }"
+                        x-on:pointermove="follow($event)"
+                        x-on:pointerdown="follow($event)"
+                    >
                         @foreach ($years as $year => $count)
-                            @php($tooltipSide = match (true) { $loop->index < 2 => 'left-0', $loop->index > $columns - 3 => 'right-0', default => 'left-1/2 -translate-x-1/2' })
                             {{-- The whole column is the hover and tap target. Out of the tab order: keyboard users get the table below --}}
-                            <li class="group relative flex h-full items-end justify-center outline-none" tabindex="-1">
+                            <li class="group flex h-full items-end justify-center outline-none" tabindex="-1">
                                 @if ($count > 0)
                                     <div
                                         class="w-2.5 rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
@@ -53,11 +60,8 @@
                                     ></div>
                                 @endif
 
-                                {{-- Sits just above its own bar, so a short bar's tooltip stays beside it --}}
-                                <div
-                                    class="pointer-events-none absolute z-10 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs group-hover:block pointer-coarse:group-focus:block {{ $tooltipSide }}"
-                                    style="bottom: calc({{ $count / $axisMax * 100 }}% + 0.5rem)"
-                                >
+                                {{-- Beside the pointer, on the side facing the middle so it never leaves the card --}}
+                                <div class="pointer-events-none absolute top-(--y) left-(--x) z-10 hidden w-max -translate-y-1/2 rounded-lg border border-line bg-surface px-3 py-2 text-xs group-hover:block pointer-coarse:group-focus:block {{ $loop->index < $columns / 2 ? 'ml-4' : '-ml-4 -translate-x-full' }}">
                                     <p class="text-zinc-500">{{ $year }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No citations|{1} 1 citation|[2,*] :count citations', $count) }}</p>
                                 </div>

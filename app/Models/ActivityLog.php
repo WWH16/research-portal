@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * The page shows each entry in parts, so a long project title never buries what happened: the actor,
  * a short summary(), then the subject() with its change() and note() in their own column.
  *
- * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, replaced?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, decision?: 'passed'|'returned', remarks?: string, kind?: string, from?: string, to?: string}|null $properties
+ * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, replaced?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, decision?: 'passed'|'returned', remarks?: string, presented?: bool, kind?: string, from?: string, to?: string}|null $properties
  */
 #[Fillable(['user_id', 'actor_name', 'action', 'subject_id', 'subject_label', 'properties'])]
 class ActivityLog extends Model
@@ -188,6 +188,9 @@ class ActivityLog extends Model
             'submission.created' => __('submitted a proposal'),
             'submission.updated' => __('updated a project'),
             'submission.dates_changed' => __('changed a project’s dates'),
+            'submission.presented' => ($p['presented'] ?? true)
+                ? __('marked a project as presented at the in-house review')
+                : __('marked a project as not presented at the in-house review'),
             'submission.reviewed' => match ($p['decision'] ?? null) {
                 'passed' => __('passed a concept proposal'),
                 'returned' => __('returned a concept proposal for revision'),
@@ -279,12 +282,12 @@ class ActivityLog extends Model
     }
 
     /**
-     * Who to name for an entry in a project's history. Concept reviews and date changes are the Research Office's,
-     * so faculty see the office rather than one staff member.
+     * Who to name for an entry in a project's history. Concept reviews, date changes and in-house review marks are
+     * the Research Office's, so faculty see the office rather than one staff member.
      */
     public function historyActor(): string
     {
-        return in_array($this->action, ['submission.reviewed', 'submission.dates_changed'], true)
+        return in_array($this->action, ['submission.reviewed', 'submission.dates_changed', 'submission.presented'], true)
             ? __('Research Office')
             : ($this->actor_name ?? __('Unknown'));
     }
@@ -301,6 +304,9 @@ class ActivityLog extends Model
             $this->action === 'submission.created' => __('Submitted the proposal'),
             $this->action === 'submission.updated' => __('Updated the project'),
             $this->action === 'submission.dates_changed' => __('Changed the dates'),
+            $this->action === 'submission.presented' => ($this->properties['presented'] ?? true)
+                ? __('Marked as presented at the in-house review')
+                : __('Marked as not presented at the in-house review'),
             ($this->properties['decision'] ?? null) === 'passed' => __('Passed the concept proposal'),
             ($this->properties['decision'] ?? null) === 'returned' => __('Returned the concept proposal for revision'),
             isset($this->properties['status']) => __('Reviewed the project'),

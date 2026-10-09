@@ -897,7 +897,7 @@ class SubmissionTest extends TestCase
         $this->assertStringStartsWith("\xEF\xBB\xBF".'Title,Year,College,Status', $csv);
         $this->assertStringContainsString("'=HYPERLINK", $csv, 'Formula-looking cells are escaped.');
         $this->assertStringContainsString('"Study 1: Maria Santos (Leader); Study 2: Siton Ñuñez (Staff), Maria Santos (Co-Leader)",2', $csv);
-        $this->assertStringContainsString('Concept, Terminal', $csv);
+        $this->assertStringContainsString(',No,"Concept, Terminal"', $csv, 'A completed project that didn’t present reads No.');
         $this->assertStringNotContainsString('Jose Proposal', $csv);
 
         $this->actingAs($jose);

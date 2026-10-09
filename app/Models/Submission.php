@@ -28,6 +28,7 @@ use RuntimeException;
  * @property CarbonInterface|null $terminal_uploaded_at
  * @property bool $awaiting_review
  * @property bool $concept_passed
+ * @property bool $presented
  */
 #[Fillable([
     'user_id',
@@ -45,6 +46,7 @@ use RuntimeException;
     'midyear_path',
     'terminal_path',
     'terminal_uploaded_at',
+    'presented',
     'status',
     'awaiting_review',
     'concept_passed',
@@ -81,6 +83,7 @@ class Submission extends Model
             'terminal_uploaded_at' => 'datetime',
             'awaiting_review' => 'boolean',
             'concept_passed' => 'boolean',
+            'presented' => 'boolean',
         ];
     }
 

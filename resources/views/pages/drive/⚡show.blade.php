@@ -105,6 +105,13 @@ new #[Title('Research Drive')] class extends Component {
                 <dd class="mt-1 font-medium {{ $onTime ? 'text-green-700' : 'text-amber-800' }}">{{ $onTime ? __('On time') : __('Late') }}</dd>
             </div>
         @endif
+        {{-- The Research Office ticks this on Submissions; shown here too so a project's page answers it --}}
+        @if ($admin && $project->status === 'Completed')
+            <div data-test="drive-presented">
+                <dt class="text-zinc-500">{{ __('Presented in-house') }}</dt>
+                <dd class="mt-1 font-medium text-zinc-800">{{ $project->presented ? __('Yes') : __('No') }}</dd>
+            </div>
+        @endif
     </dl>
 
     <section class="mt-8" aria-labelledby="progress-heading">

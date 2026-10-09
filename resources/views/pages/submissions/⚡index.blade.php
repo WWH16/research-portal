@@ -24,7 +24,7 @@ new #[Title('Submissions')] class extends Component {
     public string $start_date = '';
     public string $target_date = '';
 
-    /** A status, "proposal" (Concept or Detailed), "revision" (concept returned) or "delayed"; the dashboard tiles link here with ?status=. */
+    /** A status, "proposal" (Concept or Detailed), "revision" (concept returned), "delayed", "presented" or "not-presented" (completed projects ticked or not for the in-house review); the dashboard tiles link here with ?status=. */
     #[Url(as: 'status', except: '')]
     public string $statusFilter = '';
 
@@ -98,6 +98,9 @@ new #[Title('Submissions')] class extends Component {
                 $this->statusFilter === 'proposal' => $query->whereIn('status', Submission::PROPOSAL_STAGES),
                 $this->statusFilter === 'revision' => $query->where('awaiting_review', false)->where('concept_passed', false),
                 $this->statusFilter === 'delayed' => $query->delayed(),
+                $this->statusFilter === 'presented' => $query->where('presented', true),
+                // Completed but not ticked: the projects to leave out when printing in-house review certificates.
+                $this->statusFilter === 'not-presented' => $query->where('status', 'Completed')->where('presented', false),
                 in_array($this->statusFilter, Submission::STATUSES, true) => $query->where('status', $this->statusFilter),
                 default => $query,
             })
@@ -137,6 +140,8 @@ new #[Title('Submissions')] class extends Component {
             $project->target_date?->toDateString(),
             $project->terminal_uploaded_at?->toDateString(),
             $yesNo($project->completedOnTime()),
+            // Only a completed project can present, so earlier stages leave the cell blank rather than "No".
+            $yesNo($project->status === 'Completed' ? $project->presented : null),
             collect(Submission::DOCUMENTS)->filter(fn ($label, $stage) => $project->{$stage.'_path'})->map(fn ($label, $stage) => ucfirst($stage))->join(', '),
             // Remarks are what to fix on a returned concept proposal; once a corrected one is in they no longer apply.
             $project->conceptReview() === 'returned' ? $project->remarks : '',
@@ -147,8 +152,31 @@ new #[Title('Submissions')] class extends Component {
         return response()->csv($filename, [
             __('Title'), __('Year'), __('College'), __('Status'), __('Concept review'), __('Delayed'), __('Filed by'),
             __('Proponents'), __('Faculty count'), __('Category'), __('Starting date'), __('Completion date'),
-            __('Terminal report uploaded'), __('Finished on time'), __('Documents on file'), __('Remarks'), __('Encoded on'), __('Abstract'),
+            __('Terminal report uploaded'), __('Finished on time'), __('Presented in-house'), __('Documents on file'), __('Remarks'), __('Encoded on'), __('Abstract'),
         ], $rows);
+    }
+
+    /**
+     * Record whether a completed project presented at the in-house review, logged in its history. Not every
+     * project presents, so the Research Office ticks it by hand before printing certificates. The value is
+     * set, not flipped, so a page left open while another admin ticked the same project can't undo it.
+     */
+    public function setPresented(int $id, bool $presented): void
+    {
+        $this->authorize('review', Submission::class);
+
+        $submission = Submission::findOrFail($id);
+        abort_unless($submission->status === 'Completed', 403);
+
+        if ($submission->presented !== $presented) {
+            DB::transaction(function () use ($submission, $presented) {
+                $submission->update(['presented' => $presented]);
+                ActivityLog::record('submission.presented', $submission, ['presented' => $presented]);
+            });
+        }
+
+        Flux::toast(variant: 'success', text: __($presented ? 'Marked “:title” as presented.' : 'Marked “:title” as not presented.', ['title' => Str::limit($submission->title, 60)]));
+        unset($this->submissions);
     }
 
     #[Computed]
@@ -217,7 +245,7 @@ new #[Title('Submissions')] class extends Component {
     }
 }; ?>
 
-<section class="mx-auto w-full {{ $this->monitoring ? 'max-w-5xl' : 'max-w-4xl' }}">
+<section class="mx-auto w-full {{ $this->monitoring ? 'max-w-6xl' : 'max-w-4xl' }}">
     <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0 flex-1">
@@ -246,6 +274,10 @@ new #[Title('Submissions')] class extends Component {
             <flux:select.option value="proposal">{{ __('At proposal stage') }}</flux:select.option>
             <flux:select.option value="revision">{{ __('Concept needs revision') }}</flux:select.option>
             <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
+            @if ($this->monitoring)
+                <flux:select.option value="presented">{{ __('Presented in-house') }}</flux:select.option>
+                <flux:select.option value="not-presented">{{ __('Not presented in-house') }}</flux:select.option>
+            @endif
             @foreach (Submission::STATUSES as $option)
                 <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
             @endforeach
@@ -277,7 +309,9 @@ new #[Title('Submissions')] class extends Component {
             @endif
         </flux:text>
     @else
-        <flux:table class="mt-6" :paginate="$this->submissions">
+        {{-- Every cell starts at the top, so each row reads across one line from the title. relative anchors the cells'
+             screen-reader-only text to the table, inside its scroll area, so on phones it can't widen the whole page --}}
+        <flux:table class="relative mt-6 [&_td]:align-top" :paginate="$this->submissions">
             <flux:table.columns>
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
                 @if ($this->monitoring)
@@ -287,6 +321,9 @@ new #[Title('Submissions')] class extends Component {
                 @endif
                 <flux:table.column>{{ __('Year') }}</flux:table.column>
                 <flux:table.column>{{ __('Status') }}</flux:table.column>
+                @if ($this->monitoring)
+                    <flux:table.column>{{ __('Presented in-house') }}</flux:table.column>
+                @endif
                 <flux:table.column>{{ __('Schedule') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>
@@ -295,14 +332,15 @@ new #[Title('Submissions')] class extends Component {
                 @foreach ($this->submissions as $submission)
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="max-w-sm">
-                            <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
+                            <a href="{{ route('drive.show', $submission) }}" wire:navigate class="block truncate font-medium text-zinc-800 hover:underline">{{ $submission->title }}</a>
                             <p class="truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->pluck('user.name')->unique()->join(', ') }}</p>
-                            {{-- Every row repeats these links, so screen readers also hear which project each one is for --}}
+                            {{-- Short names keep the links on one line under the title, quieter than it; screen readers hear the full
+                                 document name and which project each link is for --}}
                             <div class="mt-1 flex flex-wrap gap-x-3 text-sm">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
                                     @if ($submission->{$stage.'_path'})
-                                        <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" :aria-label="__(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title])">
-                                            {{ __($label) }}
+                                        <flux:link variant="ghost" :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" :aria-label="__(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title])">
+                                            {{ Str::before(__($label), ' ') }}
                                             <flux:icon.arrow-top-right-on-square variant="micro" class="inline size-3 align-[-1px]" />
                                         </flux:link>
                                     @endif
@@ -321,6 +359,34 @@ new #[Title('Submissions')] class extends Component {
                         <flux:table.cell>
                             @include('partials.project-status')
                         </flux:table.cell>
+                        @if ($this->monitoring)
+                            {{-- Completed rows only; the key redraws the box to the saved value. The accessible name starts with the
+                                 visible state, so voice control matches it, and adds which project. --}}
+                            <flux:table.cell>
+                                @if ($submission->status === 'Completed')
+                                    @php($state = $submission->presented ? __('Presented') : __('Not presented'))
+                                    <flux:checkbox
+                                        wire:key="presented-{{ $submission->id }}-{{ (int) $submission->presented }}"
+                                        :checked="$submission->presented"
+                                        wire:click="setPresented({{ $submission->id }}, {{ $submission->presented ? 'false' : 'true' }})"
+                                        :label="$state"
+                                        :aria-label="__(':state: :title', ['state' => $state, 'title' => $submission->title])"
+                                        class="whitespace-nowrap py-0.5"
+                                        data-test="presented-checkbox"
+                                    />
+                                    @unless ($submission->midyear_path)
+                                        <p class="mt-1.5 flex items-center gap-1 whitespace-nowrap text-sm text-amber-800" data-test="skipped-stage">
+                                            <flux:icon.exclamation-triangle variant="micro" class="shrink-0" aria-hidden="true" />
+                                            {{ __('No mid-year report') }}
+                                        </p>
+                                    @endunless
+                                @else
+                                    {{-- A dash, not a blank, so the cell reads as "not yet" rather than missing data --}}
+                                    <span class="text-zinc-500" aria-hidden="true">–</span>
+                                    <span class="sr-only">{{ __('Not completed yet') }}</span>
+                                @endif
+                            </flux:table.cell>
+                        @endif
                         <flux:table.cell class="tabular-nums">
                             <div class="whitespace-nowrap"><span class="text-zinc-500">{{ __('Starts') }}</span> {{ $submission->start_date?->format('M j, Y') ?? __('Not set') }}</div>
                             <div class="whitespace-nowrap"><span class="text-zinc-500">{{ __('Due') }}</span> {{ $submission->target_date?->format('M j, Y') ?? __('Not set') }}</div>

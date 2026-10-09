@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\ResearchType;
@@ -182,6 +183,64 @@ class DriveTest extends TestCase
             ->assertDontSee('data-test="drive-review-button"', escape: false)
             ->call('review', $this->smart->id)
             ->assertForbidden();
+    }
+
+    public function test_admins_tick_the_in_house_review_once_a_project_is_complete(): void
+    {
+        $this->actingAs($this->admin());
+        $list = fn () => $this->get(route('submissions.index', ['q' => 'Natividad']));
+
+        // Before completion there is nothing to tick, and a forged tick is refused.
+        $list()->assertDontSee('data-test="presented-checkbox"', false)->assertSee('Not completed yet');
+        Livewire::test('pages::submissions.index')->call('setPresented', $this->smart->id, true)->assertForbidden();
+        $this->assertFalse($this->smart->fresh()->presented);
+
+        // A project finished before the mid-year report existed is flagged, since it skipped a stage.
+        $this->smart->update(['status' => 'Completed', 'awaiting_review' => false, 'concept_passed' => true, 'terminal_path' => 'submissions/t.pdf']);
+        $list()->assertSee('data-test="presented-checkbox"', false)->assertSee('Not presented: SMART-ResearchTrack')->assertSee('No mid-year report');
+
+        $this->smart->update(['midyear_path' => 'submissions/m.pdf']);
+        $list()->assertDontSee('No mid-year report');
+        Livewire::test('pages::submissions.index')->call('setPresented', $this->smart->id, true)->assertHasNoErrors();
+        $this->assertTrue($this->smart->fresh()->presented);
+
+        // Setting it again, as from a page left open, changes nothing and logs nothing.
+        Livewire::test('pages::submissions.index')->call('setPresented', $this->smart->id, true);
+        $this->assertSame(1, ActivityLog::where('action', 'submission.presented')->count());
+
+        // Faculty see the tick in the history, under the office's name, but can't set it.
+        $this->actingAs($this->natividad);
+        $this->get(route('drive.show', $this->smart))->assertSeeInOrder(['Research Office', 'Marked as presented at the in-house review']);
+        Livewire::test('pages::submissions.index')
+            ->assertDontSee('data-test="presented-checkbox"', escape: false)
+            ->call('setPresented', $this->smart->id, false)
+            ->assertForbidden();
+
+        // A tick by mistake can be undone.
+        $this->actingAs($this->admin());
+        Livewire::test('pages::submissions.index')->call('setPresented', $this->smart->id, false);
+        $this->assertFalse($this->smart->fresh()->presented);
+    }
+
+    public function test_admins_list_completed_projects_by_whether_they_presented_in_house(): void
+    {
+        $this->smart->update(['status' => 'Completed', 'presented' => true]);
+        $this->project($this->natividad, 'Skipped Review', ['status' => 'Completed']);
+        $this->actingAs($this->admin());
+
+        Livewire::test('pages::submissions.index')
+            ->set('statusFilter', 'presented')
+            ->assertSee('SMART-ResearchTrack')
+            ->assertDontSee('Skipped Review')
+            ->assertSee(route('drive.show', $this->smart), escape: false)
+            // The certificate list's other half: completed but not ticked. Projects still in progress aren't in it.
+            ->set('statusFilter', 'not-presented')
+            ->assertSee('Skipped Review')
+            ->assertDontSee('SMART-ResearchTrack')
+            ->assertDontSee('CAS Soil Survey');
+
+        $this->get(route('drive.show', $this->smart))->assertSeeInOrder(['Presented in-house', 'Yes']);
+        $this->actingAs($this->natividad)->get(route('drive.show', $this->smart))->assertDontSee('data-test="drive-presented"', false);
     }
 
     public function test_strangers_cannot_open_the_project_or_its_files(): void

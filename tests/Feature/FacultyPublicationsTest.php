@@ -78,12 +78,30 @@ class FacultyPublicationsTest extends TestCase
             ->assertSee('No publications yet')
             ->assertSee('Add each paper you’ve published')
             ->assertSee(route('publications.create'))
+            ->assertDontSee('data-test="profile-totals"', escape: false)
             ->assertDontSee('data-test="year-chart"', escape: false);
 
         $this->actingAs($this->admin);
         Livewire::test('pages::faculty.show', ['user' => $this->rocel])
             ->assertSee('No publications yet')
             ->assertDontSee(route('publications.create'));
+    }
+
+    public function test_a_chart_cut_off_before_every_citation_names_the_empty_years_instead_of_saying_none(): void
+    {
+        $this->publication('Old paper', '2005-01-01', [2006, 2008], $this->rocel);
+        $this->actingAs($this->rocel);
+
+        Livewire::test('pages::faculty.show', ['user' => $this->rocel])
+            ->assertSeeHtml('data-test="citation-total">2<')
+            ->assertSee('No citations from 2012 to 2026.')
+            ->assertDontSee('No citations yet.');
+    }
+
+    public function test_the_tab_title_names_whose_publications_these_are(): void
+    {
+        $this->actingAs($this->rocel)->get(route('faculty.show', $this->rocel))->assertSee('My Publications - ', false);
+        $this->actingAs($this->admin)->get(route('faculty.show', $this->rocel))->assertSee($this->rocel->name.'’s publications - ', false);
     }
 
     public function test_the_research_office_lists_every_faculty_member_with_their_counts(): void

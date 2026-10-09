@@ -14,7 +14,8 @@
     $first = array_key_first($years);
 @endphp
 
-<flux:card data-test="year-chart">
+{{-- A container, so the year labels thin out by the card's own width: it sits in a narrow side column on some pages --}}
+<flux:card class="@container" data-test="year-chart">
     <flux:heading level="2">{{ $heading }}</flux:heading>
     <flux:text class="mt-1">
         {{ $since < $first
@@ -23,7 +24,8 @@
     </flux:text>
 
     @if ($cited === 0)
-        <flux:text class="mt-6">{{ __('No citations yet.') }}</flux:text>
+        {{-- Older citations can still count toward the total, so a cut-off chart says which years are empty --}}
+        <flux:text class="mt-6">{{ $since < $first ? __('No citations from :from to :to.', ['from' => $first, 'to' => now()->year]) : __('No citations yet.') }}</flux:text>
     @else
         <div class="mt-6 flex gap-3">
             <div class="flex h-48 flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
@@ -41,21 +43,21 @@
                     <ol class="relative grid h-full gap-1" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))">
                         @foreach ($years as $year => $count)
                             @php($tooltipSide = match (true) { $loop->index < 2 => 'left-0', $loop->index > $columns - 3 => 'right-0', default => 'left-1/2 -translate-x-1/2' })
-                            {{-- The whole column is the hover and focus target, not just the painted bar --}}
+                            {{-- The whole column is the hover and tap target. Out of the tab order: keyboard users get the table below --}}
                             <li
-                                class="group relative flex h-full items-end justify-center rounded outline-none focus-visible:bg-zinc-100"
-                                tabindex="0"
+                                class="group relative flex h-full items-end justify-center outline-none"
+                                tabindex="-1"
                                 aria-label="{{ trans_choice('{0} :year: no citations|{1} :year: 1 citation|[2,*] :year: :count citations', $count, ['year' => $year]) }}"
                             >
                                 @if ($count > 0)
                                     <div
-                                        class="w-full max-w-8 rounded-t bg-isu-green-600 transition group-hover:brightness-110 group-focus-visible:ring-2 group-focus-visible:ring-accent group-focus-visible:ring-offset-2"
+                                        class="w-2.5 rounded-t-sm bg-isu-green-600 transition group-hover:brightness-110"
                                         style="height: {{ $count / $axisMax * 100 }}%"
                                         aria-hidden="true"
                                     ></div>
                                 @endif
 
-                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus:block {{ $tooltipSide }}" aria-hidden="true">
+                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block pointer-coarse:group-focus:block {{ $tooltipSide }}" aria-hidden="true">
                                     <p class="text-zinc-500">{{ $year }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No citations|{1} 1 citation|[2,*] :count citations', $count) }}</p>
                                 </div>
@@ -64,10 +66,10 @@
                     </ol>
                 </div>
 
-                {{-- Every other year hides on phones once there are more than 8, so the labels never collide --}}
+                {{-- Every other year hides in a narrow card once there are more than 8, so the labels never collide --}}
                 <ol class="mt-2 grid gap-1 text-center text-xs tabular-nums text-zinc-500" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
                     @foreach ($years as $year => $count)
-                        <li class="{{ $columns > 8 && ($columns - 1 - $loop->index) % 2 ? 'max-sm:invisible' : '' }}">{{ $year }}</li>
+                        <li class="{{ $columns > 8 && ($columns - 1 - $loop->index) % 2 ? '@max-md:invisible' : '' }}">{{ $year }}</li>
                     @endforeach
                 </ol>
             </div>

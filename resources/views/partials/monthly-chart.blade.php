@@ -5,9 +5,9 @@
 --}}
 @php
     $peak = max(1, max(array_column($monthly, 'total')));
-    // Round the axis up to a clean number (1, 2, 5, 10, 20, 50...) so the ticks read easily.
+    // Round the axis up to a clean number (1, 2, 4, 6, 8, 10, 20, 40...) whose half is whole, so no tick reads 2.5.
     $magnitude = 10 ** floor(log10($peak));
-    $axisMax = collect([1, 2, 5, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
+    $axisMax = collect([1, 2, 4, 6, 8, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
     $ticks = $axisMax >= 2 ? [$axisMax, $axisMax / 2, 0] : [$axisMax, 0];
     $filed = array_sum(array_column($monthly, 'total'));
     $columns = count($monthly);

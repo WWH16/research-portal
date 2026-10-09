@@ -45,6 +45,18 @@ class CitationTest extends TestCase
         $this->actingAs(User::factory()->create())->get(route('publications.show', $this->paper))->assertForbidden();
     }
 
+    public function test_the_chart_axis_halves_to_a_whole_number(): void
+    {
+        // A peak of 3 used to round the axis to 5, with a middle tick of 2.5.
+        Citation::factory()->for($this->paper)->count(3)->create(['year' => 2026]);
+        $this->actingAs($this->rocel);
+
+        Livewire::test('pages::publications.show', ['publication' => $this->paper])
+            ->assertSeeHtml('-my-2">4<')
+            ->assertSeeHtml('-my-2">2<')
+            ->assertDontSeeHtml('-my-2">2.5<');
+    }
+
     public function test_a_paper_without_citing_papers_says_so(): void
     {
         $this->actingAs($this->rocel);

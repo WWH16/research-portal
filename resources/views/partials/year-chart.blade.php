@@ -6,9 +6,9 @@
 @php
     $cited = array_sum($years);
     $peak = max(1, max($years ?: [0]));
-    // Round the axis up to a clean number (1, 2, 5, 10, 20, 50...) so the ticks read easily.
+    // Round the axis up to a clean number (1, 2, 4, 6, 8, 10, 20, 40...) whose half is whole, so no tick reads 2.5.
     $magnitude = 10 ** floor(log10($peak));
-    $axisMax = collect([1, 2, 5, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
+    $axisMax = collect([1, 2, 4, 6, 8, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
     $ticks = $axisMax >= 2 ? [$axisMax, $axisMax / 2, 0] : [$axisMax, 0];
     $columns = count($years);
     $first = array_key_first($years);
@@ -37,7 +37,7 @@
             <div class="min-w-0 flex-1">
                 <div class="relative h-48">
                     @foreach ($ticks as $tick)
-                        <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
+                        <div class="absolute inset-x-0 border-t {{ $tick ? 'border-line' : 'border-zinc-300' }}" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
 
                     {{-- Hidden from screen readers: the table below carries the same numbers once --}}
@@ -48,12 +48,16 @@
                             <li class="group relative flex h-full items-end justify-center outline-none" tabindex="-1">
                                 @if ($count > 0)
                                     <div
-                                        class="w-2.5 rounded-t-sm bg-isu-green-400 transition group-hover:brightness-110"
+                                        class="w-2.5 rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
                                         style="height: {{ $count / $axisMax * 100 }}%"
                                     ></div>
                                 @endif
 
-                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block pointer-coarse:group-focus:block {{ $tooltipSide }}">
+                                {{-- Sits just above its own bar, so a short bar's tooltip stays beside it --}}
+                                <div
+                                    class="pointer-events-none absolute z-10 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs group-hover:block pointer-coarse:group-focus:block {{ $tooltipSide }}"
+                                    style="bottom: calc({{ $count / $axisMax * 100 }}% + 0.5rem)"
+                                >
                                     <p class="text-zinc-500">{{ $year }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No citations|{1} 1 citation|[2,*] :count citations', $count) }}</p>
                                 </div>

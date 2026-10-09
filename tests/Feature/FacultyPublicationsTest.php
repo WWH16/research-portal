@@ -17,9 +17,9 @@ class FacultyPublicationsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $rocel;
+    private User $rivera;
 
-    private User $siton;
+    private User $soriano;
 
     private User $admin;
 
@@ -30,26 +30,26 @@ class FacultyPublicationsTest extends TestCase
         $this->travelTo(now()->setDate(2026, 10, 9));
         $ccsict = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
         $cas = Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
-        $this->rocel = User::factory()->create(['name' => 'Rocel', 'department_id' => $ccsict->id]);
-        $this->siton = User::factory()->create(['name' => 'Siton', 'department_id' => $cas->id]);
+        $this->rivera = User::factory()->create(['name' => 'Rivera', 'department_id' => $ccsict->id]);
+        $this->soriano = User::factory()->create(['name' => 'Soriano', 'department_id' => $cas->id]);
         $this->admin = User::factory()->create(['role' => 'admin']);
     }
 
     public function test_only_the_member_and_the_research_office_open_a_profile(): void
     {
-        $this->actingAs($this->rocel)->get(route('faculty.show', $this->rocel))->assertOk();
-        $this->actingAs($this->admin)->get(route('faculty.show', $this->rocel))->assertOk();
-        $this->actingAs($this->siton)->get(route('faculty.show', $this->rocel))->assertForbidden();
+        $this->actingAs($this->rivera)->get(route('faculty.show', $this->rivera))->assertOk();
+        $this->actingAs($this->admin)->get(route('faculty.show', $this->rivera))->assertOk();
+        $this->actingAs($this->soriano)->get(route('faculty.show', $this->rivera))->assertForbidden();
         $this->actingAs($this->admin)->get(route('faculty.show', $this->admin))->assertNotFound();
     }
 
     public function test_the_profile_lists_the_most_cited_papers_first_with_their_counts_and_totals(): void
     {
-        $older = $this->publication('Older paper', '2024-03-01', [2024, 2025, 2026], $this->rocel);
-        $newer = $this->publication('Newer paper', '2025-08-01', [2026], $this->rocel);
-        $this->actingAs($this->rocel);
+        $older = $this->publication('Older paper', '2024-03-01', [2024, 2025, 2026], $this->rivera);
+        $newer = $this->publication('Newer paper', '2025-08-01', [2026], $this->rivera);
+        $this->actingAs($this->rivera);
 
-        Livewire::test('pages::faculty.show', ['user' => $this->rocel])
+        Livewire::test('pages::faculty.show', ['user' => $this->rivera])
             ->assertSee('College of Computing Studies')
             ->assertSeeInOrder(['Older paper', '3', '2024', 'Newer paper', '1', '2025'])
             ->assertSeeHtml('data-test="publication-total">2<')
@@ -60,9 +60,9 @@ class FacultyPublicationsTest extends TestCase
 
     public function test_a_shared_paper_shows_on_each_co_authors_profile_with_the_same_count(): void
     {
-        $this->publication('Shared paper', '2025-01-01', [2025, 2026], $this->rocel, $this->siton);
+        $this->publication('Shared paper', '2025-01-01', [2025, 2026], $this->rivera, $this->soriano);
 
-        foreach ([$this->rocel, $this->siton] as $author) {
+        foreach ([$this->rivera, $this->soriano] as $author) {
             $this->actingAs($author);
             Livewire::test('pages::faculty.show', ['user' => $author])
                 ->assertSee('Shared paper')
@@ -72,8 +72,8 @@ class FacultyPublicationsTest extends TestCase
 
     public function test_an_empty_profile_invites_the_member_to_add_and_tells_the_research_office_nothing_is_there(): void
     {
-        $this->actingAs($this->rocel);
-        Livewire::test('pages::faculty.show', ['user' => $this->rocel])
+        $this->actingAs($this->rivera);
+        Livewire::test('pages::faculty.show', ['user' => $this->rivera])
             ->assertSee('No publications yet')
             ->assertSee('Add each paper you’ve published')
             ->assertSee(route('publications.create'))
@@ -81,17 +81,17 @@ class FacultyPublicationsTest extends TestCase
             ->assertDontSee('data-test="year-chart"', escape: false);
 
         $this->actingAs($this->admin);
-        Livewire::test('pages::faculty.show', ['user' => $this->rocel])
+        Livewire::test('pages::faculty.show', ['user' => $this->rivera])
             ->assertSee('No publications yet')
             ->assertDontSee(route('publications.create'));
     }
 
     public function test_a_chart_cut_off_before_every_citation_names_the_empty_years_instead_of_saying_none(): void
     {
-        $this->publication('Old paper', '2005-01-01', [2006, 2008], $this->rocel);
-        $this->actingAs($this->rocel);
+        $this->publication('Old paper', '2005-01-01', [2006, 2008], $this->rivera);
+        $this->actingAs($this->rivera);
 
-        Livewire::test('pages::faculty.show', ['user' => $this->rocel])
+        Livewire::test('pages::faculty.show', ['user' => $this->rivera])
             ->assertSeeHtml('data-test="citation-total">2<')
             ->assertSee('No citations from 2012 to 2026.')
             ->assertDontSee('No citations yet.');
@@ -99,37 +99,37 @@ class FacultyPublicationsTest extends TestCase
 
     public function test_the_tab_title_names_whose_publications_these_are(): void
     {
-        $this->actingAs($this->rocel)->get(route('faculty.show', $this->rocel))->assertSee('My Publications - ', false);
-        $this->actingAs($this->admin)->get(route('faculty.show', $this->rocel))->assertSee($this->rocel->name.'’s publications - ', false);
+        $this->actingAs($this->rivera)->get(route('faculty.show', $this->rivera))->assertSee('My Publications - ', false);
+        $this->actingAs($this->admin)->get(route('faculty.show', $this->rivera))->assertSee($this->rivera->name.'’s publications - ', false);
     }
 
     public function test_the_research_office_lists_every_faculty_member_with_their_counts(): void
     {
-        $this->publication('Shared paper', '2025-01-01', [2025, 2026], $this->rocel, $this->siton);
-        $this->publication('Solo paper', '2025-01-01', [2026], $this->rocel);
-        $nobody = User::factory()->create(['name' => 'Tabago']);
+        $this->publication('Shared paper', '2025-01-01', [2025, 2026], $this->rivera, $this->soriano);
+        $this->publication('Solo paper', '2025-01-01', [2026], $this->rivera);
+        $nobody = User::factory()->create(['name' => 'Torres']);
         $this->actingAs($this->admin);
 
         Livewire::test('pages::faculty.index')
-            ->assertSeeInOrder(['Rocel', 'CCSICT', '2', '3', 'Siton', 'CAS', '1', '2', 'Tabago', '0', '0'])
+            ->assertSeeInOrder(['Rivera', 'CCSICT', '2', '3', 'Soriano', 'CAS', '1', '2', 'Torres', '0', '0'])
             ->assertDontSee($this->admin->name)
-            ->set('search', 'sit')
-            ->assertSee('Siton')
-            ->assertDontSee('Rocel')
+            ->set('search', 'sor')
+            ->assertSee('Soriano')
+            ->assertDontSee('Rivera')
             ->set('search', '')
             ->set('college', 'CCSICT')
-            ->assertSee('Rocel')
-            ->assertDontSee('Siton')
+            ->assertSee('Rivera')
+            ->assertDontSee('Soriano')
             ->assertDontSee($nobody->name);
 
-        $this->actingAs($this->rocel)->get(route('faculty.index'))->assertForbidden();
+        $this->actingAs($this->rivera)->get(route('faculty.index'))->assertForbidden();
     }
 
     public function test_the_sidebar_names_the_page_for_each_role(): void
     {
-        $this->actingAs($this->rocel)->get(route('dashboard'))
+        $this->actingAs($this->rivera)->get(route('dashboard'))
             ->assertSee('My Publications')
-            ->assertSee(route('faculty.show', $this->rocel))
+            ->assertSee(route('faculty.show', $this->rivera))
             ->assertDontSee('Faculty Publications');
 
         $this->actingAs($this->admin)->get(route('dashboard'))
@@ -143,13 +143,13 @@ class FacultyPublicationsTest extends TestCase
      */
     public function test_the_list_shows_20_more_at_a_time_while_the_totals_and_chart_count_every_paper(): void
     {
-        $this->publication('Top paper', '2024-01-01', [2024, 2025], $this->rocel);
+        $this->publication('Top paper', '2024-01-01', [2024, 2025], $this->rivera);
         foreach (range(1, 25) as $n) {
-            $this->publication("Uncited paper $n", '2025-01-01', [], $this->rocel);
+            $this->publication("Uncited paper $n", '2025-01-01', [], $this->rivera);
         }
-        $this->actingAs($this->rocel);
+        $this->actingAs($this->rivera);
 
-        Livewire::test('pages::faculty.show', ['user' => $this->rocel])
+        Livewire::test('pages::faculty.show', ['user' => $this->rivera])
             ->assertSee('Top paper')
             ->assertDontSee('Uncited paper 9')
             ->assertSeeHtml('data-test="publication-total">26<')

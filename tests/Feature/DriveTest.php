@@ -25,11 +25,11 @@ class DriveTest extends TestCase
 
     private Department $cas;
 
-    private User $natividad;
+    private User $navarro;
 
-    private User $siton;
+    private User $soriano;
 
-    private User $tabago;
+    private User $torres;
 
     private Submission $smart;
 
@@ -42,31 +42,31 @@ class DriveTest extends TestCase
         $this->cas = Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
         Department::create(['code' => 'CBM', 'name' => 'College of Business and Management']);
 
-        $this->natividad = User::factory()->create(['name' => 'Natividad', 'department_id' => $this->ccsict->id]);
-        $this->siton = User::factory()->create(['name' => 'Siton', 'department_id' => $this->ccsict->id]);
-        $this->tabago = User::factory()->create(['name' => 'Tabago', 'department_id' => $this->cas->id]);
+        $this->navarro = User::factory()->create(['name' => 'Navarro', 'department_id' => $this->ccsict->id]);
+        $this->soriano = User::factory()->create(['name' => 'Soriano', 'department_id' => $this->ccsict->id]);
+        $this->torres = User::factory()->create(['name' => 'Torres', 'department_id' => $this->cas->id]);
 
-        // SMART-ResearchTrack: filed by Natividad under CCSICT, with Tabago from CAS leading Study 3.
-        $this->smart = $this->project($this->natividad, 'SMART-ResearchTrack', ['status' => 'Detailed', 'detailed_path' => 'submissions/detailed.pdf']);
+        // SMART-ResearchTrack: filed by Navarro under CCSICT, with Torres from CAS leading Study 3.
+        $this->smart = $this->project($this->navarro, 'SMART-ResearchTrack', ['status' => 'Detailed', 'detailed_path' => 'submissions/detailed.pdf']);
         $this->smart->proponents()->createMany([
-            ['user_id' => $this->siton->id, 'study' => 1, 'role' => 'Staff'],
-            ['user_id' => $this->tabago->id, 'study' => 3, 'role' => 'Leader'],
+            ['user_id' => $this->soriano->id, 'study' => 1, 'role' => 'Staff'],
+            ['user_id' => $this->torres->id, 'study' => 3, 'role' => 'Leader'],
         ]);
 
-        $this->project($this->tabago, 'CAS Soil Survey');
+        $this->project($this->torres, 'CAS Soil Survey');
     }
 
     public function test_faculty_see_only_projects_they_are_on_whatever_the_college(): void
     {
-        $this->actingAs($this->siton);
+        $this->actingAs($this->soriano);
         Livewire::test('pages::drive.index')
             ->assertSee('SMART-ResearchTrack')
             ->assertSee('Study 1 Staff')
             ->assertDontSee('CAS Soil Survey')
             ->assertDontSee('data-test="college-folders"', escape: false);
 
-        // Tabago is from CAS but still sees the CCSICT project she is on, plus her own.
-        $this->actingAs($this->tabago);
+        // Torres is from CAS but still sees the CCSICT project she is on, plus her own.
+        $this->actingAs($this->torres);
         Livewire::test('pages::drive.index')->assertSee('SMART-ResearchTrack')->assertSee('CAS Soil Survey');
 
         $this->actingAs(User::factory()->create(['department_id' => $this->ccsict->id]));
@@ -85,7 +85,7 @@ class DriveTest extends TestCase
     public function test_a_project_is_filed_once_under_its_own_college_and_filtered_by_year(): void
     {
         $lastYear = now()->year - 1;
-        $this->project($this->natividad, 'Old CCSICT Study', ['year' => $lastYear]);
+        $this->project($this->navarro, 'Old CCSICT Study', ['year' => $lastYear]);
 
         $this->actingAs($this->admin());
 
@@ -97,7 +97,7 @@ class DriveTest extends TestCase
             ->assertDontSee('SMART-ResearchTrack')
             ->assertSee('Old CCSICT Study');
 
-        // Tabago is a proponent, but the project is filed under CCSICT only.
+        // Torres is a proponent, but the project is filed under CCSICT only.
         Livewire::withQueryParams(['college' => 'CAS'])->test('pages::drive.index')->assertSee('CAS Soil Survey')->assertDontSee('SMART-ResearchTrack');
 
         Livewire::withQueryParams(['year' => (string) now()->year])->test('pages::drive.index')->assertSeeInOrder(['CCSICT', '1 project']);
@@ -108,11 +108,11 @@ class DriveTest extends TestCase
         Storage::fake('submissions');
         Storage::disk('submissions')->put('submissions/concept.pdf', '%PDF');
 
-        $this->actingAs($this->tabago)
+        $this->actingAs($this->torres)
             ->get(route('drive.show', $this->smart))
             ->assertOk()
             ->assertSee('Detailed')
-            ->assertSeeInOrder(['Study 1', 'Natividad', 'Leader', 'CCSICT', 'Siton', 'Staff', 'CCSICT', 'Study 3', 'Tabago', 'Leader', 'CAS'])
+            ->assertSeeInOrder(['Study 1', 'Navarro', 'Leader', 'CCSICT', 'Soriano', 'Staff', 'CCSICT', 'Study 3', 'Torres', 'Leader', 'CAS'])
             ->assertSeeInOrder(['Concept proposal', 'Uploaded', 'Detailed proposal', 'Mid-year progress report', 'Terminal report', 'Not uploaded yet'])
             ->assertSee(route('submissions.document', [$this->smart, 'concept']), escape: false)
             ->assertSee(route('submissions.edit', [$this->smart, 'from' => 'drive']), escape: false);
@@ -131,7 +131,7 @@ class DriveTest extends TestCase
 
     public function test_editing_from_the_drive_returns_to_the_drive_project(): void
     {
-        $this->actingAs($this->natividad);
+        $this->actingAs($this->navarro);
 
         $page = $this->get(route('submissions.edit', [$this->smart, 'from' => 'drive']))->assertOk()->assertSee('Back to Research Drive');
 
@@ -178,7 +178,7 @@ class DriveTest extends TestCase
         $this->get(route('drive.show', $this->smart))->assertSee('Review saved.');
 
         // Faculty see the page but cannot review from it.
-        $this->actingAs($this->natividad);
+        $this->actingAs($this->navarro);
         Livewire::test('pages::drive.show', ['submission' => $this->smart])
             ->assertDontSee('data-test="drive-review-button"', escape: false)
             ->call('review', $this->smart->id)
@@ -188,7 +188,7 @@ class DriveTest extends TestCase
     public function test_admins_tick_the_in_house_review_once_a_project_is_complete(): void
     {
         $this->actingAs($this->admin());
-        $list = fn () => $this->get(route('submissions.index', ['q' => 'Natividad']));
+        $list = fn () => $this->get(route('submissions.index', ['q' => 'Navarro']));
 
         // Before completion there is nothing to tick, and a forged tick is refused.
         $list()->assertDontSee('data-test="presented-checkbox"', false)->assertSee('Not completed yet');
@@ -209,7 +209,7 @@ class DriveTest extends TestCase
         $this->assertSame(1, ActivityLog::where('action', 'submission.presented')->count());
 
         // Faculty see the tick in the history, under the office's name, but can't set it.
-        $this->actingAs($this->natividad);
+        $this->actingAs($this->navarro);
         $this->get(route('drive.show', $this->smart))->assertSeeInOrder(['Research Office', 'Marked as presented at the in-house review']);
         Livewire::test('pages::submissions.index')
             ->assertDontSee('data-test="presented-checkbox"', escape: false)
@@ -225,7 +225,7 @@ class DriveTest extends TestCase
     public function test_admins_list_completed_projects_by_whether_they_presented_in_house(): void
     {
         $this->smart->update(['status' => 'Completed', 'presented' => true]);
-        $this->project($this->natividad, 'Skipped Review', ['status' => 'Completed']);
+        $this->project($this->navarro, 'Skipped Review', ['status' => 'Completed']);
         $this->actingAs($this->admin());
 
         Livewire::test('pages::submissions.index')
@@ -240,7 +240,7 @@ class DriveTest extends TestCase
             ->assertDontSee('CAS Soil Survey');
 
         $this->get(route('drive.show', $this->smart))->assertSeeInOrder(['Presented in-house', 'Yes']);
-        $this->actingAs($this->natividad)->get(route('drive.show', $this->smart))->assertDontSee('data-test="drive-presented"', false);
+        $this->actingAs($this->navarro)->get(route('drive.show', $this->smart))->assertDontSee('data-test="drive-presented"', false);
     }
 
     public function test_strangers_cannot_open_the_project_or_its_files(): void
@@ -252,7 +252,7 @@ class DriveTest extends TestCase
 
         $this->actingAs($stranger)->get(route('drive.show', $this->smart))->assertForbidden();
         $this->actingAs($stranger)->get(route('submissions.document', [$this->smart, 'detailed']))->assertForbidden();
-        $this->actingAs($this->siton)->get(route('submissions.document', [$this->smart, 'detailed']))->assertOk();
+        $this->actingAs($this->soriano)->get(route('submissions.document', [$this->smart, 'detailed']))->assertOk();
     }
 
     public function test_a_review_keeps_the_project_in_its_college_folder(): void
@@ -261,7 +261,7 @@ class DriveTest extends TestCase
 
         Livewire::test('pages::reviews.index')
             ->call('review', $this->smart->id)
-            ->assertSee('Tabago (Leader, CAS)')
+            ->assertSee('Torres (Leader, CAS)')
             ->call('saveReview', 'passed')
             ->assertHasNoErrors();
 
@@ -277,7 +277,7 @@ class DriveTest extends TestCase
         $ccsict = Livewire::withQueryParams(['dept' => 'CCSICT'])->test('pages::dashboard')->instance()->facultyCounts;
         $cas = Livewire::withQueryParams(['dept' => 'CAS'])->test('pages::dashboard')->instance()->facultyCounts;
 
-        // Natividad and Siton count under CCSICT; Tabago counts under CAS, though SMART is filed under CCSICT.
+        // Navarro and Soriano count under CCSICT; Torres counts under CAS, though SMART is filed under CCSICT.
         $this->assertSame(2, $ccsict['submitted']);
         $this->assertSame(1, $cas['submitted']);
     }

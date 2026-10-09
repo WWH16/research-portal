@@ -17,7 +17,7 @@ class CitationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $rocel;
+    private User $rivera;
 
     private Publication $paper;
 
@@ -26,16 +26,16 @@ class CitationTest extends TestCase
         parent::setUp();
 
         $this->travelTo(now()->setDate(2026, 10, 9));
-        $this->rocel = User::factory()->create(['name' => 'Rocel']);
+        $this->rivera = User::factory()->create(['name' => 'Rivera']);
         $this->paper = Publication::factory()->create(['title' => 'SMART-ResearchTrack', 'published_on' => '2024-02-01']);
-        $this->paper->faculty()->attach($this->rocel);
+        $this->paper->faculty()->attach($this->rivera);
     }
 
     public function test_the_page_shows_cited_by_and_a_bar_for_every_year_since_publication(): void
     {
         Citation::factory()->for($this->paper)->create(['year' => 2024]);
         Citation::factory()->for($this->paper)->count(2)->create(['year' => 2026]);
-        $this->actingAs($this->rocel);
+        $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->assertSee('Cited by 3')
@@ -49,7 +49,7 @@ class CitationTest extends TestCase
     {
         // A peak of 3 used to round the axis to 5, with a middle tick of 2.5.
         Citation::factory()->for($this->paper)->count(3)->create(['year' => 2026]);
-        $this->actingAs($this->rocel);
+        $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->assertSeeHtml('-my-2">4<')
@@ -59,7 +59,7 @@ class CitationTest extends TestCase
 
     public function test_a_paper_without_citing_papers_says_so(): void
     {
-        $this->actingAs($this->rocel);
+        $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->assertSee('Cited by 0')
@@ -69,7 +69,7 @@ class CitationTest extends TestCase
 
     public function test_an_author_adds_a_citing_paper(): void
     {
-        $this->actingAs($this->rocel);
+        $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->set('link', 'doi:10.2000/cites')
@@ -87,7 +87,7 @@ class CitationTest extends TestCase
 
     public function test_the_year_must_fall_between_publication_and_now(): void
     {
-        $this->actingAs($this->rocel);
+        $this->actingAs($this->rivera);
 
         foreach ([2023, 2027] as $year) {
             Livewire::test('pages::publications.show', ['publication' => $this->paper])
@@ -104,8 +104,8 @@ class CitationTest extends TestCase
     {
         Citation::factory()->for($this->paper)->create(['link' => 'https://doi.org/10.2000/cites']);
         $other = Publication::factory()->create(['published_on' => '2024-01-01']);
-        $other->faculty()->attach($this->rocel);
-        $this->actingAs($this->rocel);
+        $other->faculty()->attach($this->rivera);
+        $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->set('link', '10.2000/cites')
@@ -123,7 +123,7 @@ class CitationTest extends TestCase
     {
         $mine = Citation::factory()->for($this->paper)->create();
         $elsewhere = Citation::factory()->create();
-        $this->actingAs($this->rocel);
+        $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->call('removeCitation', $elsewhere->id)

@@ -76,28 +76,28 @@ class DashboardTest extends TestCase
 
     public function test_yearly_summary_counts_each_faculty_member_once_per_group(): void
     {
-        $natividad = $this->facultyInDepartment('Natividad');
-        $siton = $this->facultyInDepartment('Siton');
-        $tabago = $this->facultyInDepartment('Tabago');
+        $navarro = $this->facultyInDepartment('Navarro');
+        $soriano = $this->facultyInDepartment('Soriano');
+        $torres = $this->facultyInDepartment('Torres');
         // A year after go-live, so "last year" is one the portal tracks.
         $this->travelTo(now()->setYear(Submission::FIRST_YEAR + 1));
         $year = now()->year;
 
-        // SMART-ResearchTrack: Natividad in all three studies, Siton in two, Tabago in one.
-        $smart = $this->submit($natividad, 'SMART-ResearchTrack', 'Detailed');
+        // SMART-ResearchTrack: Navarro in all three studies, Soriano in two, Torres in one.
+        $smart = $this->submit($navarro, 'SMART-ResearchTrack', 'Detailed');
         $smart->proponents()->createMany([
-            ['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff'],
-            ['user_id' => $natividad->id, 'study' => 2, 'role' => 'Leader'],
-            ['user_id' => $siton->id, 'study' => 2, 'role' => 'Staff'],
-            ['user_id' => $tabago->id, 'study' => 3, 'role' => 'Leader'],
-            ['user_id' => $natividad->id, 'study' => 3, 'role' => 'Co-Leader'],
+            ['user_id' => $soriano->id, 'study' => 1, 'role' => 'Staff'],
+            ['user_id' => $navarro->id, 'study' => 2, 'role' => 'Leader'],
+            ['user_id' => $soriano->id, 'study' => 2, 'role' => 'Staff'],
+            ['user_id' => $torres->id, 'study' => 3, 'role' => 'Leader'],
+            ['user_id' => $navarro->id, 'study' => 3, 'role' => 'Co-Leader'],
         ]);
 
-        // Natividad also finished another project on time, and last year's project stays out of this year.
-        $this->submit($natividad, 'Finished Study', 'Completed', ['target_date' => today(), 'terminal_uploaded_at' => now()->subDay()]);
+        // Navarro also finished another project on time, and last year's project stays out of this year.
+        $this->submit($navarro, 'Finished Study', 'Completed', ['target_date' => today(), 'terminal_uploaded_at' => now()->subDay()]);
         // travel() moves the frozen clock and leaves it there; travelTo() with a callback would reset it to real time.
         $this->travel(-1)->years();
-        $this->submit($tabago, 'Old Study', 'Completed', ['year' => $year - 1]);
+        $this->submit($torres, 'Old Study', 'Completed', ['year' => $year - 1]);
         $this->travel(1)->years();
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
@@ -154,12 +154,12 @@ class DashboardTest extends TestCase
 
     public function test_admins_open_the_faculty_behind_a_count_and_export_it(): void
     {
-        $natividad = $this->facultyInDepartment('Natividad');
-        $siton = $this->facultyInDepartment('Siton');
+        $navarro = $this->facultyInDepartment('Navarro');
+        $soriano = $this->facultyInDepartment('Soriano');
         $report = ['awaiting_review' => false, 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()->subDay()];
-        $this->submit($natividad, 'Finished Study', 'Completed', $report + ['target_date' => today()]);
-        $this->submit($natividad, 'Overdue Study', 'Completed', $report + ['target_date' => today()->subWeek()]);
-        $this->submit($siton, 'Ongoing Study', 'Concept', ['awaiting_review' => false]);
+        $this->submit($navarro, 'Finished Study', 'Completed', $report + ['target_date' => today()]);
+        $this->submit($navarro, 'Overdue Study', 'Completed', $report + ['target_date' => today()->subWeek()]);
+        $this->submit($soriano, 'Ongoing Study', 'Concept', ['awaiting_review' => false]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
@@ -168,16 +168,16 @@ class DashboardTest extends TestCase
         Livewire::withQueryParams(['group' => 'completed'])
             ->test('pages::dashboard')
             ->assertSee('Completed, '.now()->year)
-            ->assertSee('Natividad')
+            ->assertSee('Navarro')
             ->assertSee('Finished Study')
             // On time is the norm and gets no badge; only late reports are flagged.
-            ->assertSeeInOrder(['Natividad', 'CCS', '· 2', 'projects', 'Finished Study', 'Completed', 'Overdue Study', 'Completed', 'Late'])
+            ->assertSeeInOrder(['Navarro', 'CCS', '· 2', 'projects', 'Finished Study', 'Completed', 'Overdue Study', 'Completed', 'Late'])
             ->assertDontSee('On time')
-            ->assertDontSee('Siton')
+            ->assertDontSee('Soriano')
             ->call('export')
             ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.now()->year.'-12-31.csv');
 
-        $this->actingAs($natividad);
+        $this->actingAs($navarro);
         Livewire::withQueryParams(['group' => 'completed'])->test('pages::dashboard')->assertDontSee('data-test="faculty-list"', escape: false)->call('export')->assertForbidden();
     }
 
@@ -186,14 +186,14 @@ class DashboardTest extends TestCase
         $year = now()->year;
         $ccs = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $cbm = Department::create(['code' => 'CBM', 'name' => 'College of Business and Management']);
-        $natividad = User::factory()->create(['name' => 'Natividad', 'department_id' => $ccs->id]);
-        $siton = User::factory()->create(['name' => 'Siton', 'department_id' => $ccs->id]);
+        $navarro = User::factory()->create(['name' => 'Navarro', 'department_id' => $ccs->id]);
+        $soriano = User::factory()->create(['name' => 'Soriano', 'department_id' => $ccs->id]);
         $reyes = User::factory()->create(['name' => 'Reyes', 'department_id' => $cbm->id]);
         User::factory()->unverified()->create(['name' => 'Unverified Person', 'department_id' => $cbm->id]);
 
-        // Siton is only a co-proponent, which still counts as submitting; Reyes filed last year only.
-        $this->submit($natividad, 'SMART-ResearchTrack', 'Concept', ['awaiting_review' => false])
-            ->proponents()->create(['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff']);
+        // Soriano is only a co-proponent, which still counts as submitting; Reyes filed last year only.
+        $this->submit($navarro, 'SMART-ResearchTrack', 'Concept', ['awaiting_review' => false])
+            ->proponents()->create(['user_id' => $soriano->id, 'study' => 1, 'role' => 'Staff']);
         $this->travelTo(now()->subYear(), fn () => $this->submit($reyes, 'Old Study', 'Concept', ['year' => $year - 1, 'awaiting_review' => false]));
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));

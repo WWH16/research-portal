@@ -20,7 +20,7 @@ return new class extends Migration
             // Optional link to a completed project. Deleting the project keeps the publication.
             $table->foreignId('submission_id')->nullable()->constrained()->nullOnDelete();
             $table->string('title');
-            // As printed in the paper: "Rocel, J. A.; Siton, M."
+            // As printed in the paper: "Rivera, M. A.; Soriano, M."
             $table->string('authors', 1000);
             $table->string('journal');
             $table->string('volume', 50)->nullable();

@@ -125,23 +125,23 @@ class SubmissionTest extends TestCase
         Storage::fake('submissions');
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
-        $natividad = User::factory()->create(['name' => 'Natividad', 'department_id' => $department->id]);
-        $siton = User::factory()->create(['name' => 'Siton']);
-        $tabago = User::factory()->create(['name' => 'Tabago']);
+        $navarro = User::factory()->create(['name' => 'Navarro', 'department_id' => $department->id]);
+        $soriano = User::factory()->create(['name' => 'Soriano']);
+        $torres = User::factory()->create(['name' => 'Torres']);
 
-        $this->actingAs($natividad);
+        $this->actingAs($navarro);
 
         $this->fillProject(Livewire::test('pages::submissions.create'), 'SMART-ResearchTrack')
-            ->assertSet('proponents', [['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader']])
+            ->assertSet('proponents', [['study' => 1, 'user_id' => $navarro->id, 'role' => 'Leader']])
             ->call('addProponent')
             ->assertCount('proponents', 2)
             ->set('proponents', [
-                ['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'],
-                ['study' => 1, 'user_id' => $siton->id, 'role' => 'Staff'],
-                ['study' => 2, 'user_id' => $natividad->id, 'role' => 'Leader'],
-                ['study' => 2, 'user_id' => $siton->id, 'role' => 'Staff'],
-                ['study' => 3, 'user_id' => $tabago->id, 'role' => 'Leader'],
-                ['study' => 3, 'user_id' => $natividad->id, 'role' => 'Co-Leader'],
+                ['study' => 1, 'user_id' => $navarro->id, 'role' => 'Leader'],
+                ['study' => 1, 'user_id' => $soriano->id, 'role' => 'Staff'],
+                ['study' => 2, 'user_id' => $navarro->id, 'role' => 'Leader'],
+                ['study' => 2, 'user_id' => $soriano->id, 'role' => 'Staff'],
+                ['study' => 3, 'user_id' => $torres->id, 'role' => 'Leader'],
+                ['study' => 3, 'user_id' => $navarro->id, 'role' => 'Co-Leader'],
             ])
             ->call('save')
             ->assertHasNoErrors()
@@ -149,7 +149,7 @@ class SubmissionTest extends TestCase
 
         $project = Submission::sole();
 
-        $this->assertSame($natividad->id, $project->user_id);
+        $this->assertSame($navarro->id, $project->user_id);
         $this->assertSame($department->id, $project->department_id);
         $this->assertSame('Concept', $project->fresh()->status);
         $this->assertTrue($project->fresh()->awaiting_review);
@@ -157,9 +157,9 @@ class SubmissionTest extends TestCase
         $this->assertSame(6, $project->proponents()->count());
         Storage::disk('submissions')->assertExists($project->concept_path);
 
-        // Natividad is listed three times and Siton twice, but only three faculty are on the project.
+        // Navarro is listed three times and Soriano twice, but only three faculty are on the project.
         $this->assertSame(3, User::whereHas('projects')->count());
-        $this->assertSame([$project->id], $siton->projects->pluck('id')->all());
+        $this->assertSame([$project->id], $soriano->projects->pluck('id')->all());
 
         $this->get(route('submissions.index'))->assertSee('SMART-ResearchTrack');
 
@@ -173,23 +173,23 @@ class SubmissionTest extends TestCase
         Storage::fake('submissions');
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
-        $natividad = User::factory()->create(['department_id' => $department->id]);
-        $siton = User::factory()->create();
+        $navarro = User::factory()->create(['department_id' => $department->id]);
+        $soriano = User::factory()->create();
         $admin = User::factory()->create(['role' => 'admin']);
 
-        $this->actingAs($natividad);
+        $this->actingAs($navarro);
 
         $this->fillProject(Livewire::test('pages::submissions.create'))
-            ->set('proponents', [['study' => 1, 'user_id' => $siton->id, 'role' => 'Leader']])
+            ->set('proponents', [['study' => 1, 'user_id' => $soriano->id, 'role' => 'Leader']])
             ->call('save')
             ->assertHasErrors(['proponents'])
-            ->set('proponents', [['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $natividad->id, 'role' => 'Staff']])
+            ->set('proponents', [['study' => 1, 'user_id' => $navarro->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $navarro->id, 'role' => 'Staff']])
             ->call('save')
             ->assertHasErrors(['proponents'])
-            ->set('proponents', [['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $admin->id, 'role' => 'Staff']])
+            ->set('proponents', [['study' => 1, 'user_id' => $navarro->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $admin->id, 'role' => 'Staff']])
             ->call('save')
             ->assertHasErrors(['proponents.1.user_id' => 'exists'])
-            ->set('proponents', [['study' => 0, 'user_id' => $natividad->id, 'role' => 'Boss']])
+            ->set('proponents', [['study' => 0, 'user_id' => $navarro->id, 'role' => 'Boss']])
             ->call('save')
             ->assertHasErrors(['proponents.0.study' => 'between', 'proponents.0.role' => 'in']);
 
@@ -334,11 +334,11 @@ class SubmissionTest extends TestCase
     {
         Storage::fake('submissions');
 
-        [$natividad, $siton] = $this->twoFacultyWithSubmissions();
-        $natividad->submissions()->sole()->update(['title' => 'SMART-ResearchTrack']);
-        $natividad->submissions()->sole()->proponents()->create(['user_id' => $siton->id, 'study' => 1, 'role' => 'Staff']);
+        [$navarro, $soriano] = $this->twoFacultyWithSubmissions();
+        $navarro->submissions()->sole()->update(['title' => 'SMART-ResearchTrack']);
+        $navarro->submissions()->sole()->proponents()->create(['user_id' => $soriano->id, 'study' => 1, 'role' => 'Staff']);
 
-        $this->actingAs($siton);
+        $this->actingAs($soriano);
 
         $component = $this->fillProject(Livewire::test('pages::submissions.create'), 'SMART ResearchTrack')
             ->call('save')
@@ -363,16 +363,16 @@ class SubmissionTest extends TestCase
     {
         Storage::fake('submissions');
 
-        [$natividad] = $this->twoFacultyWithSubmissions();
-        $project = $natividad->submissions()->sole();
+        [$navarro] = $this->twoFacultyWithSubmissions();
+        $project = $navarro->submissions()->sole();
         $project->update(['awaiting_review' => false]);
 
-        // Siton registers after the project was filed.
-        $siton = User::factory()->create(['name' => 'Siton']);
-        $this->actingAs($siton)->get(route('submissions.index'))->assertOk()->assertDontSee('Maria Proposal');
+        // Soriano registers after the project was filed.
+        $soriano = User::factory()->create(['name' => 'Soriano']);
+        $this->actingAs($soriano)->get(route('submissions.index'))->assertOk()->assertDontSee('Maria Proposal');
         $this->get(route('submissions.edit', $project))->assertForbidden();
 
-        $this->actingAs($natividad);
+        $this->actingAs($navarro);
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
             ->assertSee('Edit Project')
@@ -380,9 +380,9 @@ class SubmissionTest extends TestCase
             ->assertSeeHtml('aria-label="Back to Submissions"')
             ->assertSet('title', 'Maria Proposal')
             ->set('proponents', [
-                ['study' => 1, 'user_id' => $natividad->id, 'role' => 'Leader'],
-                ['study' => 1, 'user_id' => $siton->id, 'role' => 'Staff'],
-                ['study' => 2, 'user_id' => $siton->id, 'role' => 'Staff'],
+                ['study' => 1, 'user_id' => $navarro->id, 'role' => 'Leader'],
+                ['study' => 1, 'user_id' => $soriano->id, 'role' => 'Staff'],
+                ['study' => 2, 'user_id' => $soriano->id, 'role' => 'Staff'],
             ])
             ->assertSeeHtml('Only the Research Office can change these dates.')
             ->set('start_date', '2026-08-15')
@@ -394,7 +394,7 @@ class SubmissionTest extends TestCase
         $this->assertFalse($project->fresh()->awaiting_review, 'Editing proponents alone does not need a review.');
         $this->assertNotSame('2026-08-15', $project->fresh()->start_date->toDateString(), 'Faculty can’t move the dates once the project is filed.');
 
-        $this->actingAs($siton)->get(route('submissions.index'))->assertSee('Maria Proposal');
+        $this->actingAs($soriano)->get(route('submissions.index'))->assertSee('Maria Proposal');
         $this->get(route('submissions.edit', $project))->assertOk();
     }
 
@@ -878,9 +878,9 @@ class SubmissionTest extends TestCase
         [$maria, $jose] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
         $project->update(['title' => '=HYPERLINK("http://x")', 'status' => 'Completed', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()]);
-        $siton = User::factory()->create(['name' => 'Siton Ñuñez']);
+        $nunez = User::factory()->create(['name' => 'Niño Ñuñez']);
         $project->proponents()->createMany([
-            ['user_id' => $siton->id, 'study' => 2, 'role' => 'Staff'],
+            ['user_id' => $nunez->id, 'study' => 2, 'role' => 'Staff'],
             ['user_id' => $maria->id, 'study' => 2, 'role' => 'Co-Leader'],
         ]);
 
@@ -896,7 +896,7 @@ class SubmissionTest extends TestCase
 
         $this->assertStringStartsWith("\xEF\xBB\xBF".'Title,Year,College,Status', $csv);
         $this->assertStringContainsString("'=HYPERLINK", $csv, 'Formula-looking cells are escaped.');
-        $this->assertStringContainsString('"Study 1: Maria Santos (Leader); Study 2: Siton Ñuñez (Staff), Maria Santos (Co-Leader)",2', $csv);
+        $this->assertStringContainsString('"Study 1: Maria Santos (Leader); Study 2: Niño Ñuñez (Staff), Maria Santos (Co-Leader)",2', $csv);
         $this->assertStringContainsString(',No,"Concept, Terminal"', $csv, 'A completed project that didn’t present reads No.');
         $this->assertStringNotContainsString('Jose Proposal', $csv);
 

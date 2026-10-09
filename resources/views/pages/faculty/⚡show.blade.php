@@ -147,7 +147,7 @@ new class extends Component {
                                 <flux:table.row :key="$publication->id" class="relative hover:bg-canvas">
                                     {{-- No floor on phones, so the title wraps and the count and year stay on screen --}}
                                     <flux:table.cell class="whitespace-normal sm:min-w-56">
-                                        <a href="{{ route('publications.show', $publication) }}" wire:navigate class="font-medium text-zinc-800 wrap-anywhere after:absolute after:inset-0 hover:underline">{{ $publication->title }}</a>
+                                        <a href="{{ route('publications.show', $mine ? $publication : [$publication, 'author' => $user->id]) }}" wire:navigate class="font-medium text-zinc-800 wrap-anywhere after:absolute after:inset-0 hover:underline">{{ $publication->title }}</a>
                                         <p class="mt-0.5 text-zinc-600 wrap-anywhere">{{ $publication->shortAuthors() }}</p>
                                         <p class="text-zinc-600 wrap-anywhere">{{ $publication->journal }}</p>
                                     </flux:table.cell>

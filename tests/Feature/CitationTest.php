@@ -11,7 +11,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * The publication page: "Cited by N", citations per year, and the citing papers its authors add and remove.
+ * The publication page: total citations, citations per year, and the citing papers its authors add and remove.
  */
 class CitationTest extends TestCase
 {
@@ -38,7 +38,7 @@ class CitationTest extends TestCase
         $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
-            ->assertSee('Cited by 3')
+            ->assertSeeHtml('data-test="cited-by">3<')
             ->assertSee('data-test="year-chart"', escape: false)
             ->assertSeeInOrder(['2024', '1 citation', '2025', 'No citations', '2026', '2 citations']);
 
@@ -51,20 +51,81 @@ class CitationTest extends TestCase
         Citation::factory()->for($this->paper)->count(3)->create(['year' => 2026]);
         $this->actingAs($this->rivera);
 
+        // The profile chart keeps its scale; the publication page's compact chart has only a baseline.
+        $this->get(route('faculty.show', $this->rivera))
+            ->assertSee('-my-2">4<', false)
+            ->assertSee('-my-2">2<', false)
+            ->assertDontSee('-my-2">2.5<', false);
+
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
-            ->assertSeeHtml('-my-2">4<')
-            ->assertSeeHtml('-my-2">2<')
-            ->assertDontSeeHtml('-my-2">2.5<');
+            ->assertSeeHtml('data-test="year-chart"')
+            ->assertDontSeeHtml('-my-2">');
     }
 
-    public function test_a_paper_without_citing_papers_says_so(): void
+    public function test_a_paper_without_citing_papers_says_so_once(): void
     {
         $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
-            ->assertSee('Cited by 0')
-            ->assertSee('No citations yet.')
-            ->assertSee('No citing papers yet. Add each paper');
+            ->assertSeeHtml('data-test="cited-by">0<')
+            ->assertDontSee('data-test="year-chart"', escape: false)
+            ->assertSee('data-test="add-citation-form"', escape: false);
+
+        // The Research Office has nothing to add, so the empty citing-papers section is left out.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test('pages::publications.show', ['publication' => $this->paper])
+            ->assertSeeHtml('data-test="cited-by">0<')
+            ->assertDontSee('Citing papers');
+    }
+
+    public function test_citing_papers_show_20_at_a_time_while_the_count_covers_them_all(): void
+    {
+        Citation::factory()->for($this->paper)->count(25)->create(['year' => 2025]);
+        Citation::factory()->for($this->paper)->create(['year' => 2024, 'link' => 'https://example.com/oldest']);
+        $this->actingAs($this->rivera);
+
+        Livewire::test('pages::publications.show', ['publication' => $this->paper])
+            ->assertSeeHtml('data-test="cited-by">26<')
+            ->assertSee('Showing 20 of 26')
+            ->assertDontSee('https://example.com/oldest')
+            ->call('showMore')
+            ->assertSee('https://example.com/oldest')
+            ->assertDontSeeHtml('data-test="show-more-citations"');
+    }
+
+    public function test_the_details_read_as_labelled_rows_and_skip_empty_fields(): void
+    {
+        $this->paper->update(['authors' => 'Rivera; Garcia, P.', 'journal' => 'Isabela Journal', 'volume' => '12', 'issue' => null, 'pages' => '45-60']);
+        $this->actingAs($this->rivera);
+
+        Livewire::test('pages::publications.show', ['publication' => $this->paper])
+            ->assertSeeInOrder(['Authors', 'Rivera; Garcia, P.', 'Publication date', 'Feb 1, 2024', 'Journal', 'Isabela Journal', 'Volume', '12', 'Pages', '45-60'])
+            ->assertDontSee('Issue');
+    }
+
+    public function test_the_tab_title_names_the_paper(): void
+    {
+        $this->actingAs($this->rivera)->get(route('publications.show', $this->paper))->assertSee('SMART-ResearchTrack - ', false);
+    }
+
+    public function test_the_research_office_breadcrumb_leads_back_to_the_co_author_it_came_from(): void
+    {
+        $soriano = User::factory()->create(['name' => 'Soriano']);
+        $this->paper->faculty()->attach($soriano);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('faculty.show', $soriano))->assertSee(route('publications.show', [$this->paper, 'author' => $soriano->id]), false);
+
+        Livewire::withQueryParams(['author' => $soriano->id])
+            ->test('pages::publications.show', ['publication' => $this->paper])
+            ->assertSee(route('faculty.show', $soriano))
+            ->assertDontSee(route('faculty.show', $this->rivera));
+
+        // Someone who didn't write the paper can't be named in the breadcrumb.
+        $stranger = User::factory()->create();
+        Livewire::withQueryParams(['author' => $stranger->id])
+            ->test('pages::publications.show', ['publication' => $this->paper])
+            ->assertDontSee(route('faculty.show', $stranger));
     }
 
     public function test_an_author_adds_a_citing_paper(): void
@@ -77,7 +138,7 @@ class CitationTest extends TestCase
             ->call('addCitation')
             ->assertHasNoErrors()
             ->assertSet('link', '')
-            ->assertSee('Cited by 1');
+            ->assertSeeHtml('data-test="cited-by">1<');
 
         $citation = $this->paper->citations()->sole();
         $this->assertSame('https://doi.org/10.2000/cites', $citation->link);
@@ -132,7 +193,7 @@ class CitationTest extends TestCase
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->call('removeCitation', $mine->id)
-            ->assertSee('Cited by 0');
+            ->assertSeeHtml('data-test="cited-by">0<');
         $this->assertModelMissing($mine);
         $this->assertSame('removed a citing paper', ActivityLog::latest('id')->first()->summary());
     }
@@ -143,7 +204,7 @@ class CitationTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
-            ->assertSee('Cited by 1')
+            ->assertSeeHtml('data-test="cited-by">1<')
             ->assertSee($citation->link)
             ->assertDontSee('data-test="add-citation-form"', escape: false)
             ->assertDontSee('Remove citing paper')

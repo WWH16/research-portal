@@ -63,11 +63,18 @@ new class extends Component {
 
         {{-- The member and their totals read as one summary row under the title --}}
         <div class="flex flex-wrap items-center gap-x-8 gap-y-4 sm:col-span-2 sm:row-start-2">
-            <div class="flex min-w-0 items-center gap-4">
-                <flux:avatar size="lg" :src="$user->profileImageUrl()" :name="$user->name" :initials="$user->initials()" />
+            <div class="flex min-w-0 items-center gap-5 sm:gap-6">
+                {{-- The page is the member's record of their work, so their portrait leads it --}}
+                <flux:avatar
+                    circle
+                    :src="$user->profileImageUrl()"
+                    :name="$user->name"
+                    :initials="$user->initials()"
+                    class="size-24 text-3xl sm:size-32 sm:text-4xl"
+                />
                 <div class="min-w-0">
                     @if ($mine)
-                        <p class="truncate font-medium text-zinc-800">{{ $user->name }}</p>
+                        <p class="truncate text-xl font-semibold text-zinc-900">{{ $user->name }}</p>
                     @else
                         <flux:heading size="xl" level="1" class="truncate">{{ $user->name }}</flux:heading>
                     @endif

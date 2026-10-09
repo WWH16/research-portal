@@ -93,7 +93,7 @@ new class extends Component {
     $owner = $admin ? ($publication->faculty->firstWhere('id', $this->author) ?? $publication->faculty->first()) : auth()->user();
 @endphp
 
-<div class="mx-auto w-full max-w-4xl">
+<div class="mx-auto w-full max-w-6xl">
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
             @if ($admin)

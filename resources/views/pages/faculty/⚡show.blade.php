@@ -82,19 +82,22 @@ new class extends Component {
         {{-- The member and their totals read as one summary row under the title --}}
         <div class="flex flex-wrap items-center gap-x-8 gap-y-4 sm:col-span-2 sm:row-start-2">
             <div class="flex min-w-0 items-center gap-5 sm:gap-6">
-                {{-- The page is the member's record of their work, so their portrait leads it --}}
+                {{-- The page is the member's record of their work, so their portrait leads it. Hidden from
+                     screen readers: the name beside it already says whose it is. --}}
                 <flux:avatar
+                    aria-hidden="true"
                     circle
                     :src="$user->profileImageUrl()"
                     :name="$user->name"
                     :initials="$user->initials()"
                     class="size-24 text-3xl sm:size-32 sm:text-4xl"
                 />
+                {{-- A long name wraps rather than cutting off beside the portrait on phones --}}
                 <div class="min-w-0">
                     @if ($mine)
-                        <p class="truncate text-xl font-semibold text-zinc-900">{{ $user->name }}</p>
+                        <p class="text-xl font-semibold text-balance text-zinc-900">{{ $user->name }}</p>
                     @else
-                        <flux:heading size="xl" level="1" class="truncate">{{ $user->name }}</flux:heading>
+                        <flux:heading size="xl" level="1" class="text-balance">{{ $user->name }}</flux:heading>
                     @endif
                     {{-- The college's full name, so nobody has to decode the short code --}}
                     <flux:text>{{ $user->department?->name ?? __('No college') }}</flux:text>
@@ -143,8 +146,9 @@ new class extends Component {
 
                         <flux:table.rows>
                             @foreach ($this->publications as $publication)
-                                {{-- The title link stretches over the whole row, so the row is one big tap target --}}
-                                <flux:table.row :key="$publication->id" class="relative hover:bg-canvas">
+                                {{-- The title link stretches over the whole row, so the row is one big tap target.
+                                     Keyboard focus shades the row the same as hover. --}}
+                                <flux:table.row :key="$publication->id" class="relative hover:bg-canvas has-[a:focus-visible]:bg-canvas">
                                     {{-- No floor on phones, so the title wraps and the count and year stay on screen --}}
                                     <flux:table.cell class="whitespace-normal sm:min-w-56">
                                         <a href="{{ route('publications.show', $mine ? $publication : [$publication, 'author' => $user->id]) }}" wire:navigate class="font-medium text-zinc-800 wrap-anywhere after:absolute after:inset-0 hover:underline">{{ $publication->title }}</a>

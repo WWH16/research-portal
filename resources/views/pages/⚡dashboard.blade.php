@@ -481,53 +481,53 @@ new #[Title('Dashboard')] class extends Component {
                         {{-- Person on the left, their project titles on the right; long titles wrap inside the card. --}}
                         <ul class="mt-4 divide-y divide-line border-t border-line text-sm">
                             @foreach ($this->groupFaculty as $member)
-                                <li class="grid gap-1.5 py-2.5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-4">
-                                    {{-- Name and meta on one line so a one-project row stays one line tall --}}
-                                    <p class="flex min-w-0 items-center gap-2 self-start">
-                                        <span class="truncate font-medium text-zinc-800" title="{{ $member->name }}">{{ $member->name }}</span>
-                                        <span class="shrink-0 text-xs text-zinc-500">
+                                <li class="grid gap-1.5 py-3 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+                                    {{-- Names run long, so every row stacks the same way: the full name, wrapping if it
+                                         must, then college and count on their own line. No name is ever cut off --}}
+                                    <div>
+                                        <p class="font-medium text-zinc-800 [overflow-wrap:anywhere]">{{ $member->name }}</p>
+                                        <p class="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
                                             {{ $member->department?->code ?? __('No college') }}
                                             @if ($group !== 'pending')
-                                                · {{ $member->projects->count() }}
-                                                <span class="sr-only">{{ trans_choice('{1} project|[2,*] projects', $member->projects->count()) }}</span>
+                                                · {{ trans_choice('{1} :count project|[2,*] :count projects', $member->projects->count()) }}
                                             @endif
-                                        </span>
-                                        @if ($group === 'delayed')
-                                            {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
-                                                 right above the icon confirms it where the admin is already looking --}}
-                                            <button
-                                                type="button"
-                                                x-data="{ copied: false, message: '' }"
-                                                x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
-                                                    () => { copied = true; message = @js(__('Copied!')) },
-                                                    () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
-                                                ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
-                                                class="relative shrink-0 rounded text-zinc-400 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent"
-                                                title="{{ __('Copy :email', ['email' => $member->email]) }}"
-                                                aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
-                                                data-test="copy-email"
-                                            >
-                                                <flux:icon.envelope variant="micro" x-show="! copied" />
-                                                <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
-                                                <span
-                                                    x-show="message"
-                                                    x-cloak
-                                                    x-transition.opacity
-                                                    x-text="message"
-                                                    role="status"
-                                                    class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
-                                                ></span>
-                                            </button>
-                                        @endif
-                                    </p>
+                                            @if ($group === 'delayed')
+                                                {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
+                                                     right above the icon confirms it where the admin is already looking --}}
+                                                <button
+                                                    type="button"
+                                                    x-data="{ copied: false, message: '' }"
+                                                    x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
+                                                        () => { copied = true; message = @js(__('Copied!')) },
+                                                        () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
+                                                    ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
+                                                    class="relative shrink-0 rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
+                                                    title="{{ __('Copy :email', ['email' => $member->email]) }}"
+                                                    aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
+                                                    data-test="copy-email"
+                                                >
+                                                    <flux:icon.envelope variant="micro" x-show="! copied" />
+                                                    <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
+                                                    <span
+                                                        x-show="message"
+                                                        x-cloak
+                                                        x-transition.opacity
+                                                        x-text="message"
+                                                        role="status"
+                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
+                                                    ></span>
+                                                </button>
+                                            @endif
+                                        </p>
+                                    </div>
                                     @if ($group === 'pending')
                                         {{-- No projects to list, so show how to reach them for a follow-up --}}
-                                        <flux:link :href="'mailto:'.$member->email" variant="ghost" class="truncate">{{ $member->email }}</flux:link>
+                                        <flux:link :href="'mailto:'.$member->email" variant="ghost" class="truncate !font-normal">{{ $member->email }}</flux:link>
                                     @else
                                     <ul class="grid gap-1.5">
                                         @foreach ($member->projects as $project)
                                             <li>
-                                                <flux:link :href="route('drive.show', $project)" variant="ghost" wire:navigate>{{ $project->displayTitle() }}</flux:link>
+                                                <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
                                             </li>
                                         @endforeach
                                     </ul>

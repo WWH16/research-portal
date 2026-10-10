@@ -172,7 +172,7 @@ class DashboardTest extends TestCase
             ->assertSee('Navarro')
             ->assertSee('Finished Study')
             // The list names the projects only; the stat card already says which group they are in.
-            ->assertSeeInOrder(['Navarro', 'CCS', '· 2', 'projects', 'Finished Study', 'Overdue Study'])
+            ->assertSeeInOrder(['Navarro', 'CCS', '· 2 projects', 'Finished Study', 'Overdue Study'])
             ->assertDontSee('Late')
             ->assertDontSee('Soriano')
             ->call('export')

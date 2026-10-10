@@ -139,7 +139,7 @@ new class extends Component {
             </div>
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Journal') }}</dt>
-                <dd class="{{ $value }}">{{ $publication->journal }}</dd>
+                <dd class="{{ $value }} italic">{{ $publication->journal }}</dd>
             </div>
             @foreach (['volume' => __('Volume'), 'issue' => __('Issue'), 'pages' => __('Pages')] as $field => $name)
                 @if ($publication->$field)

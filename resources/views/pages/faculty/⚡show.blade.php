@@ -71,7 +71,7 @@ new class extends Component {
             <flux:heading size="xl" level="1" class="sm:row-start-1">{{ __('My Publications') }}</flux:heading>
 
             {{-- Straight after the title, so on phones it comes before the summary rather than under it --}}
-            <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 sm:col-start-2 sm:row-start-1" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
+            <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 sm:col-start-2 sm:row-start-1 shadow-md shadow-isu-green-900/30" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
         @else
             <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
                 <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty Publications') }}</flux:breadcrumbs.item>
@@ -95,7 +95,7 @@ new class extends Component {
                 {{-- A long name wraps rather than cutting off beside the portrait on phones --}}
                 <div class="min-w-0">
                     @if ($mine)
-                        <p class="text-xl font-semibold text-balance text-zinc-900">{{ $user->name }}</p>
+                        <p class="text-2xl font-semibold text-balance text-zinc-900">{{ $user->name }}</p>
                     @else
                         <flux:heading size="xl" level="1" class="text-balance">{{ $user->name }}</flux:heading>
                     @endif
@@ -110,11 +110,11 @@ new class extends Component {
             @if ($first)
                 <dl class="flex shrink-0 gap-8 sm:border-s sm:border-line sm:ps-8" data-test="profile-totals">
                     <div>
-                        <dt class="text-sm text-zinc-600">{{ __('Publications') }}</dt>
+                        <dt class="flex items-center gap-1.5 text-sm text-zinc-600"><flux:icon.document-text variant="micro" class="text-isu-green-600" />{{ __('Publications') }}</dt>
                         <dd class="text-2xl font-semibold tabular-nums text-zinc-900" data-test="publication-total">{{ number_format($this->paperIds->count()) }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm text-zinc-600">{{ __('Total citations') }}</dt>
+                        <dt class="flex items-center gap-1.5 text-sm text-zinc-600"><flux:icon.link variant="micro" class="text-isu-green-600" />{{ __('Total citations') }}</dt>
                         <dd class="text-2xl font-semibold tabular-nums text-zinc-900" data-test="citation-total">{{ number_format(Citation::whereIn('publication_id', $this->paperIds)->count()) }}</dd>
                     </div>
                 </dl>
@@ -136,7 +136,7 @@ new class extends Component {
                 </div>
             @else
                 {{-- The table bleeds to the panel's edges, so a hovered row lights up its full width --}}
-                <div class="h-full rounded-xl border border-line bg-surface px-(--flux-bleed) py-2 [--flux-bleed:--spacing(4)] sm:[--flux-bleed:--spacing(6)]">
+                <div class="h-full rounded-xl border border-line bg-surface px-(--flux-bleed) pt-3 pb-2 [--flux-bleed:--spacing(4)] sm:[--flux-bleed:--spacing(6)]">
                     <flux:table bleed class="[&_td]:py-4 [&_td]:align-top" data-test="publications">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Title') }}</flux:table.column>
@@ -151,9 +151,9 @@ new class extends Component {
                                 <flux:table.row :key="$publication->id" class="relative hover:bg-canvas has-[a:focus-visible]:bg-canvas">
                                     {{-- No floor on phones, so the title wraps and the count and year stay on screen --}}
                                     <flux:table.cell class="whitespace-normal sm:min-w-56">
-                                        <a href="{{ route('publications.show', $mine ? $publication : [$publication, 'author' => $user->id]) }}" wire:navigate class="font-medium text-zinc-800 wrap-anywhere after:absolute after:inset-0 hover:underline">{{ $publication->title }}</a>
-                                        <p class="mt-0.5 text-zinc-600 wrap-anywhere">{{ $publication->shortAuthors() }}</p>
-                                        <p class="text-zinc-600 wrap-anywhere">{{ $publication->journal }}</p>
+                                        <a href="{{ route('publications.show', $mine ? $publication : [$publication, 'author' => $user->id]) }}" wire:navigate class="font-semibold text-zinc-800 wrap-anywhere after:absolute after:inset-0 hover:underline">{{ $publication->title }}</a>
+                                        <p class="mt-1 text-zinc-500 wrap-anywhere">{{ $publication->shortAuthors() }}</p>
+                                        <p class="text-zinc-500 italic wrap-anywhere">{{ $publication->journal }}</p>
                                     </flux:table.cell>
                                     <flux:table.cell align="end" variant="strong" class="tabular-nums">{{ number_format($publication->citations_count) }}</flux:table.cell>
                                     <flux:table.cell align="end" class="tabular-nums">{{ $publication->published_on->year }}</flux:table.cell>

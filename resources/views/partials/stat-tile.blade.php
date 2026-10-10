@@ -12,7 +12,7 @@
         {{ $label }}
     </span>
 
-    <span class="mt-2 text-3xl font-semibold text-zinc-900">{{ number_format($value) }}</span>
+    <span class="mt-2 text-2xl font-semibold text-zinc-900">{{ number_format($value) }}</span>
 
     <span class="mt-1 text-sm text-zinc-500 group-hover:text-zinc-700">{{ $note }}</span>
 </a>

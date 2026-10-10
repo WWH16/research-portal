@@ -113,8 +113,11 @@
         </div>
 
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
-        <details class="mt-4 text-sm">
-            <summary class="cursor-pointer text-zinc-600 hover:text-zinc-900">{{ __('Show as table') }}</summary>
+        <details class="group mt-4 text-sm">
+            <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-medium text-zinc-700 hover:bg-canvas hover:text-zinc-900 max-sm:min-h-11 [&::-webkit-details-marker]:hidden">
+                {{ __('Show as table') }}
+                <flux:icon.chevron-down variant="micro" class="text-zinc-400 transition-transform group-open:rotate-180" />
+            </summary>
             <flux:table class="mt-3 tabular-nums">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Month') }}</flux:table.column>

@@ -33,23 +33,27 @@
             />
 
             <!-- Password -->
-            <div class="relative">
+            {{-- The reset link shares the label's row in normal flow, so it wraps under the label when text is enlarged
+                 and its tab position matches where it sits on screen. --}}
+            <flux:field>
+                <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <flux:label>{{ __('Password') }}</flux:label>
+
+                    <flux:link class="text-sm" :href="route('password.request')" wire:navigate>
+                        {{ __('Forgot your password?') }}
+                    </flux:link>
+                </div>
+
                 <flux:input
                     name="password"
-                    :label="__('Password')"
                     type="password"
                     required
                     autocomplete="current-password"
-                    :placeholder="__('Password')"
                     viewable
                 />
 
-                @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
-                        {{ __('Forgot your password?') }}
-                    </flux:link>
-                @endif
-            </div>
+                <flux:error name="password" />
+            </flux:field>
 
             <!-- Remember Me -->
             <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />

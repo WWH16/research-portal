@@ -124,6 +124,15 @@
     padding-block: 1rem;
 }
 
+/* Flux's red-500 errors and zinc-400 placeholders fall short of 4.5:1 on white; one step darker clears it. */
+[data-flux-error] {
+    color: var(--color-red-600);
+}
+
+[data-flux-control]::placeholder {
+    color: var(--color-zinc-500);
+}
+
 input:focus[data-flux-control],
 textarea:focus[data-flux-control],
 select:focus[data-flux-control] {

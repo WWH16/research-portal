@@ -6,26 +6,22 @@
     <body class="min-h-screen bg-surface antialiased">
         <div class="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
             {{-- Brand panel: the same seal green as the app sidebar, so signing in and working inside feel like one place. --}}
-            {{-- Everything in the panel shares one centered axis: brand, seal, headline, and footer. --}}
+            {{-- Everything in the panel shares one centered axis: brand, seal, and footer. --}}
             <aside class="hidden flex-col items-center justify-between gap-10 bg-isu-green-800 px-12 py-10 text-center text-isu-green-50 lg:flex">
                 <div class="flex items-center gap-3">
                     <x-app-logo-icon class="size-9 rounded-full bg-white p-px" />
                     <span class="text-base font-semibold text-white">{{ config('app.name') }}</span>
                 </div>
 
-                <div class="flex flex-col items-center gap-8">
-                    {{-- The seal, faded into the green, sits directly above the headline and never behind it. It shows up
-                         to 256px wide here, so this is the full-size file; every smaller spot uses isu_seal-128.png. --}}
-                    <img
-                        src="{{ asset('images/isu_seal.png') }}"
-                        alt=""
-                        class="pointer-events-none size-[min(16rem,30vh)] object-contain opacity-20 mix-blend-luminosity select-none"
-                    />
-
-                    <p class="max-w-sm text-4xl/tight font-semibold tracking-[-0.02em] text-balance text-white">
-                        {{ __('Research proposals, reviews, and records in one place.') }}
-                    </p>
-                </div>
+                {{-- The seal, faded into the green. It shows up to 256px wide here, so this is the full-size file;
+                     every smaller spot uses isu_seal-128.png. Lazy, so phones, where this panel is hidden, never fetch it.
+                     Hovering it brings back the seal's full colour. --}}
+                <img
+                    src="{{ asset('images/isu_seal.png') }}"
+                    alt=""
+                    loading="lazy"
+                    class="size-[min(16rem,30vh)] object-contain opacity-20 mix-blend-luminosity transition-opacity duration-300 ease-out select-none hover:opacity-100 hover:mix-blend-normal motion-reduce:transition-none"
+                />
 
                 <p class="text-sm text-isu-green-300">
                     &copy; {{ now()->year }} {{ __('Isabela State University - Cauayan Campus') }}
@@ -36,7 +32,11 @@
                 <div class="flex w-full max-w-sm flex-col gap-8">
                     <div class="flex items-center gap-3 lg:hidden">
                         <x-app-logo-icon class="size-10" />
-                        <span class="text-base font-semibold text-isu-green-800">{{ config('app.name') }}</span>
+                        {{-- Phones hide the brand panel and its footer, so the campus is named here instead. --}}
+                        <div class="leading-tight">
+                            <span class="block text-base font-semibold text-isu-green-800">{{ config('app.name') }}</span>
+                            <span class="block text-xs text-zinc-600">{{ __('ISU - Cauayan') }}</span>
+                        </div>
                     </div>
 
                     {{ $slot }}

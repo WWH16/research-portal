@@ -132,7 +132,7 @@ class CitationTest extends TestCase
         $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
-            ->assertSeeInOrder(['Authors', 'Rivera, P Garcia', 'Publication date', 'Feb 1, 2024', 'Journal', 'Isabela Journal', 'Volume', '12', 'Pages', '45-60'])
+            ->assertSeeInOrder(['Authors', 'Rivera; Garcia, P.', 'Publication date', 'Feb 1, 2024', 'Journal', 'Isabela Journal', 'Volume', '12', 'Pages', '45-60'])
             ->assertDontSee('Issue');
     }
 

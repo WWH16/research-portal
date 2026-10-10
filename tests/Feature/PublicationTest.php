@@ -43,24 +43,6 @@ class PublicationTest extends TestCase
         $this->assertSame('https://journal.example/paper/12', Publication::normalizeLink('https://journal.example/paper/12'));
     }
 
-    public function test_every_author_prints_as_surname_then_initials(): void
-    {
-        $paper = new Publication(['authors' => 'Juan Dela T. Cruz; Mark Anthony Rivera; Soriano; Mark Anthony Rivera Jr.; Mario Soriano III']);
-
-        $this->assertSame('Cruz, J. D. T.; Rivera, M. A.; Soriano; Rivera, M. A., Jr.; Soriano, M., III', $paper->formattedAuthors());
-    }
-
-    public function test_names_typed_either_way_print_alike_with_capitals(): void
-    {
-        $paper = new Publication(['authors' => 'Rocel, j. a.; Haley, g.; Bogan, u; Dela Cruz, J.; Rivera, Jr.; Test User; rempel, f.']);
-
-        $this->assertSame('Rocel, J. A.; Haley, G.; Bogan, U.; Dela Cruz, J.; Rivera, Jr.; User, T.; Rempel, F.', $paper->formattedAuthors());
-
-        // A name saved in capitals, as accounts often are, reads the same in the list and in the author picker.
-        $this->assertSame('Rocel, J. A.', Publication::formatName('JOHN ANSLEY ROCEL'));
-        $this->assertSame('Rocel, John Ansley', Publication::formatName('JOHN ANSLEY ROCEL', initials: false));
-    }
-
     public function test_deleting_a_publication_takes_its_citing_papers_and_deleting_its_project_keeps_it(): void
     {
         $project = $this->project($this->rivera);
@@ -109,6 +91,21 @@ class PublicationTest extends TestCase
         $this->assertTrue($this->rivera->can('viewPublications', $this->rivera));
         $this->assertTrue($admin->can('viewPublications', $this->rivera));
         $this->assertFalse($this->soriano->can('viewPublications', $this->rivera));
+    }
+
+    public function test_the_list_prints_each_author_as_initials_and_last_name(): void
+    {
+        $paper = new Publication(['authors' => 'Juan Dela T. Cruz; Mark Anthony Rivera; Soriano; Mark Anthony Rivera Jr.; Mario Soriano III']);
+
+        $this->assertSame('JDT Cruz, MA Rivera, Soriano, MA Rivera Jr., M Soriano III', $paper->shortAuthors());
+    }
+
+    public function test_surname_first_names_print_as_initials_and_their_whole_surname(): void
+    {
+        $paper = new Publication(['authors' => 'Rocel, j. a.; Haley, g.; Bogan, u; Dela Cruz, J.; Rivera, Jr.']);
+
+        $this->assertSame('JA Rocel, G Haley, U Bogan, J Dela Cruz, Rivera, Jr.', $paper->shortAuthors());
+        $this->assertSame('JA ROCEL', (new Publication(['authors' => 'JOHN ANSLEY ROCEL']))->shortAuthors());
     }
 
     public function test_faculty_add_a_publication_shared_with_a_co_author(): void

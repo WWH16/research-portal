@@ -131,7 +131,7 @@ new class extends Component {
         <dl class="{{ $row }} gap-y-3" data-test="publication-details">
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Authors') }}</dt>
-                <dd class="{{ $value }}">{{ $publication->formattedAuthors() }}</dd>
+                <dd class="{{ $value }}">{{ $publication->authors }}</dd>
             </div>
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Publication date') }}</dt>

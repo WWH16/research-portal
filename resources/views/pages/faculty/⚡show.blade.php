@@ -152,7 +152,7 @@ new class extends Component {
                                     {{-- No floor on phones, so the title wraps and the count and year stay on screen --}}
                                     <flux:table.cell class="whitespace-normal sm:min-w-56">
                                         <a href="{{ route('publications.show', $mine ? $publication : [$publication, 'author' => $user->id]) }}" wire:navigate class="font-semibold text-zinc-800 wrap-anywhere after:absolute after:inset-0 hover:underline">{{ $publication->title }}</a>
-                                        <p class="mt-1 text-zinc-500 wrap-anywhere">{{ $publication->formattedAuthors() }}</p>
+                                        <p class="mt-1 text-zinc-500 wrap-anywhere">{{ $publication->shortAuthors() }}</p>
                                         <p class="text-zinc-500 italic wrap-anywhere">{{ $publication->journal }}</p>
                                     </flux:table.cell>
                                     <flux:table.cell align="end" variant="strong" class="tabular-nums">{{ number_format($publication->citations_count) }}</flux:table.cell>

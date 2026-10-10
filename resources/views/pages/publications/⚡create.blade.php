@@ -210,9 +210,7 @@ new #[Title('Publications')] class extends Component {
         // ponytail: one plain select of every verified faculty member, as on the project form; switch to a searchable picker past a few hundred.
         return User::where('role', 'faculty')
             ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))
-            ->get(['id', 'name'])
-            // Listed surname first, as the paper prints them, so sorted the same way.
-            ->sortBy(fn (User $member) => Publication::formatName($member->name, initials: false))->values();
+            ->orderBy('name')->get(['id', 'name']);
     }
 
     /**
@@ -257,14 +255,14 @@ new #[Title('Publications')] class extends Component {
                     <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2" wire:key="author-{{ $index }}-{{ $field }}" data-test="author-row">
                         {{-- Your own row is fixed, so you can't drop yourself or pick someone else in your place; the arrows move it --}}
                         @if ($you)
-                            <flux:input :value="__(':name (you)', ['name' => Publication::formatName(Auth::user()->name, initials: false)])" :aria-label="__('Author')" disabled data-test="author-you" />
+                            <flux:input :value="__(':name (you)', ['name' => Auth::user()->name])" :aria-label="__('Author')" disabled data-test="author-you" />
                         @elseif ($field === 'name')
                             <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('Full name, for example Juan Dela T. Cruz')" type="text" maxlength="100" />
                         @else
                             <flux:select wire:model="authorRows.{{ $index }}.user_id" :aria-label="__('Author')">
                                 <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
                                 @foreach ($this->faculty->except(Auth::id()) as $member)
-                                    <flux:select.option :value="$member->id">{{ Publication::formatName($member->name, initials: false) }}</flux:select.option>
+                                    <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
                                 @endforeach
                             </flux:select>
                         @endif

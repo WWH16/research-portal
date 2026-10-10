@@ -478,8 +478,7 @@ new #[Title('Dashboard')] class extends Component {
                                 : __('No faculty in this group for :range.', ['range' => $this->rangeLabel]) }}
                         </flux:text>
                     @else
-                        {{-- Person on the left, their projects on the right. Each project is title | status, so statuses
-                             line up in one column and long titles wrap inside the card instead of pushing past it. --}}
+                        {{-- Person on the left, their project titles on the right; long titles wrap inside the card. --}}
                         <ul class="mt-4 divide-y divide-line border-t border-line text-sm">
                             @foreach ($this->groupFaculty as $member)
                                 <li class="grid gap-1.5 py-2.5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-4">
@@ -527,10 +526,8 @@ new #[Title('Dashboard')] class extends Component {
                                     @else
                                     <ul class="grid gap-1.5">
                                         @foreach ($member->projects as $project)
-                                            <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                                            <li>
                                                 <flux:link :href="route('drive.show', $project)" variant="ghost" wire:navigate>{{ $project->displayTitle() }}</flux:link>
-                                                {{-- Stage, with Awaiting review / Delayed under it, held at the right edge --}}
-                                                @include('partials.project-status', ['submission' => $project, 'class' => 'items-end', 'timing' => true])
                                             </li>
                                         @endforeach
                                     </ul>

@@ -109,10 +109,11 @@ class DashboardTest extends TestCase
         $lastYear = Livewire::test('pages::dashboard')->call('preset', 'last-year');
         $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
 
-        // The proposal-stage list flags what waits on the Research Office, under the stage.
+        // The proposal-stage list names the projects without status badges.
         Livewire::withQueryParams(['group' => 'proposal'])
             ->test('pages::dashboard')
-            ->assertSeeInOrder(['SMART-ResearchTrack', 'Detailed', 'Awaiting review']);
+            ->assertSee('SMART-ResearchTrack')
+            ->assertDontSee('Awaiting review');
     }
 
     public function test_date_range_filters_the_summary_by_filing_date(): void
@@ -170,9 +171,9 @@ class DashboardTest extends TestCase
             ->assertSee('Completed, '.now()->year)
             ->assertSee('Navarro')
             ->assertSee('Finished Study')
-            // On time is the norm and gets no badge; only late reports are flagged.
-            ->assertSeeInOrder(['Navarro', 'CCS', '· 2', 'projects', 'Finished Study', 'Completed', 'Overdue Study', 'Completed', 'Late'])
-            ->assertDontSee('On time')
+            // The list names the projects only; the stat card already says which group they are in.
+            ->assertSeeInOrder(['Navarro', 'CCS', '· 2', 'projects', 'Finished Study', 'Overdue Study'])
+            ->assertDontSee('Late')
             ->assertDontSee('Soriano')
             ->call('export')
             ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.now()->year.'-12-31.csv');
@@ -217,7 +218,7 @@ class DashboardTest extends TestCase
             ->assertSee("Every faculty member in CCS has submitted in {$year}.");
     }
 
-    public function test_delayed_list_shows_days_overdue_and_how_to_reach_each_member(): void
+    public function test_delayed_list_shows_how_to_reach_each_member(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');
         $jose = $this->facultyInDepartment('Jose Reyes');
@@ -228,8 +229,8 @@ class DashboardTest extends TestCase
 
         Livewire::withQueryParams(['group' => 'delayed'])
             ->test('pages::dashboard')
-            ->assertSeeInOrder(['Jose Reyes', 'Just Late Study', 'Concept', '1 day overdue'])
-            ->assertSeeInOrder(['Maria Santos', 'Late Study', 'Detailed', '7 days overdue'])
+            ->assertSeeInOrder(['Jose Reyes', 'Just Late Study', 'Maria Santos', 'Late Study'])
+            ->assertDontSee('days overdue')
             ->assertSeeHtml("writeText('{$maria->email}')")
             ->assertSeeHtml("message = 'Copied!'")
             ->assertSeeHtml('role="status"')

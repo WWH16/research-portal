@@ -524,8 +524,8 @@ new #[Title('Dashboard')] class extends Component {
                                         @foreach ($member->projects as $project)
                                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                                                 <flux:link :href="route('drive.show', $project)" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
-                                                {{-- Stage plus Awaiting review / Delayed; reversed so the stage keeps its column at the right edge --}}
-                                                @include('partials.project-status', ['submission' => $project, 'class' => 'flex-row-reverse', 'timing' => true])
+                                                {{-- Stage, with Awaiting review / Delayed under it, held at the right edge --}}
+                                                @include('partials.project-status', ['submission' => $project, 'class' => 'items-end', 'timing' => true])
                                             </li>
                                         @endforeach
                                     </ul>

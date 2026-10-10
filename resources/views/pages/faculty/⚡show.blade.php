@@ -137,7 +137,7 @@ new class extends Component {
             @else
                 {{-- The table bleeds to the panel's edges, so a hovered row lights up its full width --}}
                 <div class="h-full rounded-xl border border-line bg-surface px-(--flux-bleed) pt-3 pb-2 [--flux-bleed:--spacing(4)] sm:[--flux-bleed:--spacing(6)]">
-                    <flux:table bleed class="[&_td]:py-4 [&_td]:align-top" data-test="publications">
+                    <flux:table bleed class="[&_td]:align-top" data-test="publications">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Title') }}</flux:table.column>
                             <flux:table.column align="end">{{ __('Cited by') }}</flux:table.column>

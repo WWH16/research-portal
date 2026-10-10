@@ -99,22 +99,28 @@ class Publication extends Model
      */
     public function shortAuthors(): string
     {
+        return collect(explode(';', $this->authors))->map(static::shortName(...))->filter()->join(', ');
+    }
+
+    /**
+     * One name as the publication list prints it: "Juan Dela T. Cruz" and "Cruz, J. D. T." both read "JDT Cruz".
+     */
+    public static function shortName(string $name): string
+    {
         // ponytail: the last word is taken as the surname, so a two-word surname comes out wrong; store surnames apart if that matters.
         $initials = fn (array $words) => implode('', array_map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)), $words));
 
-        return collect(explode(';', $this->authors))->map(function (string $name) use ($initials) {
-            // Surname first: everything before the comma is the surname, so "Dela Cruz, J." keeps both words.
-            [$surname, $given] = array_pad(explode(',', $name, 2), 2, null);
-            if ($given !== null && ! preg_match('/^\s*(jr|sr|ii|iii|iv)\.?\s*$/i', $given)) {
-                return trim($initials(preg_split('/\s+/', trim($given), -1, PREG_SPLIT_NO_EMPTY) ?: []).' '.trim($surname));
-            }
-            $words = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-            // A suffix such as Jr. or III follows the surname instead of being taken for it.
-            $suffix = count($words) > 1 && preg_match('/^(jr|sr|ii|iii|iv)\.?$/i', end($words)) ? ' '.array_pop($words) : '';
-            $last = array_pop($words);
+        // Surname first: everything before the comma is the surname, so "Dela Cruz, J." keeps both words.
+        [$surname, $given] = array_pad(explode(',', $name, 2), 2, null);
+        if ($given !== null && ! preg_match('/^\s*(jr|sr|ii|iii|iv)\.?\s*$/i', $given)) {
+            return trim($initials(preg_split('/\s+/', trim($given), -1, PREG_SPLIT_NO_EMPTY) ?: []).' '.trim($surname));
+        }
+        $words = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        // A suffix such as Jr. or III follows the surname instead of being taken for it.
+        $suffix = count($words) > 1 && preg_match('/^(jr|sr|ii|iii|iv)\.?$/i', end($words)) ? ' '.array_pop($words) : '';
+        $last = array_pop($words);
 
-            return trim($initials($words).' '.$last.$suffix);
-        })->filter()->join(', ');
+        return trim($initials($words).' '.$last.$suffix);
     }
 
     public function authoredBy(User $user): bool

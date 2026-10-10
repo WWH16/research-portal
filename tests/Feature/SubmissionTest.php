@@ -64,8 +64,8 @@ class SubmissionTest extends TestCase
             ->assertSee('Every project filed across the portal.')
             ->assertSee('Maria Proposal')
             ->assertSee('Jose Proposal')
-            ->assertSee($maria->name)
-            ->assertSee($jose->name)
+            ->assertSee($maria->shortName())
+            ->assertSee($jose->shortName())
             ->assertSeeHtml('data-test="department-column"')
             ->assertDontSee(route('submissions.create'), escape: false);
     }
@@ -377,7 +377,7 @@ class SubmissionTest extends TestCase
         Livewire::test('pages::submissions.create', ['submission' => $project])
             ->assertSee('Edit Project')
             ->assertSeeHtml('data-test="back-to-submissions"')
-            ->assertSeeHtml('aria-label="Back to Submissions"')
+            ->assertSeeHtml('href="'.route('submissions.index').'"')
             ->assertSet('title', 'Maria Proposal')
             ->set('proponents', [
                 ['study' => 1, 'user_id' => $navarro->id, 'role' => 'Leader'],
@@ -1022,6 +1022,26 @@ class SubmissionTest extends TestCase
     /**
      * @return array{User, User}
      */
+    public function test_list_rows_read_the_same_whatever_is_on_file(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $maria->update(['name' => 'MARIA DELA PAZ SANTOS']);
+        $project = $maria->submissions()->sole();
+        $project->update(['title' => 'Sentiment_Analysis_of_Student_Services', 'target_date' => today()->subDays(3)]);
+
+        $this->actingAs($maria)->get(route('submissions.index'))
+            ->assertOk()
+            ->assertSee('Sentiment Analysis of Student Services')
+            ->assertSee('MDP Santos')
+            ->assertSee('1 project')
+            ->assertSee('Due '.today()->subDays(3)->format('M j, Y'))
+            ->assertSee('3 days overdue')
+            // Every row lists all four documents in order, the missing ones marked as not uploaded yet.
+            ->assertSeeInOrder(['Concept proposal for', 'Detailed', ': not uploaded yet', 'Mid-year', ': not uploaded yet', 'Terminal', ': not uploaded yet'])
+            ->assertSee('Awaiting review')
+            ->assertDontSee('Showing 1 to');
+    }
+
     private function twoFacultyWithSubmissions(): array
     {
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);

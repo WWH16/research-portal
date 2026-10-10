@@ -64,8 +64,8 @@
 
     /* Project stages, shared by the chart, stat tiles and swatches. Each holds at least 3:1 on white
        so a bar or swatch reads as a shape (WCAG 1.4.11). Badges use the matching Flux hues. */
-    --color-status-concept: var(--color-sky-600);
-    --color-status-detailed: var(--color-amber-600);
+    --color-status-concept: var(--color-zinc-500);
+    --color-status-detailed: var(--color-blue-600);
     --color-status-midyear: var(--color-violet-600);
     --color-status-completed: var(--color-green-700);
     --color-status-delayed: var(--color-red-600);
@@ -112,6 +112,15 @@
 
 [data-flux-label] {
     @apply  !mb-0 !leading-tight;
+}
+
+/* Every table: headers in muted medium text over one divider, and one row height, so lists read alike page to page. */
+[data-flux-column] {
+    color: var(--color-zinc-500);
+}
+
+[data-flux-cell] {
+    padding-block: 1rem;
 }
 
 input:focus[data-flux-control],

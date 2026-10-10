@@ -245,7 +245,8 @@ new #[Title('Submissions')] class extends Component {
     }
 }; ?>
 
-<section class="mx-auto w-full {{ $this->monitoring ? 'max-w-6xl' : 'max-w-4xl' }}">
+{{-- Same width as the Research Drive, so moving between the two lists doesn't shift the page --}}
+<section class="mx-auto w-full max-w-5xl">
     <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0 flex-1">
@@ -262,9 +263,10 @@ new #[Title('Submissions')] class extends Component {
         @endunless
     </header>
 
-    {{-- Filters and results redraw together; opening the dates dialog redraws only the dates island below --}}
+    {{-- Filters and results redraw together; opening the dates dialog redraws only the dates island below.
+         The filters drop Flux's shadow and darker bottom edge so they sit quieter than the table they narrow. --}}
     @island(name: 'list', always: true)
-    <div class="mt-6 flex flex-wrap gap-3">
+    <div class="mt-6 flex flex-wrap items-center gap-3 [&_[data-flux-control]]:border-b-zinc-200 [&_[data-flux-control]]:shadow-none">
         @if ($this->monitoring)
             <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search by faculty name')" :aria-label="__('Search by faculty name')" class="min-w-48 flex-1" />
         @endif
@@ -290,6 +292,13 @@ new #[Title('Submissions')] class extends Component {
             @endforeach
         </flux:select>
 
+        {{-- The count sits with the filters it answers; the pager below only appears once there is a second page --}}
+        @if ($this->submissions->isNotEmpty())
+            <flux:text class="text-sm tabular-nums sm:ms-auto" data-test="results-count">
+                {{ trans_choice('{1} 1 project|[2,*] :count projects', $this->submissions->total()) }}
+            </flux:text>
+        @endif
+
         @if ($this->monitoring)
             <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:h-11 max-sm:w-full">
                 {{ __('Export CSV') }}
@@ -311,7 +320,7 @@ new #[Title('Submissions')] class extends Component {
     @else
         {{-- Every cell starts at the top, so each row reads across one line from the title. relative anchors the cells'
              screen-reader-only text to the table, inside its scroll area, so on phones it can't widen the whole page --}}
-        <flux:table class="relative mt-6 [&_td]:align-top" :paginate="$this->submissions">
+        <flux:table class="relative mt-4 [&_td]:align-top" :paginate="$this->submissions->hasPages() ? $this->submissions : null">
             <flux:table.columns>
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
                 @if ($this->monitoring)
@@ -325,29 +334,36 @@ new #[Title('Submissions')] class extends Component {
                     <flux:table.column>{{ __('Presented in-house') }}</flux:table.column>
                 @endif
                 <flux:table.column>{{ __('Schedule') }}</flux:table.column>
-                <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
+                <flux:table.column align="end">{{ $this->monitoring ? __('Dates') : __('Actions') }}</flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
                 @foreach ($this->submissions as $submission)
+                    {{-- Titles are often saved from file names, so underscores read as spaces here --}}
+                    @php($title = str_replace('_', ' ', $submission->title))
                     <flux:table.row :key="$submission->id">
-                        <flux:table.cell class="max-w-sm">
-                            <a href="{{ route('drive.show', $submission) }}" wire:navigate class="block truncate font-medium text-zinc-800 hover:underline">{{ $submission->title }}</a>
-                            <p class="truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->pluck('user.name')->unique()->join(', ') }}</p>
-                            {{-- Short names keep the links on one line under the title, quieter than it; screen readers hear the full
-                                 document name and which project each link is for --}}
-                            <div class="mt-1 flex flex-wrap gap-x-3 text-sm">
+                        <flux:table.cell class="min-w-64 max-w-sm whitespace-normal">
+                            <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline">{{ $title }}</a>
+                            <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->pluck('user')->unique('id')->map->shortName()->join(', ') }}</p>
+                            {{-- All four documents in stage order: a filled pill opens one on file, a dashed one is still to come, so
+                                 every row shows the same sequence. Screen readers hear the full document name and which project it is for --}}
+                            <ul class="mt-2 flex flex-wrap gap-1.5" aria-label="{{ __('Documents') }}">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
-                                    @if ($submission->{$stage.'_path'})
-                                        <flux:link variant="ghost" :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" :aria-label="__(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title])">
-                                            {{ Str::before(__($label), ' ') }}
-                                            <flux:icon.arrow-top-right-on-square variant="micro" class="inline size-3 align-[-1px]" />
-                                        </flux:link>
-                                    @endif
+                                    <li>
+                                        @if ($submission->{$stage.'_path'})
+                                            <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
+                                                <flux:badge size="sm" icon="check" class="bg-isu-green-50! text-isu-green-800!">{{ Str::before(__($label), ' ') }}</flux:badge>
+                                            </a>
+                                        @else
+                                            <span class="inline-flex items-center rounded-md border border-dashed border-zinc-300 px-2 py-[3px] text-xs font-medium text-zinc-500">
+                                                {{ Str::before(__($label), ' ') }}<span class="sr-only">{{ __(': not uploaded yet') }}</span>
+                                            </span>
+                                        @endif
+                                    </li>
                                 @endforeach
-                            </div>
+                            </ul>
                             @if (! $this->monitoring && $submission->conceptReview() === 'returned')
-                                <p class="mt-1 whitespace-normal text-sm text-amber-800">{{ __('Research Office remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
+                                <p class="mt-2 text-sm text-amber-800">{{ __('Research Office remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
                             @endif
                         </flux:table.cell>
                         @if ($this->monitoring)
@@ -357,7 +373,8 @@ new #[Title('Submissions')] class extends Component {
                         @endif
                         <flux:table.cell class="tabular-nums">{{ $submission->year }}</flux:table.cell>
                         <flux:table.cell>
-                            @include('partials.project-status')
+                            {{-- Delayed shows in the schedule as the overdue days, so the status keeps to stage and review --}}
+                            @include('partials.project-status', ['delay' => false])
                         </flux:table.cell>
                         @if ($this->monitoring)
                             {{-- Completed rows only; the key redraws the box to the saved value. The accessible name starts with the
@@ -387,18 +404,38 @@ new #[Title('Submissions')] class extends Component {
                                 @endif
                             </flux:table.cell>
                         @endif
-                        <flux:table.cell class="tabular-nums">
-                            <div class="whitespace-nowrap"><span class="text-zinc-500">{{ __('Starts') }}</span> {{ $submission->start_date?->format('M j, Y') ?? __('Not set') }}</div>
-                            <div class="whitespace-nowrap"><span class="text-zinc-500">{{ __('Due') }}</span> {{ $submission->target_date?->format('M j, Y') ?? __('Not set') }}</div>
-                            @if (($onTime = $submission->completedOnTime()) !== null)
-                                <div class="text-sm {{ $onTime ? 'text-green-700' : 'text-amber-800' }}">{{ $onTime ? __('Finished on time') : __('Finished late') }}</div>
-                            @endif
+                        {{-- Three lines on every row: the due date leads, the start date follows, and the last line says how the
+                             project stands against the due date, so the column never shifts from row to row --}}
+                        <flux:table.cell class="whitespace-nowrap tabular-nums">
+                            @php($overdue = $submission->isDelayed())
+                            @php($onTime = $submission->completedOnTime())
+                            <div @class(['font-medium', 'text-red-700' => $overdue, 'text-zinc-800' => ! $overdue])>
+                                {{ __('Due :date', ['date' => $submission->target_date?->format('M j, Y') ?? __('not set')]) }}
+                            </div>
+                            <div class="text-sm text-zinc-500">{{ __('Starts :date', ['date' => $submission->start_date?->format('M j, Y') ?? __('not set')]) }}</div>
+                            <div @class([
+                                'text-sm',
+                                'text-green-700' => $onTime === true,
+                                'text-orange-700' => $onTime === false,
+                                'font-medium text-red-700' => $overdue,
+                                'text-zinc-500' => $onTime === null && ! $overdue,
+                            ])>
+                                @if ($onTime !== null)
+                                    {{ $onTime ? __('Finished on time') : __('Finished late') }}
+                                @elseif ($overdue)
+                                    {{ trans_choice('{1} 1 day overdue|[2,*] :count days overdue', (int) $submission->target_date->diffInDays(today())) }}
+                                @elseif ($submission->target_date)
+                                    {{ trans_choice('{0} Due today|{1} 1 day left|[2,*] :count days left', (int) today()->diffInDays($submission->target_date)) }}
+                                @else
+                                    {{ __('No schedule yet') }}
+                                @endif
+                            </div>
                         </flux:table.cell>
-                        <flux:table.cell>
+                        <flux:table.cell align="end">
                             @if ($this->monitoring)
                                 <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
                             @else
-                                <flux:button size="sm" variant="ghost" inset="top bottom" :href="route('submissions.edit', $submission)" wire:navigate :aria-label="__('Edit :title', ['title' => $submission->title])" data-test="edit-submission-button" class="max-sm:h-11">
+                                <flux:button size="sm" variant="ghost" inset="top bottom" icon="pencil-square" :href="route('submissions.edit', $submission)" wire:navigate :aria-label="__('Edit :title', ['title' => $submission->title])" data-test="edit-submission-button" class="max-sm:h-11">
                                     {{ __('Edit') }}
                                 </flux:button>
                             @endif

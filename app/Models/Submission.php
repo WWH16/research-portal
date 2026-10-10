@@ -66,8 +66,8 @@ class Submission extends Model
     /** Stages that count as "still at proposal stage" in the yearly summary. */
     public const PROPOSAL_STAGES = ['Concept', 'Detailed'];
 
-    /** Flux badge colour for each status, shared by every list that shows one. */
-    public const STATUS_COLORS = ['Concept' => 'sky', 'Detailed' => 'amber', 'Mid-year' => 'violet', 'Completed' => 'green'];
+    /** Flux badge colour for each status, shared by every list that shows one. Neutral for a new proposal, green once complete; amber stays free for "awaiting review". */
+    public const STATUS_COLORS = ['Concept' => 'zinc', 'Detailed' => 'blue', 'Mid-year' => 'violet', 'Completed' => 'green'];
 
     /** The documents a project collects, keyed by the prefix of the column that holds each one. */
     public const DOCUMENTS = ['concept' => 'Concept proposal', 'detailed' => 'Detailed proposal', 'midyear' => 'Mid-year progress report', 'terminal' => 'Terminal report'];

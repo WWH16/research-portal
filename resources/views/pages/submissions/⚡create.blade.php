@@ -377,12 +377,19 @@ new #[Title('Research Project')] class extends Component {
     }
 }; ?>
 
-{{-- Same width as the Submissions list and My Profile, so the page doesn't jump when you open it --}}
+{{-- Same width as My Profile, so the form doesn't jump between the two --}}
 <section class="mx-auto w-full max-w-4xl">
-    <header class="flex items-center gap-4 border-b border-line pb-6">
-        @php($backLabel = $this->backUrl === route('submissions.index') ? __('Back to Submissions') : __('Back to Research Drive'))
-        <flux:button :href="$this->backUrl" variant="ghost" icon="arrow-left" wire:navigate :aria-label="$backLabel" :tooltip="$backLabel" class="-ms-2 shrink-0" data-test="back-to-submissions" />
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+    {{-- A child page, so a breadcrumb back to where it was opened from, like the publication form --}}
+    <header class="grid gap-4 border-b border-line pb-6">
+        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1" data-test="back-to-submissions">
+            @if ($this->backUrl === route('submissions.index'))
+                <flux:breadcrumbs.item :href="route('submissions.index')" wire:navigate>{{ __('Submissions') }}</flux:breadcrumbs.item>
+            @else
+                <flux:breadcrumbs.item :href="route('drive.index')" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
+                <flux:breadcrumbs.item :href="$this->backUrl" wire:navigate>{{ str($submission->title)->limit(40) }}</flux:breadcrumbs.item>
+            @endif
+            <flux:breadcrumbs.item>{{ $submission ? __('Edit') : __('New proposal') }}</flux:breadcrumbs.item>
+        </flux:breadcrumbs>
         <flux:heading size="xl" level="1">{{ $submission ? __('Edit Project') : __('Submit Proposal') }}</flux:heading>
     </header>
 

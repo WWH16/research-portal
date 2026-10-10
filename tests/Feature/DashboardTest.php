@@ -109,10 +109,10 @@ class DashboardTest extends TestCase
         $lastYear = Livewire::test('pages::dashboard')->call('preset', 'last-year');
         $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
 
-        // The proposal-stage list flags what waits on the Research Office, next to the stage.
+        // The proposal-stage list flags what waits on the Research Office, under the stage.
         Livewire::withQueryParams(['group' => 'proposal'])
             ->test('pages::dashboard')
-            ->assertSeeInOrder(['SMART-ResearchTrack', 'Concept to review', 'Detailed']);
+            ->assertSeeInOrder(['SMART-ResearchTrack', 'Detailed', 'Awaiting review']);
     }
 
     public function test_date_range_filters_the_summary_by_filing_date(): void

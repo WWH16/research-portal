@@ -133,7 +133,7 @@ class DriveTest extends TestCase
     {
         $this->actingAs($this->navarro);
 
-        $page = $this->get(route('submissions.edit', [$this->smart, 'from' => 'drive']))->assertOk()->assertSee('Back to Research Drive');
+        $page = $this->get(route('submissions.edit', [$this->smart, 'from' => 'drive']))->assertOk()->assertSeeInOrder(['Research Drive', $this->smart->title, 'Edit']);
 
         // The sidebar keeps Research Drive highlighted, not Submissions.
         $current = fn (string $url) => preg_match('#<a\b[^>]*href="'.preg_quote($url, '#').'"[^>]*\sdata-current[=\s>]#', $page->getContent());

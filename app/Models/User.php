@@ -79,6 +79,17 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * The name as lists print it, like the publication list: "John Ansley Rocel" reads "JA Rocel". A name
+     * registered in capitals is put in title case first, so it doesn't shout beside the rest of the row.
+     */
+    public function shortName(): string
+    {
+        $name = $this->name === mb_strtoupper($this->name) ? Str::title($this->name) : $this->name;
+
+        return Publication::shortName($name);
+    }
+
+    /**
      * Give every new account a researcher ID unless one was set explicitly.
      */
     protected static function booted(): void

@@ -112,7 +112,7 @@
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
         <div x-data="{ open: false }" class="mt-4">
             <flux:button size="sm" icon="table-cells" class="max-sm:h-11" x-on:click="open = ! open" x-bind:aria-expanded="open" aria-expanded="false">
-                <span x-text="open ? @js(__('Hide table')) : @js(__('View as table'))">{{ __('View as table') }}</span>
+                <span x-text="open ? @js(__('Hide table')) : @js(__('Show as table'))">{{ __('Show as table') }}</span>
             </flux:button>
             <div x-show="open" x-cloak @unless (isset($heading)) role="group" aria-label="{{ __('Citations per year') }}" @endunless>
                 <flux:table class="mt-3 tabular-nums">

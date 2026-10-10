@@ -339,8 +339,7 @@ new #[Title('Submissions')] class extends Component {
 
             <flux:table.rows>
                 @foreach ($this->submissions as $submission)
-                    {{-- Titles are often saved from file names, so underscores read as spaces here --}}
-                    @php($title = str_replace('_', ' ', $submission->title))
+                    @php($title = $submission->displayTitle())
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="min-w-64 max-w-sm whitespace-normal">
                             <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline">{{ $title }}</a>

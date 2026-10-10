@@ -2,12 +2,17 @@
     A dashboard stat tile: label, value, a short note, and optionally a status swatch. The whole
     tile opens the list it counts. Label, value and note sit on the parent grid's rows (subgrid),
     so values and notes line up across a row even when a label wraps.
-    Expects: $label, $value, $note, $href; optional $swatch (background class).
+    Expects: $label, $value, $note, $href; optional $swatch, a background class or a list of them for a tile that
+    counts several stages.
 --}}
 <a href="{{ $href }}" wire:navigate class="group row-span-3 grid grid-rows-subgrid gap-y-0 rounded-xl border border-line bg-surface p-5 transition hover:border-zinc-300 hover:shadow-sm hover:shadow-zinc-900/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
     <span class="flex items-center gap-2 self-start text-sm text-zinc-600">
         @isset($swatch)
-            <span class="h-2.5 w-3 shrink-0 rounded-sm {{ $swatch }}" aria-hidden="true"></span>
+            <span class="flex shrink-0 gap-0.5" aria-hidden="true">
+                @foreach ((array) $swatch as $class)
+                    <span class="h-2.5 w-3 rounded-sm {{ $class }}"></span>
+                @endforeach
+            </span>
         @endisset
         {{ $label }}
     </span>

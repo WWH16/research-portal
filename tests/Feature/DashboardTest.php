@@ -103,11 +103,11 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $component = Livewire::test('pages::dashboard')->assertSet('from', "{$year}-01-01")->assertSet('to', "{$year}-12-31");
-        $this->assertSame(['submitted' => 3, 'pending' => 0, 'proposal' => 3, 'completed' => 1, 'delayed' => 0], $component->instance()->facultyCounts);
+        $this->assertSame(['submitted' => 3, 'pending' => 0, 'proposal' => 3, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $component->instance()->facultyCounts);
         $component->assertSee('Across 2 projects in '.$year)->assertSee('1 of 1 project finished on time');
 
         $lastYear = Livewire::test('pages::dashboard')->call('preset', 'last-year');
-        $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
+        $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
 
         // The proposal-stage list flags what waits on the Research Office, under the stage.
         Livewire::withQueryParams(['group' => 'proposal'])
@@ -256,7 +256,7 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard', $sinceLastMonth))
             ->assertSee('Submissions per month')
             ->assertSee("{$lastMonth}: 2 projects, 1 Concept, 1 Detailed, 0 Mid-year, 0 Completed")
-            ->assertSee('View as table');
+            ->assertSee('Show as table');
 
         // Projects have no research type any more, so the summary charts colleges and categories only.
         $breakdowns = Livewire::withQueryParams($sinceLastMonth)->test('pages::dashboard')->instance()->breakdowns;
@@ -308,6 +308,31 @@ class DashboardTest extends TestCase
             ->assertSee(route('submissions.create'), escape: false);
     }
 
+    public function test_faculty_with_nothing_due_get_a_calm_dashboard(): void
+    {
+        $maria = $this->facultyInDepartment('MARIA DELA SANTOS');
+        $due = today()->addMonths(3);
+        $this->submit($maria, 'Sentiment_Analysis_Study', 'Concept', ['target_date' => $due]);
+        $this->submit($maria, 'Second Study');
+
+        $this->actingAs($maria);
+
+        $this->get(route('dashboard'))
+            ->assertSee('Welcome, MD Santos.')
+            // One line instead of an empty panel, and a zero delayed count stays gray
+            ->assertSee('Nothing needs your attention.')
+            ->assertDontSee('Needs your attention')
+            ->assertDontSee('bg-status-delayed', escape: false)
+            ->assertSee('bg-zinc-300', escape: false)
+            // Underscores read as spaces, and each project shows when it is due
+            ->assertSee('Sentiment Analysis Study')
+            ->assertDontSee('Sentiment_Analysis_Study')
+            ->assertSee('Due '.$due->format('M j, Y'))
+            // Two projects in one month: the axis tops out at 3, above the tallest bar
+            ->assertSeeHtml('<span class="-my-2">3</span>')
+            ->assertSee('Show as table');
+    }
+
     public function test_faculty_without_a_department_are_told_to_contact_the_research_office(): void
     {
         $this->actingAs(User::factory()->create(['department_id' => null]));
@@ -342,6 +367,7 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee(route('submissions.index', ['status' => 'proposal']), escape: false)
+            ->assertSee(route('submissions.index', ['status' => 'Mid-year']), escape: false)
             ->assertSee(route('submissions.index', ['status' => 'Completed']), escape: false)
             ->assertSee(route('submissions.index', ['status' => 'delayed']), escape: false);
 

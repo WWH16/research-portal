@@ -5,10 +5,11 @@
 --}}
 @php
     $peak = max(1, max(array_column($monthly, 'total')));
-    // Round the axis up to a clean number (1, 2, 4, 6, 8, 10, 20, 40...) whose half is whole, so no tick reads 2.5.
-    $magnitude = 10 ** floor(log10($peak));
-    $axisMax = collect([1, 2, 4, 6, 8, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
-    $ticks = $axisMax >= 2 ? [$axisMax, $axisMax / 2, 0] : [$axisMax, 0];
+    // The smallest clean number above the peak, never equal to it, so the tallest bar always has headroom under
+    // the top line: a peak of 2 gets 3, 5 gets 6, 10 gets 20. Ticks run by whole steps, every one up to 5.
+    $magnitude = (int) (10 ** floor(log10($peak)));
+    $axisMax = collect([1, 2, 3, 4, 5, 6, 8, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value > $peak);
+    $ticks = range($axisMax, 0, $axisMax / $magnitude <= 5 ? $magnitude : 2 * $magnitude);
     $filed = array_sum(array_column($monthly, 'total'));
     $columns = count($monthly);
     // Label every month up to 12 columns; past that, every other one, so the labels never collide.
@@ -22,8 +23,15 @@
             <flux:text class="mt-1">{{ __(':period, by current status.', ['period' => ucfirst($period)]) }}</flux:text>
         </div>
 
-        <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
-            @foreach ($bars as $status => $class)
+        {{-- Grouped the way the stat tiles count them: Concept and Detailed sit under "At proposal stage" --}}
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-600" data-test="chart-legend">
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span class="text-zinc-500">{{ __('At proposal stage:') }}</span>
+                @foreach (\App\Models\Submission::PROPOSAL_STAGES as $status)
+                    <span class="flex items-center gap-2"><span class="h-2.5 w-3 rounded-sm {{ $bars[$status] }}" aria-hidden="true"></span>{{ __($status) }}</span>
+                @endforeach
+            </li>
+            @foreach (array_diff_key($bars, array_flip(\App\Models\Submission::PROPOSAL_STAGES)) as $status => $class)
                 <li class="flex items-center gap-2">
                     <span class="h-2.5 w-3 rounded-sm {{ $class }}" aria-hidden="true"></span>{{ __($status) }}
                 </li>
@@ -115,7 +123,7 @@
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
         <div x-data="{ open: false }" class="mt-4">
             <flux:button size="sm" icon="table-cells" class="max-sm:h-11" x-on:click="open = ! open" x-bind:aria-expanded="open" aria-expanded="false">
-                <span x-text="open ? @js(__('Hide table')) : @js(__('View as table'))">{{ __('View as table') }}</span>
+                <span x-text="open ? @js(__('Hide table')) : @js(__('Show as table'))">{{ __('Show as table') }}</span>
             </flux:button>
             <div x-show="open" x-cloak>
                 <flux:table class="mt-3 tabular-nums">

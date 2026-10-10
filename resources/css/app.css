@@ -63,8 +63,9 @@
     --color-highlight-line: var(--color-isu-gold-300);
 
     /* Project stages, shared by the chart, stat tiles and swatches. Each holds at least 3:1 on white
-       so a bar or swatch reads as a shape (WCAG 1.4.11). Badges use the matching Flux hues. */
-    --color-status-concept: var(--color-zinc-500);
+       so a bar or swatch reads as a shape (WCAG 1.4.11). Badges use the matching Flux hues, from
+       Submission::STATUS_COLORS, so change both together. */
+    --color-status-concept: var(--color-cyan-600);
     --color-status-detailed: var(--color-blue-600);
     --color-status-midyear: var(--color-violet-600);
     --color-status-completed: var(--color-green-700);

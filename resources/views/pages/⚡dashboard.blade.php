@@ -128,6 +128,7 @@ new #[Title('Dashboard')] class extends Component {
             // The inverse of "submitted": verified faculty on no project filed that year. See facultyIn().
             'pending' => ['label' => __('Not yet submitted'), 'filter' => fn ($query) => $query],
             'proposal' => ['label' => __('At proposal stage'), 'filter' => fn ($query) => $query->whereIn('status', Submission::PROPOSAL_STAGES)],
+            'midyear' => ['label' => __('At mid-year stage'), 'filter' => fn ($query) => $query->where('status', 'Mid-year')],
             'completed' => ['label' => __('Completed'), 'filter' => fn ($query) => $query->where('status', 'Completed')],
             'delayed' => ['label' => __('Delayed'), 'filter' => fn ($query) => $query->delayed()],
         ];
@@ -356,6 +357,9 @@ new #[Title('Dashboard')] class extends Component {
 @php
     // Stage colours come from the status tokens in app.css; written out in full so Tailwind keeps them.
     $bars = ['Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Mid-year' => 'bg-status-midyear', 'Completed' => 'bg-status-completed'];
+    $proposalSwatches = [$bars['Concept'], $bars['Detailed']];
+    // Delayed is red only when something is late; a zero stays neutral so it doesn't alarm anyone.
+    $delayedSwatch = fn (int $count) => $count > 0 ? 'bg-status-delayed' : 'bg-zinc-300';
 @endphp
 
 <section class="mx-auto w-full max-w-6xl">
@@ -363,7 +367,7 @@ new #[Title('Dashboard')] class extends Component {
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ __('Dashboard') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Welcome, :name.', ['name' => auth()->user()->name]) }}</flux:text>
+            <flux:text class="mt-1">{{ __('Welcome, :name.', ['name' => auth()->user()->shortName()]) }}</flux:text>
         </div>
 
         @if ($this->isAdmin)
@@ -408,9 +412,10 @@ new #[Title('Dashboard')] class extends Component {
             $kpis = [
                 'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed in :range|{1} Across one project in :range|[2,*] Across :count projects in :range', $projects['projects'], ['range' => $scope])],
                 'pending' => ['label' => __('Not yet submitted'), 'note' => __('Verified faculty on no project yet')],
-                'proposal' => ['label' => __('At proposal stage'), 'note' => __('Concept or detailed proposal uploaded'), 'swatch' => $bars['Detailed']],
+                'proposal' => ['label' => __('At proposal stage'), 'note' => __('Concept or detailed proposal uploaded'), 'swatch' => $proposalSwatches],
+                'midyear' => ['label' => __('At mid-year stage'), 'note' => __('Mid-year progress report uploaded'), 'swatch' => $bars['Mid-year']],
                 'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
-                'delayed' => ['label' => __('Delayed'), 'note' => __('Past target date, no terminal report'), 'swatch' => 'bg-status-delayed'],
+                'delayed' => ['label' => __('Delayed'), 'note' => __('Past target date, no terminal report'), 'swatch' => $delayedSwatch($facultyCounts['delayed'])],
             ];
         @endphp
 
@@ -444,8 +449,8 @@ new #[Title('Dashboard')] class extends Component {
 
         <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
             {{-- The yearly summary: faculty counts by stage, each opening the list of faculty behind it --}}
-            {{-- Five tiles: one row only once each has room (xl); pairs below that, the last spanning the row --}}
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>:last-child]:col-span-2 lg:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1" data-test="summary-tiles">
+            {{-- Six tiles: pairs on small screens, then two rows of three, so each keeps room for its note --}}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-3" data-test="summary-tiles">
                 @foreach ($kpis as $key => $kpi)
                     @include('partials.stat-tile', $kpi + ['value' => $facultyCounts[$key], 'href' => route('dashboard', $filters + ['group' => $key]).'#faculty-list'])
                 @endforeach
@@ -523,7 +528,7 @@ new #[Title('Dashboard')] class extends Component {
                                     <ul class="grid gap-1.5">
                                         @foreach ($member->projects as $project)
                                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                                                <flux:link :href="route('drive.show', $project)" variant="ghost" wire:navigate>{{ $project->title }}</flux:link>
+                                                <flux:link :href="route('drive.show', $project)" variant="ghost" wire:navigate>{{ $project->displayTitle() }}</flux:link>
                                                 {{-- Stage, with Awaiting review / Delayed under it, held at the right edge --}}
                                                 @include('partials.project-status', ['submission' => $project, 'class' => 'items-end', 'timing' => true])
                                             </li>
@@ -584,7 +589,7 @@ new #[Title('Dashboard')] class extends Component {
                             {{-- Phones wrap the title to two lines instead of cutting it to a few words beside the button --}}
                             <li class="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1">
-                                    <p class="line-clamp-2 font-medium text-zinc-800 sm:line-clamp-1">{{ $submission->title }}</p>
+                                    <p class="line-clamp-2 text-sm font-medium text-zinc-800 sm:line-clamp-1">{{ $submission->displayTitle() }}</p>
                                     <p class="text-sm text-zinc-500 sm:truncate">
                                         {{ $submission->user->name }}, {{ $submission->department->code }}.
                                         {{ __('At :status, updated :when', ['status' => __($submission->status), 'when' => $submission->updated_at->diffForHumans()]) }}
@@ -601,33 +606,42 @@ new #[Title('Dashboard')] class extends Component {
         @php
             $counts = $this->statusCounts;
             $total = array_sum($counts);
+            $delayed = $this->myProjects->filter->isDelayed()->count();
 
             $kpis = [
                 ['label' => __('My projects'), 'value' => $total, 'note' => __('Filed or listed as proponent'), 'href' => route('submissions.index')],
-                ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal uploaded'), 'href' => route('submissions.index', ['status' => 'proposal']), 'swatch' => $bars['Detailed']],
+                ['label' => __('At proposal stage'), 'value' => $counts['Concept'] + $counts['Detailed'], 'note' => __('Concept or detailed proposal uploaded'), 'href' => route('submissions.index', ['status' => 'proposal']), 'swatch' => $proposalSwatches],
+                ['label' => __('At mid-year stage'), 'value' => $counts['Mid-year'], 'note' => __('Mid-year progress report uploaded'), 'href' => route('submissions.index', ['status' => 'Mid-year']), 'swatch' => $bars['Mid-year']],
                 ['label' => __('Completed'), 'value' => $counts['Completed'], 'note' => __('Terminal report uploaded'), 'href' => route('submissions.index', ['status' => 'Completed']), 'swatch' => $bars['Completed']],
-                ['label' => __('Delayed'), 'value' => $this->myProjects->filter->isDelayed()->count(), 'note' => __('Past target date, no terminal report'), 'href' => route('submissions.index', ['status' => 'delayed']), 'swatch' => 'bg-status-delayed'],
+                ['label' => __('Delayed'), 'value' => $delayed, 'note' => __('Past target date, no terminal report'), 'href' => route('submissions.index', ['status' => 'delayed']), 'swatch' => $delayedSwatch($delayed)],
             ];
         @endphp
 
         <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4">
+            {{-- Five tiles: one row only once each has room (xl); pairs below that, the last spanning the row --}}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>:last-child]:col-span-2 lg:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1">
                 @foreach ($kpis as $kpi)
                     @include('partials.stat-tile', $kpi)
                 @endforeach
             </div>
 
-            <flux:card class="lg:col-span-8" data-test="attention-tile">
-                <flux:heading level="2">{{ __('Needs your attention') }}</flux:heading>
+            @php($calm = $this->needsAttention->isEmpty())
 
-                @if ($this->needsAttention->isEmpty())
-                    <flux:text class="mt-4">{{ __('Nothing needs your attention.') }}</flux:text>
-                @else
+            {{-- With nothing to act on, the attention panel shrinks to one line so the chart and projects move up --}}
+            @if ($calm)
+                <p class="flex items-center gap-2 text-sm text-zinc-600 lg:col-span-12" data-test="attention-tile">
+                    <flux:icon.check-circle variant="mini" class="shrink-0 text-isu-green-700" aria-hidden="true" />
+                    {{ __('Nothing needs your attention.') }}
+                </p>
+            @else
+                <flux:card class="lg:col-span-8" data-test="attention-tile">
+                    <flux:heading level="2">{{ __('Needs your attention') }}</flux:heading>
+
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->needsAttention as $submission)
                             <li class="py-3 first:pt-0 last:pb-0">
                                 <div class="flex items-center gap-3">
-                                    <p class="min-w-0 flex-1 truncate font-medium text-zinc-800">{{ $submission->title }}</p>
+                                    <p class="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800">{{ $submission->displayTitle() }}</p>
                                     @if ($submission->conceptReview() === 'returned')
                                         <flux:badge size="sm" color="amber">{{ __('Concept needs revision') }}</flux:badge>
                                     @endif
@@ -645,21 +659,27 @@ new #[Title('Dashboard')] class extends Component {
                             </li>
                         @endforeach
                     </ul>
-                @endif
-            </flux:card>
+                </flux:card>
+            @endif
 
-            <div class="flex flex-col gap-6 lg:col-span-4">
-                <flux:card data-test="submit-tile">
-                    <flux:heading level="2">{{ __('Submit a proposal') }}</flux:heading>
+            {{-- The dashboard's main action. Beside the attention list it stacks; alone it runs the full width as one band --}}
+            <flux:card @class(['lg:col-span-4' => ! $calm, 'lg:col-span-12' => $calm]) data-test="submit-tile">
+                <div @class(['lg:flex lg:items-center lg:justify-between lg:gap-6' => $calm])>
+                    <div>
+                        <flux:heading level="2">{{ __('Start a research project') }}</flux:heading>
+
+                        @if (auth()->user()->department_id)
+                            <flux:text class="mt-2">{{ __('Upload your concept proposal for the Research Office to review. The detailed proposal and reports go on the same project later.') }}</flux:text>
+                        @else
+                            <flux:text class="mt-2">{{ __('Your account has no college yet. Contact the Research Office to have one assigned.') }}</flux:text>
+                        @endif
+                    </div>
 
                     @if (auth()->user()->department_id)
-                        <flux:text class="mt-2">{{ __('Enter the project once, then upload each document on it as it’s ready.') }}</flux:text>
-                        <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-4 max-sm:h-11 max-sm:w-full">{{ __('New proposal') }}</flux:button>
-                    @else
-                        <flux:text class="mt-2">{{ __('Your account has no college yet. Contact the Research Office to have one assigned.') }}</flux:text>
+                        <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate @class(['mt-4 shrink-0 max-sm:h-11 max-sm:w-full', 'lg:mt-0' => $calm])>{{ __('New proposal') }}</flux:button>
                     @endif
-                </flux:card>
-            </div>
+                </div>
+            </flux:card>
 
             @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('My submissions per month'), 'period' => __('the last 12 months')])
 
@@ -676,12 +696,16 @@ new #[Title('Dashboard')] class extends Component {
                 @else
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->myProjects->take(5) as $submission)
-                            <li class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                                <div class="min-w-0 flex-1">
-                                    <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
-                                    <p class="truncate text-sm text-zinc-500">{{ $submission->category->name }}, {{ $submission->year }}</p>
+                            @php($title = $submission->displayTitle())
+                            <li class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                                <div class="min-w-0 flex-1 text-sm">
+                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline sm:line-clamp-1">{{ $title }}</a>
+                                    <p class="mt-0.5 truncate tabular-nums text-zinc-500">
+                                        {{ $submission->category->name }} ·
+                                        <span @class(['font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('M j, Y')]) : __('No schedule yet') }}</span>
+                                    </p>
                                 </div>
-                                <flux:badge size="sm" :color="\App\Models\Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">{{ __($submission->status) }}</flux:badge>
+                                @include('partials.project-status', ['class' => 'items-end', 'timing' => true])
                             </li>
                         @endforeach
                     </ul>

@@ -76,6 +76,16 @@ new #[Title('Publications')] class extends Component {
         $this->authorRows = array_values($this->authorRows);
     }
 
+    /**
+     * Swap a row with the one above or below it, so the list can follow the printed order with you anywhere in it.
+     */
+    public function moveAuthor(int $index, int $to): void
+    {
+        if (isset($this->authorRows[$index], $this->authorRows[$to])) {
+            [$this->authorRows[$index], $this->authorRows[$to]] = [$this->authorRows[$to], $this->authorRows[$index]];
+        }
+    }
+
     public function save(): void
     {
         $this->publication ? $this->authorize('update', $this->publication) : $this->authorize('create', Publication::class);
@@ -106,7 +116,8 @@ new #[Title('Publications')] class extends Component {
             'authorRows.*.name.not_regex' => __('Type one name per row, without semicolons.'),
             'submission_id.in' => __('Pick one of your completed projects.'),
         ], [
-            'published_on' => __('date published'),
+            'journal' => __('journal or proceedings'),
+            'published_on' => __('publication date'),
             'link' => __('DOI or link'),
             'submission_id' => __('project'),
             'authorRows.*.user_id' => __('author'),
@@ -178,15 +189,6 @@ new #[Title('Publications')] class extends Component {
     }
 
     /**
-     * Where Back and Cancel lead: the publication when editing, the member's profile when adding.
-     */
-    #[Computed]
-    public function backUrl(): string
-    {
-        return $this->publication ? route('publications.show', $this->publication) : route('faculty.show', Auth::user());
-    }
-
-    /**
      * Completed projects the member is on, plus the one already linked, so a co-author who isn't on it keeps the link.
      */
     #[Computed]
@@ -208,7 +210,9 @@ new #[Title('Publications')] class extends Component {
         // ponytail: one plain select of every verified faculty member, as on the project form; switch to a searchable picker past a few hundred.
         return User::where('role', 'faculty')
             ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))
-            ->orderBy('name')->get(['id', 'name']);
+            ->get(['id', 'name'])
+            // Listed surname first, as the paper prints them, so sorted the same way.
+            ->sortBy(fn (User $member) => Publication::formatName($member->name, initials: false))->values();
     }
 
     /**
@@ -223,72 +227,60 @@ new #[Title('Publications')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-4xl">
-    <header class="flex items-center gap-4 border-b border-line pb-6">
-        <flux:button :href="$this->backUrl" variant="ghost" icon="arrow-left" wire:navigate :aria-label="__('Back')" :tooltip="__('Back')" class="-ms-2 shrink-0" />
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+    {{-- The same breadcrumb as the publication page, which an edit came from and a new one goes to --}}
+    <header class="grid gap-4 border-b border-line pb-6">
+        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
+            <flux:breadcrumbs.item :href="route('faculty.show', Auth::user())" wire:navigate>{{ __('My Publications') }}</flux:breadcrumbs.item>
+            @if ($publication)
+                <flux:breadcrumbs.item :href="route('publications.show', $publication)" wire:navigate>{{ str($publication->title)->limit(40) }}</flux:breadcrumbs.item>
+                <flux:breadcrumbs.item>{{ __('Edit') }}</flux:breadcrumbs.item>
+            @else
+                <flux:breadcrumbs.item>{{ __('Add publication') }}</flux:breadcrumbs.item>
+            @endif
+        </flux:breadcrumbs>
         <flux:heading size="xl" level="1">{{ $publication ? __('Edit Publication') : __('Add Publication') }}</flux:heading>
     </header>
 
-    <form wire:submit="save" class="mt-8 flex flex-col gap-6">
+    {{-- Ordered like a citation: what the paper is, who wrote it, where it came out, then the optional extras.
+         Each group is a fieldset with a larger legend, so the sections read before the fields inside them. --}}
+    <form wire:submit="save" class="mt-8 flex flex-col gap-8">
         <flux:input wire:model="title" :label="__('Title')" type="text" maxlength="255" required autofocus />
 
-        <flux:input wire:model="journal" :label="__('Journal')" :description:trailing="__('Where the paper was published: the journal, or the conference proceedings.')" type="text" maxlength="255" required />
-
-        <div>
-            <div class="grid gap-6 sm:grid-cols-3">
-                <flux:input wire:model="volume" :label="__('Volume')" :badge="__('Optional')" type="text" maxlength="50" />
-                <flux:input wire:model="issue" :label="__('Issue')" :badge="__('Optional')" type="text" maxlength="50" />
-                <flux:input wire:model="pages" :label="__('Pages')" :badge="__('Optional')" type="text" maxlength="50" />
-            </div>
-            <flux:text class="mt-2 text-sm">{{ __('Printed on the paper’s first page or the journal’s website, for example Vol. 12, Issue 3, pages 45–60. Leave a box empty if the paper doesn’t have one.') }}</flux:text>
-        </div>
-
-        <flux:checkbox.group wire:model="indexed_in" variant="pills" :label="__('Indexed in')" :badge="__('Optional')" :description:trailing="__('The databases that list the journal or proceedings. Check the journal’s website if you’re not sure. Leave all unticked if it isn’t indexed.')" data-test="indexed-in">
-            @foreach (Publication::INDEXES as $key => $label)
-                <flux:checkbox :value="$key" :label="__($label)" />
-            @endforeach
-        </flux:checkbox.group>
-
-        <div class="grid gap-6 sm:grid-cols-2">
-            <flux:input wire:model="published_on" :label="__('Date published')" :description:trailing="__('If you only know the month or year, pick the first day.')" type="date" :max="today()->toDateString()" required />
-            <flux:input wire:model="link" :label="__('DOI or link')" :description:trailing="__('A DOI is the paper’s permanent ID, starting with 10., such as 10.1000/xyz123. It is usually on the first page. No DOI? Paste the paper’s web address.')" type="text" maxlength="500" required />
-        </div>
-
-        <flux:textarea wire:model="description" :label="__('Description')" :badge="__('Optional')" :description:trailing="__('A short summary, such as the paper’s abstract.')" rows="4" />
-
-        <flux:select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('If the paper reports one of your completed projects in the portal, pick it.')">
-            <flux:select.option value="">{{ __('No project') }}</flux:select.option>
-            @foreach ($this->projects as $project)
-                <flux:select.option :value="$project->id">{{ $project->title }} ({{ $project->year }})</flux:select.option>
-            @endforeach
-        </flux:select>
-
-        <flux:fieldset>
-            <flux:legend>{{ __('Authors') }}</flux:legend>
-            <flux:description>{{ __('Everyone who wrote the paper, in the order printed on it, starting with you. Pick each author who has a portal account: the paper shows on each of their profiles, and any of them can edit it. Type the names of authors outside the portal.') }}</flux:description>
+        <flux:fieldset class="border-t border-line pt-8">
+            <flux:legend class="text-lg!">{{ __('Authors') }}</flux:legend>
+            <flux:description>{{ __('In the order printed on the paper. Each author picked from the portal sees the paper on their profile and can edit it.') }}</flux:description>
 
             <div class="mt-4 grid gap-3">
                 @foreach ($authorRows as $index => $row)
                     @php($field = array_key_exists('name', $row) ? 'name' : 'user_id')
-                    <div class="grid grid-cols-[minmax(0,1fr)_2.5rem] items-start gap-2" wire:key="author-{{ $index }}-{{ $field }}" data-test="author-row">
-                        @if ($field === 'name')
+                    @php($you = (int) ($row['user_id'] ?? 0) === Auth::id())
+                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2" wire:key="author-{{ $index }}-{{ $field }}" data-test="author-row">
+                        {{-- Your own row is fixed, so you can't drop yourself or pick someone else in your place; the arrows move it --}}
+                        @if ($you)
+                            <flux:input :value="__(':name (you)', ['name' => Publication::formatName(Auth::user()->name, initials: false)])" :aria-label="__('Author')" disabled data-test="author-you" />
+                        @elseif ($field === 'name')
                             <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('Full name, for example Juan Dela T. Cruz')" type="text" maxlength="100" />
                         @else
                             <flux:select wire:model="authorRows.{{ $index }}.user_id" :aria-label="__('Author')">
                                 <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
-                                @foreach ($this->faculty as $member)
-                                    <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
+                                @foreach ($this->faculty->except(Auth::id()) as $member)
+                                    <flux:select.option :value="$member->id">{{ Publication::formatName($member->name, initials: false) }}</flux:select.option>
                                 @endforeach
                             </flux:select>
                         @endif
 
-                        <flux:button variant="ghost" icon="x-mark" wire:click="removeAuthor({{ $index }})" :aria-label="__('Remove author')" :disabled="count($authorRows) === 1" />
+                        <div class="flex">
+                            <flux:button variant="ghost" icon="arrow-up" wire:click="moveAuthor({{ $index }}, {{ $index - 1 }})" :aria-label="__('Move up')" :tooltip="__('Move up')" :disabled="$loop->first" />
+                            <flux:button variant="ghost" icon="arrow-down" wire:click="moveAuthor({{ $index }}, {{ $index + 1 }})" :aria-label="__('Move down')" :tooltip="__('Move down')" :disabled="$loop->last" />
+                            <flux:button variant="ghost" icon="x-mark" wire:click="removeAuthor({{ $index }})" :aria-label="__('Remove author')" :tooltip="__('Remove author')" :disabled="$you" />
+                        </div>
                     </div>
                     <flux:error name="authorRows.{{ $index }}.{{ $field }}" />
                 @endforeach
             </div>
 
-            <flux:error name="authorRows" class="mt-2" />
+            {{-- Only the list-wide errors; each row shows its own below it --}}
+            <flux:error name="authorRows" :deep="false" class="mt-2" />
 
             <div class="mt-3 flex flex-wrap gap-2">
                 <flux:button size="sm" icon="plus" wire:click="addAuthor">{{ __('Add co-author') }}</flux:button>
@@ -296,14 +288,48 @@ new #[Title('Publications')] class extends Component {
             </div>
         </flux:fieldset>
 
+        <flux:fieldset class="border-t border-line pt-8">
+            <flux:legend class="text-lg!">{{ __('Where it was published') }}</flux:legend>
+
+            <div class="grid gap-6 sm:grid-cols-3">
+                <flux:input wire:model="journal" :label="__('Journal or proceedings')" type="text" maxlength="255" required field:class="sm:col-span-3" />
+
+                <flux:input wire:model="volume" :label="__('Volume')" :badge="__('Optional')" :placeholder="__('e.g. 12')" type="text" maxlength="50" />
+                <flux:input wire:model="issue" :label="__('Issue')" :badge="__('Optional')" :placeholder="__('e.g. 3')" type="text" maxlength="50" />
+                <flux:input wire:model="pages" :label="__('Pages')" :badge="__('Optional')" :placeholder="__('e.g. 45–60')" type="text" maxlength="50" />
+
+                <flux:input wire:model="published_on" :label="__('Publication date')" :description:trailing="__('Day unknown? Pick the 1st.')" type="date" :max="today()->toDateString()" required />
+                <flux:input wire:model="link" :label="__('DOI or link')" :description:trailing="__('The DOI is usually on the paper’s first page.')" :placeholder="__('e.g. https://doi.org/10.1000/xyz123')" type="text" maxlength="500" required field:class="sm:col-span-2" />
+
+                <flux:checkbox.group wire:model="indexed_in" variant="pills" :label="__('Indexed in')" :badge="__('Optional')" :description:trailing="__('Check the journal’s website if you’re not sure.')" field:class="sm:col-span-3" data-test="indexed-in">
+                    @foreach (Publication::INDEXES as $key => $label)
+                        <flux:checkbox :value="$key" :label="__($label)" />
+                    @endforeach
+                </flux:checkbox.group>
+            </div>
+        </flux:fieldset>
+
+        <flux:fieldset class="border-t border-line pt-8">
+            <flux:legend class="text-lg!">{{ __('More details') }}</flux:legend>
+
+            <flux:textarea wire:model="description" :label="__('Description')" :badge="__('Optional')" :description:trailing="__('The abstract or a short summary.')" rows="4" />
+
+            <flux:select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')">
+                <flux:select.option value="">{{ __('No project') }}</flux:select.option>
+                @foreach ($this->projects as $project)
+                    <flux:select.option :value="$project->id">{{ $project->title }} ({{ $project->year }})</flux:select.option>
+                @endforeach
+            </flux:select>
+        </flux:fieldset>
+
         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6">
             @if ($publication)
                 <flux:modal.trigger name="publication-delete">
-                    <flux:button variant="ghost" icon="trash" class="me-auto text-red-700!" data-test="delete-publication-button">{{ __('Delete publication') }}</flux:button>
+                    <flux:button variant="ghost" icon="trash" class="me-auto" data-test="delete-publication-button">{{ __('Delete publication') }}</flux:button>
                 </flux:modal.trigger>
             @endif
 
-            <flux:button :href="$this->backUrl" variant="ghost" wire:navigate>{{ __('Cancel') }}</flux:button>
+            <flux:button :href="$publication ? route('publications.show', $publication) : route('faculty.show', Auth::user())" variant="ghost" wire:navigate>{{ __('Cancel') }}</flux:button>
             <flux:button type="submit" variant="primary" data-test="save-publication-button">{{ $publication ? __('Save') : __('Add publication') }}</flux:button>
         </div>
     </form>

@@ -100,30 +100,38 @@ class Publication extends Model
      */
     public function formattedAuthors(): string
     {
+        return collect(explode(';', $this->authors))->map(fn (string $name) => self::formatName($name))->filter()->join('; ');
+    }
+
+    /**
+     * One name surname first: "Rocel, J. A." with initials, or "Rocel, John Ansley" in full, as the author picker lists faculty.
+     */
+    public static function formatName(string $name, bool $initials = true): string
+    {
         $suffix = '/^(jr|sr|ii|iii|iv)\.?$/i';
+        [$before, $after] = array_pad(array_map('trim', explode(',', $name, 2)), 2, '');
 
-        return collect(explode(';', $this->authors))->map(function (string $name) use ($suffix) {
-            [$before, $after] = array_pad(array_map('trim', explode(',', $name, 2)), 2, '');
+        if ($after !== '' && ! preg_match($suffix, $after)) {
+            // Surname first: everything before the comma is the surname, so "Dela Cruz, J." keeps both words.
+            [$surname, $given, $end] = [$before, $after, ''];
+        } else {
+            // ponytail: given name first, the last word is taken as the surname, so a two-word surname comes out wrong; store surnames apart if that matters.
+            $words = preg_split('/\s+/', $before, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            // A suffix such as Jr. or III, after a comma or not, goes last instead of being taken for the surname.
+            $end = $after !== '' ? $after : (count($words) > 1 && preg_match($suffix, end($words)) ? array_pop($words) : '');
+            $surname = (string) array_pop($words);
+            $given = implode(' ', $words);
+        }
 
-            if ($after !== '' && ! preg_match($suffix, $after)) {
-                // Surname first: everything before the comma is the surname, so "Dela Cruz, J." keeps both words.
-                [$surname, $given, $end] = [$before, $after, ''];
-            } else {
-                // ponytail: given name first, the last word is taken as the surname, so a two-word surname comes out wrong; store surnames apart if that matters.
-                $words = preg_split('/\s+/', $before, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                // A suffix such as Jr. or III, after a comma or not, goes last instead of being taken for the surname.
-                $end = $after !== '' ? $after : (count($words) > 1 && preg_match($suffix, end($words)) ? array_pop($words) : '');
-                $surname = (string) array_pop($words);
-                $given = implode(' ', $words);
-            }
+        // A name typed all in lower or all in upper case gets title case; any other stays as typed, so "McDonald" and "dela Cruz" keep theirs.
+        $case = fn (string $text) => in_array($text, [mb_strtolower($text), mb_strtoupper($text)], true) ? mb_convert_case($text, MB_CASE_TITLE) : $text;
 
-            // "j.a." and "Juan Antonio" both give "J. A.".
-            $initials = collect(preg_split('/[\s.]+/', $given, -1, PREG_SPLIT_NO_EMPTY) ?: [])->map(fn (string $part) => mb_strtoupper(mb_substr($part, 0, 1)).'.')->join(' ');
-            // A surname typed all in lower case gets its capital; any other stays as typed, so "McDonald" and "dela Cruz" keep theirs.
-            $surname = $surname === mb_strtolower($surname) ? mb_convert_case($surname, MB_CASE_TITLE) : $surname;
+        // "j.a." and "Juan Antonio" both give "J. A.".
+        $given = $initials
+            ? collect(preg_split('/[\s.]+/', $given, -1, PREG_SPLIT_NO_EMPTY) ?: [])->map(fn (string $part) => mb_strtoupper(mb_substr($part, 0, 1)).'.')->join(' ')
+            : $case($given);
 
-            return implode(', ', array_filter([$surname, $initials, $end]));
-        })->filter()->join('; ');
+        return implode(', ', array_filter([$case($surname), $given, $end]));
     }
 
     public function authoredBy(User $user): bool

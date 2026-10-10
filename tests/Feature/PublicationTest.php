@@ -55,6 +55,10 @@ class PublicationTest extends TestCase
         $paper = new Publication(['authors' => 'Rocel, j. a.; Haley, g.; Bogan, u; Dela Cruz, J.; Rivera, Jr.; Test User; rempel, f.']);
 
         $this->assertSame('Rocel, J. A.; Haley, G.; Bogan, U.; Dela Cruz, J.; Rivera, Jr.; User, T.; Rempel, F.', $paper->formattedAuthors());
+
+        // A name saved in capitals, as accounts often are, reads the same in the list and in the author picker.
+        $this->assertSame('Rocel, J. A.', Publication::formatName('JOHN ANSLEY ROCEL'));
+        $this->assertSame('Rocel, John Ansley', Publication::formatName('JOHN ANSLEY ROCEL', initials: false));
     }
 
     public function test_deleting_a_publication_takes_its_citing_papers_and_deleting_its_project_keeps_it(): void
@@ -195,6 +199,24 @@ class PublicationTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('Soriano; Rivera', $paper->fresh()->authors);
+    }
+
+    public function test_your_own_author_row_stays_but_moves_to_its_printed_place(): void
+    {
+        $this->actingAs($this->rivera);
+
+        Livewire::test('pages::publications.create')
+            ->assertSeeHtml('data-test="author-you"')
+            ->call('addAuthor', true)
+            ->set('authorRows.1.name', 'Garcia, P.')
+            ->call('moveAuthor', 1, 0)
+            ->call('moveAuthor', 1, 2)
+            ->assertSet('authorRows', [['name' => 'Garcia, P.'], ['user_id' => $this->rivera->id]])
+            ->set($this->fields(['link' => 'doi:10.1000/second-author']))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Garcia, P.; Rivera', Publication::first()->authors);
     }
 
     public function test_indexed_in_takes_only_listed_databases_and_shows_on_the_paper(): void

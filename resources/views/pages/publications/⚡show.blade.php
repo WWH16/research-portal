@@ -138,7 +138,7 @@ new class extends Component {
                 <dd class="{{ $value }} tabular-nums">{{ $publication->published_on->format('M j, Y') }}</dd>
             </div>
             <div class="{{ $row }}">
-                <dt class="{{ $label }}">{{ __('Journal') }}</dt>
+                <dt class="{{ $label }}">{{ __('Journal or proceedings') }}</dt>
                 <dd class="{{ $value }} italic">{{ $publication->journal }}</dd>
             </div>
             @foreach (['volume' => __('Volume'), 'issue' => __('Issue'), 'pages' => __('Pages')] as $field => $name)

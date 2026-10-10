@@ -112,6 +112,8 @@ class PublicationTest extends TestCase
     {
         $this->actingAs($this->rivera);
 
+        Livewire::test('pages::publications.create')->set($this->fields(['description' => '']))->call('save')->assertHasErrors(['description' => 'required']);
+
         Livewire::test('pages::publications.create')
             ->set($this->fields(['link' => 'doi:10.1000/smart']))
             ->call('addAuthor', true)
@@ -302,6 +304,7 @@ class PublicationTest extends TestCase
             'volume' => '4',
             'published_on' => '2025-06-01',
             'link' => 'https://doi.org/10.1000/smart',
+            'description' => 'A study of research tracking at ISU.',
             ...$overrides,
         ];
     }

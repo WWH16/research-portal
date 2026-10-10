@@ -24,6 +24,7 @@ class PublicationFactory extends Factory
             'volume' => (string) fake()->numberBetween(1, 40),
             'issue' => (string) fake()->numberBetween(1, 12),
             'pages' => '1-12',
+            'description' => fake()->paragraph(),
             'published_on' => fake()->dateTimeBetween('-5 years', 'now')->format('Y-m-d'),
             'link' => 'https://doi.org/10.1000/'.fake()->unique()->bothify('????-####'),
         ];

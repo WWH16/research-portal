@@ -100,7 +100,7 @@ new #[Title('Publications')] class extends Component {
             'issue' => ['nullable', 'string', 'max:50'],
             'pages' => ['nullable', 'string', 'max:50'],
             'published_on' => ['required', 'date', 'before_or_equal:today'],
-            'description' => ['nullable', 'string', 'max:10000'],
+            'description' => ['required', 'string', 'max:10000'],
             'link' => ['required', 'url:http,https', 'max:500', Rule::unique('publications', 'link')->ignore($this->publication)],
             'submission_id' => ['nullable', 'integer', Rule::in($this->projects->pluck('id'))],
             'indexed_in' => ['array'],
@@ -310,7 +310,7 @@ new #[Title('Publications')] class extends Component {
         <flux:fieldset class="border-t border-line pt-8">
             <flux:legend class="text-lg!">{{ __('More details') }}</flux:legend>
 
-            <flux:textarea wire:model="description" :label="__('Description')" :badge="__('Optional')" :description:trailing="__('The abstract or a short summary.')" rows="4" />
+            <flux:textarea wire:model="description" :label="__('Description')" :description:trailing="__('The abstract or a short summary.')" rows="4" required />
 
             <flux:select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')">
                 <flux:select.option value="">{{ __('No project') }}</flux:select.option>

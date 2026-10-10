@@ -71,7 +71,7 @@ new class extends Component {
             <flux:heading size="xl" level="1" class="sm:row-start-1">{{ __('My Publications') }}</flux:heading>
 
             {{-- Straight after the title, so on phones it comes before the summary rather than under it --}}
-            <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 sm:col-start-2 sm:row-start-1 shadow-md shadow-isu-green-900/30" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
+            <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 sm:col-start-2 sm:row-start-1" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
         @else
             <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
                 <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty Publications') }}</flux:breadcrumbs.item>
@@ -131,7 +131,7 @@ new class extends Component {
                     <flux:heading>{{ __('No publications yet') }}</flux:heading>
                     @if ($mine)
                         <flux:text class="mt-2">{{ __('Add each paper you’ve published, then the papers that cite it.') }}</flux:text>
-                        <flux:button :href="route('publications.create')" variant="primary" icon="plus" size="sm" wire:navigate class="mt-4">{{ __('Add publication') }}</flux:button>
+                        <flux:button :href="route('publications.create')" variant="primary" icon="plus" class="mt-4 max-sm:h-11" wire:navigate>{{ __('Add publication') }}</flux:button>
                     @endif
                 </div>
             @else

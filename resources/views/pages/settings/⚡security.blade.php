@@ -73,6 +73,7 @@ new #[Title('Security settings')] class extends Component {
             $validated = $this->validate([
                 'current_password' => $this->currentPasswordRules(),
                 'password' => $this->passwordRules(),
+                'password_confirmation' => $this->passwordConfirmationRules(),
             ]);
         } catch (ValidationException $e) {
             $this->reset('current_password', 'password', 'password_confirmation');
@@ -192,15 +193,7 @@ new #[Title('Security settings')] class extends Component {
                         passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
                         viewable
                     />
-                    <flux:input
-                        wire:model="password_confirmation"
-                        :label="__('Confirm password')"
-                        type="password"
-                        required
-                        autocomplete="new-password"
-                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                        viewable
-                    />
+                    <x-password-confirmation password="$wire.password" confirmation="$wire.password_confirmation" wire:model="password_confirmation" />
                 </div>
 
                 <x-slot:footer>

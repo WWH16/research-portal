@@ -44,7 +44,25 @@ class AuthenticationTest extends TestCase
             'password' => 'wrong-password',
         ]);
 
-        $response->assertSessionHasErrorsIn('email');
+        $response->assertSessionHasErrors(['email' => 'Incorrect email or password.']);
+
+        $this->assertGuest();
+    }
+
+    public function test_too_many_failed_sign_ins_show_a_wait_page(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (range(1, 5) as $attempt) {
+            $this->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password']);
+        }
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password'])
+            ->assertTooManyRequests()
+            ->assertSee('Too many attempts')
+            ->assertSee('{ left: 60 }', escape: false)
+            ->assertSee(route('login'))
+            ->assertSee(route('password.request'));
 
         $this->assertGuest();
     }

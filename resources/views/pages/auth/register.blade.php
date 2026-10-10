@@ -10,7 +10,7 @@
             method="POST"
             action="{{ route('register.store') }}"
             class="flex flex-col gap-6"
-            x-data="{ submitting: false }"
+            x-data="{ submitting: false, password: '', confirmation: '' }"
             x-on:submit="submitting = true"
             x-on:pageshow.window="submitting = false"
             x-bind:aria-busy="submitting"
@@ -55,18 +55,11 @@
                 autocomplete="new-password"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
                 viewable
+                x-model="password"
             />
 
             <!-- Confirm Password -->
-            <flux:input
-                name="password_confirmation"
-                :label="__('Confirm password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
+            <x-password-confirmation password="password" confirmation="confirmation" name="password_confirmation" x-model="confirmation" />
 
             <div class="flex items-center justify-end">
                 <flux:button type="submit" variant="primary" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="register-user-button">

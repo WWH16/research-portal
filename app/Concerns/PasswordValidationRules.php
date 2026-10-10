@@ -14,7 +14,19 @@ trait PasswordValidationRules
      */
     protected function passwordRules(): array
     {
-        return ['required', 'string', Password::default(), 'confirmed'];
+        return ['required', 'string', Password::default()];
+    }
+
+    /**
+     * Get the validation rules for the password confirmation field.
+     *
+     * A mismatch is reported on this field, under Confirm password, instead of on the password through `confirmed`.
+     *
+     * @return array<int, string>
+     */
+    protected function passwordConfirmationRules(): array
+    {
+        return ['required', 'same:password'];
     }
 
     /**

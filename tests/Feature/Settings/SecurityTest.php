@@ -113,4 +113,23 @@ class SecurityTest extends TestCase
 
         $response->assertHasErrors(['current_password']);
     }
+
+    public function test_a_password_mismatch_is_reported_on_the_confirm_password_field(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test('pages::settings.security')
+            ->set('current_password', 'password')
+            ->set('password', 'new-password')
+            ->set('password_confirmation', 'new-passwrod')
+            ->call('updatePassword')
+            ->assertHasErrors(['password_confirmation'])
+            ->assertHasNoErrors(['password']);
+
+        $this->assertTrue(Hash::check('password', $user->refresh()->password));
+    }
 }

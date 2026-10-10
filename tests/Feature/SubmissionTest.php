@@ -92,8 +92,7 @@ class SubmissionTest extends TestCase
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
 
         $component = Livewire::test('pages::submissions.create')
-            ->assertSee('CCS')
-            ->assertDontSee('College of Computer Studies')
+            ->assertSee('College of Computer Studies (CCS)')
             ->assertSee('From your profile')
             ->assertDontSee('College of Business and Management')
             ->assertDontSeeHtml('wire:model="department_id"');

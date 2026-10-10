@@ -116,9 +116,9 @@
 
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
         <details class="group mt-4 text-sm" @if (! isset($heading)) aria-label="{{ __('Citations per year') }}" @endif>
-            <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-medium text-zinc-700 hover:bg-canvas hover:text-zinc-900 max-sm:min-h-11 [&::-webkit-details-marker]:hidden">
-                {{-- A table icon and a plain label, so it reads as a switch to another view, not a select --}}
-                <flux:icon.table-cells variant="micro" class="text-zinc-500" />
+            <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 h-8 rounded-lg border border-line px-3 font-medium text-zinc-700 hover:bg-canvas hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 max-sm:h-11 [&::-webkit-details-marker]:hidden">
+                {{-- Turns down when open, like the browser's disclosure triangle, not a select's chevron --}}
+                <flux:icon.chevron-right variant="micro" class="text-zinc-500 motion-safe:transition-transform group-open:rotate-90" />
                 <span class="group-open:hidden">{{ __('View as table') }}</span><span class="hidden group-open:inline">{{ __('Hide table') }}</span>
             </summary>
             <flux:table class="mt-3 tabular-nums">

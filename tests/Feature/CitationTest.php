@@ -101,7 +101,8 @@ class CitationTest extends TestCase
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->assertSeeHtml('data-test="cited-by">0<')
             ->assertDontSee('data-test="year-chart"', escape: false)
-            ->assertSee('data-test="add-citation-form"', escape: false);
+            ->assertSee('data-test="add-citation-form"', escape: false)
+            ->assertSee('No citing papers yet.');
 
         // The Research Office has nothing to add, so the empty citing-papers section is left out.
         $this->actingAs(User::factory()->create(['role' => 'admin']));
@@ -131,7 +132,7 @@ class CitationTest extends TestCase
         $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
-            ->assertSeeInOrder(['Authors', 'Rivera; Garcia, P.', 'Publication date', 'Feb 1, 2024', 'Journal', 'Isabela Journal', 'Volume', '12', 'Pages', '45-60'])
+            ->assertSeeInOrder(['Authors', 'Rivera, P Garcia', 'Publication date', 'Feb 1, 2024', 'Journal', 'Isabela Journal', 'Volume', '12', 'Pages', '45-60'])
             ->assertDontSee('Issue');
     }
 
@@ -170,7 +171,10 @@ class CitationTest extends TestCase
             ->call('addCitation')
             ->assertHasNoErrors()
             ->assertSet('link', '')
-            ->assertSeeHtml('data-test="cited-by">1<');
+            ->assertSeeHtml('data-test="cited-by">1<')
+            // The row shows the bare DOI; the full link stays in its href and hover title.
+            ->assertSeeHtml('>10.2000/cites<')
+            ->assertSeeHtml('title="https://doi.org/10.2000/cites"');
 
         $citation = $this->paper->citations()->sole();
         $this->assertSame('https://doi.org/10.2000/cites', $citation->link);

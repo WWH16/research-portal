@@ -50,6 +50,13 @@ class PublicationTest extends TestCase
         $this->assertSame('JDT Cruz, MA Rivera, Soriano, MA Rivera Jr., M Soriano III', $paper->shortAuthors());
     }
 
+    public function test_surname_first_names_print_as_initials_and_their_whole_surname(): void
+    {
+        $paper = new Publication(['authors' => 'Rocel, j. a.; Haley, g.; Bogan, u; Dela Cruz, J.; Rivera, Jr.']);
+
+        $this->assertSame('JA Rocel, G Haley, U Bogan, J Dela Cruz, Rivera, Jr.', $paper->shortAuthors());
+    }
+
     public function test_deleting_a_publication_takes_its_citing_papers_and_deleting_its_project_keeps_it(): void
     {
         $project = $this->project($this->rivera);
@@ -205,7 +212,7 @@ class PublicationTest extends TestCase
         // Unticking every box clears it.
         Livewire::test('pages::publications.create', ['publication' => $paper])->assertSet('indexed_in', ['scopus', 'aci'])->set('indexed_in', [])->call('save')->assertHasNoErrors();
         $this->assertNull($paper->fresh()->indexed_in);
-        $this->get(route('publications.show', $paper))->assertSee('Indexed in')->assertSeeHtml('data-test="indexed-in"></dd>')->assertDontSee('Not indexed');
+        $this->get(route('publications.show', $paper))->assertDontSee('Indexed in');
     }
 
     public function test_only_authors_open_the_edit_form(): void

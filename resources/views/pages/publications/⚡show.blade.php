@@ -108,7 +108,7 @@ new class extends Component {
         </flux:breadcrumbs>
 
         <div class="min-w-0 sm:col-span-2 sm:row-start-2">
-            <flux:heading size="xl" level="1" class="text-balance wrap-anywhere">{{ $publication->title }}</flux:heading>
+            <flux:heading size="xl" level="1" class="max-w-3xl text-balance wrap-anywhere">{{ $publication->title }}</flux:heading>
         </div>
 
         @if ($canEdit)
@@ -120,18 +120,18 @@ new class extends Component {
 
     {{-- A record view: each label sits in a column as wide as the longest label, with its value beside it. Every row
          spans both columns through a subgrid, so the values line up. Labels align right, against their values, and
-         the longest one starts on the page's left edge. The citations total shares the grid, so "Total citations"
-         lines up with the labels above it, and its value and chart with their values. --}}
+         the longest one starts on the page's left edge. The citations total shares the grid: its label and number
+         stack in the label column, and its chart fills the value column. --}}
     @php
         $row = 'col-span-2 grid grid-cols-subgrid';
-        $label = 'text-end text-zinc-500 text-balance';
+        $label = 'text-end text-zinc-600 text-balance';
         $value = 'text-zinc-900 wrap-anywhere';
     @endphp
     <div class="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 text-sm sm:gap-x-8">
         <dl class="{{ $row }} gap-y-3" data-test="publication-details">
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Authors') }}</dt>
-                <dd class="{{ $value }}">{{ $publication->authors }}</dd>
+                <dd class="{{ $value }}">{{ $publication->shortAuthors() }}</dd>
             </div>
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Publication date') }}</dt>
@@ -149,11 +149,13 @@ new class extends Component {
                     </div>
                 @endif
             @endforeach
-            {{-- Optional: the label stays and the value is left blank when none was ticked --}}
-            <div class="{{ $row }}">
-                <dt class="{{ $label }}">{{ __('Indexed in') }}</dt>
-                <dd class="{{ $value }}" data-test="indexed-in">{{ collect($publication->indexed_in)->map(fn ($key) => __(Publication::INDEXES[$key] ?? $key))->join(', ') }}</dd>
-            </div>
+            {{-- Optional, so hidden when none was ticked, like the volume, issue and pages --}}
+            @if ($publication->indexed_in)
+                <div class="{{ $row }}">
+                    <dt class="{{ $label }}">{{ __('Indexed in') }}</dt>
+                    <dd class="{{ $value }}" data-test="indexed-in">{{ collect($publication->indexed_in)->map(fn ($key) => __(Publication::INDEXES[$key] ?? $key))->join(', ') }}</dd>
+                </div>
+            @endif
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('DOI or link') }}</dt>
                 <dd class="{{ $value }}"><flux:link :href="$publication->link" target="_blank" rel="noopener noreferrer">{{ $publication->link }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link></dd>
@@ -178,12 +180,15 @@ new class extends Component {
             @endif
         </dl>
 
-        <section class="{{ $row }} mt-3 items-baseline" aria-labelledby="cited-heading">
-            <h2 id="cited-heading" class="{{ $label }}">{{ __('Total citations') }}</h2>
-            <p class="text-xl font-semibold tabular-nums text-isu-green-700" data-test="cited-by">{{ number_format($total) }}</p>
+        {{-- A rule sets the total and its chart apart from the details above --}}
+        <section class="{{ $row }} mt-6 items-start border-t border-line pt-6" aria-labelledby="cited-heading">
+            <div class="text-end">
+                <h2 id="cited-heading" class="text-zinc-600 text-balance">{{ __('Total citations') }}</h2>
+                <p class="mt-1 text-2xl font-semibold tabular-nums text-zinc-900" data-test="cited-by">{{ number_format($total) }}</p>
+            </div>
             {{-- No chart for a paper nobody has cited yet: a total of 0 already says so --}}
             @if ($total)
-                <div class="col-start-2 mt-3">
+                <div class="min-w-0">
                     @include('partials.year-chart', ['years' => Citation::perYear($publication->citations(), $first), 'since' => $first, 'compact' => true])
                 </div>
             @endif
@@ -196,8 +201,9 @@ new class extends Component {
             <flux:heading level="2" id="citing-heading" tabindex="-1" class="outline-none">{{ __('Citing papers') }}</flux:heading>
 
             @if ($canEdit)
-                <form wire:submit="addCitation" class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-start" data-test="add-citation-form">
-                    <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required class:input="max-sm:h-11" />
+                {{-- The link gets the room: the year and button share the next row until the screen is wide enough for one row --}}
+                <form wire:submit="addCitation" class="mt-3 grid gap-3 sm:grid-cols-[11rem_auto_minmax(0,1fr)] sm:items-start lg:grid-cols-[minmax(0,1fr)_11rem_auto]" data-test="add-citation-form">
+                    <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required class="sm:col-span-3 lg:col-span-1" class:input="max-sm:h-11" />
                     <flux:select wire:model="year" :label="__('Citing paper’s year')" class="max-sm:h-11">
                         @foreach (range(now()->year, $first) as $option)
                             <flux:select.option :value="$option">{{ $option }}</flux:select.option>
@@ -207,16 +213,19 @@ new class extends Component {
                 </form>
             @endif
 
-            @if ($citations->isNotEmpty())
+            @if ($citations->isEmpty())
+                <flux:text class="mt-4" data-test="no-citations">{{ __('No citing papers yet.') }}</flux:text>
+            @else
                 {{-- One remove dialog for the whole list, filled in the browser, so a long list doesn't carry a dialog per row --}}
                 <div x-data="{ removing: { id: null, link: '' } }">
                     <ul class="mt-4 divide-y divide-line border-y border-line" data-test="citations">
                         @foreach ($citations as $citation)
                             <li class="flex items-center gap-4 py-3" wire:key="citation-{{ $citation->id }}">
-                                <span class="w-12 shrink-0 text-sm tabular-nums text-zinc-500">{{ $citation->year }}</span>
-                                <flux:link :href="$citation->link" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 text-sm wrap-anywhere">{{ $citation->link }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
+                                <span class="w-12 shrink-0 text-sm font-medium tabular-nums text-zinc-800">{{ $citation->year }}</span>
+                                {{-- The bare DOI, or the address without its https://, tells the rows apart; the full link shows on hover --}}
+                                <flux:link :href="$citation->link" :title="$citation->link" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 text-sm wrap-anywhere">{{ preg_replace('~^https?://(?:www\.)?(?:doi\.org/)?~i', '', $citation->link) }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
                                 @if ($canEdit)
-                                    <flux:button size="sm" variant="ghost" icon="trash" :aria-label="__('Remove citing paper')" class="max-sm:size-11"
+                                    <flux:button size="sm" variant="ghost" icon="trash" :aria-label="__('Remove citing paper')" class="max-sm:size-11 text-zinc-400! hover:text-red-600!"
                                         x-on:click="removing = { id: {{ $citation->id }}, link: {{ Js::from($citation->link) }} }; $dispatch('modal-show', { name: 'citation-remove' })" />
                                 @endif
                             </li>

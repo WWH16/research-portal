@@ -95,17 +95,25 @@ class Publication extends Model
 
     /**
      * The authors as the publication list prints them: initials, then the last name, so "Juan Dela T. Cruz" reads "JDT Cruz".
+     * A name typed surname first ("Cruz, J. D.") gives the same "JD Cruz".
      */
     public function shortAuthors(): string
     {
         // ponytail: the last word is taken as the surname, so a two-word surname comes out wrong; store surnames apart if that matters.
-        return collect(explode(';', $this->authors))->map(function (string $name) {
+        $initials = fn (array $words) => implode('', array_map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)), $words));
+
+        return collect(explode(';', $this->authors))->map(function (string $name) use ($initials) {
+            // Surname first: everything before the comma is the surname, so "Dela Cruz, J." keeps both words.
+            [$surname, $given] = array_pad(explode(',', $name, 2), 2, null);
+            if ($given !== null && ! preg_match('/^\s*(jr|sr|ii|iii|iv)\.?\s*$/i', $given)) {
+                return trim($initials(preg_split('/\s+/', trim($given), -1, PREG_SPLIT_NO_EMPTY) ?: []).' '.trim($surname));
+            }
             $words = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
             // A suffix such as Jr. or III follows the surname instead of being taken for it.
             $suffix = count($words) > 1 && preg_match('/^(jr|sr|ii|iii|iv)\.?$/i', end($words)) ? ' '.array_pop($words) : '';
             $last = array_pop($words);
 
-            return trim(implode('', array_map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)), $words)).' '.$last.$suffix);
+            return trim($initials($words).' '.$last.$suffix);
         })->filter()->join(', ');
     }
 

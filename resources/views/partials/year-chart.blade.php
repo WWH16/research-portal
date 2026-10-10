@@ -4,7 +4,7 @@
     the first year asked for, so the chart can say when older years were cut off. $heading is optional: leave
     it out when the section around the chart already names it. $level sets the heading level; it defaults to
     2, so pass 3 when the chart sits under another h2. Pass $compact for an unboxed short chart, only as wide
-    as its years need, with a baseline, no scale, and a count over each bar.
+    as its years need, with wider bars, a baseline, no scale, and a count over each bar.
 --}}
 @php
     $cited = array_sum($years);
@@ -27,8 +27,9 @@
     $remPerCitation = $floor / max($peak, $floor);
     $plotHeight = $compact ? 'height: '.round($peak * $remPerCitation, 3).'rem' : null;
     $barHeight = fn (int $count) => $compact ? round($count * $remPerCitation, 3).'rem' : ($count / $axisMax * 100).'%';
-    // About 2.75rem per year, never narrower than 12rem or wider than the row.
-    $width = $compact ? 'width: min(100%, max(12rem, '.(2.75 * $columns).'rem))' : null;
+    // About 3.5rem per year, never narrower than 12rem or wider than the row, so two or three years don't sit
+    // as slivers on a wide empty axis.
+    $width = $compact ? 'width: min(100%, max(12rem, '.(3.5 * $columns).'rem))' : null;
 @endphp
 
 {{-- A container, so the year labels thin out by the card's own width: it sits in a narrow side column on some pages.
@@ -83,7 +84,7 @@
                             <li class="group flex h-full items-end justify-center outline-none" tabindex="-1">
                                 @if ($count > 0)
                                     <div
-                                        class="relative w-2.5 rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
+                                        class="relative {{ $compact ? 'w-3.5' : 'w-2.5' }} rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
                                         style="height: {{ $barHeight($count) }}"
                                     >
                                         {{-- With no scale, each bar carries its own count --}}
@@ -104,7 +105,8 @@
                 </div>
 
                 {{-- Every other year hides in a narrow card once there are more than 8, so the labels never collide --}}
-                <ol class="mt-2 grid gap-1 text-center text-xs tabular-nums text-zinc-500" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
+                {{-- Compact has no scale, so its years are the bars' only context and read at the size of the details above --}}
+                <ol class="mt-2 grid gap-1 text-center tabular-nums {{ $compact ? 'text-sm text-zinc-900' : 'text-xs text-zinc-500' }}" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
                     @foreach ($years as $year => $count)
                         <li class="{{ $columns > 8 && ($columns - 1 - $loop->index) % 2 ? '@max-md:invisible' : '' }}">{{ $year }}</li>
                     @endforeach
@@ -115,8 +117,9 @@
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
         <details class="group mt-4 text-sm" @if (! isset($heading)) aria-label="{{ __('Citations per year') }}" @endif>
             <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-medium text-zinc-700 hover:bg-canvas hover:text-zinc-900 max-sm:min-h-11 [&::-webkit-details-marker]:hidden">
-                {{ __('Show as table') }}
-                <flux:icon.chevron-down variant="micro" class="text-zinc-400 transition-transform group-open:rotate-180" />
+                {{-- A table icon and a plain label, so it reads as a switch to another view, not a select --}}
+                <flux:icon.table-cells variant="micro" class="text-zinc-500" />
+                <span class="group-open:hidden">{{ __('View as table') }}</span><span class="hidden group-open:inline">{{ __('Hide table') }}</span>
             </summary>
             <flux:table class="mt-3 tabular-nums">
                 <flux:table.columns>

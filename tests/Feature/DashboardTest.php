@@ -256,7 +256,7 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard', $sinceLastMonth))
             ->assertSee('Submissions per month')
             ->assertSee("{$lastMonth}: 2 projects, 1 Concept, 1 Detailed, 0 Mid-year, 0 Completed")
-            ->assertSee('Show as table');
+            ->assertSee('View as table');
 
         // Projects have no research type any more, so the summary charts colleges and categories only.
         $breakdowns = Livewire::withQueryParams($sinceLastMonth)->test('pages::dashboard')->instance()->breakdowns;

@@ -67,16 +67,31 @@ class CitationTest extends TestCase
         Citation::factory()->for($this->paper)->create(['year' => 2026]);
         $this->actingAs($this->rivera);
 
-        // One citation stays short against the axis floor of 5, and its count sits over the bar.
+        // One citation stays short against the floor of 5: a 1rem plot, then its 1rem bar with its count over it.
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->assertDontSeeHtml('>Citations per year<')
-            ->assertSeeHtml('style="height: 20%"')
-            ->assertSeeHtml('data-test="bar-count">1<');
+            ->assertSeeHtmlInOrder(['style="height: 1rem"', 'style="height: 1rem"', 'data-test="bar-count">1<']);
 
         // The profile chart keeps its heading and its scale, with no per-bar counts.
         $this->get(route('faculty.show', $this->rivera))
             ->assertSee('Citations per year')
             ->assertDontSee('data-test="bar-count"', false);
+    }
+
+    public function test_a_cut_off_compact_chart_keeps_a_row_gap_under_its_note(): void
+    {
+        $this->paper->update(['published_on' => now()->subYears(Citation::CHART_YEARS + 5)]);
+        Citation::factory()->for($this->paper)->create(['year' => now()->year - Citation::CHART_YEARS - 2]);
+        Citation::factory()->for($this->paper)->create(['year' => now()->year]);
+        $this->actingAs($this->rivera);
+
+        $html = Livewire::test('pages::publications.show', ['publication' => $this->paper->fresh()])
+            ->assertSee('Earlier citations count toward the total.')
+            ->html();
+
+        // The tallest bar's count sits in the room above the plot, so the note needs its own gap or the two touch.
+        preg_match('/<[^>]*data-test="chart-note"[^>]*>/', $html, $note);
+        $this->assertStringContainsString('mb-3', $note[0]);
     }
 
     public function test_a_paper_without_citing_papers_says_so_once(): void

@@ -178,12 +178,12 @@ new class extends Component {
             @endif
         </dl>
 
-        <section class="{{ $row }} mt-10 items-baseline" aria-labelledby="cited-heading">
+        <section class="{{ $row }} mt-3 items-baseline" aria-labelledby="cited-heading">
             <h2 id="cited-heading" class="{{ $label }}">{{ __('Total citations') }}</h2>
-            <p class="text-4xl font-semibold tabular-nums text-isu-green-700" data-test="cited-by">{{ number_format($total) }}</p>
+            <p class="text-xl font-semibold tabular-nums text-isu-green-700" data-test="cited-by">{{ number_format($total) }}</p>
             {{-- No chart for a paper nobody has cited yet: a total of 0 already says so --}}
             @if ($total)
-                <div class="col-start-2 mt-1">
+                <div class="col-start-2 mt-3">
                     @include('partials.year-chart', ['years' => Citation::perYear($publication->citations(), $first), 'since' => $first, 'compact' => true])
                 </div>
             @endif

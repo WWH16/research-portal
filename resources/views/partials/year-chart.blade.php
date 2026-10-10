@@ -16,11 +16,17 @@
     $columns = count($years);
     $first = array_key_first($years);
     $compact ??= false;
-    // Compact keeps room above the plot for the count over a full-height bar.
-    $plot = $compact ? 'mt-4 h-20' : 'h-48';
-    // With no scale to read, bar height alone shows size: the top stands for 5 citations or the peak, whichever
-    // is more, so a single citation draws a short bar instead of a full one.
-    $axisMax = $compact ? max($peak, 5) : $axisMax;
+    // Compact keeps room above the plot for the count over the tallest bar: its 1rem line plus its 2px margin,
+    // so the top of the chart is the top of that count.
+    $plot = $compact ? 'mt-4.5' : 'h-48';
+    // With no scale to read, bar height alone shows size: 1rem per citation up to $floor citations, after which
+    // the tallest bar stays at $floor rem and the rest scale to it. So a single citation draws a short bar. The plot
+    // ends at the tallest bar, with no empty band above it, so that bar's count always sits the same distance
+    // below the row above. Bars are sized in rem, not percent, so the hover area can reach above the plot.
+    $floor = 5;
+    $remPerCitation = $floor / max($peak, $floor);
+    $plotHeight = $compact ? 'height: '.round($peak * $remPerCitation, 3).'rem' : null;
+    $barHeight = fn (int $count) => $compact ? round($count * $remPerCitation, 3).'rem' : ($count / $axisMax * 100).'%';
     // About 2.75rem per year, never narrower than 12rem or wider than the row.
     $width = $compact ? 'width: min(100%, max(12rem, '.(2.75 * $columns).'rem))' : null;
 @endphp
@@ -33,7 +39,8 @@
     @endisset
     {{-- Compact keeps only the cut-off note: its year labels already show the range --}}
     @if ($since < $first || ! $compact)
-        <flux:text @class(['mt-1' => isset($heading)])>
+        {{-- In compact, the gap under the note matches the gap between the page's rows --}}
+        <flux:text @class(['mt-1' => isset($heading), 'mb-3' => $compact]) data-test="chart-note">
             {{ $since < $first
                 ? __('Showing :from to :to. Earlier citations count toward the total.', ['from' => $first, 'to' => now()->year])
                 : __('By year cited, :from to :to.', ['from' => $first, 'to' => now()->year]) }}
@@ -54,15 +61,17 @@
             @endunless
 
             <div class="min-w-0 flex-1">
-                <div class="relative {{ $plot }}">
+                <div class="relative {{ $plot }}" @if ($plotHeight) style="{{ $plotHeight }}" @endif>
                     @foreach ($compact ? [0] : $ticks as $tick)
                         <div class="absolute inset-x-0 border-t {{ $tick ? 'border-line' : 'border-zinc-300' }}" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
 
                     {{-- Hidden from screen readers: the table below carries the same numbers once.
-                         The pointer's spot is kept in --x and --y, so the tooltip rides beside it instead of on a tall bar's top. --}}
+                         The pointer's spot is kept in --x and --y, so the tooltip rides beside it instead of on a tall bar's top.
+                         Compact stretches the columns up over the counts, so a plot only 1rem tall still has a target to hit.
+                         Absolute, not a negative margin: that margin would collapse into the plot's own and push the bars below the baseline. --}}
                     <ol
-                        class="relative grid h-full gap-1"
+                        class="grid gap-1 {{ $compact ? 'absolute inset-x-0 -top-4.5 bottom-0' : 'relative h-full' }}"
                         style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))"
                         aria-hidden="true"
                         x-data="{ follow(e) { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--x', e.clientX - r.left + 'px'); e.currentTarget.style.setProperty('--y', e.clientY - r.top + 'px') } }"
@@ -75,7 +84,7 @@
                                 @if ($count > 0)
                                     <div
                                         class="relative w-2.5 rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
-                                        style="height: {{ $count / $axisMax * 100 }}%"
+                                        style="height: {{ $barHeight($count) }}"
                                     >
                                         {{-- With no scale, each bar carries its own count --}}
                                         @if ($compact)

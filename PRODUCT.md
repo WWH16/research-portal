@@ -13,7 +13,7 @@ web
 
 ## Product Purpose
 
-The ISU Research Portal tracks Isabela State University research projects from proposal to terminal report. It gives the Research Office one place to review concept proposals, see which colleges have submitted, and keep a history of what changed.
+The Faculty Research Portal tracks ISU Cauayan (Isabela State University, Cauayan Campus) research projects from proposal to terminal report. It gives the Research Office one place to review concept proposals, see which colleges have submitted, and keep a history of what changed.
 
 ## Operating Context
 
@@ -33,7 +33,7 @@ The ISU Research Portal tracks Isabela State University research projects from p
 
 ## Brand Commitments
 
-- Name: ISU Research Portal. The university seal is at `public/images/isu_seal.png` (128px variant: `isu_seal-128.png`).
+- Name: Faculty Research Portal, with "ISU - Cauayan" under it. Browser tab title: "Faculty Research Portal - ISU - Cauayan". Where there is room, the campus reads "Isabela State University - Cauayan Campus"; where space is tight, "ISU - Cauayan". Always a spaced hyphen. The university seal is at `public/images/isu_seal.png` (128px variant: `isu_seal-128.png`).
 - Interface copy names the Research Office as the contact point.
 
 ## Evidence on Hand

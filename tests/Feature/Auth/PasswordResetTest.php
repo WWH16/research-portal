@@ -45,7 +45,7 @@ class PasswordResetTest extends TestCase
         $mail = (new ResetPassword('reset-token'))->toMail($user);
         $html = (string) $mail->render();
 
-        $this->assertSame('Reset your Research Portal password', $mail->subject);
+        $this->assertSame('Reset your Faculty Research Portal password', $mail->subject);
         $this->assertStringContainsString(route('password.reset', ['token' => 'reset-token', 'email' => $user->email]), $mail->actionUrl);
         $this->assertStringContainsString('Reset your password', $html);
         $this->assertStringContainsString('Set a new password for '.$user->email.'.', $html);

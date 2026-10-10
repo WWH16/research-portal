@@ -31,10 +31,10 @@ class DashboardTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
-    public function test_the_sidebar_names_the_university_and_the_signed_in_role(): void
+    public function test_the_sidebar_names_the_campus_and_the_signed_in_role(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        $this->get(route('dashboard'))->assertSeeInOrder(['Research Portal', 'Isabela State University', 'Filing options', 'Administrator']);
+        $this->get(route('dashboard'))->assertSeeInOrder(['Faculty Research Portal', 'ISU - Cauayan', 'Filing options', 'Administrator']);
 
         $college = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
         $this->actingAs(User::factory()->create(['role' => 'faculty', 'department_id' => $college->id]));

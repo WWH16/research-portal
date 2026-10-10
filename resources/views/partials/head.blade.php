@@ -1,7 +1,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-@php($pageTitle = filled($title ?? null) ? $title.' - '.config('app.name', 'Laravel') : config('app.name', 'Laravel'))
+@php($siteTitle = config('app.name', 'Laravel').' - '.__('ISU - Cauayan'))
+@php($pageTitle = filled($title ?? null) ? $title.' - '.$siteTitle : $siteTitle)
 <title>
     {{ $pageTitle }}
 </title>
@@ -10,7 +11,7 @@
      sign-in, so link crawlers land on the sign-in page and read these there. The image URL comes from APP_URL. --}}
 @php($summary = __('Research proposals, reviews, and records in one place.'))
 <meta name="description" content="{{ $summary }}">
-<meta property="og:site_name" content="{{ config('app.name') }}">
+<meta property="og:site_name" content="{{ $siteTitle }}">
 <meta property="og:title" content="{{ $pageTitle }}">
 <meta property="og:description" content="{{ $summary }}">
 <meta property="og:image" content="{{ asset('images/share-preview.jpg') }}">

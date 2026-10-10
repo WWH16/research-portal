@@ -44,10 +44,10 @@ class EmailVerificationTest extends TestCase
         $mail = (new VerifyEmail)->toMail($user);
         $html = (string) $mail->render();
 
-        $this->assertSame('Verify your email for the Research Portal', $mail->subject);
+        $this->assertSame('Verify your email for the Faculty Research Portal', $mail->subject);
         $this->assertSame('Verify email', $mail->actionText);
         $this->assertStringContainsString('Verify your email', $html);
-        $this->assertStringContainsString('Confirm '.$user->email.' to activate your Research Portal account.', $html);
+        $this->assertStringContainsString('Confirm '.$user->email.' to activate your Faculty Research Portal account.', $html);
         $this->assertStringContainsString('images/mail/envelope.png', $html);
         $this->assertStringContainsString('Link expires in 60 minutes.', $html);
         $this->assertMatchesRegularExpression('/<a href="mailto:'.preg_quote(config('mail.from.address'), '/').'"[^>]*>Contact the Research Office<\/a>/', $html);

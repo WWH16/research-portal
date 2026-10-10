@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'ISU Research Portal'),
+    'name' => env('APP_NAME', 'Faculty Research Portal'),
 
     /*
     |--------------------------------------------------------------------------

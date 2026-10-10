@@ -3,8 +3,8 @@
 {{-- Masthead: the seal over the university's name, centered at the top of the sheet --}}
 <x-slot:header>
 <x-mail::header :seal-from="$sealFrom" :preheader="$preheader">
-<p class="masthead-institution">{{ __('Isabela State University') }}</p>
-<p class="masthead-name">{{ __('Research Portal') }}</p>
+<p class="masthead-institution">{{ __('Isabela State University - Cauayan Campus') }}</p>
+<p class="masthead-name">{{ __('Faculty Research Portal') }}</p>
 </x-mail::header>
 </x-slot:header>
 
@@ -23,10 +23,10 @@
 {{-- Footer: who sent it, where they are, and why this address got it --}}
 <x-slot:footer>
 <x-mail::footer>
-{{ __('Research Portal · Isabela State University, Cauayan Campus') }}<br>
+{{ __('Faculty Research Portal · Isabela State University - Cauayan Campus') }}<br>
 {{ __('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela') }}
 
-{{ __('You received this email because this address was used on the Research Portal.') }}
+{{ __('You received this email because this address was used on the Faculty Research Portal.') }}
 </x-mail::footer>
 </x-slot:footer>
 </x-mail::layout>

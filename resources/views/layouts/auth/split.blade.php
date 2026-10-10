@@ -28,7 +28,7 @@
                 </div>
 
                 <p class="text-sm text-isu-green-300">
-                    &copy; {{ now()->year }} {{ __('Isabela State University') }}
+                    &copy; {{ now()->year }} {{ __('Isabela State University - Cauayan Campus') }}
                 </p>
             </aside>
 

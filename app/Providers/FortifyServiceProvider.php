@@ -84,9 +84,9 @@ class FortifyServiceProvider extends ServiceProvider
         $expires = fn (int $minutes) => __('Link expires in :count minutes.', ['count' => $minutes]);
 
         VerifyEmail::toMailUsing(fn ($user, string $url) => (new MailMessage)
-            ->subject(__('Verify your email for the Research Portal'))
+            ->subject(__('Verify your email for the Faculty Research Portal'))
             ->greeting(__('Verify your email'))
-            ->line(__('Confirm :email to activate your Research Portal account.', ['email' => $md($user->email)]))
+            ->line(__('Confirm :email to activate your Faculty Research Portal account.', ['email' => $md($user->email)]))
             ->action(__('Verify email'), $url)
             ->line($expires(config('auth.verification.expire', 60)))
             // A Markdown mailto link to the sender, so it reaches the Research Office and reads as a link in plain text.
@@ -94,7 +94,7 @@ class FortifyServiceProvider extends ServiceProvider
             ->markdown('notifications::email', ['icon' => 'envelope']));
 
         ResetPassword::toMailUsing(fn ($user, string $token) => (new MailMessage)
-            ->subject(__('Reset your Research Portal password'))
+            ->subject(__('Reset your Faculty Research Portal password'))
             ->greeting(__('Reset your password'))
             ->line(__('Set a new password for :email.', ['email' => $md($user->getEmailForPasswordReset())]))
             ->action(__('Reset password'), url(route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()], false)))

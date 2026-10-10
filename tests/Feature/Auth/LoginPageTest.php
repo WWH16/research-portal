@@ -20,7 +20,7 @@ class LoginPageTest extends TestCase
     {
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('ISU Research Portal')
+            ->assertSee('Faculty Research Portal')
             ->assertSee('Sign in')
             ->assertSee(route('register'));
     }
@@ -34,7 +34,7 @@ class LoginPageTest extends TestCase
             ->assertSee('<meta property="og:image" content="'.asset('images/share-preview.jpg').'">', escape: false)
             ->assertSee('<meta property="og:image:width" content="1200">', escape: false)
             ->assertSee('<meta property="og:image:height" content="630">', escape: false)
-            ->assertSee('<meta property="og:title" content="Sign in - ISU Research Portal">', escape: false)
+            ->assertSee('<meta property="og:title" content="Sign in - Faculty Research Portal - ISU - Cauayan">', escape: false)
             ->assertSee('<meta name="twitter:card" content="summary_large_image">', escape: false);
     }
 

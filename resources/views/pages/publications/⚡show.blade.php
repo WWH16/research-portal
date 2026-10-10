@@ -149,11 +149,10 @@ new class extends Component {
                     </div>
                 @endif
             @endforeach
+            {{-- Optional: the label stays and the value is left blank when none was ticked --}}
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Indexed in') }}</dt>
-                <dd class="{{ $value }}" data-test="indexed-in">
-                    {{ collect($publication->indexed_in)->map(fn ($key) => __(Publication::INDEXES[$key] ?? $key))->join(', ') ?: __('Not indexed') }}
-                </dd>
+                <dd class="{{ $value }}" data-test="indexed-in">{{ collect($publication->indexed_in)->map(fn ($key) => __(Publication::INDEXES[$key] ?? $key))->join(', ') }}</dd>
             </div>
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('DOI or link') }}</dt>

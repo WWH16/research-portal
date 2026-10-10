@@ -205,7 +205,7 @@ class PublicationTest extends TestCase
         // Unticking every box clears it.
         Livewire::test('pages::publications.create', ['publication' => $paper])->assertSet('indexed_in', ['scopus', 'aci'])->set('indexed_in', [])->call('save')->assertHasNoErrors();
         $this->assertNull($paper->fresh()->indexed_in);
-        $this->get(route('publications.show', $paper))->assertSee('Not indexed');
+        $this->get(route('publications.show', $paper))->assertSee('Indexed in')->assertSeeHtml('data-test="indexed-in"></dd>')->assertDontSee('Not indexed');
     }
 
     public function test_only_authors_open_the_edit_form(): void

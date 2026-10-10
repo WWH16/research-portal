@@ -4,21 +4,23 @@
     the first year asked for, so the chart can say when older years were cut off. $heading is optional: leave
     it out when the section around the chart already names it. $level sets the heading level; it defaults to
     2, so pass 3 when the chart sits under another h2. Pass $compact for an unboxed short chart, only as wide
-    as its years need, with wider bars, a baseline, no scale, and a count over each bar.
+    as its years need, with a baseline and no scale.
 --}}
 @php
     $cited = array_sum($years);
     $peak = max(1, max($years ?: [0]));
-    // Round the axis up to a clean number (1, 2, 4, 6, 8, 10, 20, 40...) whose half is whole, so no tick reads 2.5.
-    $magnitude = 10 ** floor(log10($peak));
-    $axisMax = collect([1, 2, 4, 6, 8, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value >= $peak);
-    $ticks = $axisMax >= 2 ? [$axisMax, $axisMax / 2, 0] : [$axisMax, 0];
+    // One unit of headroom over the peak, at least 5, then the smallest step of 1, 2 or 5 times a power of ten
+    // that covers it in 5 steps. So low counts tick at every whole number (0 to 5 for a peak of 4) and high ones
+    // at round numbers (0 to 150 by 50 for a peak of 130), and the tallest bar never touches the top.
+    $top = max($peak + 1, 5);
+    $magnitude = 10 ** floor(log10(ceil($top / 5)));
+    $step = collect([1, 2, 5, 10])->map(fn ($factor) => $factor * $magnitude)->first(fn ($value) => $value * 5 >= $top);
+    $axisMax = (int) (ceil($top / $step) * $step);
+    $ticks = range($axisMax, 0, $step);
     $columns = count($years);
     $first = array_key_first($years);
     $compact ??= false;
-    // Compact keeps room above the plot for the count over the tallest bar: its 1rem line plus its 2px margin,
-    // so the top of the chart is the top of that count.
-    $plot = $compact ? 'mt-4.5' : 'h-48';
+    $plot = $compact ? '' : 'h-48';
     // With no scale to read, bar height alone shows size: 1rem per citation up to $floor citations, after which
     // the tallest bar stays at $floor rem and the rest scale to it. So a single citation draws a short bar. The plot
     // ends at the tallest bar, with no empty band above it, so that bar's count always sits the same distance
@@ -68,11 +70,9 @@
                     @endforeach
 
                     {{-- Hidden from screen readers: the table below carries the same numbers once.
-                         The pointer's spot is kept in --x and --y, so the tooltip rides beside it instead of on a tall bar's top.
-                         Compact stretches the columns up over the counts, so a plot only 1rem tall still has a target to hit.
-                         Absolute, not a negative margin: that margin would collapse into the plot's own and push the bars below the baseline. --}}
+                         The pointer's spot is kept in --x and --y, so the tooltip rides beside it instead of on a tall bar's top. --}}
                     <ol
-                        class="grid gap-1 {{ $compact ? 'absolute inset-x-0 -top-4.5 bottom-0' : 'relative h-full' }}"
+                        class="relative grid h-full gap-1"
                         style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))"
                         aria-hidden="true"
                         x-data="{ follow(e) { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--x', e.clientX - r.left + 'px'); e.currentTarget.style.setProperty('--y', e.clientY - r.top + 'px') } }"
@@ -84,14 +84,9 @@
                             <li class="group flex h-full items-end justify-center outline-none" tabindex="-1">
                                 @if ($count > 0)
                                     <div
-                                        class="relative {{ $compact ? 'w-3.5' : 'w-2.5' }} rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
+                                        class="relative w-3.5 rounded-t-sm bg-isu-green-400 transition-colors group-hover:bg-isu-green-600 pointer-coarse:group-focus:bg-isu-green-600"
                                         style="height: {{ $barHeight($count) }}"
-                                    >
-                                        {{-- With no scale, each bar carries its own count --}}
-                                        @if ($compact)
-                                            <span class="absolute bottom-full left-1/2 mb-0.5 -translate-x-1/2 whitespace-nowrap text-xs tabular-nums text-zinc-600" data-test="bar-count">{{ $count }}</span>
-                                        @endif
-                                    </div>
+                                    ></div>
                                 @endif
 
                                 {{-- Beside the pointer, on the side facing the middle so it never leaves the card --}}
@@ -115,27 +110,27 @@
         </div>
 
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
-        <details class="group mt-4 text-sm" @if (! isset($heading)) aria-label="{{ __('Citations per year') }}" @endif>
-            <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 h-8 rounded-lg border border-line px-3 font-medium text-zinc-700 hover:bg-canvas hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 max-sm:h-11 [&::-webkit-details-marker]:hidden">
-                {{-- Turns down when open, like the browser's disclosure triangle, not a select's chevron --}}
-                <flux:icon.chevron-right variant="micro" class="text-zinc-500 motion-safe:transition-transform group-open:rotate-90" />
-                <span class="group-open:hidden">{{ __('View as table') }}</span><span class="hidden group-open:inline">{{ __('Hide table') }}</span>
-            </summary>
-            <flux:table class="mt-3 tabular-nums">
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Year') }}</flux:table.column>
-                    <flux:table.column align="end">{{ __('Citations') }}</flux:table.column>
-                </flux:table.columns>
+        <div x-data="{ open: false }" class="mt-4">
+            <flux:button size="sm" icon="table-cells" class="max-sm:h-11" x-on:click="open = ! open" x-bind:aria-expanded="open" aria-expanded="false">
+                <span x-text="open ? @js(__('Hide table')) : @js(__('View as table'))">{{ __('View as table') }}</span>
+            </flux:button>
+            <div x-show="open" x-cloak @unless (isset($heading)) role="group" aria-label="{{ __('Citations per year') }}" @endunless>
+                <flux:table class="mt-3 tabular-nums">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Year') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Citations') }}</flux:table.column>
+                    </flux:table.columns>
 
-                <flux:table.rows>
-                    @foreach (array_reverse($years, true) as $year => $count)
-                        <flux:table.row>
-                            <flux:table.cell>{{ $year }}</flux:table.cell>
-                            <flux:table.cell align="end">{{ $count }}</flux:table.cell>
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
-        </details>
+                    <flux:table.rows>
+                        @foreach (array_reverse($years, true) as $year => $count)
+                            <flux:table.row>
+                                <flux:table.cell>{{ $year }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ $count }}</flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </div>
     @endif
 </flux:card>

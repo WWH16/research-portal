@@ -113,33 +113,33 @@
         </div>
 
         {{-- The same numbers without hovering, for screen readers and anyone who wants exact values --}}
-        <details class="group mt-4 text-sm">
-            <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 h-8 rounded-lg border border-line px-3 font-medium text-zinc-700 hover:bg-canvas hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 max-sm:h-11 [&::-webkit-details-marker]:hidden">
-                {{-- Turns down when open, like the browser's disclosure triangle, not a select's chevron --}}
-                <flux:icon.chevron-right variant="micro" class="text-zinc-500 motion-safe:transition-transform group-open:rotate-90" />
-                <span class="group-open:hidden">{{ __('View as table') }}</span><span class="hidden group-open:inline">{{ __('Hide table') }}</span>
-            </summary>
-            <flux:table class="mt-3 tabular-nums">
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Month') }}</flux:table.column>
-                    @foreach (\App\Models\Submission::STATUSES as $status)
-                        <flux:table.column align="end">{{ __($status) }}</flux:table.column>
-                    @endforeach
-                    <flux:table.column align="end">{{ __('Total') }}</flux:table.column>
-                </flux:table.columns>
+        <div x-data="{ open: false }" class="mt-4">
+            <flux:button size="sm" icon="table-cells" class="max-sm:h-11" x-on:click="open = ! open" x-bind:aria-expanded="open" aria-expanded="false">
+                <span x-text="open ? @js(__('Hide table')) : @js(__('View as table'))">{{ __('View as table') }}</span>
+            </flux:button>
+            <div x-show="open" x-cloak>
+                <flux:table class="mt-3 tabular-nums">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Month') }}</flux:table.column>
+                        @foreach (\App\Models\Submission::STATUSES as $status)
+                            <flux:table.column align="end">{{ __($status) }}</flux:table.column>
+                        @endforeach
+                        <flux:table.column align="end">{{ __('Total') }}</flux:table.column>
+                    </flux:table.columns>
 
-                <flux:table.rows>
-                    @foreach ($monthly as $month)
-                        <flux:table.row>
-                            <flux:table.cell>{{ $month['month']->format('M Y') }}</flux:table.cell>
-                            @foreach ($month['counts'] as $count)
-                                <flux:table.cell align="end">{{ $count }}</flux:table.cell>
-                            @endforeach
-                            <flux:table.cell align="end" variant="strong">{{ $month['total'] }}</flux:table.cell>
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
-        </details>
+                    <flux:table.rows>
+                        @foreach ($monthly as $month)
+                            <flux:table.row>
+                                <flux:table.cell>{{ $month['month']->format('M Y') }}</flux:table.cell>
+                                @foreach ($month['counts'] as $count)
+                                    <flux:table.cell align="end">{{ $count }}</flux:table.cell>
+                                @endforeach
+                                <flux:table.cell align="end" variant="strong">{{ $month['total'] }}</flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </div>
     @endif
 </flux:card>

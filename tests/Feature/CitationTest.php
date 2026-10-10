@@ -45,16 +45,15 @@ class CitationTest extends TestCase
         $this->actingAs(User::factory()->create())->get(route('publications.show', $this->paper))->assertForbidden();
     }
 
-    public function test_the_chart_axis_halves_to_a_whole_number(): void
+    public function test_the_chart_axis_ticks_at_whole_numbers_with_headroom(): void
     {
-        // A peak of 3 used to round the axis to 5, with a middle tick of 2.5.
+        // A peak of 3 gets a unit of headroom and the 5 floor: whole-number ticks 0 to 5, never 2.5.
         Citation::factory()->for($this->paper)->count(3)->create(['year' => 2026]);
         $this->actingAs($this->rivera);
 
         // The profile chart keeps its scale; the publication page's compact chart has only a baseline.
         $this->get(route('faculty.show', $this->rivera))
-            ->assertSee('-my-2">4<', false)
-            ->assertSee('-my-2">2<', false)
+            ->assertSeeInOrder(['-my-2">5<', '-my-2">4<', '-my-2">3<', '-my-2">2<', '-my-2">1<', '-my-2">0<'], false)
             ->assertDontSee('-my-2">2.5<', false);
 
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
@@ -62,20 +61,21 @@ class CitationTest extends TestCase
             ->assertDontSeeHtml('-my-2">');
     }
 
-    public function test_the_compact_chart_drops_its_heading_and_labels_each_bar(): void
+    public function test_the_compact_chart_drops_its_heading_and_scale(): void
     {
         Citation::factory()->for($this->paper)->create(['year' => 2026]);
         $this->actingAs($this->rivera);
 
-        // One citation stays short against the floor of 5: a 1rem plot, then its 1rem bar with its count over it.
+        // One citation stays short against the floor of 5: a 1rem plot, then its 1rem bar.
         Livewire::test('pages::publications.show', ['publication' => $this->paper])
             ->assertDontSeeHtml('>Citations per year<')
-            ->assertSeeHtmlInOrder(['style="height: 1rem"', 'style="height: 1rem"', 'data-test="bar-count">1<']);
+            ->assertSeeHtmlInOrder(['style="height: 1rem"', 'style="height: 1rem"'])
+            ->assertDontSeeHtml('-my-2">');
 
-        // The profile chart keeps its heading and its scale, with no per-bar counts.
+        // The profile chart keeps its heading and its scale.
         $this->get(route('faculty.show', $this->rivera))
             ->assertSee('Citations per year')
-            ->assertDontSee('data-test="bar-count"', false);
+            ->assertSee('-my-2">', false);
     }
 
     public function test_a_cut_off_compact_chart_keeps_a_row_gap_under_its_note(): void
@@ -89,7 +89,7 @@ class CitationTest extends TestCase
             ->assertSee('Earlier citations count toward the total.')
             ->html();
 
-        // The tallest bar's count sits in the room above the plot, so the note needs its own gap or the two touch.
+        // The note needs its own gap above the bars, or the two touch.
         preg_match('/<[^>]*data-test="chart-note"[^>]*>/', $html, $note);
         $this->assertStringContainsString('mb-3', $note[0]);
     }

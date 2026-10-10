@@ -172,7 +172,7 @@ class DashboardTest extends TestCase
             ->assertSee('Navarro')
             ->assertSee('Finished Study')
             // The list names the projects only; the stat card already says which group they are in.
-            ->assertSeeInOrder(['Navarro', 'CCS', '· 2 projects', 'Finished Study', 'Overdue Study'])
+            ->assertSeeInOrder(['Navarro', 'CCS', '2 projects', 'Finished Study', 'Overdue Study'])
             ->assertDontSee('Late')
             ->assertDontSee('Soriano')
             ->call('export')
@@ -216,6 +216,35 @@ class DashboardTest extends TestCase
         Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CCS'])
             ->test('pages::dashboard')
             ->assertSee("Every faculty member in CCS has submitted in {$year}.");
+    }
+
+    public function test_a_big_faculty_list_opens_in_place_one_page_at_a_time_and_exports_whole(): void
+    {
+        $ccs = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        foreach (range(1, 26) as $i) {
+            User::factory()->create(['name' => sprintf('Faculty %02d', $i), 'department_id' => $ccs->id]);
+        }
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $component = Livewire::test('pages::dashboard')
+            // Tiles open the list in its island instead of reloading the whole dashboard.
+            ->assertSeeHtml('wire:island="faculty-list"')
+            ->assertDontSeeHtml('data-test="faculty-list"')
+            ->set('group', 'pending')
+            ->assertSee('26 faculty')
+            ->assertSee('Faculty 25')
+            ->assertDontSee('Faculty 26')
+            ->call('nextPage')
+            ->assertSee('Faculty 26')
+            ->assertDontSee('Faculty 01')
+            // A new filter starts the list over at the first page.
+            ->set('department', 'CCS')
+            ->assertSee('Faculty 01')
+            ->call('export');
+
+        $csv = base64_decode($component->effects['download']['content']);
+        $this->assertCount(27, array_filter(explode("\n", $csv)));
     }
 
     public function test_delayed_list_shows_how_to_reach_each_member(): void

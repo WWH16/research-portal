@@ -5,6 +5,7 @@ use App\Models\Department;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /*
@@ -22,6 +24,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * about" as ranked horizontal bars, and the concept proposal review queue. Faculty get their own progress.
  */
 new #[Title('Dashboard')] class extends Component {
+    use WithPagination;
+
     /** First and last filing date the admin summary covers, as Y-m-d. Defaults to this calendar year. */
     #[Url]
     public string $from = '';
@@ -41,6 +45,14 @@ new #[Title('Dashboard')] class extends Component {
     {
         $this->from = $this->from ?: now()->startOfYear()->toDateString();
         $this->to = $this->to ?: now()->endOfYear()->toDateString();
+    }
+
+    /**
+     * A new group, college or date range starts the faculty list back on its first page.
+     */
+    public function updated(): void
+    {
+        $this->resetPage();
     }
 
     /**
@@ -211,35 +223,48 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * The faculty behind the open group's count, each with their projects in that group.
+     * The open group's label, or null when no valid group is open or the viewer is not an admin.
      */
     #[Computed]
-    public function groupFaculty(): Collection
+    public function groupLabel(): ?string
     {
-        if (! $this->isAdmin || ! array_key_exists($this->group, $this->groups())) {
-            return collect();
-        }
-
-        return $this->facultyIn($this->group)
-            ->with(['department:id,code', 'projects' => $this->projectsIn($this->group)])
-            ->orderBy('name')
-            ->get(['id', 'name', 'email', 'researcher_id', 'department_id']);
+        return $this->isAdmin ? ($this->groups()[$this->group]['label'] ?? null) : null;
     }
 
     /**
-     * Download the open group's faculty list as a CSV report.
+     * The faculty behind the open group's count, each with their projects in that group, by name.
+     */
+    private function groupQuery(): Builder
+    {
+        return $this->facultyIn($this->group)
+            ->with(['department:id,code', 'projects' => $this->projectsIn($this->group)])
+            ->select(['id', 'name', 'email', 'researcher_id', 'department_id'])
+            ->orderBy('name')
+            ->orderBy('id');
+    }
+
+    /**
+     * One page of the open group's faculty, so a big group loads as fast as a small one.
+     */
+    #[Computed]
+    public function groupFaculty(): LengthAwarePaginator
+    {
+        return $this->groupQuery()->paginate(25);
+    }
+
+    /**
+     * Download the open group's whole faculty list, every page, as a CSV report.
      */
     public function export(): StreamedResponse
     {
         $this->authorize('viewAny', Submission::class);
 
-        $label = $this->groups()[$this->group]['label'] ?? abort(404);
-        $faculty = $this->groupFaculty;
+        $label = $this->groupLabel ?? abort(404);
 
         return response()->csv(
             Str::slug($label.' '.$this->department.' '.$this->from.' '.$this->to).'.csv',
             [__('Name'), __('Researcher ID'), __('College'), __('Projects')],
-            $faculty->map(fn ($member) => [$member->name, $member->researcher_id, $member->department?->code, $member->projects->pluck('title')->join('; ')]),
+            $this->groupQuery()->lazy()->map(fn ($member) => [$member->name, $member->researcher_id, $member->department?->code, $member->projects->pluck('title')->join('; ')]),
         );
     }
 
@@ -452,92 +477,123 @@ new #[Title('Dashboard')] class extends Component {
             {{-- Six tiles: pairs on small screens, then two rows of three, so each keeps room for its note --}}
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-3" data-test="summary-tiles">
                 @foreach ($kpis as $key => $kpi)
-                    @include('partials.stat-tile', $kpi + ['value' => $facultyCounts[$key], 'href' => route('dashboard', $filters + ['group' => $key]).'#faculty-list'])
+                    @include('partials.stat-tile', $kpi + ['value' => $facultyCounts[$key], 'href' => route('dashboard', $filters + ['group' => $key]).'#faculty-list', 'group' => $key])
                 @endforeach
             </div>
 
-            @if ($group !== '' && isset($kpis[$group]))
-                <flux:card id="faculty-list" class="lg:col-span-12" data-test="faculty-list">
+            {{-- Only this list re-renders when a tile, page or Close is clicked, so the counts, charts and
+                 review queue around it are not queried again. It still refreshes with the filters --}}
+            @island(name: 'faculty-list', always: true)
+            @if ($this->groupLabel)
+                @php
+                    $faculty = $this->groupFaculty;
+                    $where = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
+                @endphp
+                {{-- Keyed by group so a newly opened list scrolls itself into view; switching pages does not --}}
+                <flux:card
+                    id="faculty-list"
+                    wire:key="faculty-list-{{ $group }}"
+                    x-init="$el.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })"
+                    class="scroll-mt-6 lg:col-span-12"
+                    data-test="faculty-list"
+                >
                     <div class="flex flex-wrap items-baseline justify-between gap-4">
                         <div>
-                            <flux:heading level="2">{{ $kpis[$group]['label'] }}, {{ $scope }}</flux:heading>
-                            <flux:text class="mt-1">{{ trans_choice('{0} No faculty|{1} One faculty member|[2,*] :count faculty', $this->groupFaculty->count()) }}</flux:text>
+                            <flux:heading level="2">{{ $this->groupLabel }}, {{ $where }}</flux:heading>
+                            <flux:text class="mt-1 tabular-nums">{{ trans_choice('{0} No faculty|{1} One faculty member|[2,*] :count faculty', $faculty->total(), ['count' => number_format($faculty->total())]) }}</flux:text>
                         </div>
                         <div class="flex gap-2">
-                            @if ($this->groupFaculty->isNotEmpty())
+                            @if ($faculty->isNotEmpty())
                                 <flux:button size="sm" icon="arrow-down-tray" wire:click="export" data-test="export-button" class="max-sm:h-11 max-sm:px-4">{{ __('Export CSV') }}</flux:button>
                             @endif
-                            <flux:button size="sm" variant="ghost" :href="route('dashboard', $filters)" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Close') }}</flux:button>
+                            <flux:button size="sm" variant="ghost" wire:click="$set('group', '')" class="max-sm:h-11 max-sm:px-4">{{ __('Close') }}</flux:button>
                         </div>
                     </div>
 
-                    @if ($this->groupFaculty->isEmpty())
+                    @if ($faculty->isEmpty())
                         <flux:text class="mt-4">
                             {{ $group === 'pending'
                                 ? __('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel])
                                 : __('No faculty in this group for :range.', ['range' => $this->rangeLabel]) }}
                         </flux:text>
                     @else
-                        {{-- Person on the left, their project titles on the right; long titles wrap inside the card. --}}
-                        <ul class="mt-4 divide-y divide-line border-t border-line text-sm">
-                            @foreach ($this->groupFaculty as $member)
-                                <li class="grid gap-1.5 py-3 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-                                    {{-- Names run long, so every row stacks the same way: the full name, wrapping if it
-                                         must, then college and count on their own line. No name is ever cut off --}}
-                                    <div>
-                                        <p class="font-medium text-zinc-800 [overflow-wrap:anywhere]">{{ $member->name }}</p>
-                                        <p class="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
-                                            {{ $member->department?->code ?? __('No college') }}
-                                            @if ($group !== 'pending')
-                                                · {{ trans_choice('{1} :count project|[2,*] :count projects', $member->projects->count()) }}
-                                            @endif
-                                            @if ($group === 'delayed')
-                                                {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
-                                                     right above the icon confirms it where the admin is already looking --}}
-                                                <button
-                                                    type="button"
-                                                    x-data="{ copied: false, message: '' }"
-                                                    x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
-                                                        () => { copied = true; message = @js(__('Copied!')) },
-                                                        () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
-                                                    ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
-                                                    class="relative shrink-0 rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
-                                                    title="{{ __('Copy :email', ['email' => $member->email]) }}"
-                                                    aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
-                                                    data-test="copy-email"
-                                                >
-                                                    <flux:icon.envelope variant="micro" x-show="! copied" />
-                                                    <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
-                                                    <span
-                                                        x-show="message"
-                                                        x-cloak
-                                                        x-transition.opacity
-                                                        x-text="message"
-                                                        role="status"
-                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
-                                                    ></span>
-                                                </button>
-                                            @endif
-                                        </p>
+                        {{-- One compact line per person; their project titles open under the name on demand --}}
+                        <ul class="mt-4 divide-y divide-line border-t border-line text-sm transition-opacity" wire:loading.delay.class="opacity-60">
+                            @foreach ($faculty as $member)
+                                <li class="py-3" wire:key="member-{{ $member->id }}" @if ($group !== 'pending') x-data="{ open: false }" @endif>
+                                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+                                        {{-- Names run long, so the full name wraps if it must; it is never cut off --}}
+                                        <div class="min-w-0">
+                                            <p class="font-medium text-zinc-800 [overflow-wrap:anywhere]">{{ $member->name }}</p>
+                                            <p class="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
+                                                {{ $member->department?->code ?? __('No college') }}
+                                                @if ($group === 'delayed')
+                                                    {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
+                                                         right above the icon confirms it where the admin is already looking --}}
+                                                    <button
+                                                        type="button"
+                                                        x-data="{ copied: false, message: '' }"
+                                                        x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
+                                                            () => { copied = true; message = @js(__('Copied!')) },
+                                                            () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
+                                                        ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
+                                                        class="relative shrink-0 rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
+                                                        title="{{ __('Copy :email', ['email' => $member->email]) }}"
+                                                        aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
+                                                        data-test="copy-email"
+                                                    >
+                                                        <flux:icon.envelope variant="micro" x-show="! copied" />
+                                                        <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
+                                                        <span
+                                                            x-show="message"
+                                                            x-cloak
+                                                            x-transition.opacity
+                                                            x-text="message"
+                                                            role="status"
+                                                            class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
+                                                        ></span>
+                                                    </button>
+                                                @endif
+                                            </p>
+                                        </div>
+
+                                        @if ($group === 'pending')
+                                            {{-- No projects to list, so show how to reach them for a follow-up --}}
+                                            <flux:link :href="'mailto:'.$member->email" variant="ghost" class="truncate !font-normal">{{ $member->email }}</flux:link>
+                                        @else
+                                            <flux:button
+                                                size="sm"
+                                                variant="ghost"
+                                                x-on:click="open = ! open"
+                                                x-bind:aria-expanded="open"
+                                                aria-controls="projects-{{ $member->id }}"
+                                                class="shrink-0 tabular-nums max-sm:h-11"
+                                                data-test="projects-toggle"
+                                            >
+                                                {{ trans_choice('{1} :count project|[2,*] :count projects', $member->projects->count()) }}
+                                                <flux:icon.chevron-down variant="micro" class="text-zinc-400 transition-transform duration-200" x-bind:class="open && 'rotate-180'" />
+                                            </flux:button>
+                                        @endif
                                     </div>
-                                    @if ($group === 'pending')
-                                        {{-- No projects to list, so show how to reach them for a follow-up --}}
-                                        <flux:link :href="'mailto:'.$member->email" variant="ghost" class="truncate !font-normal">{{ $member->email }}</flux:link>
-                                    @else
-                                    <ul class="grid gap-1.5">
-                                        @foreach ($member->projects as $project)
-                                            <li>
-                                                <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
-                                            </li>
-                                        @endforeach
-                                    </ul>
+
+                                    @if ($group !== 'pending')
+                                        <ul id="projects-{{ $member->id }}" x-show="open" x-collapse x-cloak class="mt-2 grid gap-1.5 border-s border-line ps-3">
+                                            @foreach ($member->projects as $project)
+                                                <li>
+                                                    <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
+                                                </li>
+                                            @endforeach
+                                        </ul>
                                     @endif
                                 </li>
                             @endforeach
                         </ul>
+
+                        <flux:pagination :paginator="$faculty" scroll-to="#faculty-list" class="mt-2" />
                     @endif
                 </flux:card>
             @endif
+            @endisland
 
             {{-- Trend over time, split by status: stacked columns --}}
             @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope])

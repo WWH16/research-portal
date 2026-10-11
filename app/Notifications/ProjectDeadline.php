@@ -18,6 +18,11 @@ class ProjectDeadline extends Notification implements ShouldQueue
 
     public bool $deleteWhenMissingModels = true;
 
+    /** A mail server that is down for a moment gets two more tries, a minute apart. */
+    public int $tries = 3;
+
+    public int $backoff = 60;
+
     /**
      * @param  int  $days  Days until the target date; negative once it has passed.
      */
@@ -35,11 +40,14 @@ class ProjectDeadline extends Notification implements ShouldQueue
         return $notifiable->hasVerifiedEmail() ? ['database', 'mail'] : ['database'];
     }
 
+    /**
+     * Brackets in a title, name or remark are escaped, so typed markdown can't turn into a link in the email.
+     */
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
             ->subject($this->days > 0 ? __('Target date in :days days', ['days' => $this->days]) : __('Project overdue'))
-            ->line($this->message())
+            ->line(addcslashes($this->message(), '\[]'))
             ->action(__('Open project'), $this->url());
     }
 

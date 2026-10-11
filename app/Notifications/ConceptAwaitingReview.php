@@ -18,6 +18,11 @@ class ConceptAwaitingReview extends Notification implements ShouldQueue
 
     public bool $deleteWhenMissingModels = true;
 
+    /** A mail server that is down for a moment gets two more tries, a minute apart. */
+    public int $tries = 3;
+
+    public int $backoff = 60;
+
     public function __construct(
         public readonly Submission $submission,
         public readonly string $uploader,
@@ -32,11 +37,14 @@ class ConceptAwaitingReview extends Notification implements ShouldQueue
         return $notifiable->hasVerifiedEmail() ? ['database', 'mail'] : ['database'];
     }
 
+    /**
+     * Brackets in a title, name or remark are escaped, so typed markdown can't turn into a link in the email.
+     */
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
             ->subject(__('Concept proposal to review'))
-            ->line($this->message())
+            ->line(addcslashes($this->message(), '\[]'))
             ->action(__('Review it'), $this->url());
     }
 

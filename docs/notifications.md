@@ -8,19 +8,16 @@ The portal tells people about three things, in the portal (the bell in the sideb
 
 Members with an unconfirmed email address get the notice in the portal only.
 
-## What the server needs
+## Setting up Laravel Cloud
 
-Notifications are queued, and reminders run on the scheduler, so production needs both of these running.
+Every notification, the in-app one included, is sent by the queue worker. Without a worker nothing arrives, and nothing reports an error. Reminders also need the scheduler.
 
-1. **The scheduler.** Add one cron entry for the web server user:
+Do this once, in the Laravel Cloud environment:
 
-   ```
-   * * * * * cd /path/to/research-portal && php artisan schedule:run >> /dev/null 2>&1
-   ```
-
-2. **A queue worker.** Keep `php artisan queue:work` running with supervisor or the host's process manager. Restart it after each deploy with `php artisan queue:restart`.
-
-3. **Mail settings.** Ask ISU IT for SMTP details and set them in `.env`:
+1. Check that the environment has a queue worker. Portal backups need one too (see [Backup and restore](backup-and-restore.md)), so it may already be there. If not, add one.
+2. Turn on the scheduler for the environment. It runs `projects:remind` every morning at 07:00. If the scheduler is off, no reminders go out.
+3. Check that `APP_URL` is the portal's public address. The Open links in emails and in the bell are built from it.
+4. Ask ISU IT for SMTP details and set them in the environment variables:
 
    ```
    MAIL_MAILER=smtp
@@ -31,7 +28,10 @@ Notifications are queued, and reminders run on the scheduler, so production need
    MAIL_FROM_ADDRESS=
    ```
 
-   Until these are set, keep `MAIL_MAILER=log`. In-app notifications still work, and the emails are written to `storage/logs/laravel.log`.
+   Until these are set, keep `MAIL_MAILER=log`. With a worker running, in-app notifications still arrive, and the emails go to the log instead of being sent.
+5. Redeploy the environment.
+
+A failed email is tried 3 times, a minute apart.
 
 ## Checking it by hand
 

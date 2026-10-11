@@ -27,4 +27,5 @@ Artisan::command('projects:remind', function () {
     });
 })->purpose('Remind proponents of near and passed target dates');
 
-Schedule::command('projects:remind')->dailyAt('07:00');
+// On one server only, so a second app instance never sends every reminder twice.
+Schedule::command('projects:remind')->dailyAt('07:00')->onOneServer();

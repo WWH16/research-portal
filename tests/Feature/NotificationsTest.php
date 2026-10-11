@@ -9,8 +9,10 @@ use App\Models\User;
 use App\Notifications\ConceptAwaitingReview;
 use App\Notifications\ConceptReviewed;
 use App\Notifications\ProjectDeadline;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -339,5 +341,36 @@ class NotificationsTest extends TestCase
         $this->assertModelMissing($leaving);
         $this->assertDatabaseMissing('notifications', ['notifiable_id' => $leaving->id, 'notifiable_type' => User::class]);
         $this->assertSame(1, $this->maria->notifications()->count());
+    }
+
+    public function test_a_failed_send_is_retried(): void
+    {
+        $project = $this->project();
+
+        foreach ([new ConceptReviewed($project, 'passed', null), new ConceptAwaitingReview($project, 'Maria Santos'), new ProjectDeadline($project, 7)] as $notification) {
+            $job = new SendQueuedNotifications(collect([$this->maria]), $notification, ['mail']);
+
+            $this->assertSame(3, $job->tries, $notification::class);
+            $this->assertSame(60, $job->backoff(), $notification::class);
+        }
+    }
+
+    public function test_markdown_in_a_title_or_name_never_becomes_a_link_in_an_email(): void
+    {
+        $project = $this->project(['title' => '[Review here](https://evil.example)']);
+
+        foreach ([new ConceptReviewed($project, 'returned', '[Fix](https://evil.example)'), new ConceptAwaitingReview($project, '[Admin](https://evil.example)'), new ProjectDeadline($project, 7)] as $notification) {
+            $html = (string) $notification->toMail($this->maria)->render();
+
+            $this->assertStringNotContainsString('href="https://evil.example"', $html, $notification::class);
+            $this->assertStringContainsString('[Review here](https://evil.example)', $html, $notification::class);
+        }
+    }
+
+    public function test_reminders_run_on_one_server_only(): void
+    {
+        $event = collect(app(Schedule::class)->events())->first(fn ($event) => str_contains($event->command, 'projects:remind'));
+
+        $this->assertTrue($event->onOneServer);
     }
 }

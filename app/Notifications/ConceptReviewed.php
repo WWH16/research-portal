@@ -18,6 +18,11 @@ class ConceptReviewed extends Notification implements ShouldQueue
 
     public bool $deleteWhenMissingModels = true;
 
+    /** A mail server that is down for a moment gets two more tries, a minute apart. */
+    public int $tries = 3;
+
+    public int $backoff = 60;
+
     /**
      * The decision and remarks are passed in, not read from the project, so a later upload can't change what the email says.
      *
@@ -38,14 +43,17 @@ class ConceptReviewed extends Notification implements ShouldQueue
         return $notifiable->hasVerifiedEmail() ? ['database', 'mail'] : ['database'];
     }
 
+    /**
+     * Brackets in a title, name or remark are escaped, so typed markdown can't turn into a link in the email.
+     */
     public function toMail(User $notifiable): MailMessage
     {
         $mail = (new MailMessage)
             ->subject($this->decision === 'passed' ? __('Concept proposal passed') : __('Concept proposal returned for revision'))
-            ->line($this->message());
+            ->line(addcslashes($this->message(), '\[]'));
 
         if ($this->remarks) {
-            $mail->line(__('Remarks: :remarks', ['remarks' => $this->remarks]));
+            $mail->line(addcslashes(__('Remarks: :remarks', ['remarks' => $this->remarks]), '\[]'));
         }
 
         return $mail->action(__('Open project'), $this->url());

@@ -1,9 +1,8 @@
 /*
  * Portal mail theme: one white card on a pale green-grey page. A solid seal-green banner carries the seal and the
  * portal's name; under it a headline, a few lines and one green button. The plain link sits under a hairline at
- * the foot of the card, and the footer sits below the card on the page. Body text uses the system font stack;
- * the headline, banner and button use IBM Plex Sans, which falls back to the same stack where web fonts are
- * blocked. Laravel inlines these rules into each email; the dark-mode and Outlook rules live in the layout's head.
+ * the foot of the card, and the footer sits below the card on the page. Every line uses Instrument Sans, the
+ * portal's own font, which falls back to the system stack where web fonts are blocked. Laravel inlines these rules into each email; the dark-mode and Outlook rules live in the layout's head.
  */
 
 /* Base */
@@ -11,7 +10,7 @@
 body,
 body *:not(html):not(style):not(br):not(tr):not(code) {
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 body {
@@ -47,7 +46,6 @@ a img {
 
 .content-cell h1 {
     color: #111111;
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     font-size: 22px;
     font-weight: 600;
     line-height: 1.3;
@@ -123,7 +121,6 @@ img {
 
 .masthead-name {
     color: #ffffff;
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     font-size: 18px;
     font-weight: 600;
     line-height: 1.3;
@@ -132,7 +129,6 @@ img {
 
 .masthead-institution {
     color: #d4e7dc;
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     font-size: 13px;
     font-weight: 500;
     line-height: 1.4;
@@ -199,7 +195,6 @@ img {
     border-radius: 4px;
     color: #ffffff;
     display: inline-block;
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;

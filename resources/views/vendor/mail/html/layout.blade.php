@@ -13,7 +13,7 @@ body, table, td, p, a, h1 { font-family: Arial, Helvetica, sans-serif !important
 </style>
 <![endif]-->
 <!--[if !mso]><!-->
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600&display=swap" rel="stylesheet">
 <!--<![endif]-->
 <style>
 :root {

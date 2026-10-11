@@ -6,9 +6,12 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\Submission;
 use App\Models\User;
+use App\Notifications\ConceptAwaitingReview;
 use App\Notifications\ConceptReviewed;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -127,5 +130,62 @@ class NotificationsTest extends TestCase
 
         $this->assertSame(['database'], (new ConceptReviewed($project, 'passed', null))->via($unverified));
         $this->assertSame(['database', 'mail'], (new ConceptReviewed($project, 'passed', null))->via($this->maria));
+    }
+
+    public function test_a_new_concept_proposal_tells_every_admin(): void
+    {
+        Notification::fake();
+        Storage::fake('submissions');
+        [$first, $second] = [$this->admin(), $this->admin()];
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::submissions.create')
+            ->set('title', 'Solar Dryer Study')
+            ->set('abstract', 'An abstract.')
+            ->set('category_id', Category::firstOrCreate(['name' => 'Computing'])->id)
+            ->set('start_date', now()->toDateString())
+            ->set('target_date', now()->addYear()->toDateString())
+            ->set('documents.concept', UploadedFile::fake()->create('proposal.pdf', 500, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $project = Submission::sole();
+        Notification::assertSentTo([$first, $second], ConceptAwaitingReview::class, fn (ConceptAwaitingReview $notification) => $notification->submission->is($project)
+            && $notification->uploader === 'Maria Santos'
+            && $notification->toArray($first)['url'] === route('reviews.index', ['review' => $project->id]));
+        Notification::assertNotSentTo($this->maria, ConceptAwaitingReview::class);
+    }
+
+    public function test_a_concept_reuploaded_while_waiting_tells_admins_again(): void
+    {
+        Notification::fake();
+        Storage::fake('submissions');
+        $admin = $this->admin();
+        $project = $this->project();
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.concept', UploadedFile::fake()->create('proposal-v2.pdf', 500, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Notification::assertSentToTimes($admin, ConceptAwaitingReview::class, 1);
+    }
+
+    public function test_replacing_a_passed_concept_or_uploading_a_later_document_tells_no_admin(): void
+    {
+        Notification::fake();
+        Storage::fake('submissions');
+        $admin = $this->admin();
+        $project = $this->project(['awaiting_review' => false, 'concept_passed' => true]);
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.concept', UploadedFile::fake()->create('proposal-v2.pdf', 500, 'application/pdf'))
+            ->set('documents.detailed', UploadedFile::fake()->create('detailed.pdf', 500, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Notification::assertNotSentTo($admin, ConceptAwaitingReview::class);
     }
 }

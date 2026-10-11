@@ -6,12 +6,14 @@ use App\Models\Department;
 use App\Models\Proponent;
 use App\Models\Submission;
 use App\Models\User;
+use App\Notifications\ConceptAwaitingReview;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -172,7 +174,7 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
-        DB::transaction(function () use ($validated, $rows) {
+        $submission = DB::transaction(function () use ($validated, $rows) {
             $submission = $this->submission ?? Auth::user()->submissions()->make(['department_id' => $this->department->id]);
 
             $submission->fill([
@@ -216,7 +218,14 @@ new #[Title('Research Project')] class extends Component {
                     'replaced' => $replaced,
                 ]));
             }
+
+            return $submission;
         });
+
+        // The Research Office hears of each concept proposal that waits for a decision, once the save has committed.
+        if (isset($this->documents['concept']) && $submission->awaiting_review) {
+            Notification::send(User::where('role', 'admin')->whereKeyNot(Auth::id())->get(), new ConceptAwaitingReview($submission, Auth::user()->name));
+        }
 
         // Only the concept proposal goes to the Research Office; the other documents are filed as they come in.
         session()->flash('status', match (true) {

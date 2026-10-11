@@ -12,6 +12,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 
     Route::livewire('announcements', 'pages::announcements.index')->name('announcements.index');
+    Route::livewire('notifications', 'pages::notifications.index')->name('notifications.index');
     Route::livewire('drive', 'pages::drive.index')->name('drive.index');
     Route::livewire('drive/projects/{submission}', 'pages::drive.show')->middleware('can:view,submission')->name('drive.show');
 

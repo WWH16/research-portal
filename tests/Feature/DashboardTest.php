@@ -418,11 +418,12 @@ class DashboardTest extends TestCase
         }
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        $this->assertQueriesAtMost(18, fn () => $this->get(route('dashboard'))->assertOk());
+        // One of these is the sidebar's unread notification count.
+        $this->assertQueriesAtMost(19, fn () => $this->get(route('dashboard'))->assertOk());
 
         $this->actingAs($maria);
-        // One of these is the sidebar's count of projects that need revision.
-        $this->assertQueriesAtMost(4, fn () => $this->get(route('dashboard'))->assertOk());
+        // Two of these are the sidebar's counts: projects that need revision, and unread notifications.
+        $this->assertQueriesAtMost(5, fn () => $this->get(route('dashboard'))->assertOk());
     }
 
     private function facultyInDepartment(string $name): User

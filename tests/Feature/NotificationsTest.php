@@ -251,4 +251,77 @@ class NotificationsTest extends TestCase
     {
         $this->artisan('schedule:list')->expectsOutputToContain('projects:remind')->assertSuccessful();
     }
+
+    public function test_guests_cannot_open_notifications(): void
+    {
+        $this->get(route('notifications.index'))->assertRedirect(route('login'));
+    }
+
+    public function test_members_see_only_their_own_notifications(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $this->admin()->notify(new ConceptAwaitingReview($project, 'Maria Santos'));
+
+        $this->actingAs($this->maria)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Concept proposal passed: Solar Dryer Study')
+            ->assertDontSee('New concept proposal to review');
+    }
+
+    public function test_opening_a_notification_marks_it_read_and_goes_to_the_project(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $notification = $this->maria->notifications()->sole();
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::notifications.index')
+            ->call('open', $notification->id)
+            ->assertRedirect(route('drive.show', $project));
+
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_another_members_notification_cannot_be_opened(): void
+    {
+        $project = $this->project();
+        $this->jose->notify(new ConceptReviewed($project, 'passed', null));
+        $joses = $this->jose->notifications()->sole();
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::notifications.index')
+            ->call('open', $joses->id)
+            ->assertStatus(404);
+
+        $this->assertNull($joses->fresh()->read_at);
+    }
+
+    public function test_mark_all_read_clears_the_sidebar_count(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $this->maria->notify(new ConceptReviewed($project, 'returned', 'Narrow the scope.'));
+        $this->actingAs($this->maria);
+
+        $this->get(route('dashboard'))
+            ->assertSeeHtml('data-test="notifications-nav"')
+            ->assertSeeHtml('title="2 unread notifications"');
+
+        Livewire::test('pages::notifications.index')
+            ->call('markAllRead')
+            ->assertRedirect(route('notifications.index'));
+
+        $this->assertSame(0, $this->maria->unreadNotifications()->count());
+        $this->get(route('dashboard'))->assertDontSeeHtml('unread notifications"');
+    }
+
+    public function test_an_empty_list_says_so(): void
+    {
+        $this->actingAs($this->maria)
+            ->get(route('notifications.index'))
+            ->assertSee('No notifications yet.')
+            ->assertDontSeeHtml('data-test="mark-all-read"');
+    }
 }

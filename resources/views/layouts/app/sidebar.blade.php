@@ -9,10 +9,13 @@
         $toRevise = auth()->user()->isAdmin() ? 0 : \App\Models\Submission::involving(auth()->user())->where('awaiting_review', false)->where('concept_passed', false)->count();
         $reviewLabel = \App\Models\Submission::reviewQueueLabel($toReview);
         $revisionLabel = trans_choice('{1} 1 project needs revision|[2,*] :count projects need revision', $toRevise);
+        $unread = auth()->user()->unreadNotifications()->count();
+        // Null with nothing unread, so no stray "0 unread" title is left on the item.
+        $unreadLabel = $unread ? trans_choice('{1} 1 unread notification|[2,*] :count unread notifications', $unread) : null;
         // Two digits at most, so the badge never crowds the label; the hover title keeps the exact count.
         $capped = fn (int $count) => $count > 99 ? '99+' : $count;
     @endphp
-    <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
+    <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), unread: @js($unread), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
         <flux:sidebar sticky collapsible="mobile" class="isu-sidebar border-e">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
@@ -28,6 +31,14 @@
 
                     <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
                         {{ __('Announcements') }}
+                    </flux:sidebar.item>
+
+                    {{-- Unread notices show as a count on every page; screen readers hear the sentence, not the bare number --}}
+                    <flux:sidebar.item icon="bell" :href="route('notifications.index')" :current="request()->routeIs('notifications.*')" :badge="$unread ? $capped($unread) : null" :badge:title="$unreadLabel" badge:aria-hidden="true" wire:navigate data-test="notifications-nav">
+                        {{ __('Notifications') }}
+                        @if ($unread)
+                            <span class="sr-only">{{ $unreadLabel }}</span>
+                        @endif
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
@@ -116,7 +127,7 @@
             {{-- The dot keeps open work in sight while the sidebar is tucked away; the inset moves to the wrapper so the dot lines up with the icon --}}
             <div class="relative -ms-2.5 lg:hidden">
                 <flux:sidebar.toggle icon="bars-2" />
-                <span x-show="toReview || toRevise" @style(['display: none' => ! ($toReview || $toRevise)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" data-test="sidebar-toggle-dot"></span>
+                <span x-show="toReview || toRevise || unread" @style(['display: none' => ! ($toReview || $toRevise || $unread)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" data-test="sidebar-toggle-dot"></span>
             </div>
 
             <flux:spacer />

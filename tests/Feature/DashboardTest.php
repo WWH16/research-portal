@@ -399,7 +399,8 @@ class DashboardTest extends TestCase
             ->assertSee(route('submissions.index', ['status' => 'proposal']), escape: false)
             ->assertSee(route('submissions.index', ['status' => 'Mid-year']), escape: false)
             ->assertSee(route('submissions.index', ['status' => 'Completed']), escape: false)
-            ->assertSee(route('submissions.index', ['status' => 'delayed']), escape: false);
+            ->assertSee(route('submissions.index', ['status' => 'delayed']), escape: false)
+            ->assertDontSee('wire:island="faculty-list"', escape: false);
 
         Livewire::withQueryParams(['status' => 'proposal'])->test('pages::submissions.index')
             ->assertSeeHtml('data-test="status-filter"')

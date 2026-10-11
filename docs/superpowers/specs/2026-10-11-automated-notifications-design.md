@@ -49,6 +49,7 @@ Each notification class implements `ShouldQueue` and sets `$deleteWhenMissingMod
 
 | File | Change |
 |------|--------|
+| `routes/web.php` | Register `Route::livewire('notifications', 'pages::notifications.index')->name('notifications.index')` inside the `auth` + `verified` group. |
 | `app/Concerns/ReviewsSubmissions.php` | After the review transaction commits, `saveReview` sends `ConceptReviewed` to `$submission->people()` without the reviewer. |
 | `resources/views/pages/submissions/⚡create.blade.php` | After the save transaction commits, if a concept file was uploaded and the project is `awaiting_review`, send `ConceptAwaitingReview` to `User::where('role', 'admin')->get()` without the uploader. |
 | `resources/views/layouts/app/sidebar.blade.php` | A "Notifications" item with a `bell` icon goes in the Overview group. Its badge shows the unread count, using the same badge pattern and 99+ cap as Reviews. The phone menu dot also shows when there are unread notifications. |
@@ -116,7 +117,7 @@ Before done:
 
 ## Deployment
 
-Add a README section:
+The repo has no README. Add `docs/notifications.md`, next to `docs/backup-and-restore.md`, covering:
 
 - Cron entry: `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1`
 - A queue worker, `php artisan queue:work`, kept running by supervisor or the host's process manager.

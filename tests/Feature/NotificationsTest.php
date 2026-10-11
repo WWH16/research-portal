@@ -8,6 +8,7 @@ use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\ConceptAwaitingReview;
 use App\Notifications\ConceptReviewed;
+use App\Notifications\ProjectDeadline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -187,5 +188,67 @@ class NotificationsTest extends TestCase
             ->assertHasNoErrors();
 
         Notification::assertNotSentTo($admin, ConceptAwaitingReview::class);
+    }
+
+    /**
+     * The days each reminder Maria got carries, smallest first.
+     *
+     * @return list<int>
+     */
+    private function remindedDays(): array
+    {
+        return Notification::sent($this->maria, ProjectDeadline::class)->map(fn (ProjectDeadline $notification) => $notification->days)->sort()->values()->all();
+    }
+
+    public function test_reminds_project_people_thirty_and_seven_days_before_the_target_date(): void
+    {
+        Notification::fake();
+        foreach ([30, 29, 7, 1] as $days) {
+            $this->project(['target_date' => today()->addDays($days)]);
+        }
+
+        $this->artisan('projects:remind')->assertSuccessful();
+
+        $this->assertSame([7, 30], $this->remindedDays());
+        Notification::assertSentToTimes($this->jose, ProjectDeadline::class, 2);
+    }
+
+    public function test_reminds_the_day_after_the_target_date_then_weekly(): void
+    {
+        Notification::fake();
+        foreach ([-1, -2, -7, -8, -15, -16] as $days) {
+            $this->project(['target_date' => today()->addDays($days)]);
+        }
+
+        $this->artisan('projects:remind')->assertSuccessful();
+
+        $this->assertSame([-15, -8, -1], $this->remindedDays());
+    }
+
+    public function test_no_reminder_on_the_day_itself_without_a_target_date_or_once_finished(): void
+    {
+        Notification::fake();
+        $this->project(['target_date' => today()]);
+        $this->project(['target_date' => null]);
+        $this->project(['target_date' => today()->addDays(7), 'terminal_uploaded_at' => now()]);
+        $this->project(['target_date' => today()->subDay(), 'terminal_uploaded_at' => now()]);
+
+        $this->artisan('projects:remind')->assertSuccessful();
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_reminders_read_as_due_or_overdue(): void
+    {
+        $project = $this->project(['target_date' => today()->addDays(7)]);
+
+        $this->assertStringContainsString('Due in 7 days: Solar Dryer Study', (new ProjectDeadline($project, 7))->toArray($this->maria)['message']);
+        $this->assertStringContainsString('Overdue by 1 day: Solar Dryer Study', (new ProjectDeadline($project, -1))->toArray($this->maria)['message']);
+        $this->assertSame(route('drive.show', $project), (new ProjectDeadline($project, -8))->toArray($this->maria)['url']);
+    }
+
+    public function test_reminders_are_scheduled_every_morning(): void
+    {
+        $this->artisan('schedule:list')->expectsOutputToContain('projects:remind')->assertSuccessful();
     }
 }

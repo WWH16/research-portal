@@ -33,8 +33,10 @@ blockquote {
     text-align: left;
 }
 
+/* The underline is set here, not left to the client, so it is inlined and survives the layout's autolink reset. */
 a {
     color: #0b5e36;
+    text-decoration: underline;
 }
 
 a img {
@@ -175,7 +177,7 @@ img {
     word-break: break-all;
 }
 
-/* Footer: below the card on the page, under a thin divider. #5f6763 holds 5.3:1 on the page at 13px. */
+/* Footer: below the card on the page, under a thin divider. #5f6763 holds 5.16:1 on the page at 13px. */
 
 .footer {
     margin: 0 auto;

@@ -21,6 +21,19 @@ color-scheme: light dark;
 supported-color-schemes: light dark;
 }
 
+/* Gmail and Apple Mail turn a bare address (the reader's own, in the first line) into a blue link. Keep it plain
+   text. The portal's own links carry an inline color and underline, so these rules leave them green. */
+u + .body a {
+color: inherit;
+text-decoration: none;
+}
+
+a[x-apple-data-detectors] {
+color: inherit !important;
+font: inherit !important;
+text-decoration: none !important;
+}
+
 /* Like the portal's primary button, it deepens on hover instead of fading */
 .sheet .content-cell a.button-primary:hover {
 background-color: #094b2b !important;
@@ -116,7 +129,8 @@ color: #ffffff !important;
 </style>
 {!! $head ?? '' !!}
 </head>
-<body>
+{{-- The class lets the autolink rule above find the body inside Gmail --}}
+<body class="body">
 
 <table class="wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
 <tr>

@@ -40,11 +40,4 @@
 @endforeach
 </x-mail::panel>
 @endif
-
-{{-- Subcopy: the plain link, for clients that break the button --}}
-@isset($actionText)
-<x-slot:subcopy>
-{{ __('Button not working? Paste this link into your browser:') }} [{{ $displayableActionUrl }}]({{ $actionUrl }})
-</x-slot:subcopy>
-@endisset
 </x-mail::message>

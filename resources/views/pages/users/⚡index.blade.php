@@ -246,6 +246,8 @@ new #[Title('Manage Users')] class extends Component {
         }
 
         DB::transaction(function () {
+            // Notifications point at the user without a foreign key, so they would outlive the account.
+            $this->deleting->notifications()->delete();
             $this->deleting->delete();
             ActivityLog::record('user.deleted', $this->deleting);
         });

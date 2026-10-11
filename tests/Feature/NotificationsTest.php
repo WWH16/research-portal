@@ -324,4 +324,20 @@ class NotificationsTest extends TestCase
             ->assertSee('No notifications yet.')
             ->assertDontSeeHtml('data-test="mark-all-read"');
     }
+
+    public function test_deleting_a_user_deletes_their_notifications(): void
+    {
+        $leaving = User::factory()->create();
+        $leaving->notify(new ConceptReviewed($this->project(), 'passed', null));
+        $this->maria->notify(new ConceptReviewed($this->project(), 'passed', null));
+        $this->actingAs($this->admin());
+
+        Livewire::test('pages::users.index')
+            ->call('confirmDelete', $leaving->id)
+            ->call('delete');
+
+        $this->assertModelMissing($leaving);
+        $this->assertDatabaseMissing('notifications', ['notifiable_id' => $leaving->id, 'notifiable_type' => User::class]);
+        $this->assertSame(1, $this->maria->notifications()->count());
+    }
 }

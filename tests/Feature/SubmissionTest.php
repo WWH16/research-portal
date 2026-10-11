@@ -966,12 +966,12 @@ class SubmissionTest extends TestCase
         $project = Submission::where('title', 'Maria Proposal')->first();
 
         $this->actingAs($maria);
-        // One of these is the sidebar's count of projects that need revision.
-        $this->assertQueriesAtMost(7, fn () => $this->get(route('submissions.index'))->assertOk());
+        // Two of these are the sidebar's counts: projects that need revision, and unread notifications.
+        $this->assertQueriesAtMost(8, fn () => $this->get(route('submissions.index'))->assertOk());
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        // One of these is the sidebar's count of concept proposals to review.
-        $this->assertQueriesAtMost(9, fn () => $this->get(route('submissions.index'))->assertOk());
+        // Two of these are the sidebar's counts: concept proposals to review, and unread notifications.
+        $this->assertQueriesAtMost(10, fn () => $this->get(route('submissions.index'))->assertOk());
 
         // Calls the way a click inside the review panel sends them, scoped to the review island.
         $component = Livewire::test('pages::reviews.index');

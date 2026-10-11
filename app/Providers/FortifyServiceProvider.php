@@ -90,8 +90,7 @@ class FortifyServiceProvider extends ServiceProvider
             ->action(__('Verify email'), $url)
             ->line($expires(config('auth.verification.expire', 60)))
             // A Markdown mailto link to the sender, so it reaches the Research Office and reads as a link in plain text.
-            ->line(__('Didn’t sign up?').' ['.__('Contact the Research Office').'](mailto:'.config('mail.from.address').').')
-            ->markdown('notifications::email', ['icon' => 'envelope']));
+            ->line(__('Didn’t sign up?').' ['.__('Contact the Research Office').'](mailto:'.config('mail.from.address').').'));
 
         ResetPassword::toMailUsing(fn ($user, string $token) => (new MailMessage)
             ->subject(__('Reset your Faculty Research Portal password'))
@@ -99,8 +98,7 @@ class FortifyServiceProvider extends ServiceProvider
             ->line(__('Set a new password for :email.', ['email' => $md($user->getEmailForPasswordReset())]))
             ->action(__('Reset password'), url(route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()], false)))
             ->line($expires(config('auth.passwords.'.config('auth.defaults.passwords').'.expire')))
-            ->line(__('Didn’t ask for this? Ignore this email. Your password stays the same.'))
-            ->markdown('notifications::email', ['icon' => 'lock-closed']));
+            ->line(__('Didn’t ask for this? Ignore this email. Your password stays the same.')));
     }
 
     /**

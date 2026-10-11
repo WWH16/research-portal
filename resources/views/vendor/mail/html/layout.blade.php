@@ -1,37 +1,124 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <title>{{ config('app.name') }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+{{-- Outlook on Windows can't load web fonts and falls back to Times, so it gets Arial instead --}}
+<!--[if mso]>
 <style>
-@media only screen and (max-width: 600px) {
+body, table, td, p, a, h1 { font-family: Arial, Helvetica, sans-serif !important; }
+</style>
+<![endif]-->
+<!--[if !mso]><!-->
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600&display=swap" rel="stylesheet">
+<!--<![endif]-->
+<style>
+:root {
+color-scheme: light dark;
+supported-color-schemes: light dark;
+}
+
+/* Like the portal's primary button, it deepens on hover instead of fading */
+.button-primary:hover,
+.sheet .content-cell a.button-primary:hover {
+background-color: #094b2b !important;
+}
+
+@media only screen and (max-width: 640px) {
 .sheet,
 .footer {
 width: 100% !important;
 }
 
 .masthead {
-padding: 24px 20px 20px !important;
+padding: 20px 24px !important;
 }
 
 .content-cell,
 .help-cell {
-padding-left: 20px !important;
-padding-right: 20px !important;
+padding-left: 24px !important;
+padding-right: 24px !important;
 }
 
-.content-cell h1 {
+.sheet .content-cell {
+padding-top: 28px !important;
+padding-bottom: 28px !important;
+}
+
+.sheet .content-cell h1 {
 font-size: 20px !important;
 }
 }
 
 @media only screen and (max-width: 500px) {
 .button {
-width: 100% !important;
+display: block !important;
 }
+}
+
+/* Dark mode (Apple Mail, Outlook for Mac and iOS). The banner and button keep the seal green. */
+@media (prefers-color-scheme: dark) {
+body,
+.wrapper {
+background-color: #0f1412 !important;
+}
+
+.sheet {
+background-color: #171d1a !important;
+border-color: #2c3531 !important;
+}
+
+.masthead {
+background-color: #0b5e36 !important;
+}
+
+.sheet .content-cell h1 {
+color: #f2f5f3 !important;
+}
+
+.sheet .content-cell p,
+.sheet .content-cell li {
+color: #dce2df !important;
+}
+
+.help-cell,
+.footer .content-cell {
+border-color: #2c3531 !important;
+}
+
+.sheet .content-cell .panel-item p,
+.subcopy p,
+.subcopy a,
+.footer p {
+color: #a3ada8 !important;
+}
+
+.sheet .content-cell a,
+.footer a {
+color: #86d1a8 !important;
+}
+
+.button-primary,
+.sheet .content-cell a.button-primary {
+background-color: #0b5e36 !important;
+border-color: #0b5e36 !important;
+color: #ffffff !important;
+}
+}
+
+/* Outlook.com and the new Outlook mark what they recolor in dark mode; keep the banner and button green */
+[data-ogsb] .masthead,
+[data-ogsb] .button-primary {
+background-color: #0b5e36 !important;
+}
+
+[data-ogsc] .button-primary,
+[data-ogsc] .masthead-name,
+[data-ogsc] .masthead-institution {
+color: #ffffff !important;
 }
 </style>
 {!! $head ?? '' !!}
@@ -43,10 +130,10 @@ width: 100% !important;
 <td align="center">
 <table class="content" width="100%" cellpadding="0" cellspacing="0" role="presentation">
 
-{{-- The sheet: one white page, everything centered on it --}}
+{{-- The sheet: one white card with the green banner across its top --}}
 <tr>
 <td class="sheet-row">
-<table class="sheet" align="center" width="570" cellpadding="0" cellspacing="0" role="presentation">
+<table class="sheet" align="center" width="600" cellpadding="0" cellspacing="0" role="presentation">
 {!! $header ?? '' !!}
 
 <tr>
@@ -55,7 +142,7 @@ width: 100% !important;
 </td>
 </tr>
 
-{{-- Help strip: the subcopy gets its own tinted band at the foot of the sheet --}}
+{{-- Help strip: the subcopy sits under a hairline at the foot of the card --}}
 @isset($subcopy)
 <tr>
 <td class="help-cell">

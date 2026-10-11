@@ -1,11 +1,6 @@
 {{-- Hands the mail message down to the HTML header, which embeds the seal; null in previews and test renders.
      The first intro line, without its Markdown escapes, doubles as the inbox preview text. --}}
 <x-mail::message :seal-from="$message ?? null" :preheader="isset($introLines[0]) ? stripslashes($introLines[0]) : null">
-{{-- Icon: what the email is about, at a glance --}}
-@isset($icon)
-<x-mail::icon :name="$icon" :embed-from="$message ?? null" />
-@endisset
-
 {{-- Greeting --}}
 @if (! empty($greeting))
 # {{ $greeting }}

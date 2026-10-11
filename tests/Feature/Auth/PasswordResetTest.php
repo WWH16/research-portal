@@ -50,7 +50,6 @@ class PasswordResetTest extends TestCase
         $this->assertStringContainsString(route('password.reset', ['token' => 'reset-token', 'email' => $user->email]), $mail->actionUrl);
         $this->assertStringContainsString('Reset your password', $html);
         $this->assertStringContainsString('Set a new password for '.$user->email.'.', $html);
-        $this->assertStringContainsString('images/mail/lock-closed.png', $html);
         $this->assertStringContainsString('Isabela State University', $html);
         $this->assertStringNotContainsString('All rights reserved', $html);
     }

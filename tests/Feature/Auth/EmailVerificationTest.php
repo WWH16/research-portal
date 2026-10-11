@@ -48,7 +48,6 @@ class EmailVerificationTest extends TestCase
         $this->assertSame('Verify email', $mail->actionText);
         $this->assertStringContainsString('Verify your email', $html);
         $this->assertStringContainsString('Confirm '.$user->email.' to activate your Faculty Research Portal account.', $html);
-        $this->assertStringContainsString('images/mail/envelope.png', $html);
         $this->assertStringContainsString('Link expires in 60 minutes.', $html);
         $this->assertMatchesRegularExpression('/<a href="mailto:'.preg_quote(config('mail.from.address'), '/').'"[^>]*>Contact the Research Office<\/a>/', $html);
         $this->assertStringContainsString('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela', $html);
@@ -72,7 +71,7 @@ class EmailVerificationTest extends TestCase
         // Embedded (cid:), not linked, so the seal shows even before the portal has a public address.
         $email = Mail::mailer('array')->getSymfonyTransport()->messages()->first()->getOriginalMessage();
         $this->assertStringContainsString('src="cid:', $email->getHtmlBody());
-        $this->assertCount(2, $email->getAttachments());
+        $this->assertCount(1, $email->getAttachments());
     }
 
     public function test_unverified_users_are_redirected_to_the_email_verification_prompt(): void

@@ -22,7 +22,6 @@ supported-color-schemes: light dark;
 }
 
 /* Like the portal's primary button, it deepens on hover instead of fading */
-.button-primary:hover,
 .sheet .content-cell a.button-primary:hover {
 background-color: #094b2b !important;
 }
@@ -71,10 +70,6 @@ background-color: #171d1a !important;
 border-color: #2c3531 !important;
 }
 
-.masthead {
-background-color: #0b5e36 !important;
-}
-
 .sheet .content-cell h1 {
 color: #f2f5f3 !important;
 }
@@ -101,9 +96,7 @@ color: #a3ada8 !important;
 color: #86d1a8 !important;
 }
 
-.button-primary,
 .sheet .content-cell a.button-primary {
-background-color: #0b5e36 !important;
 border-color: #0b5e36 !important;
 color: #ffffff !important;
 }

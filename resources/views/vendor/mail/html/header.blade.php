@@ -17,7 +17,7 @@
 {{-- Decorative: the university's name is set right beside it --}}
 <img src="{{ $seal }}" class="seal" width="52" height="52" alt="">
 </td>
-<td class="masthead-text" valign="middle">
+<td valign="middle">
 {!! $slot !!}
 </td>
 </tr>

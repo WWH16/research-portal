@@ -179,6 +179,16 @@ class Submission extends Model
     }
 
     /**
+     * Everyone the project concerns: the filer and each proponent with an account, once each. Notifications go to them.
+     *
+     * @return EloquentCollection<int, User>
+     */
+    public function people(): EloquentCollection
+    {
+        return User::whereKey($this->user_id)->orWhereIn('id', $this->proponents()->select('user_id'))->get();
+    }
+
+    /**
      * The title as lists print it. Titles are often saved from file names, so underscores read as spaces.
      */
     public function displayTitle(): string

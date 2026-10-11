@@ -1,0 +1,131 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Category;
+use App\Models\Department;
+use App\Models\Submission;
+use App\Models\User;
+use App\Notifications\ConceptReviewed;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class NotificationsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $maria;
+
+    private User $jose;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->freezeTime();
+
+        $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $this->maria = User::factory()->create(['name' => 'Maria Santos', 'department_id' => $department->id]);
+        $this->jose = User::factory()->create(['name' => 'Jose Reyes', 'department_id' => $department->id]);
+    }
+
+    private function admin(): User
+    {
+        return User::factory()->create(['role' => 'admin']);
+    }
+
+    /**
+     * Maria files the project and leads study 1. Jose is staff on study 1 and leads study 2, so he is listed twice.
+     */
+    private function project(array $attributes = []): Submission
+    {
+        $project = $this->maria->submissions()->create([
+            'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
+            'department_id' => $this->maria->department_id,
+            'title' => 'Solar_Dryer Study',
+            'abstract' => 'An abstract.',
+            'start_date' => now(),
+            'target_date' => now()->addYear(),
+            'concept_path' => 'submissions/concept.pdf',
+        ]);
+        $project->proponents()->createMany([
+            ['user_id' => $this->maria->id, 'study' => 1, 'role' => 'Leader'],
+            ['user_id' => $this->jose->id, 'study' => 1, 'role' => 'Staff'],
+            ['user_id' => $this->jose->id, 'study' => 2, 'role' => 'Leader'],
+        ]);
+        $project->forceFill(['awaiting_review' => true, ...$attributes])->save();
+
+        return $project->refresh();
+    }
+
+    public function test_project_people_are_the_filer_and_proponents_once_each(): void
+    {
+        $project = $this->project();
+        User::factory()->create(['name' => 'Not On It']);
+
+        $this->assertEqualsCanonicalizing([$this->maria->id, $this->jose->id], $project->people()->modelKeys());
+    }
+
+    public function test_a_passed_review_tells_project_people_but_not_the_reviewer(): void
+    {
+        Notification::fake();
+        $project = $this->project();
+        $this->actingAs($admin = $this->admin());
+
+        Livewire::test('pages::reviews.index')
+            ->call('review', $project->id)
+            ->call('saveReview', 'passed')
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo([$this->maria, $this->jose], ConceptReviewed::class, fn (ConceptReviewed $notification) => $notification->decision === 'passed' && $notification->remarks === null);
+        Notification::assertNotSentTo($admin, ConceptReviewed::class);
+        Notification::assertSentTimes(ConceptReviewed::class, 2);
+    }
+
+    public function test_a_returned_review_carries_the_remarks(): void
+    {
+        Notification::fake();
+        $project = $this->project();
+        $this->actingAs($this->admin());
+
+        Livewire::test('pages::reviews.index')
+            ->call('review', $project->id)
+            ->set('remarks', 'Narrow the scope.')
+            ->call('saveReview', 'returned')
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo($this->maria, ConceptReviewed::class, function (ConceptReviewed $notification) use ($project) {
+            $data = $notification->toArray($this->maria);
+
+            return $notification->decision === 'returned'
+                && $notification->remarks === 'Narrow the scope.'
+                && $data['url'] === route('drive.show', $project)
+                && str_contains($data['message'], 'Solar Dryer Study');
+        });
+    }
+
+    public function test_a_refused_review_tells_nobody(): void
+    {
+        Notification::fake();
+        $project = $this->project();
+        $this->actingAs($this->admin());
+
+        Livewire::test('pages::reviews.index')
+            ->call('review', $project->id)
+            ->call('saveReview', 'returned')
+            ->assertHasErrors(['remarks']);
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_unverified_members_get_the_notice_in_the_portal_only(): void
+    {
+        $project = $this->project();
+        $unverified = User::factory()->unverified()->create();
+
+        $this->assertSame(['database'], (new ConceptReviewed($project, 'passed', null))->via($unverified));
+        $this->assertSame(['database', 'mail'], (new ConceptReviewed($project, 'passed', null))->via($this->maria));
+    }
+}

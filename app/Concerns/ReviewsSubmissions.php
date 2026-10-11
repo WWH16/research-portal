@@ -4,8 +4,11 @@ namespace App\Concerns;
 
 use App\Models\ActivityLog;
 use App\Models\Submission;
+use App\Notifications\ConceptReviewed;
 use Flux\Flux;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -93,7 +96,7 @@ trait ReviewsSubmissions
         ])->validate();
 
         // The review and its log entry save together, so a failed log write never leaves a review the log missed.
-        DB::transaction(function () use ($validated) {
+        $submission = DB::transaction(function () use ($validated) {
             // Locked until the review saves, so an upload can't slip in between the check and the save.
             $submission = Submission::lockForUpdate()->findOrFail($this->reviewingId);
 
@@ -117,7 +120,12 @@ trait ReviewsSubmissions
 
             // The project keeps only the latest remarks, so the log holds each review's own copy.
             ActivityLog::record('submission.reviewed', $submission, array_filter(['decision' => $validated['decision'], 'remarks' => $submission->remarks]));
+
+            return $submission;
         });
+
+        // Sent only once the review has saved, so a rolled-back review tells nobody.
+        Notification::send($submission->people()->except(Auth::id()), new ConceptReviewed($submission, $validated['decision'], $submission->remarks));
 
         // The sidebar count lives in the layout, outside this component, so send it the new queue size.
         $toReview = Submission::where('awaiting_review', true)->count();

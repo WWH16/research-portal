@@ -186,6 +186,19 @@ select:focus[data-flux-control] {
     background-color: var(--color-isu-green-800);
     border-color: var(--color-isu-green-900);
     color: var(--color-isu-green-50);
+    /*
+     * A thin scrollbar that stays hidden until the pointer or focus is in the sidebar.
+     * The gutter is kept on both edges at all times, so showing the bar never moves the
+     * items, and the side padding shrinks by about the gutter's width to give the room back.
+     */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    scrollbar-gutter: stable both-edges;
+    padding-inline: 0.5rem;
+}
+
+.isu-sidebar:hover,
+.isu-sidebar:focus-within {
     scrollbar-color: var(--color-isu-green-600) transparent;
 }
 

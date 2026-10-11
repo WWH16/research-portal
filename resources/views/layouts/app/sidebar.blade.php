@@ -16,15 +16,19 @@
         $capped = fn (int $count) => $count > 99 ? '99+' : $count;
     @endphp
     <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), unread: @js($unread), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
-        <flux:sidebar sticky collapsible="mobile" class="isu-sidebar border-e">
+        {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}
+        <flux:sidebar sticky collapsible="mobile" class="isu-sidebar w-72 border-e">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
-            {{-- Ordered by how often each page is used: daily work first, setup lower, rare system tasks last. My Profile lives in the user menu. --}}
+            {{--
+                Ordered by how often each page is used: daily work first, setup lower, rare system tasks last. My Profile lives in the user menu.
+                Every group folds the same way. The daily groups start open; the rest open only on one of their own pages.
+            --}}
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Overview')" class="grid">
+                <flux:sidebar.group :heading="__('Overview')" icon="squares-2x2" expandable class="grid" data-test="overview-nav">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
@@ -42,10 +46,8 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:separator variant="subtle" />
-
                 {{-- Projects and papers are both research records, so they share one group --}}
-                <flux:sidebar.group :heading="__('Research')" class="grid">
+                <flux:sidebar.group :heading="__('Research')" icon="academic-cap" expandable class="grid" data-test="research-nav">
                     @if (auth()->user()->isAdmin())
                         {{-- The Research Office's open work leads the group, with a count visible from every page. Screen readers hear the sentence, not the bare number. --}}
                         <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ? $capped($toReview) : null" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
@@ -79,9 +81,7 @@
                 </flux:sidebar.group>
 
                 @if (auth()->user()->isAdmin())
-                    <flux:separator variant="subtle" />
-
-                    <flux:sidebar.group :heading="__('Administration')" class="grid">
+                    <flux:sidebar.group :heading="__('Administration')" icon="shield-check" expandable :expanded="request()->routeIs('users.*', 'activity-log.*')" class="grid" data-test="administration-nav">
                         <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
                             {{ __('Manage Users') }}
                         </flux:sidebar.item>
@@ -91,10 +91,8 @@
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
-                    <flux:separator variant="subtle" />
-
                     {{-- The lists a project is filed under; set up once, changed rarely --}}
-                    <flux:sidebar.group :heading="__('Filing options')" class="grid">
+                    <flux:sidebar.group :heading="__('Filing options')" icon="rectangle-stack" expandable :expanded="request()->routeIs('departments.*', 'categories.*')" class="grid" data-test="filing-options-nav">
                         <flux:sidebar.item icon="building-library" :href="route('departments.index')" :current="request()->routeIs('departments.*')" wire:navigate>
                             {{ __('Colleges') }}
                         </flux:sidebar.item>
@@ -111,7 +109,7 @@
             {{-- Rare and high-stakes, so it sits apart at the bottom, away from everyday clicks --}}
             @if (auth()->user()->isAdmin())
                 <flux:sidebar.nav>
-                    <flux:sidebar.group :heading="__('System')" class="grid">
+                    <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="request()->routeIs('backups.*')" class="grid" data-test="system-nav">
                         <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
                             {{ __('Backup and Restore') }}
                         </flux:sidebar.item>

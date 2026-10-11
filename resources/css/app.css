@@ -187,7 +187,8 @@ select:focus[data-flux-control] {
     border-color: var(--color-isu-green-900);
     color: var(--color-isu-green-50);
     /*
-     * A thin scrollbar that stays hidden until the pointer or focus is in the sidebar.
+     * A thin scrollbar that stays hidden until the pointer is over the sidebar, or keyboard
+     * focus is inside it. A mouse click on a group heading doesn't count as keyboard focus.
      * The gutter is kept on both edges at all times, so showing the bar never moves the
      * items, and the side padding shrinks by about the gutter's width to give the room back.
      */
@@ -198,7 +199,7 @@ select:focus[data-flux-control] {
 }
 
 .isu-sidebar:hover,
-.isu-sidebar:focus-within {
+.isu-sidebar:has(:focus-visible) {
     scrollbar-color: var(--color-isu-green-600) transparent;
 }
 
@@ -223,15 +224,6 @@ select:focus[data-flux-control] {
     font-weight: 600;
 }
 
-/* Group headings are text-only divs; items are elements, so they never pick up this style. */
-.isu-sidebar [data-flux-sidebar-group] > div:first-child:not(:has(*)) {
-    color: var(--color-isu-green-300);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
 .isu-sidebar [data-flux-sidebar-item],
 .isu-sidebar [data-flux-sidebar-profile] > span {
     color: var(--color-isu-green-100);
@@ -243,10 +235,67 @@ select:focus[data-flux-control] {
     color: var(--color-isu-green-300);
 }
 
+/*
+ * Every group heading is a fold button with an icon, a bright label and the chevron at the end.
+ * It spans the sidebar at a comfortable height, and an even gap separates one group from the
+ * next. Flux's indent stays, and its guide line runs down from the middle of the heading icon,
+ * so the links read as children of their heading. Flux puts a hidden flyout menu between
+ * groups, so the gap uses ~ rather than +.
+ */
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] ~ ui-disclosure[data-flux-sidebar-group] {
+    margin-top: 0.5rem;
+}
+
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button {
+    color: var(--color-isu-green-200);
+}
+
+/* Desktop only, so phones keep Flux's taller 40px heading. */
+.isu-sidebar:not([data-flux-sidebar-on-mobile]) ui-disclosure[data-flux-sidebar-group] > button {
+    height: 2.25rem;
+}
+
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button span {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > div > div:first-child {
+    background-color: var(--color-isu-green-600);
+}
+
+/*
+ * One near-white chevron, drawn heavier than Flux's, points right when the group is
+ * closed and turns down when it is open. Flux's own down chevron is hidden. The open panel is
+ * open in the server's HTML too, so open groups don't turn on every page load.
+ */
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button > div:last-child svg {
+    display: block;
+    color: var(--color-isu-green-50);
+    stroke-width: 2.5;
+}
+
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button > div:last-child svg:first-child {
+    display: none;
+}
+
+.isu-sidebar ui-disclosure[data-flux-sidebar-group]:has(> div[data-open]) > button > div:last-child svg {
+    transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .isu-sidebar ui-disclosure[data-flux-sidebar-group] > button > div:last-child svg {
+        transition: transform 150ms ease-out;
+    }
+}
+
 .isu-sidebar [data-flux-sidebar-item],
 .isu-sidebar [data-flux-sidebar-item] [data-flux-icon],
 .isu-sidebar [data-flux-sidebar-profile],
-.isu-sidebar [data-flux-sidebar-collapse] button {
+.isu-sidebar [data-flux-sidebar-collapse] button,
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button {
     transition:
         background-color 150ms ease-out,
         color 150ms ease-out;
@@ -254,14 +303,16 @@ select:focus[data-flux-control] {
 
 .isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
 .isu-sidebar [data-flux-sidebar-profile]:hover,
-.isu-sidebar [data-flux-sidebar-collapse] button:hover {
+.isu-sidebar [data-flux-sidebar-collapse] button:hover,
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button:hover {
     background-color: var(--color-isu-green-700);
 }
 
 .isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
 .isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover [data-flux-icon],
 .isu-sidebar [data-flux-sidebar-profile]:hover > span,
-.isu-sidebar [data-flux-sidebar-profile]:hover > div [data-flux-icon] {
+.isu-sidebar [data-flux-sidebar-profile]:hover > div [data-flux-icon],
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button:hover {
     color: var(--color-white);
 }
 
@@ -302,7 +353,8 @@ select:focus[data-flux-control] {
 .isu-sidebar [data-flux-sidebar-item]:focus-visible,
 .isu-sidebar [data-flux-sidebar-brand]:focus-visible,
 .isu-sidebar [data-flux-sidebar-profile]:focus-visible,
-.isu-sidebar [data-flux-sidebar-collapse] button:focus-visible {
+.isu-sidebar [data-flux-sidebar-collapse] button:focus-visible,
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button:focus-visible {
     outline: 2px solid var(--color-isu-green-200);
     outline-offset: 2px;
 }

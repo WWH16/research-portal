@@ -25,10 +25,11 @@
 
             {{--
                 Ordered by how often each page is used: daily work first, setup lower, rare system tasks last. My Profile lives in the user menu.
-                Every group folds the same way. The daily groups start open; the rest open only on one of their own pages.
+                For the Research Office every group folds: the daily groups start open, the rest open only on one of their own pages.
+                Faculty have only the two daily groups, so theirs stay as plain headings.
             --}}
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Overview')" icon="squares-2x2" expandable class="grid" data-test="overview-nav">
+                <flux:sidebar.group :heading="__('Overview')" icon="squares-2x2" :expandable="auth()->user()->isAdmin()" class="grid" data-test="overview-nav">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
@@ -47,7 +48,7 @@
                 </flux:sidebar.group>
 
                 {{-- Projects and papers are both research records, so they share one group --}}
-                <flux:sidebar.group :heading="__('Research')" icon="academic-cap" expandable class="grid" data-test="research-nav">
+                <flux:sidebar.group :heading="__('Research')" icon="academic-cap" :expandable="auth()->user()->isAdmin()" class="grid" data-test="research-nav">
                     @if (auth()->user()->isAdmin())
                         {{-- The Research Office's open work leads the group, with a count visible from every page. Screen readers hear the sentence, not the bare number. --}}
                         <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ? $capped($toReview) : null" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">

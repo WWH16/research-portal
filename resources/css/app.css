@@ -235,14 +235,23 @@ select:focus[data-flux-control] {
     color: var(--color-isu-green-300);
 }
 
+/* Faculty headings don't fold, so they are text-only divs; items are elements, so they never pick up this style. */
+.isu-sidebar [data-flux-sidebar-group] > div:first-child:not(:has(*)) {
+    color: var(--color-isu-green-300);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
 /*
- * Every group heading is a fold button with an icon, a bright label and the chevron at the end.
+ * An admin's group heading is a fold button with an icon, a bright label and the chevron at the end.
  * It spans the sidebar at a comfortable height, and an even gap separates one group from the
  * next. Flux's indent stays, and its guide line runs down from the middle of the heading icon,
  * so the links read as children of their heading. Flux puts a hidden flyout menu between
  * groups, so the gap uses ~ rather than +.
  */
-.isu-sidebar ui-disclosure[data-flux-sidebar-group] ~ ui-disclosure[data-flux-sidebar-group] {
+.isu-sidebar [data-flux-sidebar-group] ~ [data-flux-sidebar-group] {
     margin-top: 0.5rem;
 }
 

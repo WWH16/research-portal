@@ -22,11 +22,12 @@ class SidebarGroupsTest extends TestCase
         $this->assertSame([...$defaults, 'system-nav' => true], $this->openGroups('backups.index'));
     }
 
-    public function test_faculty_see_only_the_daily_groups_open(): void
+    public function test_faculty_groups_do_not_fold(): void
     {
         $this->actingAs(User::factory()->create());
 
-        $this->assertSame(['overview-nav' => true, 'research-nav' => true], $this->openGroups('dashboard'));
+        $this->assertSame([], $this->openGroups('dashboard'));
+        $this->get(route('dashboard'))->assertSee('data-test="overview-nav"', false)->assertSee('data-test="research-nav"', false);
     }
 
     /** Whether each folding sidebar group renders open on the given page. */

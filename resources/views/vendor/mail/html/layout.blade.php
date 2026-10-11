@@ -49,8 +49,7 @@ width: 100% !important;
 padding: 20px 24px !important;
 }
 
-.content-cell,
-.help-cell {
+.content-cell {
 padding-left: 24px !important;
 padding-right: 24px !important;
 }
@@ -92,14 +91,11 @@ color: #f2f5f3 !important;
 color: #dce2df !important;
 }
 
-.help-cell,
 .footer .content-cell {
 border-color: #2c3531 !important;
 }
 
 .sheet .content-cell .panel-item p,
-.subcopy p,
-.subcopy a,
 .footer p {
 color: #a3ada8 !important;
 }
@@ -148,15 +144,6 @@ color: #ffffff !important;
 {!! Illuminate\Mail\Markdown::parse($slot) !!}
 </td>
 </tr>
-
-{{-- Help strip: the subcopy sits under a hairline at the foot of the card --}}
-@isset($subcopy)
-<tr>
-<td class="help-cell">
-{!! $subcopy !!}
-</td>
-</tr>
-@endisset
 </table>
 </td>
 </tr>

@@ -11,15 +11,6 @@
 {{-- Body --}}
 {!! $slot !!}
 
-{{-- Subcopy --}}
-@isset($subcopy)
-<x-slot:subcopy>
-<x-mail::subcopy>
-{!! $subcopy !!}
-</x-mail::subcopy>
-</x-slot:subcopy>
-@endisset
-
 {{-- Footer: who sent it, where they are, why this address got it, and the way back to the portal --}}
 <x-slot:footer>
 <x-mail::footer>

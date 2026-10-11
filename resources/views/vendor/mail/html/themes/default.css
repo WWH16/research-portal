@@ -157,26 +157,6 @@ img {
     margin-bottom: 6px;
 }
 
-/* Help strip: the plain link under a hairline at the foot of the card. The long signed link breaks anywhere so it
-   never overflows. */
-
-.help-cell {
-    border-top: 1px solid #e3e7e5;
-    padding: 20px 40px 24px;
-}
-
-.subcopy p {
-    color: #5f6763;
-    font-size: 13px;
-    line-height: 1.5;
-    margin-bottom: 0;
-}
-
-.subcopy a {
-    color: #0b5e36;
-    word-break: break-all;
-}
-
 /* Footer: below the card on the page, under a thin divider. #5f6763 holds 5.16:1 on the page at 13px. */
 
 .footer {

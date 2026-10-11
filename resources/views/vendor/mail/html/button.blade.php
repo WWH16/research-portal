@@ -12,7 +12,7 @@
 <tr>
 <td align="{{ $align }}">
 <!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $url }}" style="height:40px;v-text-anchor:middle;width:{{ $vmlWidth }}px;" arcsize="20%" strokecolor="#0a5531" fillcolor="#0b5e36">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $url }}" style="height:40px;v-text-anchor:middle;width:{{ $vmlWidth }}px;" arcsize="10%" strokecolor="#0a5531" fillcolor="#0b5e36">
 <w:anchorlock/>
 <center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:500;">{!! $slot !!}</center>
 </v:roundrect>

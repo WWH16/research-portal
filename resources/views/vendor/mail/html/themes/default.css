@@ -183,7 +183,7 @@ img {
     color: #0b5e36;
 }
 
-/* Button: a copy of the portal's primary Flux button (40px tall, 14px medium text, 8px corners, a faint dark edge
+/* Button: a copy of the portal's primary Flux button (40px tall, 14px medium text, a faint dark edge
    and a light top highlight). Outlook on Windows draws its own copy in VML (see button.blade.php). */
 
 /* align="left" floats the table, which stops its margins collapsing into the paragraph's; unset keeps it in flow. */
@@ -196,7 +196,7 @@ img {
 
 .button {
     -webkit-text-size-adjust: none;
-    border-radius: 8px;
+    border-radius: 4px;
     color: #ffffff;
     display: inline-block;
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;

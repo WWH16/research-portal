@@ -1,19 +1,27 @@
 <x-layouts::auth :title="__('Email verification')">
     <div class="flex flex-col gap-6">
+        {{-- The address stands out so a typo is easy to catch, and wraps anywhere so a long one fits a narrow phone --}}
+        @php
+            $email = '<strong class="font-medium text-zinc-800 wrap-anywhere">'.e(auth()->user()->email).'</strong>';
+        @endphp
         <x-auth-header
             :title="__('Verify your email')"
-            :description="__('We sent a verification link to :email. Open it to continue.', ['email' => auth()->user()->email])"
+            :description="new Illuminate\Support\HtmlString(__('We sent a verification link to :email. Open it to continue.', ['email' => $email]))"
         />
 
+        {{-- Only after a resend, as a notice rather than a second paragraph; the line above already says what to do --}}
         @if (session('status') == 'verification-link-sent')
-            <div role="status" class="flex items-start gap-3">
-                <flux:icon.envelope variant="mini" class="size-5 shrink-0 text-isu-green-700 motion-safe:animate-letter-posted" />
+            @php($sent = __('New link sent at :time', ['time' => now()->format('g:i A')]))
+            {{-- Quiet on purpose: a pale green tint, regular weight, no border. It confirms; the page's job is still the inbox. --}}
+            <flux:callout
+                icon="envelope"
+                :text="$sent"
+                class="[--callout-border:var(--color-isu-green-50)]! [--callout-background:var(--color-isu-green-50)]! [--callout-text:var(--color-isu-green-800)]! [--callout-icon:var(--color-isu-green-700)]!"
+            />
 
-                <div class="flex flex-col gap-0.5">
-                    <p class="text-sm font-medium text-isu-green-700">{{ __('Verification link sent. Check your inbox and open the link to continue.') }}</p>
-                    <p class="text-xs text-zinc-500">{{ __('Sent at :time', ['time' => now()->format('g:i A')]) }}</p>
-                </div>
-            </div>
+            {{-- The notice arrives with the reloaded page, and screen readers skip a live region's text that is already there
+                 on load. This empty region gets the sentence a moment later, so it is read out. --}}
+            <p role="status" class="sr-only" x-data x-init="setTimeout(() => $el.textContent = @js($sent), 100)"></p>
         @endif
 
         <div class="flex flex-col gap-3">

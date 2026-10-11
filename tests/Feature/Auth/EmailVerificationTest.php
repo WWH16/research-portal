@@ -31,10 +31,17 @@ class EmailVerificationTest extends TestCase
 
         // Signing up already sent the link, so the page says so and only offers to resend it.
         $response->assertOk()
-            ->assertSee('We sent a verification link to '.$user->email)
+            ->assertSeeText('We sent a verification link to '.$user->email)
+            ->assertSee('<strong class="font-medium text-zinc-800 wrap-anywhere">'.$user->email.'</strong>', escape: false)
             ->assertSee('Resend verification link')
             ->assertSee('x-bind:disabled="submitting"', escape: false)
-            ->assertSee('data-flux-loading-indicator', escape: false);
+            ->assertSee('data-flux-loading-indicator', escape: false)
+            ->assertDontSee('New link sent');
+
+        // A resend adds one short notice, announced to screen readers.
+        $this->actingAs($user)->withSession(['status' => 'verification-link-sent'])->get(route('verification.notice'))
+            ->assertSee('<p role="status" class="sr-only"', escape: false)
+            ->assertSee('New link sent at');
     }
 
     public function test_verification_email_is_worded_and_branded_for_the_portal(): void

@@ -16,13 +16,24 @@ class DatabaseSeeder extends Seeder
 
         // User::factory(10)->create();
 
-        $testUser = User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            ['name' => 'Test User', 'password' => 'password'],
-        );
+        $accounts = [
+            'test@example.com' => 'Test User',
+            'maria.santos_cyn@isu.edu.ph' => 'Maria Santos',
+            'jose.reyes_cyn@isu.edu.ph' => 'Jose Reyes',
+            'ana.cruz_cyn@isu.edu.ph' => 'Ana Cruz',
+            'mark.bautista_cyn@isu.edu.ph' => 'Mark Bautista',
+            'liza.garcia_cyn@isu.edu.ph' => 'Liza Garcia',
+        ];
 
-        if (! $testUser->hasVerifiedEmail()) {
-            $testUser->markEmailAsVerified();
+        foreach ($accounts as $email => $name) {
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                ['name' => $name, 'password' => 'password'],
+            );
+
+            if (! $user->hasVerifiedEmail()) {
+                $user->markEmailAsVerified();
+            }
         }
     }
 }

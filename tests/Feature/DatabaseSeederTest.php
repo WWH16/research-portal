@@ -15,7 +15,9 @@ class DatabaseSeederTest extends TestCase
         $this->seed();
         $this->seed();
 
-        $this->assertSame(2, User::count());
+        $this->assertSame(7, User::count());
+        $this->assertSame(0, User::whereNull('email_verified_at')->count());
+        $this->assertSame(6, User::where('role', 'faculty')->whereNotNull('researcher_id')->count());
 
         $admin = User::where('email', 'admin@test.com')->sole();
         $testUser = User::where('email', 'test@example.com')->sole();

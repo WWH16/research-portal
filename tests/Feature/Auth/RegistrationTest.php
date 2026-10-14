@@ -54,7 +54,9 @@ class RegistrationTest extends TestCase
                 'At least one symbol, like ! or #',
                 'Not in a known data breach',
             ])
-            ->assertDontSee('At least one letter');
+            ->assertDontSee('At least one letter')
+            // JavaScript rejects PHP's \pN shorthand, which hides the row's icon.
+            ->assertSee('/\p{N}/u.test', escape: false);
     }
 
     public function test_new_users_register_as_faculty_even_when_asking_for_admin(): void

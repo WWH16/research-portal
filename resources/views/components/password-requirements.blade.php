@@ -5,24 +5,25 @@
 {{-- The password requirements as a checklist that ticks off while the user types.
      `password` is an Alpine expression for the typed value: an x-model variable on plain forms, a $wire property in Livewire.
      The list comes from Password::default(), so it shows the full rules in production and only the length elsewhere.
-     Each check mirrors the regex Laravel's Password rule runs, so the list and the server agree. --}}
+     Each check mirrors the regex Laravel's Password rule runs, so the list and the server agree.
+     Use the braced \p{…} form: JavaScript rejects PHP's \pL shorthand, which breaks the whole row. --}}
 @php
     $rules = \Illuminate\Validation\Rules\Password::default()->appliedRules();
 
-    // A null value would throw on the spread and match /\pL/ as the text "null".
+    // A null value would throw on the spread and match /\p{L}/ as the text "null".
     $value = "({$password} ?? '')";
 
     $checks = array_filter([
         __('At least :min characters', ['min' => $rules['min']]) => "[...{$value}].length >= {$rules['min']}",
         __('Uppercase and lowercase letters') => $rules['mixedCase'] ? "/\\p{Lu}/u.test({$value}) && /\\p{Ll}/u.test({$value})" : null,
-        __('At least one letter') => $rules['letters'] && ! $rules['mixedCase'] ? "/\\pL/u.test({$value})" : null,
-        __('At least one number') => $rules['numbers'] ? "/\\pN/u.test({$value})" : null,
+        __('At least one letter') => $rules['letters'] && ! $rules['mixedCase'] ? "/\\p{L}/u.test({$value})" : null,
+        __('At least one number') => $rules['numbers'] ? "/\\p{N}/u.test({$value})" : null,
         __('At least one symbol, like ! or #') => $rules['symbols'] ? "/\\p{Z}|\\p{S}|\\p{P}/u.test({$value})" : null,
     ]);
 @endphp
 
 {{-- Each icon sits in a box one line tall, so it stays beside the first line when the text wraps. --}}
-<ul {{ $attributes->class('mt-3 space-y-1.5 text-sm') }} data-test="password-requirements">
+<ul {{ $attributes->class('mt-3 space-y-1.5 text-sm') }}>
     @foreach ($checks as $label => $check)
         <li
             class="flex items-start gap-1.5"

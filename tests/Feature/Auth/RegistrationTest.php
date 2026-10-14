@@ -37,6 +37,26 @@ class RegistrationTest extends TestCase
             ->assertSee('data-flux-loading-indicator', escape: false);
     }
 
+    public function test_password_requirements_list_follows_the_default_password_rule(): void
+    {
+        $this->get(route('register'))
+            ->assertSee('At least 8 characters')
+            ->assertDontSee('Uppercase and lowercase letters')
+            ->assertDontSee('known data breach');
+
+        Password::defaults(fn () => Password::min(12)->mixedCase()->letters()->numbers()->symbols()->uncompromised());
+
+        $this->get(route('register'))
+            ->assertSeeInOrder([
+                'At least 12 characters',
+                'Uppercase and lowercase letters',
+                'At least one number',
+                'At least one symbol, like ! or #',
+                'Not in a known data breach',
+            ])
+            ->assertDontSee('At least one letter');
+    }
+
     public function test_new_users_register_as_faculty_even_when_asking_for_admin(): void
     {
         $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);

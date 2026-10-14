@@ -47,16 +47,21 @@
             </flux:select>
 
             <!-- Password -->
-            <flux:input
-                name="password"
-                :label="__('Password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-                x-model="password"
-            />
+            <div>
+                <flux:input
+                    name="password"
+                    :label="__('Password')"
+                    type="password"
+                    required
+                    autocomplete="new-password"
+                    passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                    viewable
+                    x-model="password"
+                    aria-describedby="password-requirements"
+                />
+
+                <x-password-requirements id="password-requirements" password="password" />
+            </div>
 
             <!-- Confirm Password -->
             <x-password-confirmation password="password" confirmation="confirmation" name="password_confirmation" x-model="confirmation" />

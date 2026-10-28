@@ -14,6 +14,10 @@ use Laravel\Socialite\Two\GoogleProvider;
 
 Route::redirect('/', '/dashboard')->name('home');
 
+// Public, no sign-in: Google's consent screen and the sign-in pages link to these.
+Route::view('privacy', 'pages::legal.privacy')->name('privacy');
+Route::view('terms', 'pages::legal.terms')->name('terms');
+
 // A verified sign-up waits here until an admin approves it; an approved account goes on to the portal.
 Route::get('approval', fn () => request()->user()->isApproved()
     ? redirect()->route('dashboard')

@@ -40,6 +40,8 @@
                     </div>
 
                     {{ $slot }}
+
+                    <x-legal-links class="justify-center text-sm" />
                 </div>
             </main>
         </div>

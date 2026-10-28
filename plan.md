@@ -61,7 +61,7 @@ Because all reads and writes go through the `submissions` disk, the switch is mo
 ### Google sign-in
 
 - Use Laravel Socialite (first-party) with the Google driver. Request the `https://www.googleapis.com/auth/drive.file` scope, offline access, and `prompt=consent`, so Google returns a refresh token.
-- `drive.file` lets the portal see only files and folders it created. On first connect the portal creates a "Research Portal" folder and saves that folder's ID.
+- `drive.file` lets the portal see only files and folders it created. On first connect the portal creates a "Faculty Research Portal" folder and saves that folder's ID.
 - The Google Cloud project must be registered under ISU's Google Workspace with user type **Internal**. An app left in "Testing" under an external project gets refresh tokens that expire after 7 days.
 - The client ID and secret go in `.env` once (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`) and are read through `config/services.php`. This is the only developer step.
 
@@ -289,7 +289,7 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
   - [ ] Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI`.
 - [ ] Run `php artisan migrate`.
 - [ ] Open Administration → Google Drive, click Connect, and sign in with the portal Gmail.
-- [ ] Upload a test PDF, open it in the portal, and check it appears in Drive's "Research Portal" folder as Restricted.
+- [ ] Upload a test PDF, open it in the portal, and check it appears in Drive's "Faculty Research Portal" folder as Restricted.
 - [ ] Optional: run `php artisan submissions:move-to-drive` to copy older documents to Drive.
 - [ ] Production, with ISU IT:
   - [ ] Get the Workspace account and an Internal app.

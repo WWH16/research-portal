@@ -175,6 +175,7 @@ class GoogleDrivePageTest extends TestCase
             ->get(route('google-drive.index'))
             ->assertSee('Connected as research.office@isu.edu.ph')
             ->assertSee('Research Office')
+            ->assertSee('its “Faculty Research Portal” folder')
             ->assertDontSee('Not connected');
     }
 

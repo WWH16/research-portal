@@ -19,6 +19,9 @@ class GoogleDrive
     /** Only files and folders the portal creates; never the rest of the account's Drive. */
     public const SCOPE = Drive::DRIVE_FILE;
 
+    /** The folder each storage account keeps the documents in, at the top of its My Drive. */
+    public const FOLDER = 'Faculty Research Portal';
+
     /**
      * A client for the portal's Google app. With a refresh token it signs in as the connected account,
      * fetching an access token on its first request rather than here.
@@ -39,7 +42,7 @@ class GoogleDrive
     }
 
     /**
-     * The "Research Portal" folder of a connected account, as a disk. The folder is given by ID: as a root path the
+     * The "Faculty Research Portal" folder of a connected account, as a disk. The folder is given by ID: as a root path the
      * adapter would look it up by name over the network. Always private: the adapter shares a "public" file with
      * anyone who has its link.
      */
@@ -52,12 +55,12 @@ class GoogleDrive
     }
 
     /**
-     * Make the "Research Portal" folder documents are stored in. New Drive items are shared with no one,
+     * Make the "Faculty Research Portal" folder documents are stored in. New Drive items are shared with no one,
      * and the portal never adds a permission, so the folder stays Restricted.
      */
     public function createFolder(string $refreshToken): string
     {
-        $folder = new DriveFile(['name' => 'Research Portal', 'mimeType' => 'application/vnd.google-apps.folder']);
+        $folder = new DriveFile(['name' => self::FOLDER, 'mimeType' => 'application/vnd.google-apps.folder']);
 
         return (new Drive($this->client($refreshToken)))->files->create($folder, ['fields' => 'id'])->id;
     }

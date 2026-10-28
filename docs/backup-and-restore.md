@@ -36,7 +36,7 @@ Once an admin saves a storage account, new project documents go to the Research 
    - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the OAuth client.
    - `GOOGLE_REDIRECT_URI`, the redirect URI above.
 3. Run `php artisan migrate`.
-4. Sign in as an admin and open **System → Google Drive**. Save the storage account, the one Google account whose Drive keeps every document. Then, straight away, choose **Connect Google Drive**, confirm your password, and sign in to Google as that account. Between saving and connecting, uploads fail, so do both in one sitting. The portal refuses any other account, and creates a "Research Portal" folder there, shared with no one.
+4. Sign in as an admin and open **System → Google Drive**. Save the storage account, the one Google account whose Drive keeps every document. Then, straight away, choose **Connect Google Drive**, confirm your password, and sign in to Google as that account. Between saving and connecting, uploads fail, so do both in one sitting. The portal refuses any other account, and creates a "Faculty Research Portal" folder there, shared with no one.
 5. Copy the older documents: `php artisan submissions:move-to-drive`. It copies every document still on the `submissions` disk to the storage account and updates each project's path. Run it until it reports `missing 0`. A second run skips documents already on Drive.
 6. Open a few documents in the portal to check they load. Keep the `submissions` bucket attached until every document has moved.
 

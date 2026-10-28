@@ -180,7 +180,7 @@ new #[Title('Google Drive')] class extends Component {
                     {{ $this->connection->connectedBy
                         ? __('Connected by :name on :date.', ['name' => $this->connection->connectedBy->name, 'date' => $this->connection->updated_at->format('F j, Y')])
                         : __('Connected on :date.', ['date' => $this->connection->updated_at->format('F j, Y')]) }}
-                    {{ __('New documents go to its “Research Portal” folder, shared with no one.') }}
+                    {{ __('New documents go to its “:folder” folder, shared with no one.', ['folder' => GoogleDrive::FOLDER]) }}
                 </flux:text>
             @else
                 <flux:heading>{{ __('Not connected') }}</flux:heading>
@@ -211,7 +211,7 @@ new #[Title('Google Drive')] class extends Component {
     @if ($this->earlier->isNotEmpty())
         <div class="mt-6 rounded-xl border border-line p-6">
             <flux:heading>{{ __('Earlier storage accounts') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Older documents stay on these accounts and still open in the portal. Keep these Google accounts, and don’t delete them or their “Research Portal” folders.') }}</flux:text>
+            <flux:text class="mt-1">{{ __('Older documents stay on these accounts and still open in the portal. Keep these Google accounts, and don’t delete them or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
 
             <ul class="mt-4 divide-y divide-line">
                 @foreach ($this->earlier as $row)

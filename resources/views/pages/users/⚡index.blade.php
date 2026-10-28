@@ -209,8 +209,9 @@ new #[Title('Manage Users')] class extends Component {
             Flux::toast(variant: 'success', text: __('User updated.'));
         } else {
             $user = DB::transaction(function () use ($validated) {
-                // Accounts an admin creates are trusted, so they skip email verification.
+                // Accounts an admin creates are trusted, so they skip email verification and approval.
                 $user = User::create($validated);
+                $user->forceFill(['approved_at' => now()]);
                 $user->markEmailAsVerified();
                 ActivityLog::record('user.created', $user, ['role' => $user->role]);
 

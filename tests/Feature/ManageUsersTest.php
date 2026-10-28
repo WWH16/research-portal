@@ -130,6 +130,7 @@ class ManageUsersTest extends TestCase
         $this->assertSame($department->id, $user->department_id);
         $this->assertFalse($user->isAdmin());
         $this->assertTrue($user->hasVerifiedEmail());
+        $this->assertTrue($user->isApproved());
         $this->assertTrue(Hash::check('secret-password', $user->password));
     }
 

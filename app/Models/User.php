@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -24,6 +25,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
+ * @property Carbon|null $approved_at
+ * @property Carbon|null $rejected_at
  * @property string $password
  * @property string|null $researcher_id
  * @property string|null $mobile
@@ -62,6 +65,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -131,6 +136,32 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Whether an admin let the account in. Sign-ups start without approval; admin-made and seeded accounts are approved.
+     */
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
+    }
+
+    /**
+     * Whether an admin turned the sign-up down. The account stays, so the same email can't sign up again.
+     */
+    public function isRejected(): bool
+    {
+        return $this->rejected_at !== null;
+    }
+
+    /**
+     * Sign-ups no admin has approved or rejected yet.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopePendingApproval(Builder $query): void
+    {
+        $query->whereNull('approved_at')->whereNull('rejected_at');
     }
 
     /**

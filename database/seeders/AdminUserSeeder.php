@@ -30,5 +30,8 @@ class AdminUserSeeder extends Seeder
         if (! $admin->hasVerifiedEmail()) {
             $admin->markEmailAsVerified();
         }
+
+        $admin->approved_at ??= now();
+        $admin->save();
     }
 }

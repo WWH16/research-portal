@@ -34,6 +34,9 @@ class DatabaseSeeder extends Seeder
             if (! $user->hasVerifiedEmail()) {
                 $user->markEmailAsVerified();
             }
+
+            $user->approved_at ??= now();
+            $user->save();
         }
     }
 }

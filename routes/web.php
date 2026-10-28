@@ -7,8 +7,15 @@ use Illuminate\Support\Str;
 
 Route::redirect('/', '/dashboard')->name('home');
 
-// Verified only: anyone can sign up, so unconfirmed emails must not reach proposals or admin pages.
-Route::middleware(['auth', 'verified'])->group(function () {
+// A verified sign-up waits here until an admin approves it; an approved account goes on to the portal.
+Route::get('approval', fn () => request()->user()->isApproved()
+    ? redirect()->route('dashboard')
+    : view('pages::auth.approval-notice')
+)->middleware(['auth', 'verified'])->name('approval.notice');
+
+// Verified and approved only: anyone with an ISU email can sign up, so an account reaches proposals or admin pages
+// only after it confirms its email and an admin lets it in.
+Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 
     Route::livewire('announcements', 'pages::announcements.index')->name('announcements.index');

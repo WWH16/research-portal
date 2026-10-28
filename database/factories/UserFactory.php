@@ -28,6 +28,7 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->userName().'@isu.edu.ph',
             'email_verified_at' => now(),
+            'approved_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'two_factor_secret' => null,
@@ -43,6 +44,28 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * A sign-up still waiting for an admin.
+     */
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'approved_at' => null,
+            'rejected_at' => null,
+        ]);
+    }
+
+    /**
+     * A sign-up an admin turned down.
+     */
+    public function rejected(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'approved_at' => null,
+            'rejected_at' => now(),
         ]);
     }
 

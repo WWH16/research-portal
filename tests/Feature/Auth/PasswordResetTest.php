@@ -28,6 +28,13 @@ class PasswordResetTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_reset_password_link_screen_suggests_an_isu_email(): void
+    {
+        $this->get(route('password.request'))
+            ->assertSee('placeholder="name_cyn@isu.edu.ph"', escape: false)
+            ->assertDontSee('example.com');
+    }
+
     public function test_reset_password_link_can_be_requested(): void
     {
         Notification::fake();

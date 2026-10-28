@@ -15,7 +15,7 @@
                 type="email"
                 required
                 autofocus
-                placeholder="email@example.com"
+                placeholder="name_cyn@isu.edu.ph"
             />
 
             <flux:button variant="primary" type="submit" class="w-full" data-test="email-password-reset-link-button">

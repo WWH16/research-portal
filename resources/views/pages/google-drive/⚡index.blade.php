@@ -370,8 +370,10 @@ new #[Title('Google Drive')] class extends Component {
     {{-- Below the card, plain sections: reference and housekeeping, a divider and a heading each --}}
 
     {{-- Google's whole storage for the account, Gmail and Photos included: uploads fail once it is full. Asked for
-         after the page shows, so a slow Google never holds the page up. --}}
+         after the page shows, so a slow Google never holds the page up. An island, so the answer redraws this
+         section alone instead of the whole page; a full redraw draws it too, from the figures already loaded. --}}
     @if ($this->connection?->isConnected())
+        @island(name: 'storage', always: true)
         <div class="mt-8 border-t border-line pt-6" wire:init="loadUsage" data-test="drive-storage">
             <flux:heading size="lg" level="2">{{ __('Storage') }}</flux:heading>
 
@@ -418,6 +420,7 @@ new #[Title('Google Drive')] class extends Component {
                 @endif
             @endif
         </div>
+        @endisland
     @endif
 
     {{-- Documents stay on the account that saved them, so the accounts an admin moved away from still matter --}}

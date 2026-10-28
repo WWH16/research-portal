@@ -165,12 +165,14 @@ class Submission extends Model
     }
 
     /**
-     * How many documents are saved on a Google Drive storage account, counting every stage of every project.
+     * How many documents are saved on a Google Drive storage account, or with null on the server disk from before
+     * Google Drive, counting every stage of every project.
      */
-    public static function documentsOn(GoogleDriveConnection $account): int
+    public static function documentsOn(?GoogleDriveConnection $account): int
     {
-        return collect(array_keys(self::DOCUMENTS))
-            ->sum(fn (string $stage) => static::where($stage.'_path', 'like', "drive-{$account->id}/%")->count());
+        return collect(array_keys(self::DOCUMENTS))->sum(fn (string $stage) => ($account
+            ? static::where($stage.'_path', 'like', "drive-{$account->id}/%")
+            : static::whereNotNull($stage.'_path')->where($stage.'_path', 'not like', 'drive-%'))->count());
     }
 
     /**

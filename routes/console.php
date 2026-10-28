@@ -6,6 +6,7 @@ use App\Notifications\ProjectDeadline;
 use App\Services\GoogleDrive;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
@@ -76,6 +77,8 @@ Artisan::command('submissions:move-to-drive {--from=submissions : The disk the o
         }
     });
 
+    // The Google Drive page queues this run and offers Move again once it ends.
+    Cache::forget('google-drive.moving');
     $this->info("Copied {$copied}, already on Google Drive {$skipped}, missing ".count($missing).'.');
 
     foreach ($missing as $path) {

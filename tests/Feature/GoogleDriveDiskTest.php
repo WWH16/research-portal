@@ -134,4 +134,15 @@ class GoogleDriveDiskTest extends TestCase
         $this->get(route('submissions.document', [$project, 'detailed']))->assertHeader('Content-Type', 'application/msword');
         $this->get(route('submissions.document', [$project, 'midyear']))->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     }
+
+    public function test_usage_reads_the_accounts_google_storage(): void
+    {
+        $account = GoogleDriveConnection::factory()->create();
+        $this->googleAnswers([
+            new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
+            new Response(200, ['Content-Type' => 'application/json'], '{"storageQuota": {"limit": "16106127360", "usage": "4509715660"}}'),
+        ]);
+
+        $this->assertSame(['used' => 4509715660, 'limit' => 16106127360], app(GoogleDrive::class)->usage($account));
+    }
 }

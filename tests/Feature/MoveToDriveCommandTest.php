@@ -9,6 +9,7 @@ use App\Models\Submission;
 use App\Models\User;
 use App\Services\GoogleDrive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -47,6 +48,7 @@ class MoveToDriveCommandTest extends TestCase
         Storage::disk('old-bucket')->put('submissions/concept.pdf', 'concept');
         Storage::disk('old-bucket')->put('submissions/detailed.docx', 'detailed');
         Storage::disk('old-bucket')->put('submissions/orphan.pdf', 'no project points here');
+        Cache::put('google-drive.moving', true);
 
         $this->artisan('submissions:move-to-drive', ['--from' => 'old-bucket'])
             ->expectsOutput('Copied 2, already on Google Drive 0, missing 0.')
@@ -58,6 +60,8 @@ class MoveToDriveCommandTest extends TestCase
         $this->assertSame($prefix.'submissions/detailed.docx', $this->project->detailed_path);
         $this->assertSame('concept', Storage::disk('drive')->get('submissions/concept.pdf'));
         $this->assertFalse(Storage::disk('drive')->exists('submissions/orphan.pdf'));
+        // The Google Drive page offers Move again.
+        $this->assertFalse(Cache::has('google-drive.moving'));
     }
 
     public function test_a_second_run_copies_nothing(): void

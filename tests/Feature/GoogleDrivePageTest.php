@@ -8,10 +8,14 @@ use App\Models\Department;
 use App\Models\GoogleDriveConnection;
 use App\Models\User;
 use App\Services\GoogleDrive;
+use Illuminate\Foundation\Console\QueuedCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
 use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class GoogleDrivePageTest extends TestCase
@@ -187,7 +191,7 @@ class GoogleDrivePageTest extends TestCase
 
         $this->actingAs($this->admin)
             ->get(route('google-drive.index'))
-            ->assertSee('3 documents are stored on email1@gmail.com');
+            ->assertSee('The 3 documents on email1@gmail.com stay there');
     }
 
     public function test_the_page_names_earlier_accounts_that_still_hold_documents(): void
@@ -199,10 +203,12 @@ class GoogleDrivePageTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('google-drive.index'))
             ->assertSee('Connected as email2@gmail.com')
-            ->assertSee('Earlier storage accounts')
+            ->assertSee('Storage accounts')
+            ->assertSee('Current, connected')
+            ->assertSee('Earlier, not connected')
             ->assertSee('email1@gmail.com')
-            ->assertSee('2 documents')
-            ->assertSee('Keep these Google accounts')
+            ->assertSeeInOrder(['email2@gmail.com', 'email1@gmail.com'])
+            ->assertSee('delete these Google accounts')
             ->assertSeeHtml('href="'.route('google-drive.connect', ['account' => $email1->id]).'"');
     }
 
@@ -284,5 +290,121 @@ class GoogleDrivePageTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('dashboard'))
             ->assertSeeHtml('href="'.route('google-drive.index').'"');
+    }
+
+    public function test_the_page_shows_how_full_the_drive_is_and_warns_when_nearly_full(): void
+    {
+        GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
+        $gib = 1024 ** 3;
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->once()->andReturn(['used' => (int) (14.5 * $gib), 'limit' => 15 * $gib]));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->assertSee('Checking storage…')
+            ->call('loadUsage')
+            ->assertSee('14.5 GB of 15 GB used.')
+            ->assertSee('Google Drive is almost full');
+    }
+
+    public function test_the_usage_stays_hidden_when_google_cannot_answer(): void
+    {
+        GoogleDriveConnection::factory()->create();
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->andThrow(new RuntimeException('Google is down')));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->call('loadUsage')
+            ->assertSet('usage', false)
+            ->assertSee('Storage use unavailable right now.')
+            ->assertDontSee('GB used');
+    }
+
+    public function test_the_page_links_to_the_drive_folder(): void
+    {
+        GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSeeHtml('href="https://drive.google.com/drive/folders/folder-123"');
+    }
+
+    public function test_an_admin_moves_older_documents_on_the_queue_once_at_a_time(): void
+    {
+        Queue::fake();
+        Cache::flush();
+        GoogleDriveConnection::factory()->create();
+        User::factory()->create()->submissions()->create([
+            'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
+            'department_id' => Department::firstOrCreate(['code' => 'CCS'], ['name' => 'College of Computer Studies'])->id,
+            'title' => 'Older Study',
+            'abstract' => 'An abstract.',
+            'start_date' => now(),
+            'target_date' => now()->addYear(),
+            'concept_path' => 'submissions/concept.pdf',
+        ]);
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->assertSee('1 document is still on the server')
+            ->call('moveToDrive')
+            ->assertSee('Moving…')
+            ->call('moveToDrive');
+
+        Queue::assertPushed(QueuedCommand::class, 1);
+        $this->assertSame(1, ActivityLog::where('action', 'drive.move_started')->count());
+    }
+
+    public function test_the_page_lists_recent_drive_changes(): void
+    {
+        $this->actingAs($this->admin);
+        ActivityLog::record('drive.connected', GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']));
+        ActivityLog::record('auth.login');
+
+        $this->get(route('google-drive.index'))
+            ->assertSee('Recent changes')
+            ->assertSee('connected Google Drive')
+            ->assertDontSee('signed in')
+            ->assertSeeHtml('href="'.route('activity-log.index', ['group' => 'drive']).'"');
+    }
+
+    public function test_an_earlier_account_with_no_documents_left_can_be_removed(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'refresh_token' => 'email1-token', 'retired_at' => now()]);
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('revoke')->once()->with('email1-token'));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->assertSeeHtml('wire:loading.attr="data-flux-loading" wire:click="removeEarlier('.$email1->id.')"')
+            ->call('removeEarlier', $email1->id)
+            ->assertDontSeeHtml('data-test="remove-earlier-button"');
+
+        $this->assertNull($email1->fresh());
+        $this->assertSame(1, ActivityLog::where('action', 'drive.account_removed')->count());
+    }
+
+    public function test_an_earlier_account_that_holds_documents_is_never_removed(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        $this->documentsOn($email1, 1);
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('revoke'));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')->call('removeEarlier', $email1->id);
+
+        $this->assertNotNull($email1->fresh());
+    }
+
+    public function test_a_failed_connect_shows_in_the_uploads_failing_callout_alone(): void
+    {
+        GoogleDriveConnection::factory()->unconnected()->create();
+
+        $this->actingAs($this->admin)
+            ->withSession(['drive-error' => 'Google sign-in was cancelled, so nothing changed.'])
+            ->get(route('google-drive.index'))
+            ->assertSee('Document uploads are failing')
+            ->assertSee('Google sign-in was cancelled, so nothing changed.')
+            ->assertDontSeeHtml('data-test="drive-error"');
     }
 }

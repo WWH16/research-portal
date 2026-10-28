@@ -74,6 +74,21 @@ class GoogleDrive
     }
 
     /**
+     * How much of the account's Google storage is used, in bytes, against its limit: Gmail and Photos count too.
+     * The limit is null on a plan without one.
+     *
+     * @return array{used: int, limit: int|null}
+     */
+    public function usage(GoogleDriveConnection $account): array
+    {
+        /** @var GoogleDriveAdapter $adapter */
+        $adapter = $this->disk($account)->getAdapter();
+        $quota = $adapter->getService()->about->get(['fields' => 'storageQuota'])->getStorageQuota();
+
+        return ['used' => (int) $quota->getUsage(), 'limit' => $quota->getLimit() === null ? null : (int) $quota->getLimit()];
+    }
+
+    /**
      * Make the "Faculty Research Portal" folder documents are stored in. New Drive items are shared with no one,
      * and the portal never adds a permission, so the folder stays Restricted.
      */

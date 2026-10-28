@@ -307,7 +307,10 @@ new #[Title('Google Drive')] class extends Component {
                             <flux:modal.close>
                                 <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                             </flux:modal.close>
-                            <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="change-account-button">{{ __('Change account') }}</flux:button>
+                            <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="change-account-button">
+                                <flux:icon.loading wire:loading wire:target="changeAccount" variant="micro" />
+                                {{ __('Change account') }}
+                            </flux:button>
                         </div>
                     </form>
                 @endif
@@ -343,7 +346,10 @@ new #[Title('Google Drive')] class extends Component {
                                 <flux:modal.close>
                                     <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                                 </flux:modal.close>
-                                <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="disconnect-drive-button">{{ __('Disconnect') }}</flux:button>
+                                <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="disconnect-drive-button">
+                                    <flux:icon.loading wire:loading wire:target="disconnect" variant="micro" />
+                                    {{ __('Disconnect') }}
+                                </flux:button>
                             </div>
                         </form>
                     @endif

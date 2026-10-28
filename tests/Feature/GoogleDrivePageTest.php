@@ -211,6 +211,21 @@ class GoogleDrivePageTest extends TestCase
             ->assertSeeHtml('href="'.route('google-drive.connect', ['account' => $email1->id]).'"');
     }
 
+    public function test_each_account_row_offers_its_own_fix_named_for_its_account(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->unconnected()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        $this->documentsOn($email1, 2);
+        GoogleDriveConnection::factory()->create(['email' => 'email3@gmail.com', 'retired_at' => now()]);
+        $email2 = GoogleDriveConnection::factory()->unconnected()->create(['email' => 'email2@gmail.com']);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSeeHtml('href="'.route('google-drive.connect', ['account' => $email2->id]).'"')
+            ->assertSeeHtml('aria-label="Connect email2@gmail.com"')
+            ->assertSeeHtml('aria-label="Reconnect email1@gmail.com"')
+            ->assertSeeHtml('aria-label="Remove email3@gmail.com"');
+    }
+
     public function test_the_page_shows_who_is_connected(): void
     {
         GoogleDriveConnection::factory()->create(['email' => 'research.office@isu.edu.ph', 'connected_by' => $this->admin->id]);

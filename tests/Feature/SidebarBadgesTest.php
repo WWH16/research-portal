@@ -72,6 +72,14 @@ class SidebarBadgesTest extends TestCase
             ->assertSeeHtml('href="'.route('users.index', ['status' => 'pending']).'"');
     }
 
+    public function test_no_sign_up_label_is_left_on_the_item_when_nothing_waits(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('dashboard'))
+            ->assertDontSee('sign-ups to approve')
+            ->assertSeeHtml('href="'.route('users.index').'"');
+    }
+
     public function test_faculty_get_no_sign_up_badge(): void
     {
         User::factory()->pending()->create();

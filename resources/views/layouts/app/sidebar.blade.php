@@ -9,7 +9,8 @@
         $toRevise = auth()->user()->isAdmin() ? 0 : \App\Models\Submission::involving(auth()->user())->where('awaiting_review', false)->where('concept_passed', false)->count();
         $toApprove = auth()->user()->isAdmin() ? \App\Models\User::pendingApproval()->count() : 0;
         $reviewLabel = \App\Models\Submission::reviewQueueLabel($toReview);
-        $approveLabel = trans_choice('{1} 1 sign-up to approve|[2,*] :count sign-ups to approve', $toApprove);
+        // Null with nothing waiting, so no stray "0 sign-ups" title is left on the item.
+        $approveLabel = $toApprove ? trans_choice('{1} 1 sign-up to approve|[2,*] :count sign-ups to approve', $toApprove) : null;
         $revisionLabel = trans_choice('{1} 1 project needs revision|[2,*] :count projects need revision', $toRevise);
         $unread = auth()->user()->unreadNotifications()->count();
         // Null with nothing unread, so no stray "0 unread" title is left on the item.

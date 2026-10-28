@@ -31,10 +31,10 @@ class DocumentStorage
             return $file->store('submissions', 'submissions') ?: throw new DocumentStorageUnavailable('The document could not be stored.');
         }
 
+        $disk = $this->driveOf($account);
+
         try {
-            $location = $this->driveOf($account)->putFile('submissions', $file);
-        } catch (DocumentStorageUnavailable $e) {
-            throw $e;
+            $location = $disk->putFile('submissions', $file);
         } catch (Throwable $e) {
             $this->markIfRevoked($account, $e);
 

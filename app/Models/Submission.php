@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Exceptions\DocumentStorageUnavailable;
 use App\Services\DocumentStorage;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -309,12 +308,7 @@ class Submission extends Model
     {
         $old = $this->{$stage.'_path'};
 
-        // Google Drive can fail before writing, when it can't be reached.
-        try {
-            $new = app(DocumentStorage::class)->store($file);
-        } catch (Throwable $e) {
-            throw $e instanceof DocumentStorageUnavailable ? $e : new DocumentStorageUnavailable(previous: $e);
-        }
+        $new = app(DocumentStorage::class)->store($file);
 
         DB::afterRollBack(fn () => $this->deleteDocument($new));
 

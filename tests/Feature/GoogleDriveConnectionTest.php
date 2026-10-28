@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\GoogleDriveConnection;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -36,5 +37,16 @@ class GoogleDriveConnectionTest extends TestCase
         $admin->delete();
 
         $this->assertNull($connection->fresh()->connected_by);
+    }
+
+    public function test_only_one_storage_account_can_be_current(): void
+    {
+        GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com', 'retired_at' => now()]);
+        GoogleDriveConnection::factory()->create(['email' => 'email3@gmail.com']);
+
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        GoogleDriveConnection::factory()->create(['email' => 'email4@gmail.com']);
     }
 }

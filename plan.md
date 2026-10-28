@@ -261,12 +261,12 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 
 ### Task 3.3: Move existing documents
 **Files:** `routes/console.php` (`submissions:move-to-drive {--from=submissions-bucket}`). Test: `tests/Feature/MoveToDriveCommandTest.php`.
-- [ ] Tests (two `Storage::fake` disks):
+- [x] Tests (two `Storage::fake` disks):
   - `test_it_copies_every_document_path_to_the_submissions_disk`.
   - `test_a_second_run_copies_nothing`.
   - `test_it_reports_files_missing_from_the_source`.
-- [ ] Watch them fail, implement, run the full suite.
-  - [ ] Commit: `feat(drive): add submissions:move-to-drive command`
+- [x] Watch them fail, implement, run the full suite.
+  - [x] Commit: `feat(drive): add submissions:move-to-drive command`
 
 ## Phase 4: Finish
 

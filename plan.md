@@ -207,12 +207,12 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 ### Task 1.2: The connection record
 **Files:** `php artisan make:model GoogleDriveConnection -mf`. Test: `tests/Feature/GoogleDriveConnectionTest.php`.
 **Produces:** table `google_drive_connections` with `email`, `refresh_token` (text, `encrypted`), `folder_id`, `connected_by` (nullable FK to `users`, `nullOnDelete()`), and timestamps. `GoogleDriveConnection::current(): ?self` returns the newest row. Relation `connectedBy(): BelongsTo<User>`.
-- [ ] Tests:
+- [x] Tests:
   - `test_the_refresh_token_is_stored_encrypted`: the raw DB value is not the token.
   - `test_the_refresh_token_never_appears_in_output`: `toArray()` and `toJson()` lack it.
   - `test_deleting_the_admin_who_connected_keeps_the_connection`: `connected_by` becomes null and the row stays.
-- [ ] Watch them fail, implement, run the full suite.
-  - [ ] Commit: `feat(drive): store the Google Drive connection`
+- [x] Watch them fail, implement, run the full suite.
+  - [x] Commit: `feat(drive): store the Google Drive connection`
 
 ## Phase 2: Connect
 

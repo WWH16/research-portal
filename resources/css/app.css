@@ -92,6 +92,12 @@
         scrollbar-gutter: stable;
     }
 
+    /* Flux's toast container sits past the right edge on a phone; clip, not hidden, so sticky headers keep working. */
+    html,
+    body {
+        overflow-x: clip;
+    }
+
     ::selection {
         background-color: var(--color-isu-gold-200);
         color: var(--color-isu-green-950);

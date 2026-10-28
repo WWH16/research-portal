@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Notifications\ConceptAwaitingReview;
 use App\Notifications\ConceptReviewed;
 use App\Notifications\ProjectDeadline;
+use App\Notifications\SignupAwaitingApproval;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -157,6 +159,33 @@ class NotificationsTest extends TestCase
             && $notification->uploader === 'Maria Santos'
             && $notification->toArray($first)['url'] === route('reviews.index', ['review' => $project->id]));
         Notification::assertNotSentTo($this->maria, ConceptAwaitingReview::class);
+    }
+
+    public function test_a_verified_sign_up_tells_every_admin_in_the_portal_only(): void
+    {
+        Notification::fake();
+        [$first, $second] = [$this->admin(), $this->admin()];
+        $signUp = User::factory()->pending()->create(['name' => 'Juan Dela Cruz', 'email' => 'juan@isu.edu.ph']);
+
+        event(new Verified($signUp));
+
+        Notification::assertSentTo([$first, $second], SignupAwaitingApproval::class, fn (SignupAwaitingApproval $notification) => $notification->user->is($signUp)
+            && $notification->via($first) === ['database']
+            && $notification->toArray($first) === [
+                'message' => 'New sign-up waiting for approval: Juan Dela Cruz (juan@isu.edu.ph).',
+                'url' => route('users.index', ['status' => 'pending']),
+            ]);
+        Notification::assertNotSentTo($this->maria, SignupAwaitingApproval::class);
+    }
+
+    public function test_an_approved_member_verifying_a_new_email_tells_no_admin(): void
+    {
+        Notification::fake();
+        $this->admin();
+
+        event(new Verified($this->maria));
+
+        Notification::assertNothingSent();
     }
 
     public function test_a_concept_reuploaded_while_waiting_tells_admins_again(): void

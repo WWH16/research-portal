@@ -60,6 +60,27 @@ class SidebarBadgesTest extends TestCase
             ->assertSeeHtml('data-test="sidebar-toggle-dot"');
     }
 
+    public function test_admins_see_the_pending_sign_up_count_and_the_item_opens_them(): void
+    {
+        User::factory()->pending()->count(2)->create();
+        User::factory()->rejected()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('dashboard'))
+            ->assertSeeHtml('title="2 sign-ups to approve"')
+            ->assertSeeHtml('<span class="sr-only">2 sign-ups to approve</span>')
+            ->assertSeeHtml('href="'.route('users.index', ['status' => 'pending']).'"');
+    }
+
+    public function test_faculty_get_no_sign_up_badge(): void
+    {
+        User::factory()->pending()->create();
+
+        $this->actingAs($this->maria)
+            ->get(route('dashboard'))
+            ->assertDontSee('to approve');
+    }
+
     public function test_the_review_badge_and_dot_hide_when_nothing_waits(): void
     {
         $this->project('Decided Proposal', ['awaiting_review' => false, 'concept_passed' => true]);

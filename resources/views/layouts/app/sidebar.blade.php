@@ -7,7 +7,9 @@
     @php
         $toReview = auth()->user()->isAdmin() ? \App\Models\Submission::where('awaiting_review', true)->count() : 0;
         $toRevise = auth()->user()->isAdmin() ? 0 : \App\Models\Submission::involving(auth()->user())->where('awaiting_review', false)->where('concept_passed', false)->count();
+        $toApprove = auth()->user()->isAdmin() ? \App\Models\User::pendingApproval()->count() : 0;
         $reviewLabel = \App\Models\Submission::reviewQueueLabel($toReview);
+        $approveLabel = trans_choice('{1} 1 sign-up to approve|[2,*] :count sign-ups to approve', $toApprove);
         $revisionLabel = trans_choice('{1} 1 project needs revision|[2,*] :count projects need revision', $toRevise);
         $unread = auth()->user()->unreadNotifications()->count();
         // Null with nothing unread, so no stray "0 unread" title is left on the item.
@@ -15,7 +17,7 @@
         // Two digits at most, so the badge never crowds the label; the hover title keeps the exact count.
         $capped = fn (int $count) => $count > 99 ? '99+' : $count;
     @endphp
-    <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), unread: @js($unread), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
+    <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), unread: @js($unread), toApprove: @js($toApprove), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}
         <flux:sidebar sticky collapsible="mobile" class="isu-sidebar w-72 border-e">
             <flux:sidebar.header>
@@ -82,9 +84,13 @@
                 </flux:sidebar.group>
 
                 @if (auth()->user()->isAdmin())
-                    <flux:sidebar.group :heading="__('Administration')" icon="shield-check" expandable :expanded="request()->routeIs('users.*', 'activity-log.*')" class="grid" data-test="administration-nav">
-                        <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                    {{-- Sign-ups waiting for approval keep the group open and show as a count; the item opens straight to them --}}
+                    <flux:sidebar.group :heading="__('Administration')" icon="shield-check" expandable :expanded="$toApprove > 0 || request()->routeIs('users.*', 'activity-log.*')" class="grid" data-test="administration-nav">
+                        <flux:sidebar.item icon="users" :href="route('users.index', $toApprove ? ['status' => 'pending'] : [])" :current="request()->routeIs('users.*')" :badge="$toApprove ? $capped($toApprove) : null" :badge:title="$approveLabel" badge:aria-hidden="true" wire:navigate data-test="users-nav">
                             {{ __('Manage Users') }}
+                            @if ($toApprove)
+                                <span class="sr-only">{{ $approveLabel }}</span>
+                            @endif
                         </flux:sidebar.item>
 
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log.index')" :current="request()->routeIs('activity-log.*')" wire:navigate>
@@ -126,7 +132,7 @@
             {{-- The dot keeps open work in sight while the sidebar is tucked away; the inset moves to the wrapper so the dot lines up with the icon --}}
             <div class="relative -ms-2.5 lg:hidden">
                 <flux:sidebar.toggle icon="bars-2" />
-                <span x-show="toReview || toRevise || unread" @style(['display: none' => ! ($toReview || $toRevise || $unread)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" data-test="sidebar-toggle-dot"></span>
+                <span x-show="toReview || toRevise || unread || toApprove" @style(['display: none' => ! ($toReview || $toRevise || $unread || $toApprove)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" data-test="sidebar-toggle-dot"></span>
             </div>
 
             <flux:spacer />

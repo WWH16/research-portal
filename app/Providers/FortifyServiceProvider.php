@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
+use App\Notifications\SignupAwaitingApproval;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
@@ -18,6 +19,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -48,6 +50,14 @@ class FortifyServiceProvider extends ServiceProvider
 
         // Fortify fires Verified when the emailed link verifies someone; the app layout shows this as a toast.
         Event::listen(Verified::class, fn () => session()->flash('verified', __('Email verified. Welcome to the portal.')));
+
+        // A sign-up becomes the Research Office's to approve once its email is confirmed, so a mistyped
+        // or fake address never reaches the admins. A member confirming a changed email is already approved.
+        Event::listen(Verified::class, function (Verified $event) {
+            if ($event->user instanceof User && ! $event->user->isApproved() && ! $event->user->isRejected()) {
+                Notification::send(User::where('role', 'admin')->get(), new SignupAwaitingApproval($event->user));
+            }
+        });
 
         $this->configureEmails();
     }

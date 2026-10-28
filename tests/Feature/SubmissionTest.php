@@ -970,8 +970,8 @@ class SubmissionTest extends TestCase
         $this->assertQueriesAtMost(8, fn () => $this->get(route('submissions.index'))->assertOk());
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        // Two of these are the sidebar's counts: concept proposals to review, and unread notifications.
-        $this->assertQueriesAtMost(10, fn () => $this->get(route('submissions.index'))->assertOk());
+        // Three of these are the sidebar's counts: concept proposals to review, sign-ups to approve, and unread notifications.
+        $this->assertQueriesAtMost(11, fn () => $this->get(route('submissions.index'))->assertOk());
 
         // Calls the way a click inside the review panel sends them, scoped to the review island.
         $component = Livewire::test('pages::reviews.index');

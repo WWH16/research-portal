@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
 use App\Models\Submission;
 use App\Services\GoogleDrive;
@@ -45,7 +46,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         // On Google Drive the disk can't be reached while no account is connected or its access was revoked.
         try {
             $disk = Storage::disk('submissions');
-        } catch (RuntimeException) {
+        } catch (DocumentStorageUnavailable) {
             abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
         }
 

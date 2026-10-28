@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\DocumentStorageUnavailable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
+use Throwable;
 
 /**
  * A research project. The researcher enters it once, lists its proponents per study, and
@@ -289,8 +290,14 @@ class Submission extends Model
     public function attachDocument(string $stage, UploadedFile $file): void
     {
         $old = $this->{$stage.'_path'};
-        // The disk doesn't throw, so a failed write returns false; stop before saving that as the path.
-        $new = $file->store('submissions', 'submissions') ?: throw new RuntimeException('The document could not be stored.');
+        // A local disk returns false on a failed write; Google Drive can fail before writing, when it can't be reached.
+        try {
+            $new = $file->store('submissions', 'submissions');
+        } catch (Throwable $e) {
+            throw new DocumentStorageUnavailable(previous: $e);
+        }
+
+        $new = $new ?: throw new DocumentStorageUnavailable('The document could not be stored.');
         DB::afterRollBack(fn () => Storage::disk('submissions')->delete($new));
 
         $this->{$stage.'_path'} = $new;

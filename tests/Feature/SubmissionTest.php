@@ -738,6 +738,26 @@ class SubmissionTest extends TestCase
         $this->assertFalse($project->fresh()->awaiting_review);
     }
 
+    public function test_an_upload_while_storage_is_down_shows_an_error_and_saves_nothing(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs($maria);
+
+        // Drive storage switched on with no account connected: the disk can't be reached at all.
+        config(['filesystems.disks.submissions.driver' => 'google']);
+        Storage::forgetDisk('submissions');
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasErrors(['documents'])
+            ->assertSee('Document storage is unavailable right now. Try again later or contact the Research Office.');
+
+        $this->assertSame('submissions/sample.pdf', $project->fresh()->concept_path);
+        $this->assertSame(0, ActivityLog::where('action', 'submission.updated')->count());
+    }
+
     public function test_a_save_that_fails_keeps_the_earlier_file(): void
     {
         Storage::fake('submissions');

@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
@@ -174,53 +175,60 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
-        $submission = DB::transaction(function () use ($validated, $rows) {
-            $submission = $this->submission ?? Auth::user()->submissions()->make(['department_id' => $this->department->id]);
+        try {
+            $submission = DB::transaction(function () use ($validated, $rows) {
+                $submission = $this->submission ?? Auth::user()->submissions()->make(['department_id' => $this->department->id]);
 
-            $submission->fill([
-                'title' => $validated['title'],
-                'abstract' => $validated['abstract'],
-                'category_id' => $validated['category_id'],
-                'designation' => $validated['designation'] ?: null,
-                ...Arr::only($validated, ['start_date', 'target_date']),
-            ]);
+                $submission->fill([
+                    'title' => $validated['title'],
+                    'abstract' => $validated['abstract'],
+                    'category_id' => $validated['category_id'],
+                    'designation' => $validated['designation'] ?: null,
+                    ...Arr::only($validated, ['start_date', 'target_date']),
+                ]);
 
-            // What an edit changed, read before saving. Title, dates and category keep their old and new values
-            // (the category's name saved now, in case it is renamed later); other fields, like the abstract, are only named.
-            $readers = [
-                'title' => fn (?string $title) => $title,
-                'start_date' => fn ($date) => $date?->toDateString(),
-                'target_date' => fn ($date) => $date?->toDateString(),
-                'category_id' => fn (?int $id) => Category::find($id)?->name,
-            ];
-            $dirty = array_keys($submission->getDirty());
-            $properties = $this->submission ? array_filter([
-                'values' => collect($readers)->only($dirty)->map(fn ($read, string $column) => [$read($submission->getOriginal($column)), $read($submission->{$column})])->all(),
-                'changed' => array_values(array_diff($dirty, array_keys($readers))),
-                'proponents' => $this->proponentChanges($submission->proponents()->get(['study', 'user_id', 'role'])->toArray(), $rows->all()),
-            ]) : [];
-            $submission->save();
+                // What an edit changed, read before saving. Title, dates and category keep their old and new values
+                // (the category's name saved now, in case it is renamed later); other fields, like the abstract, are only named.
+                $readers = [
+                    'title' => fn (?string $title) => $title,
+                    'start_date' => fn ($date) => $date?->toDateString(),
+                    'target_date' => fn ($date) => $date?->toDateString(),
+                    'category_id' => fn (?int $id) => Category::find($id)?->name,
+                ];
+                $dirty = array_keys($submission->getDirty());
+                $properties = $this->submission ? array_filter([
+                    'values' => collect($readers)->only($dirty)->map(fn ($read, string $column) => [$read($submission->getOriginal($column)), $read($submission->{$column})])->all(),
+                    'changed' => array_values(array_diff($dirty, array_keys($readers))),
+                    'proponents' => $this->proponentChanges($submission->proponents()->get(['study', 'user_id', 'role'])->toArray(), $rows->all()),
+                ]) : [];
+                $submission->save();
 
-            $submission->proponents()->delete();
-            $submission->proponents()->createMany($rows->all());
+                $submission->proponents()->delete();
+                $submission->proponents()->createMany($rows->all());
 
-            // Read before attaching, which overwrites the paths.
-            $replaced = array_values(array_filter(array_keys($this->documents), fn (string $stage) => $submission->{$stage.'_path'} !== null));
+                // Read before attaching, which overwrites the paths.
+                $replaced = array_values(array_filter(array_keys($this->documents), fn (string $stage) => $submission->{$stage.'_path'} !== null));
 
-            foreach ($this->documents as $stage => $file) {
-                $submission->attachDocument($stage, $file);
-            }
+                foreach ($this->documents as $stage => $file) {
+                    $submission->attachDocument($stage, $file);
+                }
 
-            // Saving an edit that changed nothing and uploaded nothing is left out of the log.
-            if (! $this->submission || $properties !== [] || $this->documents !== []) {
-                ActivityLog::record($this->submission ? 'submission.updated' : 'submission.created', $submission, array_filter($properties + [
-                    'documents' => array_keys($this->documents),
-                    'replaced' => $replaced,
-                ]));
-            }
+                // Saving an edit that changed nothing and uploaded nothing is left out of the log.
+                if (! $this->submission || $properties !== [] || $this->documents !== []) {
+                    ActivityLog::record($this->submission ? 'submission.updated' : 'submission.created', $submission, array_filter($properties + [
+                        'documents' => array_keys($this->documents),
+                        'replaced' => $replaced,
+                    ]));
+                }
 
-            return $submission;
-        });
+                return $submission;
+            });
+        } catch (DocumentStorageUnavailable) {
+            // The transaction rolled back, so the project is as it was; the member can save again once storage is back.
+            $this->addError('documents', __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
+
+            return;
+        }
 
         // The Research Office hears of each concept proposal that waits for a decision, once the save has committed.
         if (isset($this->documents['concept']) && $submission->awaiting_review) {

@@ -255,9 +255,9 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 
 ### Task 3.2: Storage outages on upload
 **Files:** `resources/views/pages/submissions/⚡create.blade.php` (`save()` catches `RuntimeException` from the transaction). Test: `tests/Feature/SubmissionTest.php`.
-- [ ] Test `test_an_upload_while_storage_is_down_shows_an_error_and_saves_nothing`: the disk throws, the page shows "Document storage is unavailable right now. Try again later or contact the Research Office.", and no submission row exists.
-- [ ] Watch it fail, implement, run the full suite.
-  - [ ] Commit: `feat(drive): handle Drive outages on upload`
+- [x] Test `test_an_upload_while_storage_is_down_shows_an_error_and_saves_nothing`: the disk throws, the page shows "Document storage is unavailable right now. Try again later or contact the Research Office.", and no submission row exists.
+- [x] Watch it fail, implement, run the full suite.
+  - [x] Commit: `feat(drive): handle Drive outages on upload`
 
 ### Task 3.3: Move existing documents
 **Files:** `routes/console.php` (`submissions:move-to-drive {--from=submissions-bucket}`). Test: `tests/Feature/MoveToDriveCommandTest.php`.

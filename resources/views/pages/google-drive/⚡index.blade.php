@@ -103,15 +103,22 @@ new #[Title('Google Drive')] class extends Component {
             return;
         }
 
-        DB::transaction(function () use ($current) {
-            // An account never connected holds nothing, so it is replaced rather than kept.
-            $current->folder_id ? $current->update(['retired_at' => now()]) : $current->delete();
+        // An account that holds no documents is replaced rather than kept, and its access given back to Google below.
+        $keep = Submission::documentsOn($current) > 0;
+
+        DB::transaction(function () use ($current, $keep) {
+            $keep ? $current->update(['retired_at' => now()]) : $current->delete();
 
             $next = GoogleDriveConnection::whereNotNull('retired_at')->where('email', $this->newEmail)->first();
             $next ? $next->update(['retired_at' => null]) : $next = GoogleDriveConnection::create(['email' => $this->newEmail]);
 
             ActivityLog::record('drive.account_changed', $next, ['from' => $current->email, 'to' => $next->email]);
         });
+
+        // Otherwise its token would stay saved with no page left to disconnect it from.
+        if (! $keep && $current->isConnected()) {
+            rescue(fn () => app(GoogleDrive::class)->revoke($current->refresh_token), report: false);
+        }
 
         $this->resetConfirmation();
         Flux::modal('drive-change')->close();

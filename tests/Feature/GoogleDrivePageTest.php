@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\GoogleDrive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Livewire\Mechanisms\HandleRequests\HandleRequests;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -101,6 +102,7 @@ class GoogleDrivePageTest extends TestCase
     public function test_changing_the_account_sends_new_uploads_to_it_and_keeps_the_old_one_open(): void
     {
         $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'refresh_token' => 'email1-token']);
+        $this->documentsOn($email1, 1);
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('revoke'));
         $this->actingAs($this->admin);
 
@@ -124,10 +126,44 @@ class GoogleDrivePageTest extends TestCase
         $this->assertSame(['from' => 'email1@gmail.com', 'to' => 'email2@gmail.com'], $log->properties);
     }
 
+    public function test_an_admin_who_loses_the_role_with_the_page_open_can_no_longer_use_it(): void
+    {
+        $html = $this->actingAs($this->admin)->get(route('google-drive.index'))->assertOk()->getContent();
+        preg_match('/wire:snapshot="([^"]+)"/', $html, $match);
+        $this->admin->forceFill(['role' => 'faculty'])->save();
+
+        $this->withHeaders(['X-Livewire' => 'true'])->postJson(app(HandleRequests::class)->getUpdateUri(), ['components' => [[
+            'snapshot' => html_entity_decode($match[1]),
+            'updates' => ['email' => 'someone@gmail.com'],
+            'calls' => [['path' => '', 'method' => 'saveAccount', 'params' => []]],
+        ]]])->assertForbidden();
+
+        $this->assertNull(GoogleDriveConnection::current());
+    }
+
+    public function test_changing_away_from_an_account_with_no_documents_drops_it_and_gives_back_its_access(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'refresh_token' => 'email1-token']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('revoke')->once()->with('email1-token'));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'email1@gmail.com')
+            ->set('newEmail', 'email2@gmail.com')
+            ->set('newEmail_confirmation', 'email2@gmail.com')
+            ->set('password', 'password')
+            ->call('changeAccount')
+            ->assertHasNoErrors();
+
+        $this->assertNull($email1->fresh());
+        $this->assertSame('email2@gmail.com', GoogleDriveConnection::current()->email);
+    }
+
     public function test_switching_back_to_an_earlier_account_reuses_it(): void
     {
         $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'folder_id' => 'folder-1', 'retired_at' => now()]);
         $email2 = GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $this->documentsOn($email2, 1);
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')

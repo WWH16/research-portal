@@ -241,8 +241,14 @@ new #[Title('Google Drive')] class extends Component {
 
         $this->resetConfirmation();
         Flux::modal('drive-change')->close();
-        Flux::toast(variant: 'success', text: __('Storage account changed. Connect it so new uploads can be saved.'));
         unset($this->connection, $this->currentDocuments, $this->accounts);
+        // Switching back to an earlier account that kept its access leaves nothing to connect.
+        Flux::toast(variant: 'success', text: $this->connection->isConnected()
+            ? __('Storage account changed. New uploads go to :email.', ['email' => $this->connection->email])
+            : __('Storage account changed. Connect it so new uploads can be saved.'));
+
+        // The storage section only asks on page load, so it would keep showing the old account's figures.
+        $this->loadUsage();
     }
 
     /**

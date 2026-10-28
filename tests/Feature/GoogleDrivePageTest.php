@@ -183,6 +183,29 @@ class GoogleDrivePageTest extends TestCase
         $this->assertNotNull($email2->fresh()->retired_at);
     }
 
+    public function test_switching_accounts_shows_the_new_accounts_storage_at_once(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        $email2 = GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $this->documentsOn($email2, 1);
+        $storage = fn (int $used) => ['used' => $used, 'limit' => 100, 'drive' => $used, 'portal' => 0];
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')
+            ->andReturnUsing(fn (GoogleDriveConnection $account) => $storage($account->is($email1) ? 10 : 20)));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->call('loadUsage')
+            ->assertSet('usage', $storage(20))
+            ->set('confirmEmail', 'email2@gmail.com')
+            ->set('newEmail', 'email1@gmail.com')
+            ->set('newEmail_confirmation', 'email1@gmail.com')
+            ->set('password', 'password')
+            ->call('changeAccount')
+            ->assertSet('usage', $storage(10))
+            // Still connected, so there is nothing to connect.
+            ->assertDispatched('toast-show', fn ($name, $params) => $params['slots']['text'] === 'Storage account changed. New uploads go to email1@gmail.com.');
+    }
+
     public function test_the_change_warning_counts_the_documents_on_the_current_account(): void
     {
         $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);

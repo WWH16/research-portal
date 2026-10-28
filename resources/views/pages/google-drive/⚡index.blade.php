@@ -66,6 +66,12 @@ new #[Title('Google Drive')] class extends Component {
             :text="__('The portal stores documents on Google Drive, but no Google account is connected. Connect the Research Office account to restore uploads.')" />
     @endif
 
+    @if (session('drive-error'))
+        <flux:callout variant="danger" icon="x-circle" class="mt-6" :text="session('drive-error')" data-test="drive-error" />
+    @elseif (session('status'))
+        <flux:callout variant="success" icon="check-circle" class="mt-6" :text="session('status')" />
+    @endif
+
     <div class="mt-6 rounded-xl border border-line p-6">
         @if ($this->connection)
             <flux:heading>{{ __('Connected as :email', ['email' => $this->connection->email]) }}</flux:heading>
@@ -76,7 +82,9 @@ new #[Title('Google Drive')] class extends Component {
                 {{ __('Documents go to its “Research Portal” folder, shared with no one.') }}
             </flux:text>
 
-            <div class="mt-6">
+            {{-- Reconnect renews access for the same account, for example after its password changed --}}
+            <div class="mt-6 flex gap-2">
+                <flux:button :href="route('google-drive.connect')">{{ __('Reconnect') }}</flux:button>
                 <flux:modal.trigger name="drive-disconnect">
                     <flux:button variant="danger">{{ __('Disconnect') }}</flux:button>
                 </flux:modal.trigger>
@@ -84,6 +92,10 @@ new #[Title('Google Drive')] class extends Component {
         @else
             <flux:heading>{{ __('Not connected') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Connect the Research Office Google account so the portal can store documents on its Drive.') }}</flux:text>
+
+            <div class="mt-6">
+                <flux:button variant="primary" :href="route('google-drive.connect')" data-test="connect-drive-button">{{ __('Connect Google Drive') }}</flux:button>
+            </div>
         @endif
     </div>
 

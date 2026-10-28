@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Google\Client;
 use Google\Service\Drive;
+use Google\Service\Drive\DriveFile;
 
 /**
  * The Google API calls the portal makes itself: everything else goes through the "google" disk.
@@ -31,6 +32,17 @@ class GoogleDrive
         }
 
         return $client;
+    }
+
+    /**
+     * Make the "Research Portal" folder documents are stored in. New Drive items are shared with no one,
+     * and the portal never adds a permission, so the folder stays Restricted.
+     */
+    public function createFolder(string $refreshToken): string
+    {
+        $folder = new DriveFile(['name' => 'Research Portal', 'mimeType' => 'application/vnd.google-apps.folder']);
+
+        return (new Drive($this->client($refreshToken)))->files->create($folder, ['fields' => 'id'])->id;
     }
 
     /**

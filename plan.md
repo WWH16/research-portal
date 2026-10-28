@@ -230,7 +230,7 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 ### Task 2.2: Connect through Google sign-in
 **Files:** `routes/web.php` (`google-drive/connect` with `password.confirm`, and `google-drive/callback`), `app/Http/Controllers/GoogleDriveCallbackController.php` (`php artisan make:controller --invokable`), and `GoogleDrive::createFolder(string $refreshToken): string`. Test: `tests/Feature/GoogleDriveConnectTest.php`.
 **Produces:** log action `drive.connected`.
-- [ ] Tests (Socialite and `GoogleDrive` mocked):
+- [x] Tests (Socialite and `GoogleDrive` mocked):
   - `test_connect_asks_for_the_password_first`: redirects to `password.confirm`.
   - `test_connect_requests_only_drive_file_access_offline`: the redirect URL contains the scope, `access_type=offline` and `prompt=consent`, plus `hd` when a domain is set.
   - `test_callback_saves_the_connection_and_creates_the_folder`.
@@ -238,8 +238,8 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
   - `test_callback_refuses_a_different_account_while_documents_exist`: the old row is untouched.
   - `test_reconnecting_the_same_account_keeps_the_folder`.
   - `test_callback_without_a_refresh_token_asks_to_try_again`.
-- [ ] Watch them fail, implement, run the full suite.
-  - [ ] Commit: `feat(drive): connect Google Drive through Google sign-in`
+- [x] Watch them fail, implement, run the full suite.
+  - [x] Commit: `feat(drive): connect Google Drive through Google sign-in`
 
 ## Phase 3: Storage
 

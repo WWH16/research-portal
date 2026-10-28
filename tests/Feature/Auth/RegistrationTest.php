@@ -65,7 +65,7 @@ class RegistrationTest extends TestCase
 
         $response = $this->post(route('register.store'), [
             'name' => 'John Doe',
-            'email' => 'test@example.com',
+            'email' => 'test.user@isu.edu.ph',
             'department_id' => $department->id,
             'role' => 'admin',
             'password' => 'password',
@@ -77,17 +77,35 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
 
-        $user = User::where('email', 'test@example.com')->sole();
+        $user = User::where('email', 'test.user@isu.edu.ph')->sole();
         $this->assertSame('faculty', $user->role);
         $this->assertSame($department->id, $user->department_id);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_only_isu_email_addresses_can_sign_up(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+        $form = ['name' => 'John Doe', 'department_id' => $department->id, 'password' => 'password', 'password_confirmation' => 'password'];
+
+        foreach (['john@gmail.com', 'john@isu.edu.ph.evil.com', 'john@notisu.edu.ph'] as $email) {
+            $this->post(route('register.store'), [...$form, 'email' => $email])
+                ->assertSessionHasErrors(['email' => 'Use your ISU email address, ending in @isu.edu.ph.']);
+        }
+
+        $this->assertGuest();
+
+        $this->post(route('register.store'), [...$form, 'email' => 'John.Doe@ISU.edu.ph'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertAuthenticated();
     }
 
     public function test_department_is_required(): void
     {
         $this->post(route('register.store'), [
             'name' => 'John Doe',
-            'email' => 'test@example.com',
+            'email' => 'test.user@isu.edu.ph',
             'password' => 'password',
             'password_confirmation' => 'password',
         ])->assertSessionHasErrors('department_id');
@@ -109,7 +127,7 @@ class RegistrationTest extends TestCase
 
         $this->post(route('register.store'), [
             'name' => 'John Doe',
-            'email' => 'test@example.com',
+            'email' => 'test.user@isu.edu.ph',
             'department_id' => $department->id,
             'password' => 'password',
             'password_confirmation' => 'passwrod',
@@ -121,7 +139,7 @@ class RegistrationTest extends TestCase
 
     public function test_sign_up_errors_say_what_to_fix(): void
     {
-        User::factory()->create(['email' => 'taken@example.com']);
+        User::factory()->create(['email' => 'taken@isu.edu.ph']);
 
         $this->post(route('register.store'), [])
             ->assertSessionHasErrors([
@@ -136,7 +154,7 @@ class RegistrationTest extends TestCase
                 'department_id' => 'Choose a college from the list.',
             ]);
 
-        $this->post(route('register.store'), ['email' => 'taken@example.com'])
+        $this->post(route('register.store'), ['email' => 'taken@isu.edu.ph'])
             ->assertSessionHasErrors(['email' => 'An account with this email already exists.']);
     }
 

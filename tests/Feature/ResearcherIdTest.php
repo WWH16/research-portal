@@ -51,7 +51,7 @@ class ResearcherIdTest extends TestCase
     {
         $this->seed(AdminUserSeeder::class);
 
-        $this->assertNotNull(User::where('email', 'admin@test.com')->value('researcher_id'));
+        $this->assertNotNull(User::where('email', 'admin@isu.edu.ph')->value('researcher_id'));
     }
 
     public function test_the_backfill_migration_numbers_existing_accounts_by_sign_up_order(): void

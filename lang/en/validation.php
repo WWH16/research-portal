@@ -17,6 +17,7 @@ return [
         'email' => [
             'required' => 'Enter an email address.',
             'email' => 'Enter a valid email address.',
+            'regex' => 'Use your ISU email address, ending in @isu.edu.ph.',
             'unique' => 'An account with this email already exists.',
         ],
         'password' => [

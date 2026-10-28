@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         $accounts = [
-            'test@example.com' => 'Test User',
+            'test.user@isu.edu.ph' => 'Test User',
             'maria.santos_cyn@isu.edu.ph' => 'Maria Santos',
             'jose.reyes_cyn@isu.edu.ph' => 'Jose Reyes',
             'ana.cruz_cyn@isu.edu.ph' => 'Ana Cruz',

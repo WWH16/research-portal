@@ -26,7 +26,7 @@ class ProfileUpdateTest extends TestCase
 
         $response = Livewire::test('pages::settings.profile')
             ->set('name', 'Test User')
-            ->set('email', 'test@example.com')
+            ->set('email', 'test.user@isu.edu.ph')
             ->call('updateProfileInformation');
 
         $response->assertHasNoErrors();
@@ -34,8 +34,22 @@ class ProfileUpdateTest extends TestCase
         $user->refresh();
 
         $this->assertEquals('Test User', $user->name);
-        $this->assertEquals('test@example.com', $user->email);
+        $this->assertEquals('test.user@isu.edu.ph', $user->email);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_email_can_only_change_to_an_isu_address(): void
+    {
+        $user = User::factory()->create(['email' => 'old@isu.edu.ph']);
+
+        $this->actingAs($user);
+
+        Livewire::test('pages::settings.profile')
+            ->set('email', 'someone@gmail.com')
+            ->call('updateProfileInformation')
+            ->assertHasErrors(['email' => 'regex']);
+
+        $this->assertSame('old@isu.edu.ph', $user->refresh()->email);
     }
 
     public function test_email_verification_status_is_unchanged_when_email_address_is_unchanged(): void

@@ -43,6 +43,8 @@ trait ProfileValidationRules
             'string',
             'email',
             'max:255',
+            // Case-insensitive, so ISU.edu.ph passes on pages that don't lowercase the address first.
+            'regex:/@isu\.edu\.ph$/i',
             Rule::unique(User::class)->ignore($userId),
         ];
     }

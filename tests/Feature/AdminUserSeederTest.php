@@ -16,7 +16,7 @@ class AdminUserSeederTest extends TestCase
         $this->seed(AdminUserSeeder::class);
         $this->seed(AdminUserSeeder::class);
 
-        $admin = User::where('email', 'admin@test.com')->sole();
+        $admin = User::where('email', 'admin@isu.edu.ph')->sole();
 
         $this->assertSame('Research Office', $admin->name);
         $this->assertTrue($admin->isAdmin());

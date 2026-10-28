@@ -147,7 +147,10 @@ class ManageUsersTest extends TestCase
             ->set('email', 'taken@isu.edu.ph')
             ->set('password', 'secret-password')
             ->call('save')
-            ->assertHasErrors(['email' => 'unique']);
+            ->assertHasErrors(['email' => 'unique'])
+            ->set('email', 'someone@gmail.com')
+            ->call('save')
+            ->assertHasErrors(['email' => 'regex']);
     }
 
     public function test_edit_form_shows_no_department_for_unassigned_users(): void

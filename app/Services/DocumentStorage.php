@@ -29,7 +29,7 @@ class DocumentStorage
         try {
             $location = $this->driveOf($account)->putFile('submissions', $file);
         } catch (Throwable $e) {
-            $this->markIfRevoked($account, $e);
+            $this->markIfUnreachable($account, $e);
 
             throw new DocumentStorageUnavailable(previous: $e);
         }
@@ -44,23 +44,33 @@ class DocumentStorage
     public function noticeFailure(string $path, Throwable $e): void
     {
         if (preg_match(self::DRIVE_PATH, $path, $match) && ($account = GoogleDriveConnection::find((int) $match[1]))) {
-            $this->markIfRevoked($account, $e);
+            $this->markIfUnreachable($account, $e);
         }
     }
 
     /**
      * Google answers "invalid_grant" once the account's password changed, someone removed the portal's access in
-     * their Google Account, or the token went unused for six months. Other failures, such as a timeout, pass.
+     * their Google Account, or the token went unused for six months. It answers "File not found" with the folder's
+     * ID once someone deleted the folder; the folder ID is forgotten too, so Connect makes a new one. Either way
+     * the account is marked not connected. Other failures, such as a timeout or one missing document, pass.
      */
-    private function markIfRevoked(GoogleDriveConnection $account, Throwable $e): void
+    public function markIfUnreachable(GoogleDriveConnection $account, Throwable $e): bool
     {
         for ($cause = $e; $cause; $cause = $cause->getPrevious()) {
             if (str_contains($cause->getMessage(), 'invalid_grant')) {
                 $account->update(['refresh_token' => null]);
 
-                return;
+                return true;
+            }
+
+            if (str_contains($cause->getMessage(), "File not found: {$account->folder_id}.")) {
+                $account->update(['refresh_token' => null, 'folder_id' => null]);
+
+                return true;
             }
         }
+
+        return false;
     }
 
     /**

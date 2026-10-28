@@ -140,6 +140,7 @@ class GoogleDriveDiskTest extends TestCase
         $account = GoogleDriveConnection::factory()->create();
         $this->googleAnswers([
             new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
+            new Response(200, ['Content-Type' => 'application/json'], '{"id": "folder-123"}'),
             new Response(200, ['Content-Type' => 'application/json'], '{"storageQuota": {"limit": "16106127360", "usage": "4509715660", "usageInDrive": "3000000000"}}'),
             new Response(200, ['Content-Type' => 'application/json'], '{"files": [{"size": "1000"}, {"size": "2500"}]}'),
         ]);

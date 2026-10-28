@@ -85,6 +85,8 @@ class GoogleDrive
         /** @var GoogleDriveAdapter $adapter */
         $adapter = $this->disk($account)->getAdapter();
         $service = $adapter->getService();
+        // Fails with "File not found" once someone deleted the folder, so the page stops claiming all is well.
+        $service->files->get((string) $account->folder_id, ['fields' => 'id']);
         $quota = $service->about->get(['fields' => 'storageQuota'])->getStorageQuota();
 
         $portal = 0;

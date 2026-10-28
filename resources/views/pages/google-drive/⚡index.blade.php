@@ -3,6 +3,7 @@
 use App\Models\ActivityLog;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
+use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
 use Flux\Flux;
 use Illuminate\Support\Collection;
@@ -131,14 +132,24 @@ new #[Title('Google Drive')] class extends Component {
 
     /**
      * Ask Google how full the current account is, after the page shows, so a slow Google never holds it up.
-     * Kept ten minutes; when Google can't answer, the page shows nothing rather than an error.
+     * Kept ten minutes; when Google can't answer, the page shows nothing rather than an error. When Google says
+     * the access or the folder is gone, the whole page redraws and asks for Connect instead of claiming all is well.
      */
     public function loadUsage(): void
     {
         $account = $this->connection;
 
         $this->usage = $account?->isConnected()
-            ? rescue(fn () => Cache::remember("google-drive.usage.{$account->id}", now()->addMinutes(10), fn () => app(GoogleDrive::class)->usage($account)), false, report: false)
+            ? rescue(fn () => Cache::remember("google-drive.usage.{$account->id}", now()->addMinutes(10), fn () => app(GoogleDrive::class)->usage($account)), function (Throwable $e) use ($account) {
+                if (app(DocumentStorage::class)->markIfUnreachable($account, $e)) {
+                    if (! $account->folder_id) {
+                        session()->flash('drive-error', __('The “:folder” folder is gone from Google Drive, so new documents can’t be saved. Connect again to make a new folder.', ['folder' => GoogleDrive::FOLDER]));
+                    }
+                    $this->redirectRoute('google-drive.index', navigate: true);
+                }
+
+                return false;
+            }, report: false)
             : false;
     }
 

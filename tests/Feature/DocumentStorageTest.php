@@ -121,6 +121,31 @@ class DocumentStorageTest extends TestCase
         }
     }
 
+    public function test_an_upload_into_a_folder_gone_from_google_drive_marks_the_account_not_connected(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+        $this->failingDrive('{"error": {"code": 404, "message": "File not found: folder-123."}}');
+
+        try {
+            app(DocumentStorage::class)->store($this->pdf());
+            $this->fail('The upload should have failed.');
+        } catch (DocumentStorageUnavailable) {
+            $this->assertFalse($account->fresh()->isConnected());
+            // Connect then makes a new folder instead of reusing the gone one.
+            $this->assertNull($account->fresh()->folder_id);
+        }
+    }
+
+    public function test_a_missing_document_leaves_its_account_connected(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+
+        app(DocumentStorage::class)->noticeFailure("drive-{$account->id}/submissions/a.pdf", new RuntimeException('File not found: file-456.'));
+
+        $this->assertTrue($account->fresh()->isConnected());
+        $this->assertSame('folder-123', $account->fresh()->folder_id);
+    }
+
     public function test_other_google_failures_leave_the_account_connected(): void
     {
         $account = GoogleDriveConnection::factory()->create();

@@ -320,6 +320,21 @@ class GoogleDrivePageTest extends TestCase
             ->assertDontSeeHtml('data-test="drive-usage"');
     }
 
+    public function test_the_page_asks_to_connect_again_when_the_folder_is_gone_from_google_drive(): void
+    {
+        GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->andThrow(new RuntimeException('{"error": {"code": 404, "message": "File not found: folder-123."}}')));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->call('loadUsage')
+            ->assertRedirect(route('google-drive.index'));
+
+        $this->get(route('google-drive.index'))
+            ->assertSee('folder is gone from Google Drive')
+            ->assertSeeHtml('data-test="connect-drive-button"');
+    }
+
     public function test_the_page_links_to_the_drive_folder(): void
     {
         GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);

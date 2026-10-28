@@ -2,9 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\GoogleDriveConnection;
 use Google\Client;
 use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
+use Illuminate\Filesystem\FilesystemAdapter;
+use League\Flysystem\Filesystem;
+use Masbug\Flysystem\GoogleDriveAdapter;
 
 /**
  * The Google API calls the portal makes itself: everything else goes through the "google" disk.
@@ -32,6 +36,19 @@ class GoogleDrive
         }
 
         return $client;
+    }
+
+    /**
+     * The "Research Portal" folder of a connected account, as a disk. The folder is given by ID: as a root path the
+     * adapter would look it up by name over the network. Always private: the adapter shares a "public" file with
+     * anyone who has its link.
+     */
+    public function disk(GoogleDriveConnection $account): FilesystemAdapter
+    {
+        $config = ['visibility' => 'private'];
+        $adapter = new GoogleDriveAdapter(new Drive($this->client($account->refresh_token)), options: ['sharedFolderId' => $account->folder_id]);
+
+        return new FilesystemAdapter(new Filesystem($adapter, $config), $adapter, $config);
     }
 
     /**

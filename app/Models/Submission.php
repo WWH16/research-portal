@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Exceptions\DocumentStorageUnavailable;
+use App\Services\DocumentStorage;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -288,7 +289,11 @@ class Submission extends Model
     {
         return $this->uploadTimes ??= collect(self::DOCUMENTS)
             ->map(fn (string $label, string $stage) => ($path = $this->{$stage.'_path'})
-                ? rescue(fn () => Carbon::createFromTimestamp(Storage::disk('submissions')->lastModified($path)), report: false)
+                ? rescue(function () use ($path) {
+                    [$disk, $location] = app(DocumentStorage::class)->locate($path);
+
+                    return Carbon::createFromTimestamp($disk->lastModified($location));
+                }, report: false)
                 : null)
             ->filter()
             ->all();
@@ -303,15 +308,15 @@ class Submission extends Model
     public function attachDocument(string $stage, UploadedFile $file): void
     {
         $old = $this->{$stage.'_path'};
-        // A local disk returns false on a failed write; Google Drive can fail before writing, when it can't be reached.
+
+        // Google Drive can fail before writing, when it can't be reached.
         try {
-            $new = $file->store('submissions', 'submissions');
+            $new = app(DocumentStorage::class)->store($file);
         } catch (Throwable $e) {
-            throw new DocumentStorageUnavailable(previous: $e);
+            throw $e instanceof DocumentStorageUnavailable ? $e : new DocumentStorageUnavailable(previous: $e);
         }
 
-        $new = $new ?: throw new DocumentStorageUnavailable('The document could not be stored.');
-        DB::afterRollBack(fn () => Storage::disk('submissions')->delete($new));
+        DB::afterRollBack(fn () => $this->deleteDocument($new));
 
         $this->{$stage.'_path'} = $new;
         $this->uploadTimes = null;
@@ -330,7 +335,19 @@ class Submission extends Model
         $this->save();
 
         if ($old) {
-            DB::afterCommit(fn () => Storage::disk('submissions')->delete($old));
+            DB::afterCommit(fn () => $this->deleteDocument($old));
         }
+    }
+
+    /**
+     * Remove a replaced or rolled-back file from whichever disk holds it. An account that can't be reached
+     * leaves the file where it is rather than failing the save.
+     */
+    private function deleteDocument(string $path): void
+    {
+        rescue(function () use ($path) {
+            [$disk, $location] = app(DocumentStorage::class)->locate($path);
+            $disk->delete($location);
+        });
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
+use App\Models\GoogleDriveConnection;
 use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
@@ -744,9 +745,8 @@ class SubmissionTest extends TestCase
         $project = $maria->submissions()->sole();
         $this->actingAs($maria);
 
-        // Drive storage switched on with no account connected: the disk can't be reached at all.
-        config(['filesystems.disks.submissions.driver' => 'google']);
-        Storage::forgetDisk('submissions');
+        // A storage account is saved but not connected, so its Drive can't be reached at all.
+        GoogleDriveConnection::factory()->unconnected()->create();
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
             ->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))

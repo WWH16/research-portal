@@ -47,10 +47,10 @@ return [
             'report' => false,
         ],
 
-        // Research documents. Same folder as "local" here; Laravel Cloud swaps in the private
-        // bucket attached under this disk name. "google" stores them on the Drive an admin connected.
+        // Research documents saved before a Google Drive storage account was set. Same folder as "local" here;
+        // Laravel Cloud swaps in the private bucket attached under this disk name.
         'submissions' => [
-            'driver' => env('SUBMISSIONS_DISK_DRIVER', 'local'),
+            'driver' => 'local',
             'root' => storage_path('app/private'),
             'throw' => false,
             'report' => false,

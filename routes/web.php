@@ -4,6 +4,7 @@ use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
+use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
 use Google\Exception as GoogleException;
 use GuzzleHttp\Exception\GuzzleException;
@@ -45,15 +46,16 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::livewire('publications/{publication}/edit', 'pages::publications.create')->middleware(['faculty', 'can:update,publication'])->name('publications.edit');
     Route::livewire('faculty/{user}', 'pages::faculty.show')->middleware('can:viewPublications,user')->name('faculty.show');
 
-    // Documents live on the private "submissions" disk, so only the project's proponents and admins can open one.
+    // Documents live on private storage (the portal's Google Drive, or the server disk for older ones), so only the
+    // project's proponents and admins can open one.
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
         $path = $submission->{$stage.'_path'};
         abort_unless($path, 404);
 
-        // On Google Drive the disk can't be reached while no account is connected, its access was revoked, or Google is down.
+        // On Google Drive the account can't be reached while it isn't connected, its access was revoked, or Google is down.
         try {
-            $disk = Storage::disk('submissions');
-            $exists = $disk->exists($path);
+            [$disk, $location] = app(DocumentStorage::class)->locate($path);
+            $exists = $disk->exists($location);
         } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
             report($e);
             abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
@@ -61,7 +63,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
 
         abort_unless($exists, 404);
 
-        return $disk->response($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
+        return $disk->response($location, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     Route::middleware('admin')->group(function () {

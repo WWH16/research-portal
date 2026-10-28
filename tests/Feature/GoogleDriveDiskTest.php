@@ -7,14 +7,14 @@ use App\Models\Department;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
+use App\Services\GoogleDrive;
 use Google\Service\Exception as GoogleServiceException;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Mockery;
-use RuntimeException;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class GoogleDriveDiskTest extends TestCase
@@ -28,12 +28,6 @@ class GoogleDriveDiskTest extends TestCase
         parent::setUp();
 
         $this->owner = User::factory()->create();
-    }
-
-    private function useDrive(): void
-    {
-        config(['filesystems.disks.submissions.driver' => 'google', 'services.google.client_id' => 'portal-client-id', 'services.google.client_secret' => 'portal-secret']);
-        Storage::forgetDisk('submissions');
     }
 
     private function project(array $paths): Submission
@@ -51,44 +45,22 @@ class GoogleDriveDiskTest extends TestCase
         return $project;
     }
 
-    public function test_the_google_disk_is_built_from_the_saved_connection(): void
+    public function test_the_drive_disk_is_built_from_the_saved_account_without_calling_google(): void
     {
-        GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123', 'refresh_token' => 'saved-token']);
-        $this->useDrive();
+        config(['services.google.client_id' => 'portal-client-id', 'services.google.client_secret' => 'portal-secret']);
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123', 'refresh_token' => 'saved-token']);
 
-        $disk = Storage::disk('submissions');
+        $disk = app(GoogleDrive::class)->disk($account);
 
-        $this->assertInstanceOf(FilesystemAdapter::class, $disk);
         $this->assertInstanceOf(GoogleDriveAdapter::class, $disk->getAdapter());
         // Never "public": the adapter would share a public file with anyone who has the link.
         $this->assertSame('private', $disk->getConfig()['visibility']);
     }
 
-    public function test_the_google_disk_refuses_without_a_connection(): void
+    public function test_opening_a_document_on_a_disconnected_account_says_storage_is_down(): void
     {
-        $this->useDrive();
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Google Drive is not connected.');
-
-        Storage::disk('submissions');
-    }
-
-    public function test_the_google_disk_refuses_a_saved_account_that_is_not_connected(): void
-    {
-        GoogleDriveConnection::factory()->unconnected()->create();
-        $this->useDrive();
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Google Drive is not connected.');
-
-        Storage::disk('submissions');
-    }
-
-    public function test_opening_a_document_while_storage_is_down_says_so(): void
-    {
-        $project = $this->project(['concept_path' => 'submissions/concept.pdf']);
-        $this->useDrive();
+        $account = GoogleDriveConnection::factory()->unconnected()->create();
+        $project = $this->project(['concept_path' => "drive-{$account->id}/submissions/concept.pdf"]);
 
         $this->actingAs($this->owner)
             ->get(route('submissions.document', [$project, 'concept']))
@@ -98,15 +70,32 @@ class GoogleDriveDiskTest extends TestCase
 
     public function test_opening_a_document_after_google_refuses_the_token_says_storage_is_down(): void
     {
-        $project = $this->project(['concept_path' => 'submissions/concept.pdf']);
-        $disk = Mockery::mock(Filesystem::class);
+        $account = GoogleDriveConnection::factory()->create();
+        $project = $this->project(['concept_path' => "drive-{$account->id}/submissions/concept.pdf"]);
+        $disk = Mockery::mock(FilesystemAdapter::class);
         $disk->shouldReceive('exists')->andThrow(new GoogleServiceException('{"error": "invalid_grant"}', 401));
-        Storage::shouldReceive('disk')->with('submissions')->andReturn($disk);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
 
         $this->actingAs($this->owner)
             ->get(route('submissions.document', [$project, 'concept']))
             ->assertStatus(503)
             ->assertSee('Document storage is unavailable right now.');
+    }
+
+    public function test_a_document_opens_from_the_account_that_holds_it(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $drive = Storage::fake('drive');
+        $drive->put('submissions/concept.pdf', 'from email1');
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')
+            ->withArgs(fn (GoogleDriveConnection $holder) => $holder->is($email1))->andReturn($drive));
+        $project = $this->project(['concept_path' => "drive-{$email1->id}/submissions/concept.pdf"]);
+
+        $this->actingAs($this->owner)
+            ->get(route('submissions.document', [$project, 'concept']))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
     }
 
     public function test_documents_download_with_the_type_of_their_extension(): void

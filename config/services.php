@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // Google sign-in for connecting the Drive that stores submission documents. drive_domain limits which
+    // Google accounts may connect (isu.edu.ph in production); leave it empty to test with any account.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'drive_domain' => env('GOOGLE_DRIVE_DOMAIN'),
+    ],
+
 ];

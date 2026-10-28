@@ -197,12 +197,12 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 ### Task 1.1: Packages and settings
 **Files:** `composer.json`, `composer.lock`, `config/services.php`, `config/filesystems.php`, `.env.example`. Test: `tests/Feature/GoogleDriveConfigTest.php`.
 **Produces:** `config('services.google.client_id' | 'client_secret' | 'redirect' | 'drive_domain')`; the `submissions` disk driver read from `SUBMISSIONS_DISK_DRIVER` (default `local`).
-- [ ] Test `test_google_settings_are_read_from_the_environment`: the four config keys exist, and the submissions disk driver is `local` by default.
-- [ ] Run it and watch it fail.
-- [ ] Run `composer require laravel/socialite masbug/flysystem-google-drive-ext -W`. The adapter needs Guzzle 7, and the framework, aws-sdk, boost and google/apiclient all accept `^7.8.2 || ^8.0`. Record exactly which packages moved.
-- [ ] Add the config keys and the `.env.example` lines.
-- [ ] Full suite, then commit.
-  - [ ] Commit: `build: add Socialite and Google Drive adapter`
+- [x] Test `test_google_settings_are_read_from_the_environment`: the four config keys exist, and the submissions disk driver is `local` by default.
+- [x] Run it and watch it fail.
+- [x] Run `composer require laravel/socialite masbug/flysystem-google-drive-ext -W`. The adapter needs Guzzle 7, and the framework, aws-sdk, boost and google/apiclient all accept `^7.8.2 || ^8.0`. Record exactly which packages moved.
+- [x] Add the config keys and the `.env.example` lines.
+- [x] Full suite, then commit.
+  - [x] Commit: `build: add Socialite and Google Drive adapter`
 
 ### Task 1.2: The connection record
 **Files:** `php artisan make:model GoogleDriveConnection -mf`. Test: `tests/Feature/GoogleDriveConnectionTest.php`.

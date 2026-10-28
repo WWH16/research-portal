@@ -521,7 +521,8 @@ new #[Title('Google Drive')] class extends Component {
     {{--
         Danger zone, like GitHub's and DigitalOcean's: step one says what happens, with real numbers; step two asks for
         the current account typed out, which keeps the button disabled until it matches, and the admin's password.
-        The server checks both again. Closing a dialog starts it over.
+        The server checks both again. Closing a dialog starts it over. Enter in a field moves to the next one and then
+        to the button, which a disabled button would otherwise swallow; Enter on the button submits as usual.
     --}}
     @if ($this->connection)
         <flux:modal name="drive-change" wire:close="resetConfirmation" class="w-full sm:w-[30rem]" aria-labelledby="drive-change-heading">
@@ -545,7 +546,8 @@ new #[Title('Google Drive')] class extends Component {
                         <flux:button variant="danger" wire:click="$set('step', 2)" data-test="change-understood-button">{{ __('I understand, continue') }}</flux:button>
                     </div>
                 @else
-                    <form wire:submit="changeAccount" class="flex flex-col gap-5" x-data="{ typed: '' }">
+                    <form wire:submit="changeAccount" class="flex flex-col gap-5" x-data="{ typed: '' }"
+                        x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
                         <flux:text>{{ __('Until the new account is connected, uploads fail.') }}</flux:text>
 
                         <flux:field>
@@ -592,7 +594,8 @@ new #[Title('Google Drive')] class extends Component {
                             <flux:button variant="danger" wire:click="$set('step', 2)" data-test="disconnect-understood-button">{{ __('I understand, continue') }}</flux:button>
                         </div>
                     @else
-                        <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }">
+                        <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }"
+                            x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
                             <flux:text>{{ __('Uploads stop, and documents on this account can’t be opened until you connect again.') }}</flux:text>
 
                             <flux:field>

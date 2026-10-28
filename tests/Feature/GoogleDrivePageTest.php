@@ -335,6 +335,17 @@ class GoogleDrivePageTest extends TestCase
             ->assertSeeHtml('data-test="connect-drive-button"');
     }
 
+    public function test_enter_in_the_confirmation_forms_moves_to_the_next_field(): void
+    {
+        GoogleDriveConnection::factory()->create();
+        $this->actingAs($this->admin);
+
+        $html = Livewire::test('pages::google-drive.index')->set('step', 2)->html();
+
+        // Change account and Disconnect: their buttons stay disabled until the address matches, so Enter can't submit.
+        $this->assertSame(2, substr_count($html, 'x-on:keydown.enter='));
+    }
+
     public function test_the_page_links_to_the_drive_folder(): void
     {
         GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);

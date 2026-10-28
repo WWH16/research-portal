@@ -4,6 +4,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
+use App\Notifications\AccountRejected;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -320,6 +321,8 @@ new #[Title('Manage Users')] class extends Component {
             $user->forceFill(['rejected_at' => now()])->save();
             ActivityLog::record('user.rejected', $user);
         });
+
+        $user->notify(new AccountRejected);
 
         Flux::modal('user-reject')->close();
         Flux::toast(variant: 'success', text: __('Sign-up rejected.'));

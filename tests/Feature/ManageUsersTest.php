@@ -7,8 +7,10 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\ResearchType;
 use App\Models\User;
+use App\Notifications\AccountRejected;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -374,6 +376,34 @@ class ManageUsersTest extends TestCase
         $this->assertTrue($user->refresh()->isRejected());
         $this->assertFalse($user->isApproved());
         $this->assertSame($user->id, ActivityLog::where('action', 'user.rejected')->sole()->subject_id);
+    }
+
+    public function test_rejecting_emails_the_user(): void
+    {
+        Notification::fake();
+        $user = User::factory()->pending()->create();
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->call('confirmReject', $user->id)
+            ->call('reject');
+
+        Notification::assertSentTo($user, AccountRejected::class, function (AccountRejected $notification) use ($user) {
+            $mail = $notification->toMail($user);
+
+            return $notification->via($user) === ['mail']
+                && $mail->subject === 'Your portal sign-up was not approved'
+                && in_array('Your sign-up for the Faculty Research Portal was not approved. Contact the Research Office if you think this is a mistake.', $mail->introLines, true);
+        });
+        Notification::assertNotSentTo($this->admin, AccountRejected::class);
+    }
+
+    public function test_rejecting_an_unverified_user_sends_no_email(): void
+    {
+        $user = User::factory()->pending()->unverified()->create();
+
+        $this->assertSame([], (new AccountRejected)->via($user));
     }
 
     public function test_approved_users_cannot_be_rejected(): void

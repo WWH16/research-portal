@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\GoogleDriveConnection;
 use Google\Client;
 use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
+use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Filesystem\FilesystemAdapter;
 use League\Flysystem\Filesystem;
 use Masbug\Flysystem\GoogleDriveAdapter;
@@ -14,6 +16,7 @@ use Masbug\Flysystem\GoogleDriveAdapter;
  * The Google API calls the portal makes itself: everything else goes through the "google" disk.
  * A class, not static helpers, so tests can swap it for a mock and never reach Google.
  */
+#[Scoped]
 class GoogleDrive
 {
     /** Only files and folders the portal creates; never the rest of the account's Drive. */
@@ -21,6 +24,9 @@ class GoogleDrive
 
     /** The folder each storage account keeps the documents in, at the top of its My Drive. */
     public const FOLDER = 'Faculty Research Portal';
+
+    /** @var array<int, FilesystemAdapter> Each account's disk, signed in once per request or job (the class is scoped). */
+    private array $disks = [];
 
     /**
      * A client for the portal's Google app. With a refresh token it signs in as the connected account,
@@ -44,14 +50,27 @@ class GoogleDrive
     /**
      * The "Faculty Research Portal" folder of a connected account, as a disk. The folder is given by ID: as a root path the
      * adapter would look it up by name over the network. Always private: the adapter shares a "public" file with
-     * anyone who has its link.
+     * anyone who has its link. A page that opens several documents on one account signs in to Google once.
      */
     public function disk(GoogleDriveConnection $account): FilesystemAdapter
     {
-        $config = ['visibility' => 'private'];
-        $adapter = new GoogleDriveAdapter(new Drive($this->client($account->refresh_token)), options: ['sharedFolderId' => $account->folder_id]);
+        if (isset($this->disks[$account->id])) {
+            return $this->disks[$account->id];
+        }
 
-        return new FilesystemAdapter(new Filesystem($adapter, $config), $adapter, $config);
+        // Signed in here, not on the first file request: the adapter turns a refused token into "file not found",
+        // which would show a missing document instead of storage being down, and hide a revoked account.
+        $client = $this->client($account->refresh_token);
+        $token = $client->fetchAccessTokenWithRefreshToken();
+
+        if (isset($token['error'])) {
+            throw new DocumentStorageUnavailable("Google refused Google Drive {$account->email}: {$token['error']}.");
+        }
+
+        $config = ['visibility' => 'private'];
+        $adapter = new GoogleDriveAdapter(new Drive($client), options: ['sharedFolderId' => $account->folder_id]);
+
+        return $this->disks[$account->id] = new FilesystemAdapter(new Filesystem($adapter, $config), $adapter, $config);
     }
 
     /**

@@ -8,12 +8,13 @@ use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
 use App\Services\GoogleDrive;
-use Google\Service\Exception as GoogleServiceException;
-use Illuminate\Filesystem\FilesystemAdapter;
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Masbug\Flysystem\GoogleDriveAdapter;
-use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -45,16 +46,32 @@ class GoogleDriveDiskTest extends TestCase
         return $project;
     }
 
-    public function test_the_drive_disk_is_built_from_the_saved_account_without_calling_google(): void
+    /**
+     * The real GoogleDrive, with Google's sign-in answering each token request in turn instead of the network.
+     *
+     * @param  list<Response>  $answers
+     */
+    private function googleAnswers(array $answers): void
     {
-        config(['services.google.client_id' => 'portal-client-id', 'services.google.client_secret' => 'portal-secret']);
+        $this->partialMock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('client')
+            ->andReturnUsing(fn (?string $token) => tap((new GoogleDrive)->client($token), fn ($client) => $client->setHttpClient(
+                // Google's own default: an error comes back as a response, not an exception.
+                new GuzzleClient(['handler' => HandlerStack::create(new MockHandler($answers)), 'http_errors' => false]),
+            ))));
+    }
+
+    public function test_the_drive_disk_signs_in_as_the_saved_account_once_per_request(): void
+    {
         $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123', 'refresh_token' => 'saved-token']);
+        // One answer only: a second sign-in would find none and fail.
+        $this->googleAnswers([new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}')]);
 
         $disk = app(GoogleDrive::class)->disk($account);
 
         $this->assertInstanceOf(GoogleDriveAdapter::class, $disk->getAdapter());
         // Never "public": the adapter would share a public file with anyone who has the link.
         $this->assertSame('private', $disk->getConfig()['visibility']);
+        $this->assertSame($disk, app(GoogleDrive::class)->disk($account));
     }
 
     public function test_opening_a_document_on_a_disconnected_account_says_storage_is_down(): void
@@ -72,9 +89,7 @@ class GoogleDriveDiskTest extends TestCase
     {
         $account = GoogleDriveConnection::factory()->create();
         $project = $this->project(['concept_path' => "drive-{$account->id}/submissions/concept.pdf"]);
-        $disk = Mockery::mock(FilesystemAdapter::class);
-        $disk->shouldReceive('exists')->andThrow(new GoogleServiceException('{"error": "invalid_grant"}', 401));
-        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
+        $this->googleAnswers([new Response(400, ['Content-Type' => 'application/json'], '{"error": "invalid_grant", "error_description": "Token has been expired or revoked."}')]);
 
         $this->actingAs($this->owner)
             ->get(route('submissions.document', [$project, 'concept']))

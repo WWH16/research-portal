@@ -272,8 +272,8 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 
 ### Task 4.1: Docs
 **Files:** `docs/backup-and-restore.md`.
-- [ ] Cover: the Google Drive setup, leaving `google_drive_connections` out of portal backups, reconnecting after an `APP_KEY` change, the move command, and detaching the bucket.
-  - [ ] Commit: `docs: update backup notes for Google Drive`
+- [x] Cover: the Google Drive setup, leaving `google_drive_connections` out of portal backups, reconnecting after an `APP_KEY` change, the move command, and detaching the bucket.
+  - [x] Commit: `docs: update backup notes for Google Drive`
 
 ### Task 4.2: Check and review
 - [ ] Full suite, Pint, and PHPStan, with the output read.

@@ -25,6 +25,37 @@ Files uploaded before the move to buckets stay on the old server. Copy them into
 
 If the buckets are missing in production, the Backup and Restore page shows a red warning. Laravel Cloud clears the server disk on every deploy, so attach the buckets before anyone uploads.
 
+## Storing documents on Google Drive
+
+Project documents can live on the Research Office's Google Drive instead of the `submissions` bucket. The database still stores each document's path. Only the place the file sits changes.
+
+### Setting it up
+
+1. In Google Cloud Console, enable the **Google Drive API**. Then create an OAuth client of type **Web application**, with the redirect URI `<APP_URL>/google-drive/callback`. Use ISU's Google Workspace and the **Internal** user type: an app left in "Testing" loses its connection every 7 days.
+2. Set these in the environment variables:
+   - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the OAuth client.
+   - `GOOGLE_REDIRECT_URI`, the redirect URI above.
+   - `GOOGLE_DRIVE_DOMAIN=isu.edu.ph`. Only accounts on this domain can connect. Leave it empty only for local testing.
+3. Run `php artisan migrate`.
+4. Sign in as an admin and open **System → Google Drive**. Choose **Connect Google Drive**, confirm your password, and sign in as the Research Office account, not your own. The portal creates a "Research Portal" folder there, shared with no one.
+5. Copy the existing documents: `php artisan submissions:move-to-drive --from=<old disk>`. On Laravel Cloud, first attach the old bucket under a second disk name, such as `submissions-bucket`. Run the command until it reports `missing 0`. A second run skips files already copied.
+6. Set `SUBMISSIONS_DISK_DRIVER=google` and, on Laravel Cloud, detach the bucket from the `submissions` disk name. Laravel Cloud's attached bucket would otherwise replace the Drive setting. Redeploy.
+7. Open a few documents in the portal to check they load. Then delete the old bucket.
+
+### Keeping it working
+
+- **One account for the whole portal.** Every admin uses the same connection. Removing the admin who connected it doesn't break it.
+- **Don't switch accounts.** Once documents are stored, the portal refuses a different Google account, because it couldn't read the files the first account holds. Reconnecting the same account is always allowed. Use **Reconnect** after the account's password changes.
+- **If the connection breaks,** uploads stop with a "Document storage is unavailable" message, and opening a document shows the same. The Google Drive page shows a red warning. Reconnect the same account to fix it. No files are lost.
+- **Changing `APP_KEY`** makes the saved Google token unreadable. Reconnect after any key change.
+- **Disconnect** revokes the portal's access at Google. The files stay on Drive.
+- **Replaced documents** go to the Drive trash, so they still count against storage for 30 days.
+
+### Backups with Google Drive
+
+- Portal backups must leave the `google_drive_connections` table out, so a downloaded zip never carries the Google token. After restoring a backup, reconnect Google Drive.
+- Backups read every file on the `submissions` disk, so with Drive they download every document from Google and take longer.
+
 ## Portal backups
 
 Portal backups are manual, from **Administration → Backup and Restore**. The page asks for your password again before it opens.
@@ -37,7 +68,7 @@ Portal backups are manual, from **Administration → Backup and Restore**. The p
 
 Each backup is one zip:
 
-- `database/<table>.jsonl`: every table, one JSON row per line. Sessions, cache, queued jobs and password reset tokens are left out.
+- `database/<table>.jsonl`: every table, one JSON row per line. Sessions, cache, queued jobs, password reset tokens and the Google Drive connection are left out.
 - `documents/...`: every file on the `submissions` disk.
 - `photos/...`: every file on the `public` disk.
 

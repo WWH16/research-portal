@@ -46,7 +46,12 @@ class AppServiceProvider extends ServiceProvider
     protected function registerGoogleDriveDisk(): void
     {
         Storage::extend('google', function (Application $app, array $config) {
-            $connection = GoogleDriveConnection::first() ?? throw new DocumentStorageUnavailable('Google Drive is not connected.');
+            $connection = GoogleDriveConnection::first();
+
+            if (! $connection?->isConnected()) {
+                throw new DocumentStorageUnavailable('Google Drive is not connected.');
+            }
+
             // The folder is given by ID; as a root path the adapter would look it up by name over the network.
             $adapter = new GoogleDriveAdapter(
                 new Drive($app->make(GoogleDrive::class)->client($connection->refresh_token)),

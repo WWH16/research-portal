@@ -74,6 +74,17 @@ class GoogleDriveDiskTest extends TestCase
         Storage::disk('submissions');
     }
 
+    public function test_the_google_disk_refuses_a_saved_account_that_is_not_connected(): void
+    {
+        GoogleDriveConnection::factory()->unconnected()->create();
+        $this->useDrive();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Google Drive is not connected.');
+
+        Storage::disk('submissions');
+    }
+
     public function test_opening_a_document_while_storage_is_down_says_so(): void
     {
         $project = $this->project(['concept_path' => 'submissions/concept.pdf']);

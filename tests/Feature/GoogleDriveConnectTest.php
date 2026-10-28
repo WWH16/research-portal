@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
-use App\Models\Category;
-use App\Models\Department;
 use App\Models\GoogleDriveConnection;
 use App\Models\User;
 use App\Services\GoogleDrive;
@@ -30,7 +28,6 @@ class GoogleDriveConnectTest extends TestCase
             'services.google.client_id' => 'portal-client-id',
             'services.google.client_secret' => 'portal-secret',
             'services.google.redirect' => 'http://localhost/google-drive/callback',
-            'services.google.drive_domain' => null,
         ]);
         $this->admin = User::factory()->create(['role' => 'admin']);
     }
@@ -46,28 +43,18 @@ class GoogleDriveConnectTest extends TestCase
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
     }
 
-    private function projectWithDocument(): void
-    {
-        User::factory()->create()->submissions()->create([
-            'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
-            'department_id' => Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies'])->id,
-            'title' => 'Stored Study',
-            'abstract' => 'An abstract.',
-            'start_date' => now(),
-            'target_date' => now()->addYear(),
-            'concept_path' => 'submissions/concept.pdf',
-        ]);
-    }
-
     public function test_connect_asks_for_the_password_first(): void
     {
+        GoogleDriveConnection::factory()->unconnected()->create();
+
         $this->actingAs($this->admin)
             ->get(route('google-drive.connect'))
             ->assertRedirect(route('password.confirm'));
     }
 
-    public function test_connect_requests_only_drive_file_access_offline(): void
+    public function test_connect_opens_google_on_the_storage_account_with_drive_file_access_only(): void
     {
+        GoogleDriveConnection::factory()->unconnected()->create(['email' => 'isucyn.facultyresearchportal@gmail.com']);
         $this->actingAs($this->admin)->withSession(['auth.password_confirmed_at' => time()]);
 
         $location = $this->get(route('google-drive.connect'))->assertRedirect()->headers->get('Location');
@@ -76,10 +63,16 @@ class GoogleDriveConnectTest extends TestCase
         $this->assertStringContainsString(urlencode(GoogleDrive::SCOPE), $location);
         $this->assertStringContainsString('access_type=offline', $location);
         $this->assertStringContainsString('prompt=consent', $location);
-        $this->assertStringNotContainsString('hd=', $location);
+        $this->assertStringContainsString('login_hint='.urlencode('isucyn.facultyresearchportal@gmail.com'), $location);
+    }
 
-        config(['services.google.drive_domain' => 'isu.edu.ph']);
-        $this->assertStringContainsString('hd=isu.edu.ph', $this->get(route('google-drive.connect'))->headers->get('Location'));
+    public function test_connect_needs_a_storage_account_first(): void
+    {
+        $this->actingAs($this->admin)->withSession(['auth.password_confirmed_at' => time()]);
+
+        $this->get(route('google-drive.connect'))
+            ->assertRedirect(route('google-drive.index'))
+            ->assertSessionHas('drive-error', 'Save the Google account that stores documents first.');
     }
 
     public function test_faculty_cannot_connect(): void
@@ -87,54 +80,38 @@ class GoogleDriveConnectTest extends TestCase
         $this->actingAs(User::factory()->create())->get(route('google-drive.callback'))->assertForbidden();
     }
 
-    public function test_callback_saves_the_connection_and_creates_the_folder(): void
+    public function test_callback_connects_the_storage_account_and_creates_the_folder(): void
     {
+        GoogleDriveConnection::factory()->unconnected()->create(['email' => 'research.office@isu.edu.ph']);
         $this->googleReturns('Research.Office@isu.edu.ph');
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('createFolder')->once()->with('new-refresh-token')->andReturn('folder-123'));
 
         $this->actingAs($this->admin)->get(route('google-drive.callback'))->assertRedirect(route('google-drive.index'));
 
         $connection = GoogleDriveConnection::sole();
-        $this->assertSame('research.office@isu.edu.ph', $connection->email);
+        $this->assertTrue($connection->isConnected());
         $this->assertSame('new-refresh-token', $connection->refresh_token);
         $this->assertSame('folder-123', $connection->folder_id);
         $this->assertSame($this->admin->id, $connection->connected_by);
         $this->assertSame('connected Google Drive', ActivityLog::where('action', 'drive.connected')->sole()->summary());
     }
 
-    public function test_callback_refuses_an_account_outside_the_domain(): void
+    public function test_callback_refuses_any_other_account(): void
     {
-        config(['services.google.drive_domain' => 'isu.edu.ph']);
-        $this->googleReturns('someone@gmail.com');
+        GoogleDriveConnection::factory()->unconnected()->create(['email' => 'isucyn.facultyresearchportal@gmail.com']);
+        $this->googleReturns('someone.personal@gmail.com');
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('createFolder'));
 
         $this->actingAs($this->admin)
             ->get(route('google-drive.callback'))
-            ->assertRedirect(route('google-drive.index'))
-            ->assertSessionHas('drive-error', 'Use a Google account ending in @isu.edu.ph.');
+            ->assertSessionHas('drive-error', 'Sign in as isucyn.facultyresearchportal@gmail.com to connect. You signed in as someone.personal@gmail.com.');
 
-        $this->assertSame(0, GoogleDriveConnection::count());
+        $this->assertFalse(GoogleDriveConnection::sole()->isConnected());
     }
 
-    public function test_callback_refuses_a_different_account_while_documents_exist(): void
-    {
-        $old = GoogleDriveConnection::factory()->create(['email' => 'research.office@isu.edu.ph', 'refresh_token' => 'old-token']);
-        $this->projectWithDocument();
-        $this->googleReturns('other.account@isu.edu.ph');
-        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('createFolder'));
-
-        $this->actingAs($this->admin)
-            ->get(route('google-drive.callback'))
-            ->assertSessionHas('drive-error', 'Documents are stored on research.office@isu.edu.ph’s Drive. Connect that account again.');
-
-        $this->assertSame('old-token', GoogleDriveConnection::sole()->refresh_token);
-        $this->assertTrue($old->is(GoogleDriveConnection::sole()));
-    }
-
-    public function test_reconnecting_the_same_account_keeps_the_folder(): void
+    public function test_reconnecting_keeps_the_folder(): void
     {
         GoogleDriveConnection::factory()->create(['email' => 'research.office@isu.edu.ph', 'folder_id' => 'folder-123', 'refresh_token' => 'old-token']);
-        $this->projectWithDocument();
         $this->googleReturns('research.office@isu.edu.ph');
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('createFolder'));
 
@@ -147,6 +124,7 @@ class GoogleDriveConnectTest extends TestCase
 
     public function test_callback_without_a_refresh_token_asks_to_try_again(): void
     {
+        GoogleDriveConnection::factory()->unconnected()->create(['email' => 'research.office@isu.edu.ph']);
         $this->googleReturns('research.office@isu.edu.ph', refreshToken: null);
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('createFolder'));
 
@@ -154,7 +132,7 @@ class GoogleDriveConnectTest extends TestCase
             ->get(route('google-drive.callback'))
             ->assertSessionHas('drive-error', 'Google didn’t give the portal lasting access. Click Connect again and allow access.');
 
-        $this->assertSame(0, GoogleDriveConnection::count());
+        $this->assertFalse(GoogleDriveConnection::sole()->isConnected());
     }
 
     public function test_cancelling_on_google_changes_nothing(): void
@@ -167,13 +145,6 @@ class GoogleDriveConnectTest extends TestCase
             ->assertRedirect(route('google-drive.index'))
             ->assertSessionHas('drive-error', 'Google sign-in was cancelled, so nothing changed.');
 
-        $this->assertTrue($connection->is(GoogleDriveConnection::sole()));
-    }
-
-    public function test_the_page_offers_connect(): void
-    {
-        $this->actingAs($this->admin)
-            ->get(route('google-drive.index'))
-            ->assertSeeHtml('href="'.route('google-drive.connect').'"');
+        $this->assertSame($connection->refresh_token, GoogleDriveConnection::sole()->refresh_token);
     }
 }

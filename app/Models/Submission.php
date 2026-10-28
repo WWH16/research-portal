@@ -165,6 +165,19 @@ class Submission extends Model
     }
 
     /**
+     * Whether any project has a document on file. Once one does, the Google Drive storage account can't change:
+     * the portal could not read files that another account holds.
+     */
+    public static function anyDocumentStored(): bool
+    {
+        return static::where(function (Builder $query) {
+            foreach (array_keys(self::DOCUMENTS) as $stage) {
+                $query->orWhereNotNull($stage.'_path');
+            }
+        })->exists();
+    }
+
+    /**
      * Projects past their target date with no terminal report uploaded yet.
      *
      * @param  Builder<self>  $query

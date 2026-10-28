@@ -210,6 +210,7 @@ class ActivityLog extends Model
             'user.deleted' => __('deleted an account'),
             'user.approved' => __('approved a sign-up'),
             'user.rejected' => __('rejected a sign-up'),
+            'drive.account_set' => __('set the Google Drive storage account'),
             'drive.connected' => __('connected Google Drive'),
             'drive.disconnected' => __('disconnected Google Drive'),
 

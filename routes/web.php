@@ -2,6 +2,7 @@
 
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
+use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Services\GoogleDrive;
 use Google\Exception as GoogleException;
@@ -76,12 +77,20 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         Route::livewire('google-drive', 'pages::google-drive.index')->name('google-drive.index');
 
         // Only the files the portal creates, kept after the sign-in ends; prompt=consent makes Google send a refresh token
-        // every time. Connecting hands over the documents' storage, so the admin confirms their password first.
-        Route::get('google-drive/connect', fn () => Socialite::buildProvider(GoogleProvider::class, config('services.google'))
-            ->scopes([GoogleDrive::SCOPE])
-            ->with(array_filter(['access_type' => 'offline', 'prompt' => 'consent', 'hd' => config('services.google.drive_domain')]))
-            ->redirect()
-        )->middleware('password.confirm')->name('google-drive.connect');
+        // every time, and login_hint opens Google's picker on the saved storage account. Connecting hands over the
+        // documents' storage, so the admin confirms their password first.
+        Route::get('google-drive/connect', function () {
+            $account = GoogleDriveConnection::first()?->email;
+
+            if (! $account) {
+                return redirect()->route('google-drive.index')->with('drive-error', __('Save the Google account that stores documents first.'));
+            }
+
+            return Socialite::buildProvider(GoogleProvider::class, config('services.google'))
+                ->scopes([GoogleDrive::SCOPE])
+                ->with(['access_type' => 'offline', 'prompt' => 'consent', 'login_hint' => $account])
+                ->redirect();
+        })->middleware('password.confirm')->name('google-drive.connect');
         Route::get('google-drive/callback', GoogleDriveCallbackController::class)->name('google-drive.callback');
     });
 });

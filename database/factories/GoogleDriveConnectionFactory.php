@@ -23,4 +23,12 @@ class GoogleDriveConnectionFactory extends Factory
             'connected_by' => null,
         ];
     }
+
+    /**
+     * The storage account is saved, but no one has connected it yet.
+     */
+    public function unconnected(): static
+    {
+        return $this->state(fn (array $attributes) => ['refresh_token' => null, 'folder_id' => null]);
+    }
 }

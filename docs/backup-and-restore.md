@@ -31,13 +31,12 @@ Project documents can live on the Research Office's Google Drive instead of the 
 
 ### Setting it up
 
-1. In Google Cloud Console, enable the **Google Drive API**. Then create an OAuth client of type **Web application**, with the redirect URI `<APP_URL>/google-drive/callback`. Use ISU's Google Workspace and the **Internal** user type: an app left in "Testing" loses its connection every 7 days.
+1. In Google Cloud Console, enable the **Google Drive API**. Then create an OAuth client of type **Web application**, with the redirect URI `<APP_URL>/google-drive/callback`. Use the **Internal** user type with an ISU Workspace account, or **External** and **Publish app** with a Gmail account: an app left in "Testing" loses its connection every 7 days.
 2. Set these in the environment variables:
    - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the OAuth client.
    - `GOOGLE_REDIRECT_URI`, the redirect URI above.
-   - `GOOGLE_DRIVE_DOMAIN=isu.edu.ph`. Only accounts on this domain can connect. Leave it empty only for local testing.
 3. Run `php artisan migrate`.
-4. Sign in as an admin and open **System → Google Drive**. Choose **Connect Google Drive**, confirm your password, and sign in as the Research Office account, not your own. The portal creates a "Research Portal" folder there, shared with no one.
+4. Sign in as an admin and open **System → Google Drive**. Save the storage account, the one Google account whose Drive keeps every document. Then choose **Connect Google Drive**, confirm your password, and sign in to Google as that account. The portal refuses any other account, and creates a "Research Portal" folder there, shared with no one.
 5. Copy the existing documents: `php artisan submissions:move-to-drive --from=<old disk>`. On Laravel Cloud, first attach the old bucket under a second disk name, such as `submissions-bucket`. Run the command until it reports `missing 0`. A second run skips files already copied.
 6. Set `SUBMISSIONS_DISK_DRIVER=google` and, on Laravel Cloud, detach the bucket from the `submissions` disk name. Laravel Cloud's attached bucket would otherwise replace the Drive setting. Redeploy.
 7. Open a few documents in the portal to check they load. Then delete the old bucket.
@@ -45,10 +44,10 @@ Project documents can live on the Research Office's Google Drive instead of the 
 ### Keeping it working
 
 - **One account for the whole portal.** Every admin uses the same connection. Removing the admin who connected it doesn't break it.
-- **Don't switch accounts.** Once documents are stored, the portal refuses a different Google account, because it couldn't read the files the first account holds. Reconnecting the same account is always allowed. Use **Reconnect** after the account's password changes.
+- **One saved account.** Every admin's Connect must sign in as the storage account saved on the page. It can change only while no documents are stored, because the portal couldn't read files another account holds. Use **Reconnect** after the account's password changes.
 - **If the connection breaks,** uploads stop with a "Document storage is unavailable" message, and opening a document shows the same. The Google Drive page shows a red warning. Reconnect the same account to fix it. No files are lost.
 - **Changing `APP_KEY`** makes the saved Google token unreadable. Reconnect after any key change.
-- **Disconnect** revokes the portal's access at Google. The files stay on Drive.
+- **Disconnect** revokes the portal's access at Google. The saved account and the files on Drive stay.
 - **Replaced documents** go to the Drive trash, so they still count against storage for 30 days.
 
 ### Backups with Google Drive

@@ -10,7 +10,7 @@ class GoogleDriveConfigTest extends TestCase
 {
     public function test_google_settings_are_read_from_the_environment(): void
     {
-        foreach (['client_id', 'client_secret', 'redirect', 'drive_domain'] as $key) {
+        foreach (['client_id', 'client_secret', 'redirect'] as $key) {
             $this->assertArrayHasKey($key, config('services.google'));
         }
 

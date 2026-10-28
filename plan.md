@@ -170,7 +170,7 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 
 - Scope: `https://www.googleapis.com/auth/drive.file` only.
 - Never call Socialite's `stateless()`.
-- The allowed Google account domain is the `GOOGLE_DRIVE_DOMAIN` setting. It is empty while testing with the portal Gmail and set to `isu.edu.ph` in production. The domain is always checked on the server.
+- The one Google account allowed to connect is saved on the Google Drive page and checked on the server against the address Google returns. (This replaced an earlier `GOOGLE_DRIVE_DOMAIN` setting once the portal settled on a Gmail account.)
 - The refresh token uses the `encrypted` cast, is listed in `#[Hidden]`, and never appears in logs or exceptions.
 - Drive files and the folder are never shared. Nothing ever adds a Drive permission.
 - Uploads accept `pdf`, `doc` and `docx`. Downloads set Content-Type from the file extension, never from Drive metadata.
@@ -196,7 +196,7 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 
 ### Task 1.1: Packages and settings
 **Files:** `composer.json`, `composer.lock`, `config/services.php`, `config/filesystems.php`, `.env.example`. Test: `tests/Feature/GoogleDriveConfigTest.php`.
-**Produces:** `config('services.google.client_id' | 'client_secret' | 'redirect' | 'drive_domain')`; the `submissions` disk driver read from `SUBMISSIONS_DISK_DRIVER` (default `local`).
+**Produces:** `config('services.google.client_id' | 'client_secret' | 'redirect')`; the `submissions` disk driver read from `SUBMISSIONS_DISK_DRIVER` (default `local`).
 - [x] Test `test_google_settings_are_read_from_the_environment`: the four config keys exist, and the submissions disk driver is `local` by default.
 - [x] Run it and watch it fail.
 - [x] Run `composer require laravel/socialite masbug/flysystem-google-drive-ext -W`. The adapter needs Guzzle 7, and the framework, aws-sdk, boost and google/apiclient all accept `^7.8.2 || ^8.0`. Record exactly which packages moved.
@@ -287,7 +287,6 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
   - [ ] Create an OAuth client of type Web application, with redirect URI `http://localhost:8000/google-drive/callback`, or your local URL with that path.
 - [ ] `.env`:
   - [ ] Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI`.
-  - [ ] Leave `GOOGLE_DRIVE_DOMAIN` empty.
   - [ ] Set `SUBMISSIONS_DISK_DRIVER=google`.
 - [ ] Run `php artisan migrate`.
 - [ ] Open Administration → Google Drive, click Connect, and sign in with the portal Gmail.
@@ -295,5 +294,5 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 - [ ] Optional: run `php artisan submissions:move-to-drive --from=local`.
 - [ ] Production, with ISU IT:
   - [ ] Get the Workspace account and an Internal app.
-  - [ ] Set `GOOGLE_DRIVE_DOMAIN=isu.edu.ph` and the same keys in Laravel Cloud.
+  - [ ] Set the same keys in Laravel Cloud, then save the storage account on the Google Drive page.
   - [ ] Run the move command, then detach the bucket.

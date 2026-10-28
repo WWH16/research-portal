@@ -11,13 +11,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * The Google account whose Drive stores submission documents. The refresh token is encrypted at rest
- * and never leaves the model in its array or JSON form.
+ * The one Google account whose Drive stores submission documents. An admin saves its address first; it
+ * is connected once Google hands over a refresh token. The token is encrypted at rest and never leaves
+ * the model in its array or JSON form.
  *
  * @property int $id
  * @property string $email
- * @property string $refresh_token
- * @property string $folder_id
+ * @property string|null $refresh_token
+ * @property string|null $folder_id
  * @property int|null $connected_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -32,6 +33,14 @@ class GoogleDriveConnection extends Model
     protected function casts(): array
     {
         return ['refresh_token' => 'encrypted'];
+    }
+
+    /**
+     * Whether the portal can reach the account's Drive: the address alone isn't enough.
+     */
+    public function isConnected(): bool
+    {
+        return $this->refresh_token !== null;
     }
 
     /**

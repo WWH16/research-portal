@@ -276,8 +276,8 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
   - [x] Commit: `docs: update backup notes for Google Drive`
 
 ### Task 4.2: Check and review
-- [ ] Full suite, Pint, and PHPStan, with the output read.
-- [ ] Whole-change review against the Review focus list. Each fix gets a failing test first and its own `fix:` commit.
+- [x] Full suite, Pint, and PHPStan, with the output read.
+- [x] Whole-change review against the Review focus list. Each fix gets a failing test first and its own `fix:` commit.
 
 ## Phase 5: Your setup (after Phase 4)
 

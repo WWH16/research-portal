@@ -34,7 +34,15 @@ Schedule::command('projects:remind')->dailyAt('07:00')->onOneServer();
 // Copies every document a project points to from the old disk to the submissions disk, under the same path, so the
 // saved paths keep working after the switch to Google Drive. Safe to run again: files already there are skipped.
 Artisan::command('submissions:move-to-drive {--from=submissions-bucket : The disk the documents are on now}', function () {
-    $from = Storage::disk((string) $this->option('from'));
+    $source = $this->option('from');
+
+    if (! is_string($source) || $source === '') {
+        $this->error('Name the disk to copy from with --from.');
+
+        return 1;
+    }
+
+    $from = Storage::disk($source);
     $to = Storage::disk('submissions');
     [$copied, $skipped, $missing] = [0, 0, []];
 
@@ -48,7 +56,7 @@ Artisan::command('submissions:move-to-drive {--from=submissions-bucket : The dis
 
             if ($to->exists($path)) {
                 $skipped++;
-            } elseif (! $from->exists($path) || ! $to->writeStream($path, $from->readStream($path)) || ! $to->exists($path)) {
+            } elseif (! $from->exists($path) || ! $to->writeStream($path, $from->readStream($path))) {
                 $missing[] = $path;
             } else {
                 $copied++;

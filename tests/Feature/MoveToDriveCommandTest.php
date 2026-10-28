@@ -59,6 +59,13 @@ class MoveToDriveCommandTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_it_needs_a_disk_to_copy_from(): void
+    {
+        $this->artisan('submissions:move-to-drive', ['--from' => ''])
+            ->expectsOutput('Name the disk to copy from with --from.')
+            ->assertFailed();
+    }
+
     public function test_it_reports_files_missing_from_the_source(): void
     {
         Storage::disk('old-bucket')->put('submissions/concept.pdf', 'concept');

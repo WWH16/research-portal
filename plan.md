@@ -151,3 +151,149 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 - Page layout and wording, using Flux components.
 - Whether to cache the Google access token between requests.
 - Whether the adapter's `delete()` trashes or permanently deletes a replaced file. Trashed files still count against the account's storage for 30 days.
+
+---
+
+# Build plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task. Every task is test-first (superpowers:test-driven-development) and ends in exactly one commit. Tick a task's box, and its commit line, when that commit lands.
+
+**Goal:** Submission documents are stored on one central Google Drive account that an admin connects from inside the portal.
+
+**Architecture:** The portal saves one Google connection (email, encrypted refresh token, folder ID). A `google` Flysystem driver, built from that connection, sits behind the existing `submissions` disk, so `Submission::attachDocument()`, `uploadTimes()` and the `submissions.document` route keep working unchanged. The admin connects through Laravel Socialite's Google driver, with the `drive.file` scope only.
+
+**Tech stack:** Laravel 13, Fortify, Livewire 4 single-file pages, Flux, Pest. New: `laravel/socialite`, `masbug/flysystem-google-drive-ext` (which pulls in `google/apiclient`).
+
+**Spec:** the design sections above in this file.
+
+## Global constraints
+
+- Scope: `https://www.googleapis.com/auth/drive.file` only.
+- Never call Socialite's `stateless()`.
+- The allowed Google account domain is the `GOOGLE_DRIVE_DOMAIN` setting. It is empty while testing with the portal Gmail and set to `isu.edu.ph` in production. The domain is always checked on the server.
+- The refresh token uses the `encrypted` cast, is listed in `#[Hidden]`, and never appears in logs or exceptions.
+- Drive files and the folder are never shared. Nothing ever adds a Drive permission.
+- Uploads accept `pdf`, `doc` and `docx`. Downloads set Content-Type from the file extension, never from Drive metadata.
+- Never run Pint on `⚡` pages. Commits carry no `Co-Authored-By` trailer.
+- Test command: `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/pest`. PHPStan and Pint pass before every commit.
+
+## Review focus
+
+- The token expires or is revoked while faculty are uploading. Expected: a clear "storage unavailable" error, no half-saved project, and no 500 page.
+- An admin signs in with a second Google account while documents exist. Expected: refused, and the old connection is untouched.
+- The admin who connected Drive is deleted. Expected: the connection keeps working.
+- A `.docx` document is opened. Expected: it downloads as Word, not as a broken PDF.
+- The move command runs twice. Expected: the second run copies nothing and reports every file as already on Drive.
+
+## Phase 0: Design
+
+- [x] Write the design in `plan.md`
+  - [x] Commit `9b96c1d` docs: plan Google Drive storage for submission PDFs
+- [x] Add this build plan
+  - [x] Commit: `docs: plan Google Drive storage build`
+
+## Phase 1: Foundations
+
+### Task 1.1: Packages and settings
+**Files:** `composer.json`, `composer.lock`, `config/services.php`, `config/filesystems.php`, `.env.example`. Test: `tests/Feature/GoogleDriveConfigTest.php`.
+**Produces:** `config('services.google.client_id' | 'client_secret' | 'redirect' | 'drive_domain')`; the `submissions` disk driver read from `SUBMISSIONS_DISK_DRIVER` (default `local`).
+- [ ] Test `test_google_settings_are_read_from_the_environment`: the four config keys exist, and the submissions disk driver is `local` by default.
+- [ ] Run it and watch it fail.
+- [ ] Run `composer require laravel/socialite masbug/flysystem-google-drive-ext -W`. The adapter needs Guzzle 7, and the framework, aws-sdk, boost and google/apiclient all accept `^7.8.2 || ^8.0`. Record exactly which packages moved.
+- [ ] Add the config keys and the `.env.example` lines.
+- [ ] Full suite, then commit.
+  - [ ] Commit: `build: add Socialite and Google Drive adapter`
+
+### Task 1.2: The connection record
+**Files:** `php artisan make:model GoogleDriveConnection -mf`. Test: `tests/Feature/GoogleDriveConnectionTest.php`.
+**Produces:** table `google_drive_connections` with `email`, `refresh_token` (text, `encrypted`), `folder_id`, `connected_by` (nullable FK to `users`, `nullOnDelete()`), and timestamps. `GoogleDriveConnection::current(): ?self` returns the newest row. Relation `connectedBy(): BelongsTo<User>`.
+- [ ] Tests:
+  - `test_the_refresh_token_is_stored_encrypted`: the raw DB value is not the token.
+  - `test_the_refresh_token_never_appears_in_output`: `toArray()` and `toJson()` lack it.
+  - `test_deleting_the_admin_who_connected_keeps_the_connection`: `connected_by` becomes null and the row stays.
+- [ ] Watch them fail, implement, run the full suite.
+  - [ ] Commit: `feat(drive): store the Google Drive connection`
+
+## Phase 2: Connect
+
+### Task 2.1: Google Drive admin page
+**Files:** `resources/views/pages/google-drive/⚡index.blade.php` (`php artisan make:livewire`), `routes/web.php` (admin group, `google-drive` → `google-drive.index`), `resources/views/layouts/app/sidebar.blade.php` (System group), `app/Models/ActivityLog.php` (summaries for `drive.connected` and `drive.disconnected`), `app/Services/GoogleDrive.php`. Test: `tests/Feature/GoogleDrivePageTest.php`.
+**Produces:** `GoogleDrive::revoke(string $refreshToken): void`. Livewire action `disconnect(): void`. Log action `drive.disconnected`.
+- [ ] Tests:
+  - `test_only_admins_open_the_google_drive_page`: faculty get 403.
+  - `test_the_page_shows_who_is_connected`: shows "Connected as research.office@isu.edu.ph".
+  - `test_the_page_warns_when_drive_storage_is_on_but_not_connected`: with the driver set to `google` and no connection, it shows a red warning.
+  - `test_disconnect_revokes_and_removes_the_connection`: mock `GoogleDrive::revoke`, check the row is gone and `drive.disconnected` is logged.
+- [ ] Watch them fail, implement, run the full suite.
+  - [ ] Commit: `feat(drive): add Google Drive admin page`
+
+### Task 2.2: Connect through Google sign-in
+**Files:** `routes/web.php` (`google-drive/connect` with `password.confirm`, and `google-drive/callback`), `app/Http/Controllers/GoogleDriveCallbackController.php` (`php artisan make:controller --invokable`), and `GoogleDrive::createFolder(string $refreshToken): string`. Test: `tests/Feature/GoogleDriveConnectTest.php`.
+**Produces:** log action `drive.connected`.
+- [ ] Tests (Socialite and `GoogleDrive` mocked):
+  - `test_connect_asks_for_the_password_first`: redirects to `password.confirm`.
+  - `test_connect_requests_only_drive_file_access_offline`: the redirect URL contains the scope, `access_type=offline` and `prompt=consent`, plus `hd` when a domain is set.
+  - `test_callback_saves_the_connection_and_creates_the_folder`.
+  - `test_callback_refuses_an_account_outside_the_domain`.
+  - `test_callback_refuses_a_different_account_while_documents_exist`: the old row is untouched.
+  - `test_reconnecting_the_same_account_keeps_the_folder`.
+  - `test_callback_without_a_refresh_token_asks_to_try_again`.
+- [ ] Watch them fail, implement, run the full suite.
+  - [ ] Commit: `feat(drive): connect Google Drive through Google sign-in`
+
+## Phase 3: Storage
+
+### Task 3.1: The Google disk
+**Files:** `app/Providers/AppServiceProvider.php` (`Storage::extend('google', ...)`), `routes/web.php` (`submissions.document` Content-Type by extension). Test: `tests/Feature/GoogleDriveDiskTest.php`.
+**Produces:** with `SUBMISSIONS_DISK_DRIVER=google`, `Storage::disk('submissions')` is a Drive-backed `FilesystemAdapter` rooted at the saved folder. With no connection it throws `RuntimeException('Google Drive is not connected.')`.
+- [ ] Tests:
+  - `test_the_google_disk_is_built_from_the_saved_connection`: no network call. The client takes the refresh token and refreshes on first use.
+  - `test_the_google_disk_refuses_without_a_connection`.
+  - `test_documents_download_with_the_type_of_their_extension`: pdf, doc, docx.
+- [ ] Watch them fail, implement, run the full suite.
+  - [ ] Commit: `feat(drive): store submission PDFs on Google Drive`
+
+### Task 3.2: Storage outages on upload
+**Files:** `resources/views/pages/submissions/⚡create.blade.php` (`save()` catches `RuntimeException` from the transaction). Test: `tests/Feature/SubmissionTest.php`.
+- [ ] Test `test_an_upload_while_storage_is_down_shows_an_error_and_saves_nothing`: the disk throws, the page shows "Document storage is unavailable right now. Try again later or contact the Research Office.", and no submission row exists.
+- [ ] Watch it fail, implement, run the full suite.
+  - [ ] Commit: `feat(drive): handle Drive outages on upload`
+
+### Task 3.3: Move existing documents
+**Files:** `routes/console.php` (`submissions:move-to-drive {--from=submissions-bucket}`). Test: `tests/Feature/MoveToDriveCommandTest.php`.
+- [ ] Tests (two `Storage::fake` disks):
+  - `test_it_copies_every_document_path_to_the_submissions_disk`.
+  - `test_a_second_run_copies_nothing`.
+  - `test_it_reports_files_missing_from_the_source`.
+- [ ] Watch them fail, implement, run the full suite.
+  - [ ] Commit: `feat(drive): add submissions:move-to-drive command`
+
+## Phase 4: Finish
+
+### Task 4.1: Docs
+**Files:** `docs/backup-and-restore.md`.
+- [ ] Cover: the Google Drive setup, leaving `google_drive_connections` out of portal backups, reconnecting after an `APP_KEY` change, the move command, and detaching the bucket.
+  - [ ] Commit: `docs: update backup notes for Google Drive`
+
+### Task 4.2: Check and review
+- [ ] Full suite, Pint, and PHPStan, with the output read.
+- [ ] Whole-change review against the Review focus list. Each fix gets a failing test first and its own `fix:` commit.
+
+## Phase 5: Your setup (after Phase 4)
+
+- [ ] Google Cloud Console:
+  - [ ] Create a project and enable the Google Drive API.
+  - [ ] Set the OAuth consent screen to External, Testing, and add the portal Gmail as a test user.
+  - [ ] Create an OAuth client of type Web application, with redirect URI `http://localhost:8000/google-drive/callback`, or your local URL with that path.
+- [ ] `.env`:
+  - [ ] Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI`.
+  - [ ] Leave `GOOGLE_DRIVE_DOMAIN` empty.
+  - [ ] Set `SUBMISSIONS_DISK_DRIVER=google`.
+- [ ] Run `php artisan migrate`.
+- [ ] Open Administration → Google Drive, click Connect, and sign in with the portal Gmail.
+- [ ] Upload a test PDF, open it in the portal, and check it appears in Drive's "Research Portal" folder as Restricted.
+- [ ] Optional: run `php artisan submissions:move-to-drive --from=local`.
+- [ ] Production, with ISU IT:
+  - [ ] Get the Workspace account and an Internal app.
+  - [ ] Set `GOOGLE_DRIVE_DOMAIN=isu.edu.ph` and the same keys in Laravel Cloud.
+  - [ ] Run the move command, then detach the bucket.

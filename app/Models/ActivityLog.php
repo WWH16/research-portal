@@ -207,6 +207,8 @@ class ActivityLog extends Model
             'user.created' => __('added an account'),
             'user.updated' => __('edited an account'),
             'user.deleted' => __('deleted an account'),
+            'user.approved' => __('approved a sign-up'),
+            'user.rejected' => __('rejected a sign-up'),
 
             'filing.created' => __('added a :kind', ['kind' => $kind]),
             'filing.updated' => isset($p['from']) ? __('renamed a :kind', ['kind' => $kind]) : __('edited a :kind', ['kind' => $kind]),

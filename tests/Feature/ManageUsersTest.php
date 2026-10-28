@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\ResearchType;
@@ -298,5 +299,95 @@ class ManageUsersTest extends TestCase
             ->call('delete');
 
         $this->assertModelExists($user);
+    }
+
+    public function test_users_can_be_filtered_by_approval_status(): void
+    {
+        User::factory()->pending()->create(['name' => 'Pending Person']);
+        User::factory()->rejected()->create(['name' => 'Rejected Person']);
+        User::factory()->create(['name' => 'Approved Person']);
+
+        $this->actingAs($this->admin);
+
+        Livewire::withQueryParams(['status' => 'pending'])
+            ->test('pages::users.index')
+            ->assertSee('Pending Person')
+            ->assertDontSee('Rejected Person')
+            ->assertDontSee('Approved Person')
+            ->set('statusFilter', 'rejected')
+            ->assertSee('Rejected Person')
+            ->assertDontSee('Pending Person')
+            ->set('statusFilter', 'approved')
+            ->assertSee('Approved Person')
+            ->assertDontSee('Pending Person')
+            ->assertDontSee('Rejected Person');
+    }
+
+    public function test_pending_and_rejected_users_show_a_badge(): void
+    {
+        User::factory()->pending()->create();
+        User::factory()->rejected()->create();
+
+        $this->actingAs($this->admin);
+
+        $this->get(route('users.index'))
+            ->assertSeeHtml('data-test="pending-badge"')
+            ->assertSeeHtml('data-test="rejected-badge"');
+    }
+
+    public function test_admin_can_approve_a_pending_user(): void
+    {
+        $user = User::factory()->pending()->create();
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')->call('approve', $user->id);
+
+        $this->assertTrue($user->refresh()->isApproved());
+        $this->assertFalse($user->isRejected());
+        $this->assertSame($user->id, ActivityLog::where('action', 'user.approved')->sole()->subject_id);
+    }
+
+    public function test_admin_can_approve_a_rejected_user(): void
+    {
+        $user = User::factory()->rejected()->create();
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')->call('approve', $user->id);
+
+        $this->assertTrue($user->refresh()->isApproved());
+        $this->assertFalse($user->isRejected());
+    }
+
+    public function test_admin_can_reject_a_pending_user(): void
+    {
+        $user = User::factory()->pending()->create();
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->call('confirmReject', $user->id)
+            ->call('reject');
+
+        $this->assertModelExists($user);
+        $this->assertTrue($user->refresh()->isRejected());
+        $this->assertFalse($user->isApproved());
+        $this->assertSame($user->id, ActivityLog::where('action', 'user.rejected')->sole()->subject_id);
+    }
+
+    public function test_approved_users_cannot_be_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->call('confirmReject', $user->id)
+            ->call('reject');
+
+        $this->assertTrue($user->refresh()->isApproved());
+        $this->assertFalse($user->isRejected());
+        $this->assertSame(0, ActivityLog::where('action', 'user.rejected')->count());
     }
 }

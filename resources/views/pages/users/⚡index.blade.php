@@ -38,14 +38,20 @@ new #[Title('Manage Users')] class extends Component {
     public string $role = 'faculty';
     public string $password = '';
 
+    /** "pending", "approved" or "rejected"; the sidebar's sign-up count links here with ?status=pending. */
+    #[Url(as: 'status', except: '')]
+    public string $statusFilter = '';
+
     public ?int $deletingId = null;
+
+    public ?int $rejectingId = null;
 
     /**
      * Any filter change starts again from the first page.
      */
     public function updated(string $property): void
     {
-        if (in_array($property, ['search', 'roleFilter', 'college'], true)) {
+        if (in_array($property, ['search', 'roleFilter', 'college', 'statusFilter'], true)) {
             $this->resetPage();
         }
     }
@@ -66,6 +72,9 @@ new #[Title('Manage Users')] class extends Component {
                     ->orWhere('researcher_id', 'like', $term));
             })
             ->when(in_array($this->roleFilter, ['admin', 'faculty'], true), fn ($query) => $query->where('role', $this->roleFilter))
+            ->when($this->statusFilter === 'pending', fn ($query) => $query->pendingApproval())
+            ->when($this->statusFilter === 'approved', fn ($query) => $query->whereNotNull('approved_at'))
+            ->when($this->statusFilter === 'rejected', fn ($query) => $query->whereNotNull('rejected_at'))
             ->when($this->college === 'none', fn ($query) => $query->whereNull('department_id'))
             ->when(! in_array($this->college, ['', 'none'], true), fn ($query) => $query->whereRelation('department', 'code', $this->college))
             ->orderBy('name')
@@ -260,11 +269,70 @@ new #[Title('Manage Users')] class extends Component {
     }
 
     /**
-     * Clear the search, role and college filters.
+     * Let a pending or rejected sign-up into the portal. Approving a rejected account undoes a mistaken rejection.
+     */
+    public function approve(int $id): void
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->isApproved()) {
+            return;
+        }
+
+        DB::transaction(function () use ($user) {
+            $user->forceFill(['approved_at' => now(), 'rejected_at' => null])->save();
+            ActivityLog::record('user.approved', $user);
+        });
+
+        Flux::toast(variant: 'success', text: __(':name can now use the portal.', ['name' => $user->name]));
+        unset($this->users);
+    }
+
+    #[Computed]
+    public function rejecting(): ?User
+    {
+        return $this->rejectingId ? User::pendingApproval()->find($this->rejectingId) : null;
+    }
+
+    /**
+     * Ask before turning a sign-up down.
+     */
+    public function confirmReject(int $id): void
+    {
+        $this->rejectingId = $id;
+        unset($this->rejecting);
+
+        Flux::modal('user-reject')->show();
+    }
+
+    /**
+     * Turn a pending sign-up down. The account stays, so the same email can't sign up again.
+     */
+    public function reject(): void
+    {
+        $user = $this->rejecting;
+
+        if (! $user) {
+            return;
+        }
+
+        DB::transaction(function () use ($user) {
+            $user->forceFill(['rejected_at' => now()])->save();
+            ActivityLog::record('user.rejected', $user);
+        });
+
+        Flux::modal('user-reject')->close();
+        Flux::toast(variant: 'success', text: __('Sign-up rejected.'));
+        $this->reset('rejectingId');
+        unset($this->users, $this->rejecting);
+    }
+
+    /**
+     * Clear the search, role, status and college filters.
      */
     public function clearFilters(): void
     {
-        $this->reset('search', 'roleFilter', 'college');
+        $this->reset('search', 'roleFilter', 'statusFilter', 'college');
         $this->resetPage();
     }
 
@@ -302,6 +370,13 @@ new #[Title('Manage Users')] class extends Component {
             <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
             <flux:select.option value="admin">{{ __('Admins') }}</flux:select.option>
             <flux:select.option value="faculty">{{ __('Faculty') }}</flux:select.option>
+        </flux:select>
+
+        <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="sm:max-w-44">
+            <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+            <flux:select.option value="pending">{{ __('Pending') }}</flux:select.option>
+            <flux:select.option value="approved">{{ __('Approved') }}</flux:select.option>
+            <flux:select.option value="rejected">{{ __('Rejected') }}</flux:select.option>
         </flux:select>
     </div>
 
@@ -352,12 +427,23 @@ new #[Title('Manage Users')] class extends Component {
                             <flux:badge size="sm" inset="top bottom" :color="$user->isAdmin() ? 'green' : 'zinc'">
                                 {{ $user->isAdmin() ? __('Admin') : __('Faculty') }}
                             </flux:badge>
+                            @if ($user->isRejected())
+                                <flux:badge size="sm" inset="top bottom" color="red" data-test="rejected-badge">{{ __('Rejected') }}</flux:badge>
+                            @elseif (! $user->isApproved())
+                                <flux:badge size="sm" inset="top bottom" color="yellow" data-test="pending-badge">{{ __('Pending') }}</flux:badge>
+                            @endif
                         </flux:table.cell>
                         <flux:table.cell>
                             <flux:dropdown position="bottom" align="end">
                                 <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Actions for :name', ['name' => $user->name])" />
 
                                 <flux:menu>
+                                    @unless ($user->isApproved())
+                                        <flux:menu.item icon="check-circle" wire:click="approve({{ $user->id }})">{{ __('Approve') }}</flux:menu.item>
+                                    @endunless
+                                    @unless ($user->isApproved() || $user->isRejected())
+                                        <flux:menu.item icon="x-circle" variant="danger" wire:click="confirmReject({{ $user->id }})">{{ __('Reject') }}</flux:menu.item>
+                                    @endunless
                                     <flux:menu.item icon="pencil-square" wire:click="edit({{ $user->id }})">{{ __('Edit') }}</flux:menu.item>
                                     <flux:menu.item icon="clipboard-document-list" :href="route('activity-log.index', ['user' => $user->id])" wire:navigate>{{ __('View activity') }}</flux:menu.item>
                                     <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $user->id }})">{{ __('Delete') }}</flux:menu.item>
@@ -430,7 +516,25 @@ new #[Title('Manage Users')] class extends Component {
         </form>
     </flux:modal>
 
-    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full sm:w-96" aria-labelledby="user-delete-heading">
+    <flux:modal name="user-reject" wire:close="$set('rejectingId', null, false)" class="w-full sm:w-96" aria-labelledby="user-reject-heading">
+        @if ($this->rejecting)
+            <div class="flex flex-col gap-6">
+                <div>
+                    <flux:heading size="lg" id="user-reject-heading">{{ __('Reject :name?', ['name' => $this->rejecting->name]) }}</flux:heading>
+                    <flux:text class="mt-2">{{ __(':email won’t be able to use the portal or sign up again with this email.', ['email' => $this->rejecting->email]) }}</flux:text>
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <flux:modal.close>
+                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                    </flux:modal.close>
+                    <flux:button variant="danger" wire:click="reject" data-test="reject-user-button">{{ __('Reject') }}</flux:button>
+                </div>
+            </div>
+        @endif
+    </flux:modal>
+
+    <flux:modal name="user-delete"wire:close="$set('deletingId', null, false)" class="w-full sm:w-96" aria-labelledby="user-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>

@@ -74,9 +74,9 @@
 
                 <p class="text-center text-xs leading-5 text-pretty text-zinc-600">
                     {{ __('By creating an account, you agree to the') }}
-                    <flux:link :href="route('terms')" class="text-xs">{{ __('Terms of Service') }}</flux:link>
+                    <flux:link :href="route('terms')">{{ __('Terms of Service') }}</flux:link>
                     {{ __('and') }}
-                    <flux:link :href="route('privacy')" class="text-xs">{{ __('Privacy Policy') }}</flux:link>.
+                    <flux:link :href="route('privacy')">{{ __('Privacy Policy') }}</flux:link>.
                 </p>
             </div>
         </form>

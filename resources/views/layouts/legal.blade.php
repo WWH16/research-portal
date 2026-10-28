@@ -47,7 +47,5 @@
                 <x-legal-links />
             </div>
         </footer>
-
-        @fluxScripts
     </body>
 </html>

@@ -35,8 +35,9 @@ class DatabaseSeeder extends Seeder
                 $user->markEmailAsVerified();
             }
 
-            $user->approved_at ??= now();
-            $user->save();
+            if (! $user->isApproved()) {
+                $user->forceFill(['approved_at' => now()])->save();
+            }
         }
     }
 }

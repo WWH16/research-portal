@@ -289,6 +289,10 @@ class Submission extends Model
                     [$disk, $location] = app(DocumentStorage::class)->locate($path);
 
                     return Carbon::createFromTimestamp($disk->lastModified($location));
+                }, function (Throwable $e) use ($path) {
+                    app(DocumentStorage::class)->noticeFailure($path, $e);
+
+                    return null;
                 }, report: false)
                 : null)
             ->filter()

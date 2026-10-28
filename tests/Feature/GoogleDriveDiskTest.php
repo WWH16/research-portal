@@ -80,6 +80,9 @@ class GoogleDriveDiskTest extends TestCase
             ->get(route('submissions.document', [$project, 'concept']))
             ->assertStatus(503)
             ->assertSee('Document storage is unavailable right now.');
+
+        // Google said the access is gone, so the Google Drive page now asks an admin to connect again.
+        $this->assertFalse($account->fresh()->isConnected());
     }
 
     public function test_a_document_opens_from_the_account_that_holds_it(): void

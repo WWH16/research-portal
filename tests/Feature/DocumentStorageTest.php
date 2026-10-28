@@ -6,10 +6,13 @@ use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\GoogleDriveConnection;
 use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
 use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class DocumentStorageTest extends TestCase
@@ -96,6 +99,53 @@ class DocumentStorageTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
+    }
+
+    /**
+     * A Drive that fails every write with the given error, the way Google answers once access is revoked.
+     */
+    private function failingDrive(string $error): void
+    {
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('putFile')->andThrow(new RuntimeException($error));
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
+    }
+
+    public function test_an_upload_google_refuses_as_revoked_marks_the_account_not_connected(): void
+    {
+        $account = GoogleDriveConnection::factory()->create();
+        $this->failingDrive('Client error: 400 Bad Request {"error": "invalid_grant", "error_description": "Token has been expired or revoked."}');
+
+        try {
+            app(DocumentStorage::class)->store($this->pdf());
+            $this->fail('The upload should have failed.');
+        } catch (DocumentStorageUnavailable) {
+            $this->assertFalse($account->fresh()->isConnected());
+        }
+    }
+
+    public function test_other_google_failures_leave_the_account_connected(): void
+    {
+        $account = GoogleDriveConnection::factory()->create();
+        $this->failingDrive('cURL error 28: Operation timed out');
+
+        try {
+            app(DocumentStorage::class)->store($this->pdf());
+            $this->fail('The upload should have failed.');
+        } catch (DocumentStorageUnavailable) {
+            $this->assertTrue($account->fresh()->isConnected());
+        }
+    }
+
+    public function test_a_revoked_earlier_account_is_marked_when_one_of_its_documents_fails_to_open(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['retired_at' => now()]);
+        $current = GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+
+        app(DocumentStorage::class)->noticeFailure("drive-{$email1->id}/submissions/a.pdf", new RuntimeException('wrapper', 0, new RuntimeException('{"error": "invalid_grant"}')));
+
+        $this->assertFalse($email1->fresh()->isConnected());
+        $this->assertTrue($current->fresh()->isConnected());
     }
 
     public function test_paths_from_before_google_drive_open_from_the_server_disk(): void

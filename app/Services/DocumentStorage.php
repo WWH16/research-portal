@@ -7,6 +7,7 @@ use App\Models\GoogleDriveConnection;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 /**
  * Where project documents live. Once an admin saves a Google Drive storage account, new documents go to it and
@@ -30,9 +31,43 @@ class DocumentStorage
             return $file->store('submissions', 'submissions') ?: throw new DocumentStorageUnavailable('The document could not be stored.');
         }
 
-        $location = $this->driveOf($account)->putFile('submissions', $file) ?: throw new DocumentStorageUnavailable('The document could not be stored.');
+        try {
+            $location = $this->driveOf($account)->putFile('submissions', $file);
+        } catch (DocumentStorageUnavailable $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            $this->markIfRevoked($account, $e);
 
-        return "drive-{$account->id}/{$location}";
+            throw new DocumentStorageUnavailable(previous: $e);
+        }
+
+        return $location ? "drive-{$account->id}/{$location}" : throw new DocumentStorageUnavailable('The document could not be stored.');
+    }
+
+    /**
+     * Learn from a failed open or read: when Google says the account's access is gone, mark the account not
+     * connected, so the Google Drive page shows it and offers Connect instead of claiming all is well.
+     */
+    public function noticeFailure(string $path, Throwable $e): void
+    {
+        if (preg_match(self::DRIVE_PATH, $path, $match) && ($account = GoogleDriveConnection::find((int) $match[1]))) {
+            $this->markIfRevoked($account, $e);
+        }
+    }
+
+    /**
+     * Google answers "invalid_grant" once the account's password changed, someone removed the portal's access in
+     * their Google Account, or the token went unused for six months. Other failures, such as a timeout, pass.
+     */
+    private function markIfRevoked(GoogleDriveConnection $account, Throwable $e): void
+    {
+        for ($cause = $e; $cause; $cause = $cause->getPrevious()) {
+            if (str_contains($cause->getMessage(), 'invalid_grant')) {
+                $account->update(['refresh_token' => null]);
+
+                return;
+            }
+        }
     }
 
     /**

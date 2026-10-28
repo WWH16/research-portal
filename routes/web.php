@@ -59,6 +59,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             $exists = $disk->exists($location);
         } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
             report($e);
+            app(DocumentStorage::class)->noticeFailure($path, $e);
             abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
         }
 

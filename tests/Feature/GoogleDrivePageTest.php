@@ -179,7 +179,9 @@ class GoogleDrivePageTest extends TestCase
             ->assertSee('Connected as research.office@isu.edu.ph')
             ->assertSee('Research Office')
             ->assertSee('its “Faculty Research Portal” folder')
-            ->assertDontSee('Not connected');
+            ->assertDontSee('Not connected')
+            // Nothing is wrong, so there is nothing to reconnect.
+            ->assertDontSee('Reconnect');
     }
 
     public function test_the_page_warns_while_the_saved_account_is_not_connected(): void

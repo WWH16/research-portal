@@ -228,9 +228,9 @@ new #[Title('Google Drive')] class extends Component {
             @endif
 
             <div class="mt-6 flex flex-wrap gap-2">
+                {{-- While connected there is nothing to reconnect: when Google revokes access, the portal marks the account
+                     not connected and this offers Connect again. --}}
                 @if ($this->connection->isConnected())
-                    {{-- Reconnect renews access for the same account, for example after its password changed --}}
-                    <flux:button :href="route('google-drive.connect')">{{ __('Reconnect') }}</flux:button>
                     <flux:modal.trigger name="drive-disconnect">
                         <flux:button variant="danger">{{ __('Disconnect') }}</flux:button>
                     </flux:modal.trigger>

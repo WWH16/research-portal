@@ -35,14 +35,6 @@ class GoogleDriveConnection extends Model
     }
 
     /**
-     * The connection in use: the newest one saved.
-     */
-    public static function current(): ?self
-    {
-        return static::latest('id')->first();
-    }
-
-    /**
      * @return BelongsTo<User, $this>
      */
     public function connectedBy(): BelongsTo

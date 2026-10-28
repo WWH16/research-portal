@@ -37,14 +37,4 @@ class GoogleDriveConnectionTest extends TestCase
 
         $this->assertNull($connection->fresh()->connected_by);
     }
-
-    public function test_current_is_the_newest_connection(): void
-    {
-        $this->assertNull(GoogleDriveConnection::current());
-
-        GoogleDriveConnection::factory()->create(['email' => 'old@isu.edu.ph', 'created_at' => now()->subDay()]);
-        GoogleDriveConnection::factory()->create(['email' => 'research.office@isu.edu.ph']);
-
-        $this->assertSame('research.office@isu.edu.ph', GoogleDriveConnection::current()->email);
-    }
 }

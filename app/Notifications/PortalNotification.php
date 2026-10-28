@@ -25,7 +25,10 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     abstract protected function message(): string;
 
     /** Where the notice's Open link goes. */
-    abstract protected function url(): string;
+    protected function url(): string
+    {
+        return route('dashboard');
+    }
 
     /**
      * @return list<string>

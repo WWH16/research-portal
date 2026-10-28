@@ -31,9 +31,4 @@ class AccountRejected extends PortalNotification
     {
         return __('Your sign-up for the Faculty Research Portal was not approved. Contact the Research Office if you think this is a mistake.');
     }
-
-    protected function url(): string
-    {
-        return route('login');
-    }
 }

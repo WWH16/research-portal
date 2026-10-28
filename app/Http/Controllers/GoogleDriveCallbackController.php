@@ -48,7 +48,7 @@ class GoogleDriveCallbackController
             return $this->refuse(__('Google didn’t give the portal lasting access. Click Connect again and allow access.'));
         }
 
-        $current = GoogleDriveConnection::current();
+        $current = GoogleDriveConnection::first();
         $sameAccount = $current?->email === $email;
 
         // drive.file only reaches files this account's connection created, so a second account would lose every document.

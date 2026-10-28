@@ -13,16 +13,7 @@ new #[Title('Google Drive')] class extends Component {
     #[Computed]
     public function connection(): ?GoogleDriveConnection
     {
-        return GoogleDriveConnection::current()?->load('connectedBy:id,name');
-    }
-
-    /**
-     * Whether submission documents are set to go to Drive, so a missing connection stops every upload.
-     */
-    #[Computed]
-    public function storesOnDrive(): bool
-    {
-        return config('filesystems.disks.submissions.driver') === 'google';
+        return GoogleDriveConnection::first()?->load('connectedBy:id,name');
     }
 
     /**
@@ -60,7 +51,8 @@ new #[Title('Google Drive')] class extends Component {
         </div>
     </header>
 
-    @if ($this->storesOnDrive && ! $this->connection)
+    {{-- Documents set to go to Drive with no account connected: every upload fails --}}
+    @if (config('filesystems.disks.submissions.driver') === 'google' && ! $this->connection)
         <flux:callout variant="danger" icon="exclamation-triangle" class="mt-6" data-test="drive-warning"
             :heading="__('Document uploads are failing')"
             :text="__('The portal stores documents on Google Drive, but no Google account is connected. Connect the Research Office account to restore uploads.')" />

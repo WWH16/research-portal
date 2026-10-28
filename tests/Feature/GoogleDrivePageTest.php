@@ -82,17 +82,18 @@ class GoogleDrivePageTest extends TestCase
         $this->assertSame(0, GoogleDriveConnection::count());
     }
 
-    public function test_changing_the_account_needs_the_new_email_twice_and_the_admins_password(): void
+    public function test_changing_the_account_needs_the_current_account_typed_the_new_one_twice_and_the_password(): void
     {
         GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'email1@gmail.co')
             ->set('newEmail', 'email2@gmail.com')
             ->set('newEmail_confirmation', 'email3@gmail.com')
             ->set('password', 'wrong-password')
             ->call('changeAccount')
-            ->assertHasErrors(['newEmail' => 'confirmed', 'password' => 'current_password']);
+            ->assertHasErrors(['confirmEmail' => 'in', 'newEmail' => 'confirmed', 'password' => 'current_password']);
 
         $this->assertSame('email1@gmail.com', GoogleDriveConnection::current()->email);
     }
@@ -104,6 +105,7 @@ class GoogleDrivePageTest extends TestCase
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'email1@gmail.com')
             ->set('newEmail', 'Email2@gmail.com')
             ->set('newEmail_confirmation', 'email2@gmail.com')
             ->set('password', 'password')
@@ -129,6 +131,7 @@ class GoogleDrivePageTest extends TestCase
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'email2@gmail.com')
             ->set('newEmail', 'email1@gmail.com')
             ->set('newEmail_confirmation', 'email1@gmail.com')
             ->set('password', 'password')
@@ -197,7 +200,11 @@ class GoogleDrivePageTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        Livewire::test('pages::google-drive.index')->call('disconnect');
+        Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'Research.Office@isu.edu.ph')
+            ->set('password', 'password')
+            ->call('disconnect')
+            ->assertHasNoErrors();
 
         $connection->refresh();
         $this->assertFalse($connection->isConnected());
@@ -205,6 +212,33 @@ class GoogleDrivePageTest extends TestCase
         $log = ActivityLog::where('action', 'drive.disconnected')->sole();
         $this->assertSame('research.office@isu.edu.ph', $log->subject_label);
         $this->assertSame('disconnected Google Drive', $log->summary());
+    }
+
+    public function test_disconnect_needs_the_account_typed_and_the_password(): void
+    {
+        $connection = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('revoke'));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->call('disconnect')
+            ->assertHasErrors(['confirmEmail' => 'required', 'password' => 'required'])
+            ->set('confirmEmail', 'someone@gmail.com')
+            ->set('password', 'wrong-password')
+            ->call('disconnect')
+            ->assertHasErrors(['confirmEmail' => 'in', 'password' => 'current_password']);
+
+        $this->assertTrue($connection->fresh()->isConnected());
+    }
+
+    public function test_the_disconnect_warning_counts_the_documents_that_stop_opening(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
+        $this->documentsOn($email1, 2);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSee('2 documents on email1@gmail.com can’t be opened until you connect again');
     }
 
     public function test_the_system_menu_links_to_the_page(): void

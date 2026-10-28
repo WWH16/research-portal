@@ -7,6 +7,7 @@ use App\Services\GoogleDrive;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -19,7 +20,13 @@ new #[Title('Google Drive')] class extends Component {
 
     public string $newEmail_confirmation = '';
 
+    /** The current account's address, typed out to confirm Disconnect or Change account. */
+    public string $confirmEmail = '';
+
     public string $password = '';
+
+    /** Which step of a confirmation dialog is showing: 1 explains what happens, 2 asks for the confirmation. */
+    public int $step = 1;
 
     /**
      * The storage account new documents go to.
@@ -86,10 +93,9 @@ new #[Title('Google Drive')] class extends Component {
 
         $this->newEmail = strtolower(trim($this->newEmail));
         $this->newEmail_confirmation = strtolower(trim($this->newEmail_confirmation));
-        $this->validate([
+        $this->confirmCurrentAccount($current, [
             'newEmail' => ['required', 'string', 'email', 'max:255', 'confirmed'],
-            'password' => ['required', 'string', 'current_password'],
-        ], attributes: ['newEmail' => __('new Google account')]);
+        ]);
 
         if ($this->newEmail === $current->email) {
             $this->addError('newEmail', __('That is already the storage account.'));
@@ -107,7 +113,7 @@ new #[Title('Google Drive')] class extends Component {
             ActivityLog::record('drive.account_changed', $next, ['from' => $current->email, 'to' => $next->email]);
         });
 
-        $this->reset('newEmail', 'newEmail_confirmation', 'password');
+        $this->resetConfirmation();
         Flux::modal('drive-change')->close();
         Flux::toast(variant: 'success', text: __('Storage account changed. Connect it so new uploads can be saved.'));
         unset($this->connection, $this->currentDocuments, $this->earlier);
@@ -125,6 +131,8 @@ new #[Title('Google Drive')] class extends Component {
             return;
         }
 
+        $this->confirmCurrentAccount($connection);
+
         // A token Google already revoked, or a moment without network, must not keep the portal connected.
         rescue(fn () => app(GoogleDrive::class)->revoke($connection->refresh_token), report: false);
 
@@ -133,9 +141,38 @@ new #[Title('Google Drive')] class extends Component {
             ActivityLog::record('drive.disconnected', $connection);
         });
 
+        $this->resetConfirmation();
         Flux::modal('drive-disconnect')->close();
         Flux::toast(variant: 'success', text: __('Google Drive disconnected.'));
         unset($this->connection);
+    }
+
+    /**
+     * The danger-zone check shared by Disconnect and Change account, checked here whatever the dialog showed:
+     * the current account's address typed out exactly, and the admin's own password.
+     *
+     * @param  array<string, list<mixed>>  $rules  Extra rules for the action's own fields.
+     */
+    private function confirmCurrentAccount(GoogleDriveConnection $account, array $rules = []): void
+    {
+        $this->confirmEmail = strtolower(trim($this->confirmEmail));
+
+        $this->validate([
+            'confirmEmail' => ['required', 'string', Rule::in([$account->email])],
+            'password' => ['required', 'string', 'current_password'],
+            ...$rules,
+        ], [
+            'confirmEmail.in' => __('Type :email exactly to confirm.', ['email' => $account->email]),
+        ], ['newEmail' => __('new Google account')]);
+    }
+
+    /**
+     * Start a confirmation dialog over: back to step one, with nothing typed.
+     */
+    public function resetConfirmation(): void
+    {
+        $this->reset('newEmail', 'newEmail_confirmation', 'confirmEmail', 'password', 'step');
+        $this->resetValidation();
     }
 }; ?>
 
@@ -232,45 +269,86 @@ new #[Title('Google Drive')] class extends Component {
         </div>
     @endif
 
+    {{--
+        Danger zone, like GitHub's and DigitalOcean's: step one says what happens, with real numbers; step two asks for
+        the current account typed out, which keeps the button disabled until it matches, and the admin's password.
+        The server checks both again. Closing a dialog starts it over.
+    --}}
     @if ($this->connection)
-        <flux:modal name="drive-change" class="w-full sm:w-[30rem]" aria-labelledby="drive-change-heading">
-            <form wire:submit="changeAccount" class="flex flex-col gap-6">
-                <div>
-                    <flux:heading size="lg" id="drive-change-heading">{{ __('Change the storage account?') }}</flux:heading>
-                    <flux:text class="mt-2">
-                        {{ $this->currentDocuments
-                            ? trans_choice('{1} New uploads will be saved to the new account. Nothing moves: 1 document is stored on :email, and it stays there and keeps opening, so don’t delete that Google account.|[2,*] New uploads will be saved to the new account. Nothing moves: :count documents are stored on :email, and they stay there and keep opening, so don’t delete that Google account.', $this->currentDocuments, ['email' => $this->connection->email])
-                            : __('New uploads will be saved to the new account. No documents are stored on :email yet.', ['email' => $this->connection->email]) }}
-                    </flux:text>
-                </div>
+        <flux:modal name="drive-change" wire:close="resetConfirmation" class="w-full sm:w-[30rem]" aria-labelledby="drive-change-heading">
+            <div class="flex flex-col gap-6">
+                <flux:heading size="lg" id="drive-change-heading">{{ __('Change the storage account?') }}</flux:heading>
 
-                <flux:input wire:model="newEmail" type="email" :label="__('New Google account')" autocomplete="off" />
-                <flux:input wire:model="newEmail_confirmation" type="email" :label="__('Type it again')" autocomplete="off" />
-                <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable />
+                @if ($step === 1)
+                    <div class="flex flex-col gap-3">
+                        <flux:text>
+                            {{ $this->currentDocuments
+                                ? trans_choice('{1} New uploads will be saved to the new account. Nothing moves: 1 document is stored on :email, and it stays there and keeps opening, so don’t delete that Google account.|[2,*] New uploads will be saved to the new account. Nothing moves: :count documents are stored on :email, and they stay there and keep opening, so don’t delete that Google account.', $this->currentDocuments, ['email' => $this->connection->email])
+                                : __('New uploads will be saved to the new account. No documents are stored on :email yet.', ['email' => $this->connection->email]) }}
+                        </flux:text>
+                        <flux:text>{{ __('Until the new account is connected, uploads fail.') }}</flux:text>
+                    </div>
 
-                <div class="flex justify-end gap-2">
-                    <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
-                    </flux:modal.close>
-                    <flux:button type="submit" variant="danger" data-test="change-account-button">{{ __('Change account') }}</flux:button>
-                </div>
-            </form>
+                    <div class="flex justify-end gap-2">
+                        <flux:modal.close>
+                            <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        </flux:modal.close>
+                        <flux:button variant="danger" wire:click="$set('step', 2)" data-test="change-understood-button">{{ __('I understand, continue') }}</flux:button>
+                    </div>
+                @else
+                    <form wire:submit="changeAccount" class="flex flex-col gap-5" x-data="{ typed: '' }">
+                        <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()"
+                            :label="__('To confirm, type :email', ['email' => $this->connection->email])" autocomplete="off" autofocus />
+                        <flux:input wire:model="newEmail" type="email" :label="__('New Google account')" autocomplete="off" />
+                        <flux:input wire:model="newEmail_confirmation" type="email" :label="__('Type the new account again')" autocomplete="off" />
+                        <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable />
+
+                        <div class="flex justify-end gap-2">
+                            <flux:modal.close>
+                                <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                            </flux:modal.close>
+                            <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="change-account-button">{{ __('Change account') }}</flux:button>
+                        </div>
+                    </form>
+                @endif
+            </div>
         </flux:modal>
+
+        @if ($this->connection->isConnected())
+            <flux:modal name="drive-disconnect" wire:close="resetConfirmation" class="w-full sm:w-[30rem]" aria-labelledby="drive-disconnect-heading">
+                <div class="flex flex-col gap-6">
+                    <flux:heading size="lg" id="drive-disconnect-heading">{{ __('Disconnect Google Drive?') }}</flux:heading>
+
+                    @if ($step === 1)
+                        <div class="flex flex-col gap-3">
+                            <flux:text>
+                                {{ trans_choice('{0} Uploads stop until you connect again. No documents are stored on :email yet.|{1} Uploads stop, and 1 document on :email can’t be opened until you connect again.|[2,*] Uploads stop, and :count documents on :email can’t be opened until you connect again.', $this->currentDocuments, ['email' => $this->connection->email]) }}
+                            </flux:text>
+                            <flux:text>{{ __('The files stay on Google Drive. Connecting the same account again brings everything back.') }}</flux:text>
+                        </div>
+
+                        <div class="flex justify-end gap-2">
+                            <flux:modal.close>
+                                <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                            </flux:modal.close>
+                            <flux:button variant="danger" wire:click="$set('step', 2)" data-test="disconnect-understood-button">{{ __('I understand, continue') }}</flux:button>
+                        </div>
+                    @else
+                        <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }">
+                            <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()"
+                                :label="__('To confirm, type :email', ['email' => $this->connection->email])" autocomplete="off" autofocus />
+                            <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable />
+
+                            <div class="flex justify-end gap-2">
+                                <flux:modal.close>
+                                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                </flux:modal.close>
+                                <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="disconnect-drive-button">{{ __('Disconnect') }}</flux:button>
+                            </div>
+                        </form>
+                    @endif
+                </div>
+            </flux:modal>
+        @endif
     @endif
-
-    <flux:modal name="drive-disconnect" class="w-full sm:w-96" aria-labelledby="drive-disconnect-heading">
-        <div class="flex flex-col gap-6">
-            <div>
-                <flux:heading size="lg" id="drive-disconnect-heading">{{ __('Disconnect Google Drive?') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Uploads stop and documents can’t be opened until the same account is connected again. The files stay on Drive.') }}</flux:text>
-            </div>
-
-            <div class="flex justify-end gap-2">
-                <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
-                </flux:modal.close>
-                <flux:button variant="danger" wire:click="disconnect" data-test="disconnect-drive-button">{{ __('Disconnect') }}</flux:button>
-            </div>
-        </div>
-    </flux:modal>
 </section>

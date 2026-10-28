@@ -536,8 +536,14 @@ new #[Title('Google Drive')] class extends Component {
                     </div>
                 @else
                     <form wire:submit="changeAccount" class="flex flex-col gap-5" x-data="{ typed: '' }">
-                        <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()"
-                            :label="__('To confirm, type :email', ['email' => $this->connection->email])" autocomplete="off" autofocus />
+                        <flux:text>{{ __('Until the new account is connected, uploads fail.') }}</flux:text>
+
+                        <flux:field>
+                            <flux:label>{{ __('Current account') }}</flux:label>
+                            <flux:description>{{ __('Type') }} <strong class="rounded bg-zinc-200 px-1.5 py-0.5 font-medium text-zinc-900 select-all">{{ $this->connection->email }}</strong> {{ __('to confirm.') }}</flux:description>
+                            <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()" autocomplete="off" autofocus />
+                            <flux:error name="confirmEmail" />
+                        </flux:field>
                         <flux:input wire:model="newEmail" type="email" :label="__('New Google account')" autocomplete="off" />
                         <flux:input wire:model="newEmail_confirmation" type="email" :label="__('Type the new account again')" autocomplete="off" />
                         <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable />
@@ -577,8 +583,14 @@ new #[Title('Google Drive')] class extends Component {
                         </div>
                     @else
                         <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }">
-                            <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()"
-                                :label="__('To confirm, type :email', ['email' => $this->connection->email])" autocomplete="off" autofocus />
+                            <flux:text>{{ __('Uploads stop, and documents on this account can’t be opened until you connect again.') }}</flux:text>
+
+                            <flux:field>
+                                <flux:label>{{ __('Current account') }}</flux:label>
+                                <flux:description>{{ __('Type') }} <strong class="rounded bg-zinc-200 px-1.5 py-0.5 font-medium text-zinc-900 select-all">{{ $this->connection->email }}</strong> {{ __('to confirm.') }}</flux:description>
+                                <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()" autocomplete="off" autofocus />
+                                <flux:error name="confirmEmail" />
+                            </flux:field>
                             <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable />
 
                             <div class="flex justify-end gap-2">

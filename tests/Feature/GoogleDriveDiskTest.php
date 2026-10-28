@@ -7,10 +7,13 @@ use App\Models\Department;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
+use Google\Service\Exception as GoogleServiceException;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Masbug\Flysystem\GoogleDriveAdapter;
+use Mockery;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -75,6 +78,19 @@ class GoogleDriveDiskTest extends TestCase
     {
         $project = $this->project(['concept_path' => 'submissions/concept.pdf']);
         $this->useDrive();
+
+        $this->actingAs($this->owner)
+            ->get(route('submissions.document', [$project, 'concept']))
+            ->assertStatus(503)
+            ->assertSee('Document storage is unavailable right now.');
+    }
+
+    public function test_opening_a_document_after_google_refuses_the_token_says_storage_is_down(): void
+    {
+        $project = $this->project(['concept_path' => 'submissions/concept.pdf']);
+        $disk = Mockery::mock(Filesystem::class);
+        $disk->shouldReceive('exists')->andThrow(new GoogleServiceException('{"error": "invalid_grant"}', 401));
+        Storage::shouldReceive('disk')->with('submissions')->andReturn($disk);
 
         $this->actingAs($this->owner)
             ->get(route('submissions.document', [$project, 'concept']))

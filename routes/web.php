@@ -4,6 +4,8 @@ use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
 use App\Models\Submission;
 use App\Services\GoogleDrive;
+use Google\Exception as GoogleException;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -43,14 +45,16 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         $path = $submission->{$stage.'_path'};
         abort_unless($path, 404);
 
-        // On Google Drive the disk can't be reached while no account is connected or its access was revoked.
+        // On Google Drive the disk can't be reached while no account is connected, its access was revoked, or Google is down.
         try {
             $disk = Storage::disk('submissions');
-        } catch (DocumentStorageUnavailable) {
+            $exists = $disk->exists($path);
+        } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
+            report($e);
             abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
         }
 
-        abort_unless($disk->exists($path), 404);
+        abort_unless($exists, 404);
 
         return $disk->response($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');

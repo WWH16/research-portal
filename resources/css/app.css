@@ -28,6 +28,20 @@
     --color-isu-green-900: #073a22;
     --color-isu-green-950: #042414;
 
+    /* Tailwind's green, which Flux uses for success, set to the seal green: one green across the app,
+       and its success text and icons keep their contrast on the pale fills (green-600 on green-50 is 6:1). */
+    --color-green-50: var(--color-isu-green-50);
+    --color-green-100: var(--color-isu-green-100);
+    --color-green-200: var(--color-isu-green-200);
+    --color-green-300: var(--color-isu-green-300);
+    --color-green-400: var(--color-isu-green-400);
+    --color-green-500: var(--color-isu-green-500);
+    --color-green-600: var(--color-isu-green-600);
+    --color-green-700: var(--color-isu-green-700);
+    --color-green-800: var(--color-isu-green-800);
+    --color-green-900: var(--color-isu-green-900);
+    --color-green-950: var(--color-isu-green-950);
+
     /* ISU seal gold. 500 is the brand gold. Too light for text on white; use it for borders, fills and highlights. */
     --color-isu-gold-50: #fefae8;
     --color-isu-gold-100: #fdf1c3;

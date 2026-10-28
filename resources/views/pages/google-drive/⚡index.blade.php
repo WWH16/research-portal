@@ -311,39 +311,47 @@ new #[Title('Google Drive')] class extends Component {
         </div>
     </header>
 
-    {{-- A failed Connect on a working account, or a success: a saved account that isn't connected says why in its own card --}}
+    {{-- A failed Connect on a working account: a saved account that isn't connected says why in its own callout.
+         Flux draws the danger icon in red-400, under 3:1 on the red fill, so the icon takes red-600. --}}
     @php($failing = $this->connection && ! $this->connection->isConnected())
     @if (session('drive-error') && ! $failing)
-        <flux:callout variant="danger" icon="x-circle" class="mt-6" :text="session('drive-error')" data-test="drive-error" />
-    @elseif (session('status'))
-        <flux:callout variant="success" icon="check-circle" class="mt-6" :text="session('status')" />
+        <flux:callout variant="danger" icon="x-circle" class:icon="text-red-600!" class="mt-6" :text="session('drive-error')" data-test="drive-error" />
     @endif
 
-    {{-- The one boxed card: the account new documents go to, and what to do about it. Red while uploads fail. --}}
-    <div @class(['mt-6 rounded-xl border p-5', 'border-red-200 bg-red-50' => $failing, 'border-line' => ! $failing]) @if ($failing) data-test="drive-warning" @endif>
-        @if (! $this->connection)
-            {{-- Step one: the address every admin's Connect must match --}}
-            <flux:heading size="lg" level="2">{{ __('No storage account yet') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Enter the Google account that will store project documents, such as the Research Office’s portal account. Any admin can then connect it; no other account can.') }}</flux:text>
+    @if ($failing)
+        <flux:callout variant="danger" icon="exclamation-triangle" class:icon="text-red-600!" class="mt-6" data-test="drive-warning">
+            <flux:callout.heading><h2>{{ __('Document uploads are failing') }}</h2></flux:callout.heading>
+            <flux:callout.text>{{ __(':email isn’t connected. Connect it, then sign in to Google as this account.', ['email' => $this->connection->email]) }}</flux:callout.text>
+            @if (session('drive-error'))
+                <flux:callout.text class="font-medium">{{ session('drive-error') }}</flux:callout.text>
+            @endif
 
-            <form wire:submit="saveAccount" class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start">
-                <div class="sm:flex-1">
-                    <flux:input wire:model="email" type="email" :label="__('Google account')" :placeholder="__('name@gmail.com')" autocomplete="off" />
-                </div>
-                <flux:button type="submit" variant="primary" class="sm:mt-6" data-test="save-account-button">{{ __('Save account') }}</flux:button>
-            </form>
-        @else
-            @if ($failing)
-                <div class="flex items-center gap-2">
-                    <flux:icon.exclamation-triangle variant="mini" class="shrink-0 text-red-600" />
-                    <flux:heading size="lg" level="2">{{ __('Document uploads are failing') }}</flux:heading>
-                </div>
-                <flux:text color="red" class="mt-1">
-                    {{ __(':email isn’t connected. Connect it, then sign in to Google as this account.', ['email' => $this->connection->email]) }}
-                </flux:text>
-                @if (session('drive-error'))
-                    <flux:text color="red" variant="strong" class="mt-2">{{ session('drive-error') }}</flux:text>
-                @endif
+            <x-slot name="actions">
+                {{-- A link, so Flux shows no spinner itself: this one runs until the next page opens, and resets on Back --}}
+                <flux:button variant="primary" :href="route('google-drive.connect')" data-test="connect-drive-button"
+                    x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
+                    <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
+                    {{ __('Connect Google Drive') }}
+                </flux:button>
+                <flux:modal.trigger name="drive-change">
+                    <flux:button variant="ghost">{{ __('Change account') }}</flux:button>
+                </flux:modal.trigger>
+            </x-slot>
+        </flux:callout>
+    @else
+        {{-- The one boxed card: the account new documents go to, and what to do about it --}}
+        <div class="mt-6 rounded-xl border border-line p-5">
+            @if (! $this->connection)
+                {{-- Step one: the address every admin's Connect must match --}}
+                <flux:heading size="lg" level="2">{{ __('No storage account yet') }}</flux:heading>
+                <flux:text class="mt-1">{{ __('Enter the Google account that will store project documents, such as the Research Office’s portal account. Any admin can then connect it; no other account can.') }}</flux:text>
+
+                <form wire:submit="saveAccount" class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start">
+                    <div class="sm:flex-1">
+                        <flux:input wire:model="email" type="email" :label="__('Google account')" :placeholder="__('name@gmail.com')" autocomplete="off" />
+                    </div>
+                    <flux:button type="submit" variant="primary" class="sm:mt-6" data-test="save-account-button">{{ __('Save account') }}</flux:button>
+                </form>
             @else
                 <flux:heading size="lg" level="2">{{ __('Connected as :email', ['email' => $this->connection->email]) }}</flux:heading>
                 <flux:text class="mt-1">
@@ -352,31 +360,22 @@ new #[Title('Google Drive')] class extends Component {
                         : __('Connected on :date.', ['date' => $this->connection->updated_at->format('F j, Y')]) }}
                     {{ __('New documents go to its “:folder” folder, shared with no one.', ['folder' => GoogleDrive::FOLDER]) }}
                 </flux:text>
-            @endif
 
-            <div class="mt-4 flex flex-wrap gap-2">
                 {{-- While connected there is nothing to reconnect: when Google revokes access, the portal marks the account
-                     not connected and this offers Connect again. --}}
-                @if ($this->connection->isConnected())
+                     not connected and the callout above offers Connect again. --}}
+                <div class="mt-4 flex flex-wrap gap-2">
                     {{-- Opens for whoever is signed in to Google as the storage account; anyone else sees no access --}}
                     <flux:button :href="'https://drive.google.com/drive/folders/'.$this->connection->folder_id" target="_blank" icon:trailing="arrow-top-right-on-square">{{ __('Open folder in Google Drive') }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:button>
                     <flux:modal.trigger name="drive-disconnect">
                         <flux:button variant="danger">{{ __('Disconnect') }}</flux:button>
                     </flux:modal.trigger>
-                @else
-                    {{-- A link, so Flux shows no spinner itself: this one runs until the next page opens, and resets on Back --}}
-                    <flux:button variant="primary" :href="route('google-drive.connect')" data-test="connect-drive-button"
-                        x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
-                        <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
-                        {{ __('Connect Google Drive') }}
-                    </flux:button>
-                @endif
-                <flux:modal.trigger name="drive-change">
-                    <flux:button variant="ghost">{{ __('Change account') }}</flux:button>
-                </flux:modal.trigger>
-            </div>
-        @endif
-    </div>
+                    <flux:modal.trigger name="drive-change">
+                        <flux:button variant="ghost">{{ __('Change account') }}</flux:button>
+                    </flux:modal.trigger>
+                </div>
+            @endif
+        </div>
+    @endif
 
     {{-- Below the card, plain sections: reference and housekeeping, a divider and a heading each --}}
 

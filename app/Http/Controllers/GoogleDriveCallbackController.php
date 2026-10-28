@@ -81,7 +81,8 @@ class GoogleDriveCallbackController
                 : __('Google refused the request, so nothing was saved. Try Connect again in a few minutes.'));
         }
 
-        return redirect()->route('google-drive.index')->with('status', __('Google Drive connected as :email.', ['email' => $email]));
+        // No message: the page's card already says Connected.
+        return redirect()->route('google-drive.index');
     }
 
     private function refuse(string $message): RedirectResponse

@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         Route::livewire('users', 'pages::users.index')->name('users.index');
         Route::livewire('activity-log', 'pages::activity-log.index')->name('activity-log.index');
         Route::livewire('backups', 'pages::backups.index')->name('backups.index');
+        Route::livewire('google-drive', 'pages::google-drive.index')->name('google-drive.index');
     });
 });
 

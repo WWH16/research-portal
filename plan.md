@@ -219,13 +219,13 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 ### Task 2.1: Google Drive admin page
 **Files:** `resources/views/pages/google-drive/⚡index.blade.php` (`php artisan make:livewire`), `routes/web.php` (admin group, `google-drive` → `google-drive.index`), `resources/views/layouts/app/sidebar.blade.php` (System group), `app/Models/ActivityLog.php` (summaries for `drive.connected` and `drive.disconnected`), `app/Services/GoogleDrive.php`. Test: `tests/Feature/GoogleDrivePageTest.php`.
 **Produces:** `GoogleDrive::revoke(string $refreshToken): void`. Livewire action `disconnect(): void`. Log action `drive.disconnected`.
-- [ ] Tests:
+- [x] Tests:
   - `test_only_admins_open_the_google_drive_page`: faculty get 403.
   - `test_the_page_shows_who_is_connected`: shows "Connected as research.office@isu.edu.ph".
   - `test_the_page_warns_when_drive_storage_is_on_but_not_connected`: with the driver set to `google` and no connection, it shows a red warning.
   - `test_disconnect_revokes_and_removes_the_connection`: mock `GoogleDrive::revoke`, check the row is gone and `drive.disconnected` is logged.
-- [ ] Watch them fail, implement, run the full suite.
-  - [ ] Commit: `feat(drive): add Google Drive admin page`
+- [x] Watch them fail, implement, run the full suite.
+  - [x] Commit: `feat(drive): add Google Drive admin page`
 
 ### Task 2.2: Connect through Google sign-in
 **Files:** `routes/web.php` (`google-drive/connect` with `password.confirm`, and `google-drive/callback`), `app/Http/Controllers/GoogleDriveCallbackController.php` (`php artisan make:controller --invokable`), and `GoogleDrive::createFolder(string $refreshToken): string`. Test: `tests/Feature/GoogleDriveConnectTest.php`.

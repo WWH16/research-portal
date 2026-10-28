@@ -117,9 +117,13 @@
             {{-- Rare and high-stakes, so it sits apart at the bottom, away from everyday clicks --}}
             @if (auth()->user()->isAdmin())
                 <flux:sidebar.nav>
-                    <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="request()->routeIs('backups.*')" class="grid" data-test="system-nav">
+                    <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="request()->routeIs('backups.*', 'google-drive.*')" class="grid" data-test="system-nav">
                         <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
                             {{ __('Backup and Restore') }}
+                        </flux:sidebar.item>
+
+                        <flux:sidebar.item icon="cloud" :href="route('google-drive.index')" :current="request()->routeIs('google-drive.*')" wire:navigate>
+                            {{ __('Google Drive') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 </flux:sidebar.nav>

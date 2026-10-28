@@ -31,7 +31,7 @@ class ActivityLog extends Model
     public const KEEP_MONTHS = 12;
 
     /** The filters on the Activity Log page, keyed by the action prefix each one covers. */
-    public const GROUPS = ['auth' => 'Sign-ins and security', 'submission' => 'Projects', 'publication' => 'Publications', 'user' => 'Users', 'filing' => 'Filing options'];
+    public const GROUPS = ['auth' => 'Sign-ins and security', 'submission' => 'Projects', 'publication' => 'Publications', 'user' => 'Users', 'filing' => 'Filing options', 'drive' => 'Google Drive'];
 
     /** How a project edit names each field it changed, keyed by the column. */
     public const PROJECT_FIELDS = [
@@ -85,6 +85,7 @@ class ActivityLog extends Model
             'subject_label' => $subject?->getAttribute(match (true) {
                 $subject instanceof Department => 'code',
                 $subject instanceof Submission, $subject instanceof Publication => 'title',
+                $subject instanceof GoogleDriveConnection => 'email',
                 default => 'name',
             }),
             'properties' => $properties ?: null,
@@ -209,6 +210,8 @@ class ActivityLog extends Model
             'user.deleted' => __('deleted an account'),
             'user.approved' => __('approved a sign-up'),
             'user.rejected' => __('rejected a sign-up'),
+            'drive.connected' => __('connected Google Drive'),
+            'drive.disconnected' => __('disconnected Google Drive'),
 
             'filing.created' => __('added a :kind', ['kind' => $kind]),
             'filing.updated' => isset($p['from']) ? __('renamed a :kind', ['kind' => $kind]) : __('edited a :kind', ['kind' => $kind]),

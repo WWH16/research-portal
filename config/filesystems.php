@@ -47,15 +47,6 @@ return [
             'report' => false,
         ],
 
-        // Research documents saved before a Google Drive storage account was set. Same folder as "local" here;
-        // Laravel Cloud swaps in the private bucket attached under this disk name.
-        'submissions' => [
-            'driver' => 'local',
-            'root' => storage_path('app/private'),
-            'throw' => false,
-            'report' => false,
-        ],
-
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

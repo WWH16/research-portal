@@ -215,7 +215,6 @@ class ActivityLog extends Model
             'drive.connected' => __('connected Google Drive'),
             'drive.disconnected' => __('disconnected Google Drive'),
             'drive.account_removed' => __('removed an earlier Google Drive storage account'),
-            'drive.move_started' => __('started moving older documents to Google Drive'),
 
             'filing.created' => __('added a :kind', ['kind' => $kind]),
             'filing.updated' => isset($p['from']) ? __('renamed a :kind', ['kind' => $kind]) : __('edited a :kind', ['kind' => $kind]),

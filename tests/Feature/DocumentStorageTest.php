@@ -36,14 +36,11 @@ class DocumentStorageTest extends TestCase
         return UploadedFile::fake()->create('proposal.pdf', 100, 'application/pdf');
     }
 
-    public function test_without_a_storage_account_documents_stay_on_the_server_disk(): void
+    public function test_without_a_storage_account_an_upload_is_refused(): void
     {
-        Storage::fake('submissions');
+        $this->expectException(DocumentStorageUnavailable::class);
 
-        $path = app(DocumentStorage::class)->store($this->pdf());
-
-        $this->assertStringStartsWith('submissions/', $path);
-        Storage::disk('submissions')->assertExists($path);
+        app(DocumentStorage::class)->store($this->pdf());
     }
 
     public function test_a_connected_storage_account_takes_new_documents_and_the_path_remembers_it(): void
@@ -148,15 +145,12 @@ class DocumentStorageTest extends TestCase
         $this->assertTrue($current->fresh()->isConnected());
     }
 
-    public function test_paths_from_before_google_drive_open_from_the_server_disk(): void
+    public function test_a_path_not_on_a_storage_account_is_unavailable(): void
     {
-        Storage::fake('submissions');
-        Storage::disk('submissions')->put('submissions/old.pdf', 'old');
         GoogleDriveConnection::factory()->create();
 
-        [$disk, $location] = app(DocumentStorage::class)->locate('submissions/old.pdf');
+        $this->expectException(DocumentStorageUnavailable::class);
 
-        $this->assertSame('submissions/old.pdf', $location);
-        $this->assertSame('old', $disk->get($location));
+        app(DocumentStorage::class)->locate('submissions/old.pdf');
     }
 }

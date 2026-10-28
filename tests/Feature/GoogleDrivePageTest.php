@@ -6,12 +6,11 @@ use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\GoogleDriveConnection;
+use App\Models\Submission;
 use App\Models\User;
 use App\Services\GoogleDrive;
-use Illuminate\Foundation\Console\QueuedCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
 use Mockery\MockInterface;
@@ -204,8 +203,8 @@ class GoogleDrivePageTest extends TestCase
             ->get(route('google-drive.index'))
             ->assertSee('Connected as email2@gmail.com')
             ->assertSee('Storage accounts')
-            ->assertSee('Current, connected')
-            ->assertSee('Earlier, not connected')
+            ->assertSeeInOrder(['Current', 'Connected'])
+            ->assertSeeInOrder(['Earlier', 'Not connected'])
             ->assertSee('email1@gmail.com')
             ->assertSeeInOrder(['email2@gmail.com', 'email1@gmail.com'])
             ->assertSee('delete these Google accounts')
@@ -296,13 +295,15 @@ class GoogleDrivePageTest extends TestCase
     {
         GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
         $gib = 1024 ** 3;
-        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->once()->andReturn(['used' => (int) (14.5 * $gib), 'limit' => 15 * $gib]));
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->once()->andReturn(['used' => (int) (14.5 * $gib), 'limit' => 15 * $gib, 'drive' => 13 * $gib, 'portal' => 2 * $gib]));
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')
             ->assertSee('Checking storage…')
             ->call('loadUsage')
-            ->assertSee('14.5 GB of 15 GB used.')
+            ->assertSee('14.5 GB')
+            ->assertSee('of 15 GB used')
+            ->assertSeeInOrder(['Research portal documents', '2 GB', 'Other Google Drive files', '11 GB', 'Gmail, Google Photos and other', '1.5 GB'])
             ->assertSee('Google Drive is almost full');
     }
 
@@ -316,7 +317,7 @@ class GoogleDrivePageTest extends TestCase
             ->call('loadUsage')
             ->assertSet('usage', false)
             ->assertSee('Storage use unavailable right now.')
-            ->assertDontSee('GB used');
+            ->assertDontSeeHtml('data-test="drive-usage"');
     }
 
     public function test_the_page_links_to_the_drive_folder(): void
@@ -326,32 +327,6 @@ class GoogleDrivePageTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('google-drive.index'))
             ->assertSeeHtml('href="https://drive.google.com/drive/folders/folder-123"');
-    }
-
-    public function test_an_admin_moves_older_documents_on_the_queue_once_at_a_time(): void
-    {
-        Queue::fake();
-        Cache::flush();
-        GoogleDriveConnection::factory()->create();
-        User::factory()->create()->submissions()->create([
-            'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
-            'department_id' => Department::firstOrCreate(['code' => 'CCS'], ['name' => 'College of Computer Studies'])->id,
-            'title' => 'Older Study',
-            'abstract' => 'An abstract.',
-            'start_date' => now(),
-            'target_date' => now()->addYear(),
-            'concept_path' => 'submissions/concept.pdf',
-        ]);
-        $this->actingAs($this->admin);
-
-        Livewire::test('pages::google-drive.index')
-            ->assertSee('1 document is still on the server')
-            ->call('moveToDrive')
-            ->assertSee('Moving…')
-            ->call('moveToDrive');
-
-        Queue::assertPushed(QueuedCommand::class, 1);
-        $this->assertSame(1, ActivityLog::where('action', 'drive.move_started')->count());
     }
 
     public function test_the_page_lists_recent_drive_changes(): void
@@ -406,5 +381,53 @@ class GoogleDrivePageTest extends TestCase
             ->assertSee('Document uploads are failing')
             ->assertSee('Google sign-in was cancelled, so nothing changed.')
             ->assertDontSeeHtml('data-test="drive-error"');
+    }
+
+    public function test_recent_changes_name_only_an_account_other_than_the_current_one(): void
+    {
+        $this->actingAs($this->admin);
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        $this->documentsOn($email1, 1);
+        $email2 = GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        ActivityLog::record('drive.connected', $email1);
+        ActivityLog::record('drive.connected', $email2);
+
+        $html = $this->get(route('google-drive.index'))->getContent();
+        $recent = Str::before(Str::after($html, 'data-test="drive-recent"'), '</ul>');
+
+        $this->assertStringContainsString('email1@gmail.com', $recent);
+        $this->assertStringNotContainsString('email2@gmail.com', $recent);
+    }
+
+    public function test_a_large_plan_reads_in_terabytes_without_a_warning(): void
+    {
+        GoogleDriveConnection::factory()->create();
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->andReturn(['used' => (int) (24.9 * 1024 ** 3), 'limit' => 5 * 1024 ** 4, 'drive' => (int) (20 * 1024 ** 3), 'portal' => (int) (1.2 * 1024 ** 3)]));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->call('loadUsage')
+            ->assertSee('24.9 GB')
+            ->assertSee('of 5 TB used')
+            ->assertSeeHtml('aria-valuetext="24.9 GB of 5 TB used"')
+            ->assertSee('1.2 GB')
+            ->assertDontSee('Google Drive is almost full');
+    }
+
+    public function test_each_section_is_a_real_heading_and_documents_are_counted_in_one_query(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        $this->documentsOn($email1, 2);
+        $email2 = GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $this->documentsOn($email2, 3);
+        ActivityLog::record('drive.connected', $email2, user: $this->admin);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSeeHtml('<h2')
+            ->assertSeeInOrder(['Storage accounts', 'Recent changes']);
+
+        $this->assertSame([$email1->id => 2, $email2->id => 3], Submission::documentsPerAccount()->sortKeys()->all());
+        $this->assertQueriesAtMost(1, fn () => Submission::documentsPerAccount());
     }
 }

@@ -2,12 +2,31 @@
 
 namespace Tests;
 
+use App\Models\GoogleDriveConnection;
+use App\Services\GoogleDrive;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
+use Mockery\MockInterface;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * A connected Google Drive storage account whose Drive is the fake "drive" disk, so uploads and opens never
+     * reach Google. The first account a test makes is number 1, so a stored path reads "drive-1/submissions/...",
+     * and its place on the fake disk is the part after "drive-1/".
+     */
+    protected function fakeDrive(): FilesystemAdapter
+    {
+        GoogleDriveConnection::current() ?? GoogleDriveConnection::factory()->create();
+        $disk = Storage::fake('drive');
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
+
+        return $disk;
+    }
+
     /**
      * Run the action and fail if it takes more than the given number of database queries.
      */

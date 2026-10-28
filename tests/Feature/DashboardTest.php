@@ -157,7 +157,7 @@ class DashboardTest extends TestCase
     {
         $navarro = $this->facultyInDepartment('Navarro');
         $soriano = $this->facultyInDepartment('Soriano');
-        $report = ['awaiting_review' => false, 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()->subDay()];
+        $report = ['awaiting_review' => false, 'terminal_path' => 'drive-1/submissions/report.pdf', 'terminal_uploaded_at' => now()->subDay()];
         $this->submit($navarro, 'Finished Study', 'Completed', $report + ['target_date' => today()]);
         $this->submit($navarro, 'Overdue Study', 'Completed', $report + ['target_date' => today()->subWeek()]);
         $this->submit($soriano, 'Ongoing Study', 'Concept', ['awaiting_review' => false]);
@@ -441,7 +441,7 @@ class DashboardTest extends TestCase
             'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
             'department_id' => $user->department_id,
             'title' => $title,
-            'concept_path' => 'submissions/sample.pdf',
+            'concept_path' => 'drive-1/submissions/sample.pdf',
             'status' => $status,
             ...$attributes,
         ]);

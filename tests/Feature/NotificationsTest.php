@@ -16,7 +16,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -56,7 +55,7 @@ class NotificationsTest extends TestCase
             'abstract' => 'An abstract.',
             'start_date' => now(),
             'target_date' => now()->addYear(),
-            'concept_path' => 'submissions/concept.pdf',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
         ]);
         $project->proponents()->createMany([
             ['user_id' => $this->maria->id, 'study' => 1, 'role' => 'Leader'],
@@ -140,7 +139,7 @@ class NotificationsTest extends TestCase
     public function test_a_new_concept_proposal_tells_every_admin(): void
     {
         Notification::fake();
-        Storage::fake('submissions');
+        $this->fakeDrive();
         [$first, $second] = [$this->admin(), $this->admin()];
         $this->actingAs($this->maria);
 
@@ -191,7 +190,7 @@ class NotificationsTest extends TestCase
     public function test_a_concept_reuploaded_while_waiting_tells_admins_again(): void
     {
         Notification::fake();
-        Storage::fake('submissions');
+        $this->fakeDrive();
         $admin = $this->admin();
         $project = $this->project();
         $this->actingAs($this->maria);
@@ -207,7 +206,7 @@ class NotificationsTest extends TestCase
     public function test_replacing_a_passed_concept_or_uploading_a_later_document_tells_no_admin(): void
     {
         Notification::fake();
-        Storage::fake('submissions');
+        $this->fakeDrive();
         $admin = $this->admin();
         $project = $this->project(['awaiting_review' => false, 'concept_passed' => true]);
         $this->actingAs($this->maria);

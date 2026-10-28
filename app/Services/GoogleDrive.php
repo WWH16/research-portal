@@ -74,18 +74,35 @@ class GoogleDrive
     }
 
     /**
-     * How much of the account's Google storage is used, in bytes, against its limit: Gmail and Photos count too.
-     * The limit is null on a plan without one.
+     * How much of the account's Google storage is used, in bytes, against its limit (null on a plan without one):
+     * in all, in Drive, and by the portal's own documents. The drive.file scope lists only the files the portal
+     * made, so their sizes add up to the portal's share; Gmail and Photos are the rest outside Drive.
      *
-     * @return array{used: int, limit: int|null}
+     * @return array{used: int, limit: int|null, drive: int, portal: int}
      */
     public function usage(GoogleDriveConnection $account): array
     {
         /** @var GoogleDriveAdapter $adapter */
         $adapter = $this->disk($account)->getAdapter();
-        $quota = $adapter->getService()->about->get(['fields' => 'storageQuota'])->getStorageQuota();
+        $service = $adapter->getService();
+        $quota = $service->about->get(['fields' => 'storageQuota'])->getStorageQuota();
 
-        return ['used' => (int) $quota->getUsage(), 'limit' => $quota->getLimit() === null ? null : (int) $quota->getLimit()];
+        $portal = 0;
+        $page = null;
+        do {
+            $list = $service->files->listFiles(array_filter(['q' => 'trashed = false', 'fields' => 'nextPageToken, files(size)', 'pageSize' => 1000, 'pageToken' => $page]));
+            foreach ($list->getFiles() as $file) {
+                $portal += (int) $file->getSize();
+            }
+            $page = $list->getNextPageToken();
+        } while ($page);
+
+        return [
+            'used' => (int) $quota->getUsage(),
+            'limit' => $quota->getLimit() === null ? null : (int) $quota->getLimit(),
+            'drive' => (int) $quota->getUsageInDrive(),
+            'portal' => $portal,
+        ];
     }
 
     /**

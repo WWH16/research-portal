@@ -8,7 +8,6 @@ use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -23,7 +22,7 @@ class ConceptReviewEdgeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $this->maria = User::factory()->create(['department_id' => $department->id]);
@@ -34,7 +33,7 @@ class ConceptReviewEdgeTest extends TestCase
             'abstract' => 'An abstract.',
             'start_date' => now(),
             'target_date' => now()->addYear(),
-            'concept_path' => 'submissions/concept.pdf',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
         ]);
         $this->project->proponents()->create(['user_id' => $this->maria->id, 'study' => 1, 'role' => 'Leader']);
         $this->project->refresh();

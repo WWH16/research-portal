@@ -6,7 +6,6 @@ use App\Models\Submission;
 use App\Services\GoogleDrive;
 use Flux\Flux;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -30,7 +29,7 @@ new #[Title('Google Drive')] class extends Component {
     /** Which step of a confirmation dialog is showing: 1 explains what happens, 2 asks for the confirmation. */
     public int $step = 1;
 
-    /** @var array{used: int, limit: int|null}|false|null The current account's Google storage, asked for after the page shows: null while checking, false when Google can't answer. */
+    /** @var array{used: int, limit: int|null, drive: int, portal: int}|false|null The current account's Google storage, asked for after the page shows: null while checking, false when Google can't answer. */
     public array|false|null $usage = null;
 
     /**
@@ -45,31 +44,78 @@ new #[Title('Google Drive')] class extends Component {
     #[Computed]
     public function currentDocuments(): int
     {
-        return $this->connection ? Submission::documentsOn($this->connection) : 0;
-    }
-
-    /** Documents saved on the server disk before Google Drive, which Move copies to the current account. */
-    #[Computed]
-    public function serverDocuments(): int
-    {
-        return Submission::documentsOn(null);
+        return $this->accounts->first(fn (array $row) => ! $row['account']->retired_at)['documents'] ?? 0;
     }
 
     /**
      * Every storage account that matters, each with how many documents it holds: the current one first, then
      * earlier ones newest first. Earlier accounts stay connected so their documents keep opening. One whose
      * documents were all replaced is listed while it is still connected, so it can be removed; one that holds
-     * nothing and isn't connected is left out.
+     * nothing and isn't connected is left out. Counted in one query, since every click on the page asks again.
      *
      * @return Collection<int, array{account: GoogleDriveConnection, documents: int}>
      */
     #[Computed]
     public function accounts(): Collection
     {
+        $documents = Submission::documentsPerAccount();
+
         return GoogleDriveConnection::orderByRaw('retired_at is not null')->latest('retired_at')->get()
-            ->map(fn (GoogleDriveConnection $account) => ['account' => $account, 'documents' => Submission::documentsOn($account)])
+            ->map(fn (GoogleDriveConnection $account) => ['account' => $account, 'documents' => $documents->get($account->id, 0)])
             ->filter(fn (array $row) => ! $row['account']->retired_at || $row['documents'] > 0 || $row['account']->isConnected())
             ->values();
+    }
+
+    /**
+     * The storage figures as the page shows them, or null until Google has answered: the total, the limit, what
+     * is free, the share used, and what fills the account, the portal's own documents first, then the rest of
+     * Drive, then Gmail and Photos. Each part's width is its share of the limit (of all use on a plan without
+     * one), never below a sliver, so a small share still shows.
+     *
+     * @return array{used: string, limit: string|null, free: string|null, percent: float|null, parts: list<array{label: string, size: string, width: float, color: string}>}|null
+     */
+    #[Computed]
+    public function storage(): ?array
+    {
+        if (! is_array($this->usage)) {
+            return null;
+        }
+
+        ['used' => $used, 'limit' => $limit, 'drive' => $drive, 'portal' => $portal] = $this->usage;
+        $whole = $limit ?: max(1, $used);
+        $parts = [
+            [__('Research portal documents'), $portal, 'bg-isu-green-600'],
+            [__('Other Google Drive files'), max(0, $drive - $portal), 'bg-isu-gold-400'],
+            [__('Gmail, Google Photos and other'), max(0, $used - $drive), 'bg-zinc-400'],
+        ];
+
+        return [
+            'used' => self::size($used),
+            'limit' => $limit ? self::size($limit) : null,
+            'free' => $limit ? self::size(max(0, $limit - $used)) : null,
+            'percent' => $limit ? min(100, $used / $limit * 100) : null,
+            'parts' => array_map(fn (array $part) => [
+                'label' => $part[0],
+                'size' => self::size($part[1]),
+                'width' => $part[1] > 0 ? max($part[1] / $whole * 100, 0.75) : 0,
+                'color' => $part[2],
+            ], $parts),
+        ];
+    }
+
+    /**
+     * Bytes in the largest unit that keeps the number at 1 or more, since a project PDF is a few MB in terabytes of
+     * space. Two decimals and 1024-byte units, as Google's own storage page shows them.
+     */
+    private static function size(int $bytes): string
+    {
+        foreach (['TB' => 4, 'GB' => 3, 'MB' => 2, 'KB' => 1] as $unit => $power) {
+            if ($bytes >= 1024 ** $power) {
+                return round($bytes / 1024 ** $power, 2).' '.$unit;
+            }
+        }
+
+        return $bytes.' B';
     }
 
     /**
@@ -97,29 +143,6 @@ new #[Title('Google Drive')] class extends Component {
     }
 
     /**
-     * Copy the documents still on the server disk to the current account, on the queue: a large copy outlasts a
-     * page request. One run at a time; the command clears the flag when it ends, and it lapses after an hour
-     * if the run fails.
-     */
-    public function moveToDrive(): void
-    {
-        if (! $this->connection?->isConnected() || ! $this->serverDocuments) {
-            return;
-        }
-
-        if (! Cache::add('google-drive.moving', true, now()->addHour())) {
-            Flux::toast(variant: 'warning', text: __('Documents are already being moved.'));
-
-            return;
-        }
-
-        Artisan::queue('submissions:move-to-drive');
-        ActivityLog::record('drive.move_started', $this->connection);
-
-        Flux::toast(variant: 'success', text: __('Moving documents to Google Drive. Refresh the page in a few minutes to see how many are left.'));
-    }
-
-    /**
      * Remove an earlier account that holds nothing any more and give its access back to Google. One that still
      * holds documents is never removed: they would stop opening.
      */
@@ -127,7 +150,7 @@ new #[Title('Google Drive')] class extends Component {
     {
         $account = GoogleDriveConnection::whereNotNull('retired_at')->find($id);
 
-        if (! $account || Submission::documentsOn($account) > 0) {
+        if (! $account || Submission::documentsPerAccount()->get($account->id, 0) > 0) {
             return;
         }
 
@@ -189,7 +212,7 @@ new #[Title('Google Drive')] class extends Component {
         }
 
         // An account that holds no documents is replaced rather than kept, and its access given back to Google below.
-        $keep = Submission::documentsOn($current) > 0;
+        $keep = Submission::documentsPerAccount()->get($current->id, 0) > 0;
 
         DB::transaction(function () use ($current, $keep) {
             $keep ? $current->update(['retired_at' => now()]) : $current->delete();
@@ -277,24 +300,19 @@ new #[Title('Google Drive')] class extends Component {
         </div>
     </header>
 
-    {{-- A saved account that isn't connected: every upload fails until it is. A failed Connect says why in this
-         same callout, so the page never stacks two red boxes. --}}
-    @if ($failing = $this->connection && ! $this->connection->isConnected())
-        <flux:callout variant="danger" icon="exclamation-triangle" class="mt-6" data-test="drive-warning"
-            :heading="__('Document uploads are failing')"
-            :text="session('drive-error') ?: __(':email isn’t connected. Connect it to restore uploads.', ['email' => $this->connection->email])" />
-    @endif
-
+    {{-- A failed Connect on a working account, or a success: a saved account that isn't connected says why in its own card --}}
+    @php($failing = $this->connection && ! $this->connection->isConnected())
     @if (session('drive-error') && ! $failing)
         <flux:callout variant="danger" icon="x-circle" class="mt-6" :text="session('drive-error')" data-test="drive-error" />
     @elseif (session('status'))
         <flux:callout variant="success" icon="check-circle" class="mt-6" :text="session('status')" />
     @endif
 
-    <div class="mt-6 rounded-xl border border-line p-6">
+    {{-- The one boxed card: the account new documents go to, and what to do about it. Red while uploads fail. --}}
+    <div @class(['mt-6 rounded-xl border p-5', 'border-red-200 bg-red-50' => $failing, 'border-line' => ! $failing]) @if ($failing) data-test="drive-warning" @endif>
         @if (! $this->connection)
             {{-- Step one: the address every admin's Connect must match --}}
-            <flux:heading>{{ __('No storage account yet') }}</flux:heading>
+            <flux:heading size="lg" level="2">{{ __('No storage account yet') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Enter the Google account that will store project documents, such as the Research Office’s portal account. Any admin can then connect it; no other account can.') }}</flux:text>
 
             <form wire:submit="saveAccount" class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -304,49 +322,33 @@ new #[Title('Google Drive')] class extends Component {
                 <flux:button type="submit" variant="primary" class="sm:mt-6" data-test="save-account-button">{{ __('Save account') }}</flux:button>
             </form>
         @else
-            @if ($this->connection->isConnected())
-                <flux:heading>{{ __('Connected as :email', ['email' => $this->connection->email]) }}</flux:heading>
+            @if ($failing)
+                <div class="flex items-center gap-2">
+                    <flux:icon.exclamation-triangle variant="mini" class="shrink-0 text-red-600" />
+                    <flux:heading size="lg" level="2">{{ __('Document uploads are failing') }}</flux:heading>
+                </div>
+                <flux:text color="red" class="mt-1">
+                    {{ __(':email isn’t connected. Connect it, then sign in to Google as this account.', ['email' => $this->connection->email]) }}
+                </flux:text>
+                @if (session('drive-error'))
+                    <flux:text color="red" variant="strong" class="mt-2">{{ session('drive-error') }}</flux:text>
+                @endif
+            @else
+                <flux:heading size="lg" level="2">{{ __('Connected as :email', ['email' => $this->connection->email]) }}</flux:heading>
                 <flux:text class="mt-1">
                     {{ $this->connection->connectedBy
                         ? __('Connected by :name on :date.', ['name' => $this->connection->connectedBy->name, 'date' => $this->connection->updated_at->format('F j, Y')])
                         : __('Connected on :date.', ['date' => $this->connection->updated_at->format('F j, Y')]) }}
                     {{ __('New documents go to its “:folder” folder, shared with no one.', ['folder' => GoogleDrive::FOLDER]) }}
                 </flux:text>
-
-                {{-- Google's whole storage for the account, Gmail and Photos included: uploads fail once it is full --}}
-                <div wire:init="loadUsage">
-                    @if ($usage === null)
-                        <flux:text class="mt-1">{{ __('Checking storage…') }}</flux:text>
-                    @elseif ($usage === false)
-                        <flux:text class="mt-1">{{ __('Storage use unavailable right now.') }}</flux:text>
-                    @else
-                        <flux:text class="mt-1" data-test="drive-usage">
-                            {{ $usage['limit']
-                                ? __(':used GB of :limit GB used.', ['used' => round($usage['used'] / 1024 ** 3, 1), 'limit' => round($usage['limit'] / 1024 ** 3, 1)])
-                                : __(':used GB used.', ['used' => round($usage['used'] / 1024 ** 3, 1)]) }}
-                        </flux:text>
-
-                        @if ($usage['limit'] && $usage['used'] >= $usage['limit'] * 0.9)
-                            <flux:callout variant="warning" icon="exclamation-triangle" class="mt-4" data-test="drive-full-warning"
-                                :heading="__('Google Drive is almost full')"
-                                :text="__('Uploads fail once it is full. Free up space in :email, or change the storage account.', ['email' => $this->connection->email])" />
-                        @endif
-                    @endif
-                </div>
-            @else
-                <flux:heading>{{ __('Not connected') }}</flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('Storage account:') }} <span class="font-medium text-zinc-800">{{ $this->connection->email }}</span>.
-                    {{ __('Connect it, then sign in to Google as this account.') }}
-                </flux:text>
             @endif
 
-            <div class="mt-6 flex flex-wrap gap-2">
+            <div class="mt-4 flex flex-wrap gap-2">
                 {{-- While connected there is nothing to reconnect: when Google revokes access, the portal marks the account
                      not connected and this offers Connect again. --}}
                 @if ($this->connection->isConnected())
                     {{-- Opens for whoever is signed in to Google as the storage account; anyone else sees no access --}}
-                    <flux:button :href="'https://drive.google.com/drive/folders/'.$this->connection->folder_id" target="_blank" icon:trailing="arrow-top-right-on-square">{{ __('Open folder in Google Drive') }}</flux:button>
+                    <flux:button :href="'https://drive.google.com/drive/folders/'.$this->connection->folder_id" target="_blank" icon:trailing="arrow-top-right-on-square">{{ __('Open folder in Google Drive') }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:button>
                     <flux:modal.trigger name="drive-disconnect">
                         <flux:button variant="danger">{{ __('Disconnect') }}</flux:button>
                     </flux:modal.trigger>
@@ -365,90 +367,137 @@ new #[Title('Google Drive')] class extends Component {
         @endif
     </div>
 
-    {{-- Documents saved before Google Drive stay on the server disk until they are moved --}}
-    @if ($this->connection?->isConnected() && $this->serverDocuments)
-        <div class="mt-6 rounded-xl border border-line p-6">
-            <flux:heading>{{ trans_choice('{1} 1 document is still on the server|[2,*] :count documents are still on the server', $this->serverDocuments) }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Saved before Google Drive. Move copies them to :email, and they keep opening as before.', ['email' => $this->connection->email]) }}</flux:text>
+    {{-- Below the card, plain sections: reference and housekeeping, a divider and a heading each --}}
 
-            <div class="mt-6">
-                @if (Cache::has('google-drive.moving'))
-                    <flux:button disabled icon="arrow-path">{{ __('Moving…') }}</flux:button>
-                    <flux:text class="mt-2">{{ __('Runs in the background. Refresh later to see how many are left.') }}</flux:text>
-                @else
-                    <flux:button wire:click="moveToDrive" data-test="move-documents-button">{{ __('Move to Google Drive') }}</flux:button>
+    {{-- Google's whole storage for the account, Gmail and Photos included: uploads fail once it is full. Asked for
+         after the page shows, so a slow Google never holds the page up. --}}
+    @if ($this->connection?->isConnected())
+        <div class="mt-8 border-t border-line pt-6" wire:init="loadUsage" data-test="drive-storage">
+            <flux:heading size="lg" level="2">{{ __('Storage') }}</flux:heading>
+
+            @if ($usage === null)
+                <flux:text class="mt-1">{{ __('Checking storage…') }}</flux:text>
+            @elseif ($usage === false)
+                <flux:text class="mt-1">{{ __('Storage use unavailable right now.') }}</flux:text>
+            @else
+                @php($storage = $this->storage)
+                <div class="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1" data-test="drive-usage">
+                    <p class="flex items-baseline gap-2">
+                        <span class="text-3xl font-semibold tabular-nums text-zinc-800">{{ $storage['used'] }}</span>
+                        <span class="text-zinc-500">{{ $storage['limit'] ? __('of :limit used', ['limit' => $storage['limit']]) : __('used') }}</span>
+                    </p>
+                    @if ($storage['free'])
+                        <flux:text class="tabular-nums">{{ __(':free free', ['free' => $storage['free']]) }}</flux:text>
+                    @endif
+                </div>
+
+                {{-- What fills the account, in the order storage() gives it; a screen reader hears the amount, not a bare number --}}
+                <div class="mt-3 flex h-2 gap-px overflow-hidden rounded-full bg-zinc-200" role="meter" aria-valuemin="0" aria-valuemax="100"
+                    aria-valuenow="{{ round($storage['percent'] ?? 100, 1) }}" aria-valuetext="{{ $storage['used'] }} {{ $storage['limit'] ? __('of :limit used', ['limit' => $storage['limit']]) : __('used') }}" aria-label="{{ __('Google storage used') }}">
+                    @foreach ($storage['parts'] as $part)
+                        @if ($part['width'])
+                            <div class="h-full {{ $part['color'] }}" style="width: {{ $part['width'] }}%"></div>
+                        @endif
+                    @endforeach
+                </div>
+
+                <ul class="mt-3 flex flex-wrap gap-x-6 gap-y-1.5" data-test="drive-usage-parts">
+                    @foreach ($storage['parts'] as $part)
+                        <li class="flex items-center gap-2 text-sm text-zinc-500">
+                            <span class="size-2.5 shrink-0 rounded-sm {{ $part['color'] }}" aria-hidden="true"></span>
+                            {{ $part['label'] }}
+                            <span class="font-medium tabular-nums text-zinc-800">{{ $part['size'] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+
+                @if (($storage['percent'] ?? 0) >= 90)
+                    <flux:callout variant="warning" icon="exclamation-triangle" class="mt-4" data-test="drive-full-warning"
+                        :heading="__('Google Drive is almost full')"
+                        :text="__('Uploads fail once it is full. Free up space in :email, or change the storage account.', ['email' => $this->connection->email])" />
                 @endif
-            </div>
+            @endif
         </div>
     @endif
 
     {{-- Documents stay on the account that saved them, so the accounts an admin moved away from still matter --}}
     @if ($this->accounts->isNotEmpty())
-        <div class="mt-6 rounded-xl border border-line p-6" data-test="drive-accounts">
-            <flux:heading>{{ __('Storage accounts') }}</flux:heading>
+        <div class="mt-8 border-t border-line pt-6" data-test="drive-accounts">
+            <flux:heading size="lg" level="2">{{ __('Storage accounts') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Documents stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
 
-            {{-- The table scrolls inside the card on a phone instead of widening the page --}}
-            <div class="mt-4 overflow-x-auto">
-            {{-- The action column only when a row has a button, so Documents sits flush right otherwise --}}
-            @php($actions = $this->accounts->contains(fn (array $row) => $row['account']->retired_at && (! $row['documents'] || ! $row['account']->isConnected())))
-            <flux:table class="w-full min-w-[32rem]">
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Google account') }}</flux:table.column>
-                    <flux:table.column>{{ __('Status') }}</flux:table.column>
-                    <flux:table.column align="end">{{ __('Documents') }}</flux:table.column>
-                    @if ($actions)
-                        <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
-                    @endif
-                </flux:table.columns>
+            {{-- The table scrolls on a phone instead of widening the page --}}
+            <div class="mt-3 overflow-x-auto">
+                {{-- The action column only when a row has a button, so Documents sits flush right otherwise --}}
+                @php($actions = $this->accounts->contains(fn (array $row) => $row['account']->retired_at && (! $row['documents'] || ! $row['account']->isConnected())))
+                <flux:table class="w-full min-w-[32rem]">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Google account') }}</flux:table.column>
+                        <flux:table.column>{{ __('Status') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Documents') }}</flux:table.column>
+                        @if ($actions)
+                            <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
+                        @endif
+                    </flux:table.columns>
 
-                <flux:table.rows>
-                    @foreach ($this->accounts as $row)
-                        <flux:table.row :key="$row['account']->id">
-                            <flux:table.cell variant="strong" class="max-w-xs truncate">{{ $row['account']->email }}</flux:table.cell>
-                            <flux:table.cell>
-                                {{ ($row['account']->retired_at ? __('Earlier') : __('Current')).', '.($row['account']->isConnected() ? __('connected') : __('not connected')) }}
-                            </flux:table.cell>
-                            <flux:table.cell align="end" class="tabular-nums">{{ $row['documents'] }}</flux:table.cell>
-                            @if ($actions)
-                            <flux:table.cell>
-                                {{-- The current account's own buttons sit above; earlier ones are reconnected or removed here --}}
-                                @if ($row['account']->retired_at)
-                                    @if (! $row['documents'])
-                                        <flux:button size="sm" variant="danger" wire:click="removeEarlier({{ $row['account']->id }})"
-                                            wire:confirm="{{ __('Remove :email? It holds no documents. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
-                                            data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
-                                    @elseif (! $row['account']->isConnected())
-                                        <flux:button size="sm" :href="route('google-drive.connect', ['account' => $row['account']->id])"
-                                            x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
-                                            <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
-                                            {{ __('Reconnect') }}
-                                        </flux:button>
-                                    @endif
+                    <flux:table.rows>
+                        @foreach ($this->accounts as $row)
+                            <flux:table.row :key="$row['account']->id">
+                                <flux:table.cell variant="strong" class="max-w-xs truncate" :title="$row['account']->email">{{ $row['account']->email }}</flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <flux:badge size="sm" color="zinc">{{ $row['account']->retired_at ? __('Earlier') : __('Current') }}</flux:badge>
+                                        @if ($row['account']->isConnected())
+                                            <flux:badge size="sm" color="green">{{ __('Connected') }}</flux:badge>
+                                        @else
+                                            <flux:badge size="sm" color="red">{{ __('Not connected') }}</flux:badge>
+                                        @endif
+                                    </div>
+                                </flux:table.cell>
+                                <flux:table.cell align="end" class="tabular-nums">{{ $row['documents'] }}</flux:table.cell>
+                                @if ($actions)
+                                    <flux:table.cell>
+                                        {{-- The current account's own buttons sit above; earlier ones are reconnected or removed here --}}
+                                        @if ($row['account']->retired_at)
+                                            @if (! $row['documents'])
+                                                <flux:button size="sm" variant="danger" wire:click="removeEarlier({{ $row['account']->id }})"
+                                                    wire:confirm="{{ __('Remove :email? It holds no documents. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
+                                                    data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
+                                            @elseif (! $row['account']->isConnected())
+                                                <flux:button size="sm" :href="route('google-drive.connect', ['account' => $row['account']->id])"
+                                                    x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
+                                                    <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
+                                                    {{ __('Reconnect') }}
+                                                </flux:button>
+                                            @endif
+                                        @endif
+                                    </flux:table.cell>
                                 @endif
-                            </flux:table.cell>
-                            @endif
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
             </div>
         </div>
     @endif
 
     @if ($this->recent->isNotEmpty())
-        <div class="mt-6 rounded-xl border border-line p-6" data-test="drive-recent">
+        <div class="mt-8 border-t border-line pt-6" data-test="drive-recent">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <flux:heading>{{ __('Recent changes') }}</flux:heading>
+                <flux:heading size="lg" level="2">{{ __('Recent changes') }}</flux:heading>
                 <flux:link :href="route('activity-log.index', ['group' => 'drive'])" wire:navigate class="text-sm">{{ __('View all') }}</flux:link>
             </div>
 
-            <ul class="mt-4 divide-y divide-line">
+            <ul class="mt-2 divide-y divide-line">
                 @foreach ($this->recent as $entry)
-                    <li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+                    <li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5">
                         <flux:text>
                             <span class="font-medium text-zinc-800">{{ $entry->actor_name ?? __('Unknown') }}</span>
-                            {{ $entry->summary() }}@if ($entry->subject()): <span class="text-zinc-800">{{ $entry->subject() }}</span>@endif
+                            {{ $entry->summary() }}
+                            {{-- The current account is named at the top, so only another account is named here --}}
+                            @if ($entry->subject() && $entry->subject() !== $this->connection?->email)
+                                <span class="text-zinc-800">{{ $entry->subject() }}</span>
+                            @endif
                         </flux:text>
                         <flux:text class="text-sm">{{ $entry->day() }}, {{ $entry->created_at->format('g:i A') }}</flux:text>
                     </li>
@@ -456,7 +505,6 @@ new #[Title('Google Drive')] class extends Component {
             </ul>
         </div>
     @endif
-
     {{--
         Danger zone, like GitHub's and DigitalOcean's: step one says what happens, with real numbers; step two asks for
         the current account typed out, which keeps the button disabled until it matches, and the admin's password.

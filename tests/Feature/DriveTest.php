@@ -47,7 +47,7 @@ class DriveTest extends TestCase
         $this->torres = User::factory()->create(['name' => 'Torres', 'department_id' => $this->cas->id]);
 
         // SMART-ResearchTrack: filed by Navarro under CCSICT, with Torres from CAS leading Study 3.
-        $this->smart = $this->project($this->navarro, 'SMART-ResearchTrack', ['status' => 'Detailed', 'detailed_path' => 'submissions/detailed.pdf']);
+        $this->smart = $this->project($this->navarro, 'SMART-ResearchTrack', ['status' => 'Detailed', 'detailed_path' => 'drive-1/submissions/detailed.pdf']);
         $this->smart->proponents()->createMany([
             ['user_id' => $this->soriano->id, 'study' => 1, 'role' => 'Staff'],
             ['user_id' => $this->torres->id, 'study' => 3, 'role' => 'Leader'],
@@ -105,8 +105,8 @@ class DriveTest extends TestCase
 
     public function test_project_page_shows_studies_roles_colleges_and_documents(): void
     {
-        Storage::fake('submissions');
-        Storage::disk('submissions')->put('submissions/concept.pdf', '%PDF');
+        $this->fakeDrive();
+        Storage::disk('drive')->put('submissions/concept.pdf', '%PDF');
 
         $this->actingAs($this->torres)
             ->get(route('drive.show', $this->smart))
@@ -196,10 +196,10 @@ class DriveTest extends TestCase
         $this->assertFalse($this->smart->fresh()->presented);
 
         // A project finished before the mid-year report existed is flagged, since it skipped a stage.
-        $this->smart->update(['status' => 'Completed', 'awaiting_review' => false, 'concept_passed' => true, 'terminal_path' => 'submissions/t.pdf']);
+        $this->smart->update(['status' => 'Completed', 'awaiting_review' => false, 'concept_passed' => true, 'terminal_path' => 'drive-1/submissions/t.pdf']);
         $list()->assertSee('data-test="presented-checkbox"', false)->assertSee('Not presented: SMART-ResearchTrack')->assertSee('No mid-year report');
 
-        $this->smart->update(['midyear_path' => 'submissions/m.pdf']);
+        $this->smart->update(['midyear_path' => 'drive-1/submissions/m.pdf']);
         $list()->assertDontSee('No mid-year report');
         Livewire::test('pages::submissions.index')->call('setPresented', $this->smart->id, true)->assertHasNoErrors();
         $this->assertTrue($this->smart->fresh()->presented);
@@ -245,8 +245,8 @@ class DriveTest extends TestCase
 
     public function test_strangers_cannot_open_the_project_or_its_files(): void
     {
-        Storage::fake('submissions');
-        Storage::disk('submissions')->put('submissions/detailed.pdf', '%PDF');
+        $this->fakeDrive();
+        Storage::disk('drive')->put('submissions/detailed.pdf', '%PDF');
 
         $stranger = User::factory()->create(['department_id' => $this->ccsict->id]);
 
@@ -294,7 +294,7 @@ class DriveTest extends TestCase
             'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
             'department_id' => $by->department_id,
             'title' => $title,
-            'concept_path' => 'submissions/concept.pdf',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
             ...$attributes,
         ]);
 

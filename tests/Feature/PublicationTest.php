@@ -330,7 +330,7 @@ class PublicationTest extends TestCase
             'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
             'department_id' => Department::firstOrCreate(['code' => 'CCSICT'], ['name' => 'College of Computing Studies'])->id,
             'title' => 'Project of '.$by->name,
-            'concept_path' => 'submissions/concept.pdf',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
             'status' => 'Concept',
             ...$attributes,
         ]);

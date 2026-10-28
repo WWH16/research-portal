@@ -118,14 +118,14 @@ class GoogleDriveDiskTest extends TestCase
 
     public function test_documents_download_with_the_type_of_their_extension(): void
     {
-        Storage::fake('submissions');
-        Storage::disk('submissions')->put('submissions/concept.pdf', 'pdf');
-        Storage::disk('submissions')->put('submissions/detailed.doc', 'doc');
-        Storage::disk('submissions')->put('submissions/midyear.docx', 'docx');
+        $drive = $this->fakeDrive();
+        $drive->put('submissions/concept.pdf', 'pdf');
+        $drive->put('submissions/detailed.doc', 'doc');
+        $drive->put('submissions/midyear.docx', 'docx');
         $project = $this->project([
-            'concept_path' => 'submissions/concept.pdf',
-            'detailed_path' => 'submissions/detailed.doc',
-            'midyear_path' => 'submissions/midyear.docx',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
+            'detailed_path' => 'drive-1/submissions/detailed.doc',
+            'midyear_path' => 'drive-1/submissions/midyear.docx',
         ]);
 
         $this->actingAs($this->owner);
@@ -140,9 +140,10 @@ class GoogleDriveDiskTest extends TestCase
         $account = GoogleDriveConnection::factory()->create();
         $this->googleAnswers([
             new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
-            new Response(200, ['Content-Type' => 'application/json'], '{"storageQuota": {"limit": "16106127360", "usage": "4509715660"}}'),
+            new Response(200, ['Content-Type' => 'application/json'], '{"storageQuota": {"limit": "16106127360", "usage": "4509715660", "usageInDrive": "3000000000"}}'),
+            new Response(200, ['Content-Type' => 'application/json'], '{"files": [{"size": "1000"}, {"size": "2500"}]}'),
         ]);
 
-        $this->assertSame(['used' => 4509715660, 'limit' => 16106127360], app(GoogleDrive::class)->usage($account));
+        $this->assertSame(['used' => 4509715660, 'limit' => 16106127360, 'drive' => 3000000000, 'portal' => 3500], app(GoogleDrive::class)->usage($account));
     }
 }

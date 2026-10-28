@@ -10,7 +10,6 @@ use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -306,7 +305,7 @@ class ActivityLogTest extends TestCase
 
     public function test_an_upload_over_an_earlier_file_reads_as_replaced(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
         $project = $this->project('Solar Dryer Study');
         $project->proponents()->create(['user_id' => $project->user->id, 'study' => 1, 'role' => 'Leader']);
 
@@ -391,7 +390,7 @@ class ActivityLogTest extends TestCase
             'start_date' => today()->toDateString(),
             'target_date' => today()->addYear()->toDateString(),
             // Every project starts with its concept proposal, the one document the Research Office reviews.
-            'concept_path' => 'submissions/concept.pdf',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
         ]);
     }
 }

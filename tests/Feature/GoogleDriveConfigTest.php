@@ -14,7 +14,6 @@ class GoogleDriveConfigTest extends TestCase
             $this->assertArrayHasKey($key, config('services.google'));
         }
 
-        $this->assertSame('local', config('filesystems.disks.submissions.driver'));
         $this->assertTrue(class_exists(Socialite::class));
         $this->assertTrue(class_exists(GoogleDriveAdapter::class));
     }

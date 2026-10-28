@@ -1,15 +1,11 @@
 <?php
 
-use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Notifications\ProjectDeadline;
-use App\Services\GoogleDrive;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schedule;
-use Illuminate\Support\Facades\Storage;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -33,57 +29,3 @@ Artisan::command('projects:remind', function () {
 
 // On one server only, so a second app instance never sends every reminder twice.
 Schedule::command('projects:remind')->dailyAt('07:00')->onOneServer();
-
-// Copies documents saved before Google Drive, from the server disk or bucket, to the current storage account, and
-// saves each project's new path so the document opens from Drive. Safe to run again: documents already on Google
-// Drive are skipped, and a document that can't be copied keeps its old path.
-Artisan::command('submissions:move-to-drive {--from=submissions : The disk the older documents are on}', function () {
-    $source = $this->option('from');
-
-    if (! is_string($source) || $source === '') {
-        $this->error('Name the disk to copy from with --from.');
-
-        return 1;
-    }
-
-    $account = GoogleDriveConnection::current();
-
-    if (! $account?->isConnected()) {
-        $this->error('Connect the Google Drive storage account first, on System → Google Drive.');
-
-        return 1;
-    }
-
-    $from = Storage::disk($source);
-    $to = app(GoogleDrive::class)->disk($account);
-    [$copied, $skipped, $missing] = [0, 0, []];
-
-    Submission::query()->each(function (Submission $submission) use ($from, $to, $account, &$copied, &$skipped, &$missing) {
-        foreach (array_keys(Submission::DOCUMENTS) as $stage) {
-            $path = $submission->{$stage.'_path'};
-
-            if (! $path) {
-                continue;
-            }
-
-            if (str_starts_with($path, 'drive-')) {
-                $skipped++;
-            } elseif (! $from->exists($path) || ! $to->writeStream($path, $from->readStream($path))) {
-                $missing[] = $path;
-            } else {
-                $submission->forceFill([$stage.'_path' => "drive-{$account->id}/{$path}"])->saveQuietly();
-                $copied++;
-            }
-        }
-    });
-
-    // The Google Drive page queues this run and offers Move again once it ends.
-    Cache::forget('google-drive.moving');
-    $this->info("Copied {$copied}, already on Google Drive {$skipped}, missing ".count($missing).'.');
-
-    foreach ($missing as $path) {
-        $this->warn("Missing: {$path}");
-    }
-
-    return $missing === [] ? 0 : 1;
-})->purpose('Copy older project documents to the Google Drive storage account');

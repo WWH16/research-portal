@@ -103,7 +103,7 @@ class SubmissionTest extends TestCase
 
     public function test_members_without_a_department_cannot_submit(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $this->actingAs(User::factory()->create(['department_id' => null]));
 
@@ -122,7 +122,7 @@ class SubmissionTest extends TestCase
 
     public function test_project_with_several_studies_can_be_submitted(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $navarro = User::factory()->create(['name' => 'Navarro', 'department_id' => $department->id]);
@@ -155,7 +155,7 @@ class SubmissionTest extends TestCase
         $this->assertTrue($project->fresh()->awaiting_review);
         $this->assertSame(now()->year, $project->year);
         $this->assertSame(6, $project->proponents()->count());
-        Storage::disk('submissions')->assertExists($project->concept_path);
+        Storage::disk('drive')->assertExists(Str::after($project->concept_path, '/'));
 
         // Navarro is listed three times and Soriano twice, but only three faculty are on the project.
         $this->assertSame(3, User::whereHas('projects')->count());
@@ -170,7 +170,7 @@ class SubmissionTest extends TestCase
 
     public function test_proponents_are_validated(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $navarro = User::factory()->create(['department_id' => $department->id]);
@@ -231,7 +231,7 @@ class SubmissionTest extends TestCase
 
     public function test_a_proposal_is_filed_without_a_research_type(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
@@ -264,7 +264,7 @@ class SubmissionTest extends TestCase
 
     public function test_completion_date_must_come_after_the_starting_date(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
 
@@ -281,7 +281,7 @@ class SubmissionTest extends TestCase
 
     public function test_a_new_project_cannot_start_in_the_past(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
 
@@ -300,7 +300,7 @@ class SubmissionTest extends TestCase
 
     public function test_documents_must_be_pdf_or_word_files_of_25_megabytes_or_less(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
 
@@ -332,7 +332,7 @@ class SubmissionTest extends TestCase
 
     public function test_similar_projects_are_flagged_before_saving(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$navarro, $soriano] = $this->twoFacultyWithSubmissions();
         $navarro->submissions()->sole()->update(['title' => 'SMART-ResearchTrack']);
@@ -361,7 +361,7 @@ class SubmissionTest extends TestCase
 
     public function test_proponent_added_after_registering_sees_and_edits_the_project(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$navarro] = $this->twoFacultyWithSubmissions();
         $project = $navarro->submissions()->sole();
@@ -410,7 +410,7 @@ class SubmissionTest extends TestCase
 
     public function test_next_document_goes_on_the_same_project_and_moves_the_status_without_review(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -436,7 +436,7 @@ class SubmissionTest extends TestCase
         $this->assertSame('Project updated. The document is uploaded.', session('status'));
         $this->assertSame('Detailed', $project->status, 'The upload moves the status.');
         $this->assertFalse($project->awaiting_review, 'The detailed proposal is not reviewed.');
-        Storage::disk('submissions')->assertExists($project->detailed_path);
+        Storage::disk('drive')->assertExists(Str::after($project->detailed_path, '/'));
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
             ->set('documents.midyear', UploadedFile::fake()->create('midyear.pdf', 100, 'application/pdf'))
@@ -461,7 +461,7 @@ class SubmissionTest extends TestCase
 
     public function test_corrected_concept_proposal_replaces_the_file_and_goes_back_for_review(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -483,8 +483,8 @@ class SubmissionTest extends TestCase
             ->call('save');
 
         $project->refresh();
-        Storage::disk('submissions')->assertExists($project->concept_path);
-        $this->assertNotSame('submissions/sample.pdf', $project->concept_path);
+        Storage::disk('drive')->assertExists(Str::after($project->concept_path, '/'));
+        $this->assertNotSame('drive-1/submissions/sample.pdf', $project->concept_path);
         $this->assertTrue($project->awaiting_review);
         $this->assertSame('Project updated. The new concept proposal is waiting for the Research Office to review.', session('status'));
         $this->assertSame('Concept', $project->status);
@@ -498,18 +498,18 @@ class SubmissionTest extends TestCase
                 ->assertHasNoErrors();
             $paths[] = $project->fresh()->detailed_path;
         }
-        Storage::disk('submissions')->assertMissing($paths[0]);
-        Storage::disk('submissions')->assertExists($paths[1]);
+        Storage::disk('drive')->assertMissing(Str::after($paths[0], '/'));
+        Storage::disk('drive')->assertExists(Str::after($paths[1], '/'));
         $this->assertFalse($project->fresh()->awaiting_review);
     }
 
     public function test_a_completed_project_still_takes_corrected_documents(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        $project->update(['status' => 'Completed', 'awaiting_review' => false, 'detailed_path' => 'submissions/detailed.pdf', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()]);
+        $project->update(['status' => 'Completed', 'awaiting_review' => false, 'detailed_path' => 'drive-1/submissions/detailed.pdf', 'terminal_path' => 'drive-1/submissions/report.pdf', 'terminal_uploaded_at' => now()]);
         $this->actingAs($maria);
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
@@ -533,7 +533,7 @@ class SubmissionTest extends TestCase
 
     public function test_each_document_opens_once_the_one_before_it_is_ready(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -621,6 +621,7 @@ class SubmissionTest extends TestCase
             ->assertSee('The Research Office returned the concept proposal for revision.');
 
         // A corrected upload goes back for review; passing it opens the detailed proposal.
+        $this->fakeDrive();
         $project->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'));
         $this->assertSame('pending', $project->fresh()->conceptReview());
         $this->actingAs(User::factory()->create(['role' => 'admin']));
@@ -651,7 +652,7 @@ class SubmissionTest extends TestCase
 
     public function test_a_new_proposal_starts_with_the_concept_proposal(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $this->actingAs(User::factory()->create(['department_id' => $department->id]));
@@ -669,7 +670,7 @@ class SubmissionTest extends TestCase
     {
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        $project->update(['detailed_path' => 'submissions/detailed.pdf', 'status' => 'Detailed']);
+        $project->update(['detailed_path' => 'drive-1/submissions/detailed.pdf', 'status' => 'Detailed']);
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $panel = Livewire::test('pages::reviews.index')
@@ -691,7 +692,7 @@ class SubmissionTest extends TestCase
 
     public function test_a_locked_file_is_dropped_so_saving_again_works(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -713,7 +714,7 @@ class SubmissionTest extends TestCase
 
     public function test_a_review_never_clears_a_concept_proposal_uploaded_while_it_was_open(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
@@ -754,17 +755,17 @@ class SubmissionTest extends TestCase
             ->assertHasErrors(['documents'])
             ->assertSee('Document storage is unavailable right now. Try again later or contact the Research Office.');
 
-        $this->assertSame('submissions/sample.pdf', $project->fresh()->concept_path);
+        $this->assertSame('drive-1/submissions/sample.pdf', $project->fresh()->concept_path);
         $this->assertSame(0, ActivityLog::where('action', 'submission.updated')->count());
     }
 
     public function test_a_save_that_fails_keeps_the_earlier_file(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        Storage::disk('submissions')->put($project->concept_path, 'first version');
+        Storage::disk('drive')->put(Str::after($project->concept_path, '/'), 'first version');
         $this->actingAs($maria);
 
         // The log write runs after the files are stored, so a failure there rolls the whole save back.
@@ -779,8 +780,8 @@ class SubmissionTest extends TestCase
             $this->assertSame('Log write failed.', $e->getMessage());
         }
 
-        $this->assertSame('submissions/sample.pdf', $project->fresh()->concept_path);
-        $this->assertSame(['submissions/sample.pdf'], Storage::disk('submissions')->allFiles());
+        $this->assertSame('drive-1/submissions/sample.pdf', $project->fresh()->concept_path);
+        $this->assertSame(['submissions/sample.pdf'], Storage::disk('drive')->allFiles());
     }
 
     public function test_a_review_never_changes_the_year_or_college(): void
@@ -835,7 +836,7 @@ class SubmissionTest extends TestCase
         $late = $maria->submissions()->sole();
         $late->update(['target_date' => today()->subDay()]);
         $onTime = $jose->submissions()->sole();
-        $onTime->update(['target_date' => today()->subDays(14), 'status' => 'Completed', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => today()->subDays(15)->setTime(16, 0)]);
+        $onTime->update(['target_date' => today()->subDays(14), 'status' => 'Completed', 'terminal_path' => 'drive-1/submissions/report.pdf', 'terminal_uploaded_at' => today()->subDays(15)->setTime(16, 0)]);
 
         $this->assertTrue($late->fresh()->isDelayed());
         $this->assertFalse($onTime->fresh()->isDelayed());
@@ -896,7 +897,7 @@ class SubmissionTest extends TestCase
     {
         [$maria, $jose] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        $project->update(['title' => '=HYPERLINK("http://x")', 'status' => 'Completed', 'terminal_path' => 'submissions/report.pdf', 'terminal_uploaded_at' => now()]);
+        $project->update(['title' => '=HYPERLINK("http://x")', 'status' => 'Completed', 'terminal_path' => 'drive-1/submissions/report.pdf', 'terminal_uploaded_at' => now()]);
         $nunez = User::factory()->create(['name' => 'Niño Ñuñez']);
         $project->proponents()->createMany([
             ['user_id' => $nunez->id, 'study' => 2, 'role' => 'Staff'],
@@ -925,11 +926,11 @@ class SubmissionTest extends TestCase
 
     public function test_only_proponents_and_admins_can_open_a_document(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria, $jose] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        Storage::disk('submissions')->put($project->concept_path, '%PDF-1.4');
+        Storage::disk('drive')->put(Str::after($project->concept_path, '/'), '%PDF-1.4');
 
         $url = route('submissions.document', [$project, 'concept']);
 
@@ -945,12 +946,12 @@ class SubmissionTest extends TestCase
 
     public function test_word_documents_download_with_their_own_extension(): void
     {
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         [$maria] = $this->twoFacultyWithSubmissions();
         $project = $maria->submissions()->sole();
-        $project->update(['terminal_path' => 'submissions/sample.docx']);
-        Storage::disk('submissions')->put($project->terminal_path, 'docx');
+        $project->update(['terminal_path' => 'drive-1/submissions/sample.docx']);
+        Storage::disk('drive')->put(Str::after($project->terminal_path, '/'), 'docx');
 
         $this->actingAs($maria)
             ->get(route('submissions.document', [$project, 'terminal']))
@@ -1079,7 +1080,7 @@ class SubmissionTest extends TestCase
                 'abstract' => 'An abstract.',
                 'start_date' => now(),
                 'target_date' => now()->addYear(),
-                'concept_path' => 'submissions/sample.pdf',
+                'concept_path' => 'drive-1/submissions/sample.pdf',
             ])->proponents()->create(['user_id' => $user->id, 'study' => 1, 'role' => 'Leader']);
         }
 

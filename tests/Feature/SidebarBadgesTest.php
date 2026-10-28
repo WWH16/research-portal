@@ -34,7 +34,7 @@ class SidebarBadgesTest extends TestCase
             'abstract' => 'An abstract.',
             'start_date' => now(),
             'target_date' => now()->addYear(),
-            'concept_path' => 'submissions/concept.pdf',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
         ]);
         $project->proponents()->create(['user_id' => $owner->id, 'study' => 1, 'role' => 'Leader']);
         $project->forceFill($attributes)->save();

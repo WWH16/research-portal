@@ -8,7 +8,6 @@ use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -28,7 +27,7 @@ class SubmissionEdgeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('submissions');
+        $this->fakeDrive();
 
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $this->maria = User::factory()->create(['department_id' => $department->id]);
@@ -40,7 +39,7 @@ class SubmissionEdgeTest extends TestCase
             'abstract' => 'An abstract.',
             'start_date' => today(),
             'target_date' => today()->addMonth(),
-            'concept_path' => 'submissions/concept.pdf',
+            'concept_path' => 'drive-1/submissions/concept.pdf',
             'awaiting_review' => false,
             'concept_passed' => true,
         ]);
@@ -63,7 +62,7 @@ class SubmissionEdgeTest extends TestCase
 
     public function test_replacing_the_terminal_report_after_the_target_date_keeps_it_on_time(): void
     {
-        $this->project->update(['detailed_path' => 'submissions/detailed.pdf', 'status' => 'Detailed']);
+        $this->project->update(['detailed_path' => 'drive-1/submissions/detailed.pdf', 'status' => 'Detailed']);
         $this->project->fresh()->attachDocument('terminal', $this->pdf());
         $this->assertTrue($this->project->fresh()->completedOnTime());
 
@@ -76,7 +75,7 @@ class SubmissionEdgeTest extends TestCase
 
     public function test_on_time_is_judged_to_the_end_of_the_target_day(): void
     {
-        $this->project->update(['detailed_path' => 'submissions/detailed.pdf', 'status' => 'Detailed']);
+        $this->project->update(['detailed_path' => 'drive-1/submissions/detailed.pdf', 'status' => 'Detailed']);
 
         $this->travelTo($this->project->target_date->copy()->setTime(23, 59));
         $this->assertFalse($this->project->fresh()->isDelayed(), 'Not delayed on the target day itself.');
@@ -92,7 +91,7 @@ class SubmissionEdgeTest extends TestCase
 
     public function test_an_upload_never_moves_the_status_back(): void
     {
-        $this->project->update(['detailed_path' => 'submissions/detailed.pdf', 'terminal_path' => 'submissions/t.pdf', 'terminal_uploaded_at' => now(), 'status' => 'Completed']);
+        $this->project->update(['detailed_path' => 'drive-1/submissions/detailed.pdf', 'terminal_path' => 'drive-1/submissions/t.pdf', 'terminal_uploaded_at' => now(), 'status' => 'Completed']);
 
         $this->form()->set('documents.detailed', $this->pdf())->call('save')->assertHasNoErrors();
         $this->assertSame('Completed', $this->project->fresh()->status);
@@ -117,7 +116,7 @@ class SubmissionEdgeTest extends TestCase
     {
         $this->form()->set('documents.evil', $this->pdf())->call('save')->assertHasErrors('documents');
 
-        $this->assertSame(['submissions/concept.pdf', null, null], array_values($this->project->fresh()->only(['concept_path', 'detailed_path', 'terminal_path'])));
+        $this->assertSame(['drive-1/submissions/concept.pdf', null, null], array_values($this->project->fresh()->only(['concept_path', 'detailed_path', 'terminal_path'])));
     }
 
     public function test_a_proponent_removed_while_editing_can_no_longer_save(): void

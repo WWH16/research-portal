@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -165,14 +166,19 @@ class Submission extends Model
     }
 
     /**
-     * How many documents are saved on a Google Drive storage account, or with null on the server disk from before
-     * Google Drive, counting every stage of every project.
+     * How many documents each storage account holds, keyed by account id, from one query over every project's
+     * saved paths ("drive-{account id}/...").
+     *
+     * @return Collection<int, int>
      */
-    public static function documentsOn(?GoogleDriveConnection $account): int
+    public static function documentsPerAccount(): Collection
     {
-        return collect(array_keys(self::DOCUMENTS))->sum(fn (string $stage) => ($account
-            ? static::where($stage.'_path', 'like', "drive-{$account->id}/%")
-            : static::whereNotNull($stage.'_path')->where($stage.'_path', 'not like', 'drive-%'))->count());
+        $columns = array_map(fn (string $stage) => $stage.'_path', array_keys(self::DOCUMENTS));
+
+        return static::query()->toBase()->get($columns)
+            ->flatMap(fn (object $row) => array_values((array) $row))
+            ->filter(fn (?string $path) => $path !== null && str_starts_with($path, 'drive-'))
+            ->countBy(fn (string $path) => (int) Str::between($path, 'drive-', '/'));
     }
 
     /**

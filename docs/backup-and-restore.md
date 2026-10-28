@@ -27,7 +27,7 @@ If the buckets are missing in production, the Backup and Restore page shows a re
 
 ## Storing documents on Google Drive
 
-Project documents can live on the Research Office's Google Drive instead of the `submissions` bucket. The database still stores each document's path. Only the place the file sits changes.
+Once an admin saves a storage account, new project documents go to the Research Office's Google Drive instead of the `submissions` bucket. Each document's saved path starts with `drive-<account number>/`, so it always opens from the account that saved it. Documents saved before that stay on the `submissions` disk until the move command copies them.
 
 ### Setting it up
 
@@ -36,15 +36,15 @@ Project documents can live on the Research Office's Google Drive instead of the 
    - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the OAuth client.
    - `GOOGLE_REDIRECT_URI`, the redirect URI above.
 3. Run `php artisan migrate`.
-4. Sign in as an admin and open **System → Google Drive**. Save the storage account, the one Google account whose Drive keeps every document. Then choose **Connect Google Drive**, confirm your password, and sign in to Google as that account. The portal refuses any other account, and creates a "Research Portal" folder there, shared with no one.
-5. Copy the existing documents: `php artisan submissions:move-to-drive --from=<old disk>`. On Laravel Cloud, first attach the old bucket under a second disk name, such as `submissions-bucket`. Run the command until it reports `missing 0`. A second run skips files already copied.
-6. Set `SUBMISSIONS_DISK_DRIVER=google` and, on Laravel Cloud, detach the bucket from the `submissions` disk name. Laravel Cloud's attached bucket would otherwise replace the Drive setting. Redeploy.
-7. Open a few documents in the portal to check they load. Then delete the old bucket.
+4. Sign in as an admin and open **System → Google Drive**. Save the storage account, the one Google account whose Drive keeps every document. Then, straight away, choose **Connect Google Drive**, confirm your password, and sign in to Google as that account. Between saving and connecting, uploads fail, so do both in one sitting. The portal refuses any other account, and creates a "Research Portal" folder there, shared with no one.
+5. Copy the older documents: `php artisan submissions:move-to-drive`. It copies every document still on the `submissions` disk to the storage account and updates each project's path. Run it until it reports `missing 0`. A second run skips documents already on Drive.
+6. Open a few documents in the portal to check they load. Keep the `submissions` bucket attached until every document has moved.
 
 ### Keeping it working
 
 - **One account for the whole portal.** Every admin uses the same connection. Removing the admin who connected it doesn't break it.
-- **One saved account.** Every admin's Connect must sign in as the storage account saved on the page. It can change only while no documents are stored, because the portal couldn't read files another account holds. Use **Reconnect** after the account's password changes.
+- **One saved account.** Every admin's Connect must sign in as the storage account saved on the page. Use **Reconnect** after the account's password changes.
+- **Changing the account,** for example when its Drive is full: choose **Change account**, type the new address twice, and confirm your portal password. New uploads go to the new account and nothing moves. Documents already on the old account stay there and still open, because the portal keeps its access. The page lists those earlier accounts with how many documents each holds. **Keep those Google accounts; don't delete them or their folders.** Then connect the new account.
 - **If the connection breaks,** uploads stop with a "Document storage is unavailable" message, and opening a document shows the same. The Google Drive page shows a red warning. Reconnect the same account to fix it. No files are lost.
 - **Changing `APP_KEY`** makes the saved Google token unreadable. Reconnect after any key change.
 - **Disconnect** revokes the portal's access at Google. The saved account and the files on Drive stay.
@@ -53,7 +53,7 @@ Project documents can live on the Research Office's Google Drive instead of the 
 ### Backups with Google Drive
 
 - Portal backups must leave the `google_drive_connections` table out, so a downloaded zip never carries the Google token. After restoring a backup, reconnect Google Drive.
-- Backups read every file on the `submissions` disk, so with Drive they download every document from Google and take longer.
+- Backups must read each document from the account that holds it (`App\Services\DocumentStorage::locate()`), so with Drive they download every document from Google and take longer.
 
 ## Portal backups
 

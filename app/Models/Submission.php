@@ -166,16 +166,12 @@ class Submission extends Model
     }
 
     /**
-     * Whether any project has a document on file. Once one does, the Google Drive storage account can't change:
-     * the portal could not read files that another account holds.
+     * How many documents are saved on a Google Drive storage account, counting every stage of every project.
      */
-    public static function anyDocumentStored(): bool
+    public static function documentsOn(GoogleDriveConnection $account): int
     {
-        return static::where(function (Builder $query) {
-            foreach (array_keys(self::DOCUMENTS) as $stage) {
-                $query->orWhereNotNull($stage.'_path');
-            }
-        })->exists();
+        return collect(array_keys(self::DOCUMENTS))
+            ->sum(fn (string $stage) => static::where($stage.'_path', 'like', "drive-{$account->id}/%")->count());
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
 use Google\Exception as GoogleException;
 use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -81,16 +82,22 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         // Only the files the portal creates, kept after the sign-in ends; prompt=consent makes Google send a refresh token
         // every time, and login_hint opens Google's picker on the saved storage account. Connecting hands over the
         // documents' storage, so the admin confirms their password first.
-        Route::get('google-drive/connect', function () {
-            $account = GoogleDriveConnection::first()?->email;
+        // ?account= reconnects an earlier storage account, so the documents it holds open again.
+        Route::get('google-drive/connect', function (Request $request) {
+            $account = $request->filled('account')
+                ? GoogleDriveConnection::find($request->integer('account'))
+                : GoogleDriveConnection::current();
 
             if (! $account) {
                 return redirect()->route('google-drive.index')->with('drive-error', __('Save the Google account that stores documents first.'));
             }
 
+            // The callback connects this account and no other.
+            session(['google-drive.connecting' => $account->id]);
+
             return Socialite::buildProvider(GoogleProvider::class, config('services.google'))
                 ->scopes([GoogleDrive::SCOPE])
-                ->with(['access_type' => 'offline', 'prompt' => 'consent', 'login_hint' => $account])
+                ->with(['access_type' => 'offline', 'prompt' => 'consent', 'login_hint' => $account->email])
                 ->redirect();
         })->middleware('password.confirm')->name('google-drive.connect');
         Route::get('google-drive/callback', GoogleDriveCallbackController::class)->name('google-drive.callback');

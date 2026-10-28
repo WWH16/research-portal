@@ -21,12 +21,15 @@ class GoogleDriveCallbackController
 {
     public function __invoke(Request $request, GoogleDrive $drive): RedirectResponse
     {
+        // The account Connect was started for: the current one, or an earlier one being reconnected.
+        $target = $request->session()->pull('google-drive.connecting');
+
         // Choosing Cancel on Google's screen comes back with ?error=access_denied and no code to trade for a token.
         if ($request->has('error')) {
             return $this->refuse(__('Google sign-in was cancelled, so nothing changed.'));
         }
 
-        $connection = GoogleDriveConnection::first();
+        $connection = is_int($target) ? GoogleDriveConnection::find($target) : GoogleDriveConnection::current();
 
         if (! $connection) {
             return $this->refuse(__('Save the Google account that stores documents first.'));

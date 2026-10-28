@@ -26,13 +26,31 @@ class GoogleDrivePageTest extends TestCase
         $this->admin = User::factory()->create(['name' => 'Research Office', 'role' => 'admin']);
     }
 
+    /**
+     * A project with documents saved on the given storage account.
+     */
+    private function documentsOn(GoogleDriveConnection $account, int $count): void
+    {
+        $department = Department::firstOrCreate(['code' => 'CCS'], ['name' => 'College of Computer Studies']);
+        $paths = array_slice(['concept_path', 'detailed_path', 'midyear_path', 'terminal_path'], 0, $count);
+
+        User::factory()->create()->submissions()->create([
+            'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
+            'department_id' => $department->id,
+            'title' => 'Stored Study',
+            'abstract' => 'An abstract.',
+            'start_date' => now(),
+            'target_date' => now()->addYear(),
+        ] + array_fill_keys($paths, "drive-{$account->id}/submissions/file.pdf"));
+    }
+
     public function test_only_admins_open_the_google_drive_page(): void
     {
         $this->actingAs(User::factory()->create())->get(route('google-drive.index'))->assertForbidden();
         $this->actingAs($this->admin)->get(route('google-drive.index'))->assertOk()->assertSee('No storage account yet');
     }
 
-    public function test_an_admin_saves_the_storage_account(): void
+    public function test_an_admin_saves_the_first_storage_account(): void
     {
         $this->actingAs($this->admin);
 
@@ -64,46 +82,89 @@ class GoogleDrivePageTest extends TestCase
         $this->assertSame(0, GoogleDriveConnection::count());
     }
 
-    public function test_the_account_can_change_while_no_documents_are_stored(): void
+    public function test_changing_the_account_needs_the_new_email_twice_and_the_admins_password(): void
     {
-        $connection = GoogleDriveConnection::factory()->create(['email' => 'old@gmail.com', 'refresh_token' => 'old-token']);
-        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('revoke')->once()->with('old-token'));
-
+        GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')
-            ->set('email', 'isucyn.facultyresearchportal@gmail.com')
-            ->call('saveAccount')
-            ->assertHasNoErrors();
+            ->set('newEmail', 'email2@gmail.com')
+            ->set('newEmail_confirmation', 'email3@gmail.com')
+            ->set('password', 'wrong-password')
+            ->call('changeAccount')
+            ->assertHasErrors(['newEmail' => 'confirmed', 'password' => 'current_password']);
 
-        $connection->refresh();
-        $this->assertSame('isucyn.facultyresearchportal@gmail.com', $connection->email);
-        $this->assertFalse($connection->isConnected());
-        $this->assertNull($connection->folder_id);
+        $this->assertSame('email1@gmail.com', GoogleDriveConnection::current()->email);
     }
 
-    public function test_the_account_cannot_change_once_documents_are_stored(): void
+    public function test_changing_the_account_sends_new_uploads_to_it_and_keeps_the_old_one_open(): void
     {
-        GoogleDriveConnection::factory()->create(['email' => 'isucyn.facultyresearchportal@gmail.com']);
-        $owner = User::factory()->create();
-        $owner->submissions()->create([
-            'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
-            'department_id' => Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies'])->id,
-            'title' => 'Stored Study',
-            'abstract' => 'An abstract.',
-            'start_date' => now(),
-            'target_date' => now()->addYear(),
-            'concept_path' => 'submissions/concept.pdf',
-        ]);
-
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'refresh_token' => 'email1-token']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('revoke'));
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')
-            ->set('email', 'someone.else@gmail.com')
-            ->call('saveAccount')
-            ->assertHasErrors(['email']);
+            ->set('newEmail', 'Email2@gmail.com')
+            ->set('newEmail_confirmation', 'email2@gmail.com')
+            ->set('password', 'password')
+            ->call('changeAccount')
+            ->assertHasNoErrors();
 
-        $this->assertSame('isucyn.facultyresearchportal@gmail.com', GoogleDriveConnection::sole()->email);
+        $email1->refresh();
+        $this->assertNotNull($email1->retired_at);
+        $this->assertSame('email1-token', $email1->refresh_token);
+        $current = GoogleDriveConnection::current();
+        $this->assertSame('email2@gmail.com', $current->email);
+        $this->assertFalse($current->isConnected());
+
+        $log = ActivityLog::where('action', 'drive.account_changed')->sole();
+        $this->assertSame('changed the Google Drive storage account', $log->summary());
+        $this->assertSame(['from' => 'email1@gmail.com', 'to' => 'email2@gmail.com'], $log->properties);
+    }
+
+    public function test_switching_back_to_an_earlier_account_reuses_it(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'folder_id' => 'folder-1', 'retired_at' => now()]);
+        $email2 = GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->set('newEmail', 'email1@gmail.com')
+            ->set('newEmail_confirmation', 'email1@gmail.com')
+            ->set('password', 'password')
+            ->call('changeAccount')
+            ->assertHasNoErrors();
+
+        $this->assertSame(2, GoogleDriveConnection::count());
+        $this->assertTrue($email1->fresh()->is(GoogleDriveConnection::current()));
+        $this->assertSame('folder-1', $email1->fresh()->folder_id);
+        $this->assertNotNull($email2->fresh()->retired_at);
+    }
+
+    public function test_the_change_warning_counts_the_documents_on_the_current_account(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
+        $this->documentsOn($email1, 3);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSee('3 documents are stored on email1@gmail.com');
+    }
+
+    public function test_the_page_names_earlier_accounts_that_still_hold_documents(): void
+    {
+        $email1 = GoogleDriveConnection::factory()->unconnected()->create(['email' => 'email1@gmail.com', 'folder_id' => 'folder-1', 'retired_at' => now()]);
+        $this->documentsOn($email1, 2);
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSee('Connected as email2@gmail.com')
+            ->assertSee('Earlier storage accounts')
+            ->assertSee('email1@gmail.com')
+            ->assertSee('2 documents')
+            ->assertSee('Keep these Google accounts')
+            ->assertSeeHtml('href="'.route('google-drive.connect', ['account' => $email1->id]).'"');
     }
 
     public function test_the_page_shows_who_is_connected(): void
@@ -117,14 +178,13 @@ class GoogleDrivePageTest extends TestCase
             ->assertDontSee('Not connected');
     }
 
-    public function test_the_page_warns_when_drive_storage_is_on_but_not_connected(): void
+    public function test_the_page_warns_while_the_saved_account_is_not_connected(): void
     {
-        GoogleDriveConnection::factory()->unconnected()->create();
         $this->actingAs($this->admin);
 
         $this->get(route('google-drive.index'))->assertDontSeeHtml('data-test="drive-warning"');
 
-        config(['filesystems.disks.submissions.driver' => 'google']);
+        GoogleDriveConnection::factory()->unconnected()->create();
 
         $this->get(route('google-drive.index'))->assertSeeHtml('data-test="drive-warning"');
     }

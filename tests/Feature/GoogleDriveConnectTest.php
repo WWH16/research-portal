@@ -122,6 +122,28 @@ class GoogleDriveConnectTest extends TestCase
         $this->assertSame('new-refresh-token', $connection->refresh_token);
     }
 
+    public function test_an_earlier_account_can_be_reconnected_so_its_documents_open_again(): void
+    {
+        // The current account is the older row, so nothing can pick the earlier account by row order alone.
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com', 'refresh_token' => 'email2-token']);
+        $email1 = GoogleDriveConnection::factory()->unconnected()->create(['email' => 'email1@gmail.com', 'folder_id' => 'folder-1', 'retired_at' => now()]);
+        $this->actingAs($this->admin)->withSession(['auth.password_confirmed_at' => time()]);
+
+        $location = $this->get(route('google-drive.connect', ['account' => $email1->id]))->headers->get('Location');
+        $this->assertStringContainsString('login_hint='.urlencode('email1@gmail.com'), $location);
+
+        $this->googleReturns('email1@gmail.com');
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('createFolder'));
+
+        $this->get(route('google-drive.callback'))->assertSessionMissing('drive-error');
+
+        $email1->refresh();
+        $this->assertSame('new-refresh-token', $email1->refresh_token);
+        $this->assertSame('folder-1', $email1->folder_id);
+        $this->assertNotNull($email1->retired_at);
+        $this->assertSame('email2-token', GoogleDriveConnection::current()->refresh_token);
+    }
+
     public function test_callback_without_a_refresh_token_asks_to_try_again(): void
     {
         GoogleDriveConnection::factory()->unconnected()->create(['email' => 'research.office@isu.edu.ph']);

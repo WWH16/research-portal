@@ -196,7 +196,7 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 
 ### Task 1.1: Packages and settings
 **Files:** `composer.json`, `composer.lock`, `config/services.php`, `config/filesystems.php`, `.env.example`. Test: `tests/Feature/GoogleDriveConfigTest.php`.
-**Produces:** `config('services.google.client_id' | 'client_secret' | 'redirect')`; the `submissions` disk driver read from `SUBMISSIONS_DISK_DRIVER` (default `local`).
+**Produces:** `config('services.google.client_id' | 'client_secret' | 'redirect')`. (A `SUBMISSIONS_DISK_DRIVER` switch was later replaced: saving a storage account sends new uploads to Drive.)
 - [x] Test `test_google_settings_are_read_from_the_environment`: the four config keys exist, and the submissions disk driver is `local` by default.
 - [x] Run it and watch it fail.
 - [x] Run `composer require laravel/socialite masbug/flysystem-google-drive-ext -W`. The adapter needs Guzzle 7, and the framework, aws-sdk, boost and google/apiclient all accept `^7.8.2 || ^8.0`. Record exactly which packages moved.
@@ -287,12 +287,21 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
   - [ ] Create an OAuth client of type Web application, with redirect URI `http://localhost:8000/google-drive/callback`, or your local URL with that path.
 - [ ] `.env`:
   - [ ] Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI`.
-  - [ ] Set `SUBMISSIONS_DISK_DRIVER=google`.
 - [ ] Run `php artisan migrate`.
 - [ ] Open Administration → Google Drive, click Connect, and sign in with the portal Gmail.
 - [ ] Upload a test PDF, open it in the portal, and check it appears in Drive's "Research Portal" folder as Restricted.
-- [ ] Optional: run `php artisan submissions:move-to-drive --from=local`.
+- [ ] Optional: run `php artisan submissions:move-to-drive` to copy older documents to Drive.
 - [ ] Production, with ISU IT:
   - [ ] Get the Workspace account and an Internal app.
   - [ ] Set the same keys in Laravel Cloud, then save the storage account on the Google Drive page.
-  - [ ] Run the move command, then detach the bucket.
+  - [ ] Run the move command until it reports `missing 0`; keep the bucket attached until then.
+
+## Revision: changing the storage account (October 28, 2026)
+
+The storage account is now chosen on the Google Drive page instead of in `.env`, and it can change later, for example when a Drive fills up:
+
+- An admin saves the first account; Connect accepts only that address. `GOOGLE_DRIVE_DOMAIN` and `SUBMISSIONS_DISK_DRIVER` are gone: once an account is saved, new uploads go to Drive.
+- Each Drive document's path starts with `drive-<account id>/`, so it opens from the account that saved it (`App\Services\DocumentStorage`).
+- **Change account** needs the new address twice and the admin's portal password. The old account is retired, not deleted, and keeps its access, so its documents still open. Nothing migrates.
+- The page lists earlier accounts that still hold documents, with Reconnect for each.
+- `submissions:move-to-drive` copies documents still on the `submissions` disk to the current account and rewrites their paths.

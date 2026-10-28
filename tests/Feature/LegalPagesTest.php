@@ -47,6 +47,12 @@ class LegalPagesTest extends TestCase
         ], escape: false);
     }
 
+    public function test_sign_up_shows_the_policies_once_in_its_agreement_line(): void
+    {
+        $this->get(route('register'))->assertDontSee('aria-label="Policies"', escape: false);
+        $this->get(route('login'))->assertSee('aria-label="Policies"', escape: false);
+    }
+
     public function test_sign_in_and_sign_up_link_to_both(): void
     {
         foreach (['login', 'register'] as $page) {

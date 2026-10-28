@@ -46,7 +46,10 @@
                 <footer class="flex flex-col items-center pb-6 text-center lg:pb-8">
                     {{-- Phones hide the brand panel, so its copyright line moves down here. --}}
                     <p class="text-xs text-zinc-600 lg:hidden">&copy; {{ now()->year }} {{ __('Isabela State University - Cauayan Campus') }}</p>
-                    <x-legal-links class="justify-center" />
+                    {{-- Sign-up links both policies in its agreement line under the button, so the footer leaves them out there. --}}
+                    @unless (request()->routeIs('register'))
+                        <x-legal-links class="justify-center" />
+                    @endunless
                 </footer>
             </main>
         </div>

@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\GoogleDriveConnection;
 use App\Models\User;
 use App\Services\GoogleDrive;
+use Google\Service\Exception as GoogleServiceException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
@@ -156,6 +157,28 @@ class GoogleDriveConnectTest extends TestCase
             ->assertSessionHas('drive-error', 'The portal didn’t get access to Google Drive. Click Connect again, and tick the Google Drive box on Google’s screen.');
 
         $this->assertFalse(GoogleDriveConnection::sole()->isConnected());
+    }
+
+    public function test_google_refusing_to_create_the_folder_shows_a_message_and_saves_nothing(): void
+    {
+        GoogleDriveConnection::factory()->unconnected()->create(['email' => 'research.office@isu.edu.ph']);
+        $this->googleReturns('research.office@isu.edu.ph');
+        $refusals = [
+            'accessNotConfigured' => 'Google Drive isn’t turned on for this app yet. In Google Cloud Console, enable the Google Drive API, wait a few minutes, then connect again.',
+            'backendError' => 'Google refused the request, so nothing was saved. Try Connect again in a few minutes.',
+        ];
+
+        foreach ($refusals as $reason => $message) {
+            $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('createFolder')
+                ->andThrow(new GoogleServiceException('{"error": "refused"}', 403, null, [['reason' => $reason]])));
+
+            $this->actingAs($this->admin)
+                ->get(route('google-drive.callback'))
+                ->assertRedirect(route('google-drive.index'))
+                ->assertSessionHas('drive-error', $message);
+
+            $this->assertFalse(GoogleDriveConnection::sole()->isConnected());
+        }
     }
 
     public function test_callback_without_a_refresh_token_asks_to_try_again(): void

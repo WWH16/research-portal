@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\GoogleDriveConnection;
 use App\Services\GoogleDrive;
+use Google\Exception as GoogleException;
+use Google\Service\Exception as GoogleServiceException;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -59,15 +62,24 @@ class GoogleDriveCallbackController
             return $this->refuse(__('Google didn’t give the portal lasting access. Click Connect again and allow access.'));
         }
 
-        DB::transaction(function () use ($connection, $google, $drive) {
-            $connection->update([
-                'refresh_token' => $google->refreshToken,
-                // Reconnecting keeps the folder the documents are already in.
-                'folder_id' => $connection->folder_id ?? $drive->createFolder($google->refreshToken),
-                'connected_by' => Auth::id(),
-            ]);
-            ActivityLog::record('drive.connected', $connection);
-        });
+        try {
+            DB::transaction(function () use ($connection, $google, $drive) {
+                $connection->update([
+                    'refresh_token' => $google->refreshToken,
+                    // Reconnecting keeps the folder the documents are already in.
+                    'folder_id' => $connection->folder_id ?? $drive->createFolder($google->refreshToken),
+                    'connected_by' => Auth::id(),
+                ]);
+                ActivityLog::record('drive.connected', $connection);
+            });
+        } catch (GoogleException|GuzzleException $e) {
+            // The full error stays in the log; the admin gets what to do about it.
+            report($e);
+
+            return $this->refuse($e instanceof GoogleServiceException && ($e->getErrors()[0]['reason'] ?? null) === 'accessNotConfigured'
+                ? __('Google Drive isn’t turned on for this app yet. In Google Cloud Console, enable the Google Drive API, wait a few minutes, then connect again.')
+                : __('Google refused the request, so nothing was saved. Try Connect again in a few minutes.'));
+        }
 
         return redirect()->route('google-drive.index')->with('status', __('Google Drive connected as :email.', ['email' => $email]));
     }

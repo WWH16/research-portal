@@ -3,7 +3,7 @@
 The portal holds two kinds of data:
 
 - **The database:** projects, users, reviews, filing options and the activity log.
-- **Uploaded files:** project documents on the private `submissions` disk, and profile photos on the `public` disk.
+- **Uploaded files:** project documents on the Research Office's Google Drive, and profile photos on the `public` disk.
 
 There are two ways to get data back:
 
@@ -14,20 +14,19 @@ There are two ways to get data back:
 
 Do this once, before the first deploy.
 
-1. Attach a private bucket to the environment with the disk name `submissions`. It holds project documents and the portal backups.
-2. Attach a public bucket with the disk name `public`. It holds profile photos.
-3. Open the database cluster's **Backups** page and choose **Daily**. Laravel Cloud keeps backups for 7 days unless you change it.
-4. Add a queue worker to the environment. Portal backups and restores run on the queue, so without a worker they never start.
-5. Set `DB_QUEUE_RETRY_AFTER=2000` in the environment variables. A backup or restore can run for up to 30 minutes (1800 seconds). With the default of 90 seconds, a second worker picks up the same job while the first is still running.
-6. Redeploy the environment.
+1. Attach a public bucket with the disk name `public`. It holds profile photos. Project documents and portal backups go to Google Drive, never to a bucket.
+2. Open the database cluster's **Backups** page and choose **Daily**. Laravel Cloud keeps backups for 7 days unless you change it.
+3. Add a queue worker to the environment. Portal backups and restores run on the queue, so without a worker they never start.
+4. Set `DB_QUEUE_RETRY_AFTER=2000` in the environment variables. A backup or restore can run for up to 30 minutes (1800 seconds). With the default of 90 seconds, a second worker picks up the same job while the first is still running.
+5. Redeploy the environment.
 
-Files uploaded before the move to buckets stay on the old server. Copy them into the buckets with a tool such as Cyberduck, keeping the same folders.
+Profile photos uploaded before the move to buckets stay on the old server. Copy them into the `public` bucket with a tool such as Cyberduck, keeping the same folders.
 
-If the buckets are missing in production, the Backup and Restore page shows a red warning. Laravel Cloud clears the server disk on every deploy, so attach the buckets before anyone uploads.
+If the `public` bucket is missing in production, the Backup and Restore page shows a red warning. Laravel Cloud clears the server disk on every deploy, so attach it before anyone uploads a photo.
 
 ## Storing documents on Google Drive
 
-Once an admin saves a storage account, new project documents go to the Research Office's Google Drive instead of the `submissions` bucket. Each document's saved path starts with `drive-<account number>/`, so it always opens from the account that saved it. Documents saved before that stay on the `submissions` disk until the move command copies them.
+Project documents are stored only on the Research Office's Google Drive. Each document's saved path starts with `drive-<account number>/`, so it always opens from the account that saved it. Until an admin saves and connects a storage account, uploads are refused.
 
 ### Setting it up
 
@@ -37,8 +36,7 @@ Once an admin saves a storage account, new project documents go to the Research 
    - `GOOGLE_REDIRECT_URI`, the redirect URI above.
 3. Run `php artisan migrate`.
 4. Sign in as an admin and open **System → Google Drive**. Save the storage account, the one Google account whose Drive keeps every document. Then, straight away, choose **Connect Google Drive**, confirm your password, and sign in to Google as that account. Between saving and connecting, uploads fail, so do both in one sitting. The portal refuses any other account, and creates a "Faculty Research Portal" folder there, shared with no one.
-5. Copy the older documents: `php artisan submissions:move-to-drive`. It copies every document still on the `submissions` disk to the storage account and updates each project's path. Run it until it reports `missing 0`. A second run skips documents already on Drive.
-6. Open a few documents in the portal to check they load. Keep the `submissions` bucket attached until every document has moved.
+5. Upload a test document to a project and open it, to check that uploads reach Google Drive.
 
 ### Keeping it working
 
@@ -50,47 +48,43 @@ Once an admin saves a storage account, new project documents go to the Research 
 - **Disconnect** revokes the portal's access at Google. The saved account and the files on Drive stay.
 - **Replaced documents** go to the Drive trash, so they still count against storage for 30 days.
 
-### Backups with Google Drive
-
-- Portal backups must leave the `google_drive_connections` table out, so a downloaded zip never carries the Google token. After restoring a backup, reconnect Google Drive.
-- Backups must read each document from the account that holds it (`App\Services\DocumentStorage::locate()`), so with Drive they download every document from Google and take longer.
-
 ## Portal backups
 
-Portal backups are manual, from **Administration → Backup and Restore**. The page asks for your password again before it opens.
+Portal backups are manual, from **Administration → Backup and Restore**, and they live on Google Drive, in a `Backups` folder inside the storage account's "Faculty Research Portal" folder. The page asks for your password again before it opens. Until a storage account is connected, the page says so and offers neither a backup nor a restore.
 
 ### Taking a backup
 
 1. Choose **Back up now**.
-2. Keep the page open. The download starts on its own when the backup is ready. Large portals can take several minutes.
-3. Store the zip on a drive the university controls, outside Laravel Cloud.
+2. Keep the page open. The download starts on its own when the backup is ready. Large portals can take several minutes, because every document is read from Google Drive.
+3. Store the zip on a drive the university controls. A copy on the storage account alone is not enough: if that Google account is lost, its backups go with it.
 
 Each backup is one zip:
 
-- `database/<table>.jsonl`: every table, one JSON row per line. Sessions, cache, queued jobs, password reset tokens and the Google Drive connection are left out.
-- `documents/...`: every file on the `submissions` disk.
+- `database/<table>.jsonl`: every table, one JSON row per line. Sessions, cache, queued jobs, password reset tokens and the Google Drive connection are left out, so a zip never carries the Google token.
+- `documents/drive-<account number>/...`: every project document, read from the storage account that holds it (`App\Services\DocumentStorage::locate()`), under the same path the database saves.
 - `photos/...`: every file on the `public` disk.
 
-The portal keeps the 10 newest backups in the `backups/` folder of the `submissions` bucket and deletes older ones. Each download is recorded in the activity log.
+The portal saves the zip to the `Backups` folder of the current storage account and keeps the 10 newest there, deleting older ones. Each backup and each download is recorded in the activity log. Backups saved before a **Change account** stay in the earlier account's folder; the list shows the current account's backups.
 
 ### Restoring a backup
 
 **A restore replaces all of the portal's data with the backup's.** Anything added or changed after the backup was taken is lost from the portal, except in the safety backup described below.
 
-1. To restore a zip you kept outside the portal, choose it under **Upload a backup**, then **Upload**. It appears in the list of backups.
+1. To restore a zip you kept outside the portal, choose it under **Upload a backup**, then **Upload**. The portal saves it to the `Backups` folder and it appears in the list.
 2. In the list, choose **Restore** on the backup, then confirm.
 3. The portal first takes a safety backup named `portal-before-restore-...zip`, then restores. Keep the page open until it reports that the restore finished.
 4. Tell users to sign out and back in. Accounts and passwords are now the ones in the backup.
 
 What a restore does:
 
-- Writes every file in the zip back to its disk. Files uploaded after the backup stay on the disk, but nothing in the restored data points to them.
-- Empties every table except sessions, cache, queued jobs, password reset tokens and the migrations list, then fills them from the zip, in one transaction. If anything fails, the database is left exactly as it was.
+- Checks first that every storage account a document path names is saved and connected here. If one isn't, the restore stops before it changes anything and names the account to reconnect.
+- Writes every document in the zip back to the storage account its path names, and every photo back to the `public` disk. Files uploaded after the backup stay where they are, but nothing in the restored data points to them.
+- Empties every table except sessions, cache, queued jobs, password reset tokens, the Google Drive connection and the migrations list, then fills them from the zip, in one transaction. If anything fails, the database is left exactly as it was. The Google Drive connection is kept as it is, so the portal stays connected after a restore.
 - Records the restore in the activity log.
 
 The portal refuses a backup made by a newer version of the portal than the one deployed. Deploy that version first, then restore. Older backups restore into the newer version, as long as every new column has a default.
 
-Uploads go through Livewire and are limited to 500 MB. The server's PHP `upload_max_filesize` and `post_max_size` must also allow the file. For a larger zip, copy it into the `backups/` folder of the `submissions` bucket with a tool such as Cyberduck. It then appears in the list.
+Uploads go through Livewire and are limited to 500 MB. The server's PHP `upload_max_filesize` and `post_max_size` must also allow the file. A zip put into the `Backups` folder by hand on drive.google.com never appears in the list: the portal's Google access covers only the files it saved itself. Upload every zip through the page.
 
 ## Restoring a Laravel Cloud database backup
 

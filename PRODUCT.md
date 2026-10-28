@@ -21,13 +21,13 @@ The Faculty Research Portal tracks ISU Cauayan (Isabela State University, Cauaya
 - Only the concept proposal is reviewed: the Research Office passes it or returns it for revision with remarks. The detailed proposal opens once the concept proposal passes; the mid-year progress report opens once the detailed proposal is uploaded; the terminal report opens once the mid-year progress report is uploaded. None of these three is reviewed.
 - Proponents upload documents. A new upload replaces the earlier file for that stage.
 - Research Drive groups projects by college and year.
-- The portal runs on Laravel Cloud. The database and the uploaded-file buckets are Laravel Cloud resources.
+- The portal runs on Laravel Cloud. The database and the profile-photo bucket are Laravel Cloud resources; project documents are stored on the Research Office's Google Drive.
 
 ## Capabilities and Constraints
 
 - Laravel 13, Livewire 4, Flux and Fortify. Roles are `admin` and `faculty`.
 - Only verified accounts reach the portal. Admin pages sit behind the `admin` middleware.
-- Uploaded documents live on the private `submissions` disk and profile photos on the `public` disk. Each disk is a Laravel Cloud bucket in production.
+- Project documents live only in the "Faculty Research Portal" folder of the Google Drive storage account an admin connects on System → Google Drive; with none connected, uploads are refused. Profile photos live on the `public` disk, a Laravel Cloud bucket in production.
 - Laravel Cloud backs up the database daily. Its object storage keeps no file backups. The planned portal backup and restore is in `docs/backup-and-restore.md`.
 - Tracking starts in 2026. No earlier data exists.
 

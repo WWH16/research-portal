@@ -50,6 +50,11 @@ class GoogleDriveCallbackController
             return $this->refuse(__('Sign in as :expected to connect. You signed in as :actual.', ['expected' => $connection->email, 'actual' => $email]));
         }
 
+        // Google lets the person untick the Drive box and still continue, which would leave a token that can't store a file.
+        if (! in_array(GoogleDrive::SCOPE, $google->approvedScopes, true)) {
+            return $this->refuse(__('The portal didn’t get access to Google Drive. Click Connect again, and tick the Google Drive box on Google’s screen.'));
+        }
+
         if (! $google->refreshToken) {
             return $this->refuse(__('Google didn’t give the portal lasting access. Click Connect again and allow access.'));
         }

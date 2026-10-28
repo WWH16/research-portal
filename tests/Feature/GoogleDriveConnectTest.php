@@ -35,9 +35,9 @@ class GoogleDriveConnectTest extends TestCase
     /**
      * Google answering the callback as the given account, without any network call.
      */
-    private function googleReturns(string $email, ?string $refreshToken = 'new-refresh-token'): void
+    private function googleReturns(string $email, ?string $refreshToken = 'new-refresh-token', array $scopes = ['openid', GoogleDrive::SCOPE]): void
     {
-        $user = (new GoogleUser)->map(['email' => $email])->setToken('access-token')->setRefreshToken($refreshToken);
+        $user = (new GoogleUser)->map(['email' => $email])->setToken('access-token')->setRefreshToken($refreshToken)->setApprovedScopes($scopes);
         $provider = Mockery::mock(GoogleProvider::class);
         $provider->shouldReceive('user')->andReturn($user);
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
@@ -142,6 +142,20 @@ class GoogleDriveConnectTest extends TestCase
         $this->assertSame('folder-1', $email1->folder_id);
         $this->assertNotNull($email1->retired_at);
         $this->assertSame('email2-token', GoogleDriveConnection::current()->refresh_token);
+    }
+
+    public function test_callback_refuses_when_the_google_drive_box_was_left_unticked(): void
+    {
+        GoogleDriveConnection::factory()->unconnected()->create(['email' => 'research.office@isu.edu.ph']);
+        $this->googleReturns('research.office@isu.edu.ph', scopes: ['openid', 'https://www.googleapis.com/auth/userinfo.email']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('createFolder'));
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.callback'))
+            ->assertRedirect(route('google-drive.index'))
+            ->assertSessionHas('drive-error', 'The portal didn’t get access to Google Drive. Click Connect again, and tick the Google Drive box on Google’s screen.');
+
+        $this->assertFalse(GoogleDriveConnection::sole()->isConnected());
     }
 
     public function test_callback_without_a_refresh_token_asks_to_try_again(): void

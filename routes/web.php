@@ -40,9 +40,18 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     // Documents live on the private "submissions" disk, so only the project's proponents and admins can open one.
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
         $path = $submission->{$stage.'_path'};
-        abort_unless($path && Storage::disk('submissions')->exists($path), 404);
+        abort_unless($path, 404);
 
-        return Storage::disk('submissions')->response($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
+        // On Google Drive the disk can't be reached while no account is connected or its access was revoked.
+        try {
+            $disk = Storage::disk('submissions');
+        } catch (RuntimeException) {
+            abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
+        }
+
+        abort_unless($disk->exists($path), 404);
+
+        return $disk->response($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     Route::middleware('admin')->group(function () {

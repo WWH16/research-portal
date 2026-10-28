@@ -246,12 +246,12 @@ Outside the code. This is an accepted risk that the project cannot control. ISU 
 ### Task 3.1: The Google disk
 **Files:** `app/Providers/AppServiceProvider.php` (`Storage::extend('google', ...)`), `routes/web.php` (`submissions.document` Content-Type by extension). Test: `tests/Feature/GoogleDriveDiskTest.php`.
 **Produces:** with `SUBMISSIONS_DISK_DRIVER=google`, `Storage::disk('submissions')` is a Drive-backed `FilesystemAdapter` rooted at the saved folder. With no connection it throws `RuntimeException('Google Drive is not connected.')`.
-- [ ] Tests:
+- [x] Tests:
   - `test_the_google_disk_is_built_from_the_saved_connection`: no network call. The client takes the refresh token and refreshes on first use.
   - `test_the_google_disk_refuses_without_a_connection`.
   - `test_documents_download_with_the_type_of_their_extension`: pdf, doc, docx.
-- [ ] Watch them fail, implement, run the full suite.
-  - [ ] Commit: `feat(drive): store submission PDFs on Google Drive`
+- [x] Watch them fail, implement, run the full suite.
+  - [x] Commit: `feat(drive): store submission PDFs on Google Drive`
 
 ### Task 3.2: Storage outages on upload
 **Files:** `resources/views/pages/submissions/⚡create.blade.php` (`save()` catches `RuntimeException` from the transaction). Test: `tests/Feature/SubmissionTest.php`.

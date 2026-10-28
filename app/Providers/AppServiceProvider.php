@@ -2,12 +2,20 @@
 
 namespace App\Providers;
 
+use App\Models\GoogleDriveConnection;
+use App\Services\GoogleDrive;
 use Carbon\CarbonImmutable;
+use Google\Service\Drive;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use League\Flysystem\Filesystem;
+use Masbug\Flysystem\GoogleDriveAdapter;
 use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +35,27 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->registerCsvResponse();
+        $this->registerGoogleDriveDisk();
+    }
+
+    /**
+     * The "google" disk driver: the connected account's "Research Portal" folder on Google Drive. Built from the
+     * saved connection each time the disk is first used, so it signs in as whichever account an admin connected.
+     */
+    protected function registerGoogleDriveDisk(): void
+    {
+        Storage::extend('google', function (Application $app, array $config) {
+            $connection = GoogleDriveConnection::current() ?? throw new RuntimeException('Google Drive is not connected.');
+            // The folder is given by ID; as a root path the adapter would look it up by name over the network.
+            $adapter = new GoogleDriveAdapter(
+                new Drive($app->make(GoogleDrive::class)->client($connection->refresh_token)),
+                options: ['sharedFolderId' => $connection->folder_id],
+            );
+            // Always private: the adapter shares a "public" file with anyone who has its link.
+            $config['visibility'] = 'private';
+
+            return new FilesystemAdapter(new Filesystem($adapter, $config), $adapter, $config);
+        });
     }
 
     /**

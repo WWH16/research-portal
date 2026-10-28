@@ -42,7 +42,7 @@
         </main>
 
         <footer class="border-t border-line">
-            <div class="mx-auto flex max-w-3xl flex-col gap-3 px-6 py-8 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
+            <div class="mx-auto flex max-w-3xl flex-col gap-1 px-6 py-6 text-xs text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
                 <p>&copy; {{ now()->year }} {{ __('Isabela State University - Cauayan Campus') }}</p>
                 <x-legal-links />
             </div>

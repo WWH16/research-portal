@@ -66,10 +66,18 @@
             <!-- Confirm Password -->
             <x-password-confirmation password="password" confirmation="confirmation" name="password_confirmation" x-model="confirmation" />
 
-            <div class="flex items-center justify-end">
+            {{-- The agreement sits with the button that makes it, in the smallest step of the type scale --}}
+            <div class="flex flex-col gap-3">
                 <flux:button type="submit" variant="primary" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="register-user-button">
                     {{ __('Create account') }}
                 </flux:button>
+
+                <p class="text-center text-xs leading-5 text-pretty text-zinc-600">
+                    {{ __('By creating an account, you agree to the') }}
+                    <flux:link :href="route('terms')" class="text-xs">{{ __('Terms of Service') }}</flux:link>
+                    {{ __('and') }}
+                    <flux:link :href="route('privacy')" class="text-xs">{{ __('Privacy Policy') }}</flux:link>.
+                </p>
             </div>
         </form>
 

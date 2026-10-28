@@ -37,6 +37,16 @@ class LegalPagesTest extends TestCase
         $this->get(route('terms'))->assertOk();
     }
 
+    public function test_sign_up_says_creating_an_account_accepts_both(): void
+    {
+        $this->get(route('register'))->assertSeeInOrder([
+            'Create account',
+            'By creating an account, you agree to the',
+            'href="'.route('terms').'"',
+            'href="'.route('privacy').'"',
+        ], escape: false);
+    }
+
     public function test_sign_in_and_sign_up_link_to_both(): void
     {
         foreach (['login', 'register'] as $page) {

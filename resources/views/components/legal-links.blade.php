@@ -1,5 +1,7 @@
-{{-- The two public policy pages, linked from the sign-in screens and from each other. --}}
-<nav {{ $attributes->class('flex items-center gap-4') }} aria-label="{{ __('Policies') }}">
-    <flux:link :href="route('privacy')" variant="subtle">{{ __('Privacy Policy') }}</flux:link>
-    <flux:link :href="route('terms')" variant="subtle">{{ __('Terms of Service') }}</flux:link>
+{{-- The two public policy pages: fine print, one step below the page's smallest secondary line. Vertical padding gives each
+     link a comfortable tap target without making the row look any bigger. --}}
+<nav {{ $attributes->class('flex flex-wrap items-center gap-x-2 text-xs text-zinc-600') }} aria-label="{{ __('Policies') }}">
+    <flux:link :href="route('privacy')" variant="subtle" class="py-2 text-xs text-zinc-600">{{ __('Privacy Policy') }}</flux:link>
+    <span aria-hidden="true">·</span>
+    <flux:link :href="route('terms')" variant="subtle" class="py-2 text-xs text-zinc-600">{{ __('Terms of Service') }}</flux:link>
 </nav>

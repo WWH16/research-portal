@@ -28,8 +28,9 @@
                 </p>
             </aside>
 
-            <main class="flex items-center justify-center px-6 py-12 sm:px-10">
-                <div class="flex w-full max-w-sm flex-col gap-8">
+            {{-- The form centers in the space above the fine print, which keeps to the bottom edge like the brand panel's footer. --}}
+            <main class="flex flex-col px-6 sm:px-10">
+                <div class="mx-auto my-auto flex w-full max-w-sm flex-col gap-8 py-12">
                     <div class="flex items-center gap-3 lg:hidden">
                         <x-app-logo-icon class="size-10" />
                         {{-- Phones hide the brand panel and its footer, so the campus is named here instead. --}}
@@ -40,9 +41,13 @@
                     </div>
 
                     {{ $slot }}
-
-                    <x-legal-links class="justify-center text-sm" />
                 </div>
+
+                <footer class="flex flex-col items-center pb-6 text-center lg:pb-8">
+                    {{-- Phones hide the brand panel, so its copyright line moves down here. --}}
+                    <p class="text-xs text-zinc-600 lg:hidden">&copy; {{ now()->year }} {{ __('Isabela State University - Cauayan Campus') }}</p>
+                    <x-legal-links class="justify-center" />
+                </footer>
             </main>
         </div>
 

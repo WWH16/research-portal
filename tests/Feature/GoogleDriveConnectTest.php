@@ -157,6 +157,19 @@ class GoogleDriveConnectTest extends TestCase
         $this->assertSame(0, GoogleDriveConnection::count());
     }
 
+    public function test_cancelling_on_google_changes_nothing(): void
+    {
+        $connection = GoogleDriveConnection::factory()->create();
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('createFolder'));
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.callback', ['error' => 'access_denied']))
+            ->assertRedirect(route('google-drive.index'))
+            ->assertSessionHas('drive-error', 'Google sign-in was cancelled, so nothing changed.');
+
+        $this->assertTrue($connection->is(GoogleDriveConnection::sole()));
+    }
+
     public function test_the_page_offers_connect(): void
     {
         $this->actingAs($this->admin)

@@ -8,6 +8,7 @@ use App\Models\Submission;
 use App\Services\GoogleDrive;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
@@ -20,8 +21,13 @@ use Laravel\Socialite\Two\User as GoogleUser;
  */
 class GoogleDriveCallbackController
 {
-    public function __invoke(GoogleDrive $drive): RedirectResponse
+    public function __invoke(Request $request, GoogleDrive $drive): RedirectResponse
     {
+        // Choosing Cancel on Google's screen comes back with ?error=access_denied and no code to trade for a token.
+        if ($request->has('error')) {
+            return $this->refuse(__('Google sign-in was cancelled, so nothing changed.'));
+        }
+
         try {
             // Stateful on purpose: Socialite checks the state it put in the session, so a forged callback fails here.
             /** @var GoogleUser $google */

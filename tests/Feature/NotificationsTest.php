@@ -365,6 +365,72 @@ class NotificationsTest extends TestCase
         $this->get(route('dashboard'))->assertDontSeeHtml('unread notifications"');
     }
 
+    public function test_a_deleted_notice_comes_back_exactly_on_undo(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $before = $this->maria->notifications()->sole()->getRawOriginal();
+        $this->actingAs($this->maria);
+
+        $page = Livewire::test('pages::notifications.index')
+            ->call('delete', $before['id'])
+            ->assertSee('Notice deleted.')
+            ->assertSee('No notifications yet.');
+        $this->assertSame(0, $this->maria->notifications()->count());
+
+        $page->call('undoDelete')->assertSee('Concept proposal passed: Solar Dryer Study');
+        $this->assertSame($before, $this->maria->notifications()->sole()->getRawOriginal());
+    }
+
+    public function test_delete_all_read_keeps_unread_notices_and_can_be_undone(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $this->maria->notify(new ConceptReviewed($project, 'returned', 'Narrow the scope.'));
+        $this->maria->notify(new ProjectDeadline($project, 7));
+        $this->maria->notifications()->where('data->message', 'like', 'Concept%')->update(['read_at' => now()]);
+        $this->actingAs($this->maria);
+
+        $page = Livewire::test('pages::notifications.index')
+            ->assertSee('Delete 2 read notices?')
+            ->call('deleteAllRead')
+            ->assertSee('2 notices deleted.');
+        $this->assertSame(1, $this->maria->notifications()->count());
+        $this->assertSame(1, $this->maria->unreadNotifications()->count());
+
+        $page->call('undoDelete');
+        $this->assertSame(3, $this->maria->notifications()->count());
+    }
+
+    public function test_a_notice_can_be_marked_unread_and_read_again(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $notice = $this->maria->notifications()->sole();
+        $notice->markAsRead();
+        $this->actingAs($this->maria);
+
+        $page = Livewire::test('pages::notifications.index')->call('toggleRead', $notice->id);
+        $this->assertSame(1, $this->maria->unreadNotifications()->count());
+
+        $page->call('toggleRead', $notice->id);
+        $this->assertSame(0, $this->maria->unreadNotifications()->count());
+    }
+
+    public function test_another_members_notice_cannot_be_deleted_or_marked(): void
+    {
+        $project = $this->project();
+        $this->jose->notify(new ConceptReviewed($project, 'passed', null));
+        $joses = $this->jose->notifications()->sole();
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::notifications.index')->call('delete', $joses->id)->assertStatus(404);
+        Livewire::test('pages::notifications.index')->call('toggleRead', $joses->id)->assertStatus(404);
+
+        $this->assertModelExists($joses);
+        $this->assertNull($joses->fresh()->read_at);
+    }
+
     public function test_an_empty_list_says_so(): void
     {
         $this->actingAs($this->maria)

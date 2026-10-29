@@ -132,7 +132,7 @@
 }
 
 [data-flux-cell] {
-    padding-block: 1rem;
+    padding-block: 0.5rem;
 }
 
 /* Flux's red-500 errors and zinc-400 placeholders fall short of 4.5:1 on white; one step darker clears it. */

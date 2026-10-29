@@ -508,6 +508,47 @@ class NotificationsTest extends TestCase
         $this->assertSame(route('google-drive.index'), $mail->actionUrl);
     }
 
+    public function test_a_kind_turned_off_still_arrives_in_the_portal_but_not_by_email(): void
+    {
+        $project = $this->project();
+        $this->maria->forceFill(['email_preferences' => ['reminders' => false]])->save();
+
+        $this->assertSame(['database'], (new ProjectDeadline($project, 7))->via($this->maria));
+        $this->assertSame(['database', 'mail'], (new ConceptReviewed($project, 'passed', null))->via($this->maria));
+    }
+
+    public function test_account_and_drive_notices_are_always_emailed(): void
+    {
+        $this->maria->forceFill(['email_preferences' => array_fill_keys(array_keys(User::EMAIL_KINDS), false)])->save();
+        $account = GoogleDriveConnection::factory()->create();
+
+        $this->assertSame(['database', 'mail'], (new AccountApproved)->via($this->maria));
+        $this->assertSame(['database', 'mail'], (new DriveDisconnected($account))->via($this->maria));
+        $this->assertSame(['database', 'mail'], (new DriveFull($account))->via($this->maria));
+    }
+
+    public function test_members_choose_their_emails_on_my_profile(): void
+    {
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::settings.profile')
+            ->assertSee('Deadline reminders')
+            ->assertDontSee('New concept proposals to review')
+            ->set('emailMe.reminders', false)
+            ->assertHasNoErrors();
+
+        $this->assertFalse($this->maria->fresh()->wantsEmail('reminders'));
+        $this->assertTrue($this->maria->fresh()->wantsEmail('reviews'));
+
+        // Only known kinds are saved; anything else typed into the request is dropped.
+        Livewire::test('pages::settings.profile')->set('emailMe.role', false);
+        $this->assertArrayNotHasKey('role', $this->maria->fresh()->email_preferences);
+        $this->assertSame('faculty', $this->maria->fresh()->role);
+
+        $this->actingAs($this->admin());
+        Livewire::test('pages::settings.profile')->assertSee('New concept proposals to review');
+    }
+
     public function test_an_empty_list_says_so(): void
     {
         $this->actingAs($this->maria)

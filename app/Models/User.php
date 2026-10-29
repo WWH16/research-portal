@@ -36,6 +36,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
+ * @property array<string, bool>|null $email_preferences
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -67,7 +68,27 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'password' => 'hashed',
+            'email_preferences' => 'array',
         ];
+    }
+
+    /**
+     * The kinds of notice a member can choose not to get by email. Notices always arrive in the portal; account and
+     * Google Drive notices are always emailed too. The last is for admins only.
+     */
+    public const EMAIL_KINDS = [
+        'reminders' => 'Deadline reminders',
+        'reviews' => 'Concept proposal decisions',
+        'dates' => 'Project date changes',
+        'to_review' => 'New concept proposals to review',
+    ];
+
+    /**
+     * Whether this member wants a kind of notice by email too. Every kind is on until they turn it off.
+     */
+    public function wantsEmail(string $kind): bool
+    {
+        return (bool) ($this->email_preferences[$kind] ?? true);
     }
 
     /**

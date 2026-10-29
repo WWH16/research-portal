@@ -11,6 +11,8 @@ use Illuminate\Notifications\Messages\MailMessage;
  */
 class ConceptReviewed extends PortalNotification
 {
+    protected const ?string EMAIL_KIND = 'reviews';
+
     /**
      * The decision and remarks are passed in, not read from the project, so a later upload can't change what the email says.
      *

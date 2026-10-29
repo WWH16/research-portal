@@ -12,6 +12,8 @@ use Illuminate\Notifications\Messages\MailMessage;
  */
 class ConceptAwaitingReview extends PortalNotification
 {
+    protected const ?string EMAIL_KIND = 'to_review';
+
     public function __construct(
         public readonly Submission $submission,
         public readonly string $uploader,

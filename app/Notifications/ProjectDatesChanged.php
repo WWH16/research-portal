@@ -11,6 +11,8 @@ use Illuminate\Notifications\Messages\MailMessage;
  */
 class ProjectDatesChanged extends PortalNotification
 {
+    protected const ?string EMAIL_KIND = 'dates';
+
     public function __construct(
         public readonly Submission $submission,
     ) {}

@@ -11,6 +11,8 @@ use Illuminate\Notifications\Messages\MailMessage;
  */
 class ProjectDeadline extends PortalNotification
 {
+    protected const ?string EMAIL_KIND = 'reminders';
+
     /**
      * @param  int  $days  Days until the target date; negative once it has passed.
      */

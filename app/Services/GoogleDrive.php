@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\GoogleDriveConnection;
+use App\Models\User;
+use App\Notifications\DriveFull;
 use Google\Client;
 use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
@@ -11,6 +13,7 @@ use GuzzleHttp\Middleware;
 use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use League\Flysystem\Filesystem;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Psr\Http\Message\ResponseInterface;
@@ -73,8 +76,10 @@ class GoogleDrive
         // A school account's own limit is never reported, so a refused upload is how the Google Drive page learns
         // it's full. Read off the response: the adapter drops Google's error and only says the write failed.
         $client->getHttpClient()->getConfig('handler')->push(Middleware::mapResponse(function (ResponseInterface $response) use ($account) {
-            if ($response->getStatusCode() === 403 && str_contains((string) $response->getBody(), 'storageQuotaExceeded')) {
-                Cache::forever($account->fullKey(), now());
+            // Only the first refusal tells the admins; the ones after it, until an upload goes through, stay quiet.
+            if ($response->getStatusCode() === 403 && str_contains((string) $response->getBody(), 'storageQuotaExceeded')
+                && Cache::add($account->fullKey(), now())) {
+                Notification::send(User::where('role', 'admin')->get(), new DriveFull($account));
             }
 
             return $response;

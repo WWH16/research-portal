@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
+use App\Notifications\DriveFull;
 use App\Services\GoogleDrive;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;
@@ -14,6 +15,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Mockery\MockInterface;
@@ -149,18 +151,27 @@ class GoogleDriveDiskTest extends TestCase
         $this->assertSame(['used' => 4509715660, 'limit' => 16106127360, 'drive' => 3000000000, 'portal' => 3500, 'pooled' => false], app(GoogleDrive::class)->usage($account));
     }
 
-    public function test_an_upload_google_refuses_for_lack_of_space_marks_the_account_full(): void
+    public function test_an_upload_google_refuses_for_lack_of_space_marks_the_account_full_and_tells_admins_once(): void
     {
-        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
-        $this->googleAnswers([
-            new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
-            new Response(403, ['Content-Type' => 'application/json'], '{"error": {"code": 403, "message": "The user\'s Drive storage quota has been exceeded.", "errors": [{"reason": "storageQuotaExceeded"}]}}'),
-        ]);
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $faculty = User::factory()->create();
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123', 'email' => 'office@isu.edu.ph']);
+        $full = new Response(403, ['Content-Type' => 'application/json'], '{"error": {"code": 403, "errors": [{"reason": "storageQuotaExceeded"}]}}');
+        $this->googleAnswers([new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'), $full, $full]);
 
+        $disk = app(GoogleDrive::class)->disk($account);
         // The adapter swallows Google's error and only reports a failed write, so the refusal is read off the response.
-        $this->assertFalse(app(GoogleDrive::class)->disk($account)->put('proposal.pdf', 'pdf'));
+        $this->assertFalse($disk->put('proposal.pdf', 'pdf'));
+        $disk->put('proposal.pdf', 'pdf');
 
         $this->assertTrue(Cache::has($account->fullKey()));
+        Notification::assertSentToTimes($admin, DriveFull::class, 1);
+        Notification::assertSentTo($admin, DriveFull::class, fn (DriveFull $notification) => $notification->toArray($admin) === [
+            'message' => 'Google Drive office@isu.edu.ph is full, so documents can’t be uploaded. Free up space in it, or change the storage account.',
+            'url' => route('google-drive.index'),
+        ]);
+        Notification::assertNotSentTo($faculty, DriveFull::class);
     }
 
     public function test_a_school_account_reports_its_own_drive_not_its_organizations_pool(): void

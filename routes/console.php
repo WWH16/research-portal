@@ -29,7 +29,7 @@ Artisan::command('projects:remind', function () {
 
         // The Research Office hears once, the day after a project runs late; the weekly reminders after that stay with its people.
         if ($days === -1) {
-            Notification::send(User::where('role', 'admin')->get(), new ProjectLate($submission));
+            Notification::send(User::admins()->get(), new ProjectLate($submission));
         }
     });
 })->purpose('Remind proponents of near and passed target dates');

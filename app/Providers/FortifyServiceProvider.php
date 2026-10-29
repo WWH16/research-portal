@@ -49,8 +49,6 @@ class FortifyServiceProvider extends ServiceProvider
         // Fortify fires Verified when the emailed link verifies someone; the app layout shows this as a toast.
         Event::listen(Verified::class, fn () => session()->flash('verified', __('Email verified. Welcome to the portal.')));
 
-        // A confirmed sign-up waits for the Research Office on the Manage Users badge, which counts it live; no notice is sent.
-
         $this->configureEmails();
     }
 

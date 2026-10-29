@@ -93,7 +93,7 @@ class GoogleDrive
             // Only the first refusal tells the admins; the ones after it, until an upload goes through, stay quiet.
             if ($response->getStatusCode() === 403 && str_contains((string) $response->getBody(), 'storageQuotaExceeded')
                 && Cache::add($account->fullKey(), now())) {
-                Notification::send(User::where('role', 'admin')->get(), new DriveFull($account));
+                Notification::send(User::admins()->get(), new DriveFull($account));
             }
 
             return $response;

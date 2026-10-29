@@ -235,7 +235,7 @@ new #[Title('Research Project')] class extends Component {
 
         // The Research Office records whether a completed project presented in-house, so it hears once the save has committed.
         if ($completing) {
-            Notification::send(User::where('role', 'admin')->whereKeyNot(Auth::id())->get(), new ProjectCompleted($submission, Auth::user()->displayName()));
+            Notification::send(User::admins()->whereKeyNot(Auth::id())->get(), new ProjectCompleted($submission, Auth::user()->displayName()));
         }
 
         // Only the concept proposal goes to the Research Office; the other documents are filed as they come in.

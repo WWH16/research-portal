@@ -130,11 +130,7 @@ class DocumentStorage
 
         $body = $media->getBody();
 
-        return response()->stream(function () use ($body) {
-            while (! $body->eof()) {
-                echo $body->read(1024 * 1024);
-            }
-        }, 200, array_filter([
+        return response()->stream(fn () => fpassthru($body->detach()), 200, array_filter([
             'Content-Type' => $media->getHeaderLine('Content-Type') ?: 'application/octet-stream',
             'Content-Length' => $media->getHeaderLine('Content-Length') ?: null,
             'Content-Disposition' => HeaderUtils::makeDisposition('inline', $name, str_replace('%', '', Str::ascii($name))),
@@ -189,7 +185,7 @@ class DocumentStorage
         $account->update($forget);
 
         if ($wasConnected) {
-            Notification::send(User::where('role', 'admin')->get(), new DriveDisconnected($account));
+            Notification::send(User::admins()->get(), new DriveDisconnected($account));
         }
     }
 

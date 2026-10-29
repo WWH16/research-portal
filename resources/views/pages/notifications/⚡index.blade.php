@@ -151,10 +151,11 @@ new #[Title('Notifications')] class extends Component {
 
     {{-- Offered for 10 seconds; the deleted notices wait a little longer in the cache, so a late click still works --}}
     @if ($undo)
-        <div wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="mt-4 flex items-center justify-between gap-3 rounded-lg bg-zinc-100 px-4 py-2" data-test="undo-delete">
-            <flux:text>{{ trans_choice('{1} Notice deleted.|[2,*] :count notices deleted.', $deleted) }}</flux:text>
-            <flux:button size="sm" wire:click="undoDelete">{{ __('Undo') }}</flux:button>
-        </div>
+        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="mt-4" :text="trans_choice('{1} Notice deleted.|[2,*] :count notices deleted.', $deleted)" data-test="undo-delete">
+            <x-slot name="actions">
+                <flux:button size="sm" wire:click="undoDelete">{{ __('Undo') }}</flux:button>
+            </x-slot>
+        </flux:callout>
     @endif
 
     @if ($this->notifications->isEmpty())

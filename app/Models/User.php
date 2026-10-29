@@ -220,6 +220,16 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * The Research Office's accounts, who hear of work that needs an admin.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeAdmins(Builder $query): void
+    {
+        $query->where('role', 'admin');
+    }
+
+    /**
      * @return BelongsTo<Department, $this>
      */
     public function department(): BelongsTo

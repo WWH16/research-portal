@@ -49,7 +49,7 @@ new #[Title('My Profile')] class extends Component {
         $user = Auth::user();
         $choices = collect($this->emailMe)->only(array_keys(User::EMAIL_KINDS))->map(fn ($on) => (bool) $on);
 
-        $user->forceFill(['email_preferences' => $choices->all() + ($user->email_preferences ?? [])])->save();
+        $user->forceFill(['email_preferences' => $choices->all()])->save();
         $this->emailMe = $choices->all();
 
         Flux::toast(variant: 'success', text: __('Email settings saved.'));

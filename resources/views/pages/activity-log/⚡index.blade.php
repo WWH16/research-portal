@@ -272,8 +272,7 @@ new #[Title('Activity Log')] class extends Component {
         </div>
     @else
         {{-- Runs open in place through Alpine, so expanding one costs no request and survives filter redraws --}}
-        {{-- Rows are one line each, so they need less padding than Flux's default --}}
-        <flux:table class="mt-4 [&_td]:py-2" :paginate="$this->logs" x-data="{ open: {} }">
+        <flux:table class="mt-4" :paginate="$this->logs" x-data="{ open: {} }">
             <flux:table.columns>
                 <flux:table.column class="w-36">{{ __('When') }}</flux:table.column>
                 <flux:table.column class="w-48">{{ __('Member') }}</flux:table.column>

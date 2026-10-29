@@ -414,7 +414,7 @@ new #[Title('Manage Users')] class extends Component {
                                             <span class="inline-flex shrink-0 items-center rounded-md bg-isu-green-700 px-1.5 py-0.5 text-xs font-medium text-white">{{ __('You') }}</span>
                                         @endif
                                     </div>
-                                    <div class="truncate text-zinc-500">{{ $user->email }}</div>
+                                    <div class="truncate text-xs text-zinc-500">{{ $user->email }}</div>
                                 </div>
                             </div>
                         </flux:table.cell>

@@ -1,7 +1,9 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\ActivityLog;
+use App\Services\DocumentStorage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
@@ -80,13 +82,19 @@ new #[Title('My Profile')] class extends Component {
         $user = Auth::user();
         $previous = $user->profile_image;
 
-        $user->update(['profile_image' => $this->photo->store('profile-images', 'public')]);
+        try {
+            $user->update(['profile_image' => app(DocumentStorage::class)->store($this->photo, 'profile-images')]);
+        } catch (DocumentStorageUnavailable) {
+            $this->addError('photo', __('Photo storage is unavailable right now. Try again later or contact the Research Office.'));
 
-        if ($previous) {
-            Storage::disk('public')->delete($previous);
+            return;
+        } finally {
+            $this->reset('photo');
         }
 
-        $this->reset('photo');
+        if ($previous) {
+            $this->deletePhoto($previous);
+        }
 
         Flux::toast(variant: 'success', text: __('Photo updated.'));
     }
@@ -99,12 +107,20 @@ new #[Title('My Profile')] class extends Component {
         $user = Auth::user();
 
         if ($user->profile_image) {
-            Storage::disk('public')->delete($user->profile_image);
+            $this->deletePhoto($user->profile_image);
             $user->update(['profile_image' => null]);
         }
 
         Flux::modal('remove-photo')->close();
         Flux::toast(variant: 'success', text: __('Photo removed.'));
+    }
+
+    /**
+     * Delete a photo from Google Drive, or from the public disk for one uploaded before photos moved to Google Drive.
+     */
+    private function deletePhoto(string $path): void
+    {
+        str_starts_with($path, 'drive-') ? app(DocumentStorage::class)->delete($path) : Storage::disk('public')->delete($path);
     }
 
     /**

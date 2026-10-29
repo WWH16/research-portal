@@ -123,11 +123,17 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
-     * Public URL of the user's profile photo, or null when they have not uploaded one.
+     * URL of the user's profile photo, or null when they have not uploaded one. A photo on Google Drive opens
+     * through the portal; the file name in the URL changes with the photo, so browsers can keep it for good.
+     * One uploaded before photos moved to Google Drive is still on the public disk.
      */
     public function profileImageUrl(): ?string
     {
-        return $this->profile_image ? Storage::disk('public')->url($this->profile_image) : null;
+        return match (true) {
+            ! $this->profile_image => null,
+            str_starts_with($this->profile_image, 'drive-') => route('profile-photo', ['user' => $this, 'v' => basename($this->profile_image)]),
+            default => Storage::disk('public')->url($this->profile_image),
+        };
     }
 
     /**

@@ -21,14 +21,14 @@ class DocumentStorage
     public function __construct(private GoogleDrive $drive) {}
 
     /**
-     * Save an uploaded document and return the path to store on the project.
+     * Save an uploaded document or profile photo in a folder of the storage account and return the path to keep.
      */
-    public function store(UploadedFile $file): string
+    public function store(UploadedFile $file, string $folder = 'submissions'): string
     {
         $account = GoogleDriveConnection::current() ?? throw new DocumentStorageUnavailable('No Google Drive storage account is saved.');
 
         try {
-            $location = $this->driveOf($account)->putFile('submissions', $file);
+            $location = $this->driveOf($account)->putFile($folder, $file);
         } catch (Throwable $e) {
             $this->markIfUnreachable($account, $e);
 
@@ -40,6 +40,18 @@ class DocumentStorage
         Cache::forget($account->fullKey());
 
         return "drive-{$account->id}/{$location}";
+    }
+
+    /**
+     * Remove a replaced or rolled-back file from whichever account holds it. An account that can't be reached
+     * leaves the file where it is rather than failing the save.
+     */
+    public function delete(string $path): void
+    {
+        rescue(function () use ($path) {
+            [$disk, $location] = $this->locate($path);
+            $disk->delete($location);
+        });
     }
 
     /**

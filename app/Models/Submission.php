@@ -318,7 +318,7 @@ class Submission extends Model
 
         $new = app(DocumentStorage::class)->store($file);
 
-        DB::afterRollBack(fn () => $this->deleteDocument($new));
+        DB::afterRollBack(fn () => app(DocumentStorage::class)->delete($new));
 
         $this->{$stage.'_path'} = $new;
         $this->uploadTimes = null;
@@ -337,19 +337,7 @@ class Submission extends Model
         $this->save();
 
         if ($old) {
-            DB::afterCommit(fn () => $this->deleteDocument($old));
+            DB::afterCommit(fn () => app(DocumentStorage::class)->delete($old));
         }
-    }
-
-    /**
-     * Remove a replaced or rolled-back file from whichever disk holds it. An account that can't be reached
-     * leaves the file where it is rather than failing the save.
-     */
-    private function deleteDocument(string $path): void
-    {
-        rescue(function () use ($path) {
-            [$disk, $location] = app(DocumentStorage::class)->locate($path);
-            $disk->delete($location);
-        });
     }
 }

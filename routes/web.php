@@ -4,6 +4,7 @@ use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
+use App\Models\User;
 use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
 use Google\Exception as GoogleException;
@@ -67,6 +68,21 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
 
         return $disk->response($location, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
+
+    // Profile photos sit on the same private Google Drive, so any signed-in member's page shows them through here.
+    // Each one asks Google, so the browser keeps it: a new photo has a new name in the URL.
+    Route::get('profile-photo/{user}', function (User $user) {
+        abort_unless(str_starts_with((string) $user->profile_image, 'drive-'), 404);
+
+        try {
+            [$disk, $location] = app(DocumentStorage::class)->locate($user->profile_image);
+
+            return $disk->response($location, headers: ['Cache-Control' => 'private, max-age=31536000, immutable']);
+        } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
+            app(DocumentStorage::class)->noticeFailure($user->profile_image, $e);
+            abort(503);
+        }
+    })->name('profile-photo');
 
     Route::middleware('admin')->group(function () {
         Route::livewire('reviews', 'pages::reviews.index')->name('reviews.index');

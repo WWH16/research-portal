@@ -151,7 +151,8 @@ class ActivityLog extends Model
     }
 
     /**
-     * Sum up a folded run of routine entries, such as "14 sign-ins, 2 sign-outs · 9 people".
+     * Sum up a folded run of routine entries by who and how many, newest name first, such as
+     * "Maria Santos and Jose Reyes · 3 sign-ins, 1 sign-out" or "Maria Santos, Jose Reyes +7 others · 14 sign-ins".
      *
      * @param  Collection<array-key, self>  $run
      */
@@ -159,11 +160,16 @@ class ActivityLog extends Model
     {
         $signIns = $run->where('action', 'auth.login')->count();
         $signOuts = $run->count() - $signIns;
+        $names = $run->map(fn (self $log) => $log->actor_name ?? __('Deleted account'))->unique()->values();
 
-        return implode(', ', array_filter([
+        $who = $names->count() > 2
+            ? $names->take(2)->implode(', ').' '.trans_choice('{1} +:count other|[2,*] +:count others', $names->count() - 2)
+            : $names->implode(' '.__('and').' ');
+
+        return $who.' · '.implode(', ', array_filter([
             $signIns ? trans_choice('{1} :count sign-in|[2,*] :count sign-ins', $signIns) : null,
             $signOuts ? trans_choice('{1} :count sign-out|[2,*] :count sign-outs', $signOuts) : null,
-        ])).' · '.trans_choice('{1} :count person|[2,*] :count people', $run->pluck('user_id')->unique()->count());
+        ]));
     }
 
     /**

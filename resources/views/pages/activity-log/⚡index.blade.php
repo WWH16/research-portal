@@ -205,7 +205,8 @@ new #[Title('Activity Log')] class extends Component {
         </div>
     @else
         {{-- Runs open in place through Alpine, so expanding one costs no request and survives filter redraws --}}
-        <flux:table class="mt-4" :paginate="$this->logs" x-data="{ open: {} }">
+        {{-- Rows are one line each, so they need less padding than Flux's default --}}
+        <flux:table class="mt-4 [&_td]:py-2" :paginate="$this->logs" x-data="{ open: {} }">
             <flux:table.columns>
                 <flux:table.column class="w-36">{{ __('When') }}</flux:table.column>
                 <flux:table.column class="w-48">{{ __('Member') }}</flux:table.column>
@@ -214,17 +215,22 @@ new #[Title('Activity Log')] class extends Component {
             </flux:table.columns>
 
             <flux:table.rows>
-                {{-- Two or more sign-ins and sign-outs in a row on the same day fold into one row, so the changes between them stand out --}}
+                {{-- Three or more sign-ins and sign-outs in a row on the same day fold into one row, so the changes between them stand out --}}
                 @foreach ($this->logs->chunkWhile(fn ($log, $key, $run) => ActivityLog::joins($run->last(), $log)) as $run)
+                    {{-- Each day is named once above its entries, so every row keeps to one line --}}
+                    @if ($run->first()->day() !== ($day ?? null))
+                        @php($day = $run->first()->day())
+                        <flux:table.row :key="'day-'.$run->first()->id">
+                            <flux:table.cell colspan="4" class="bg-zinc-50 text-xs font-medium text-zinc-600" data-test="day">{{ $day }}</flux:table.cell>
+                        </flux:table.row>
+                    @endif
+
                     {{-- A run the page break cuts through still folds, and says where the rest of it is --}}
                     @php([$continued, $continues] = [$loop->first && ActivityLog::joins($this->edges[0], $run->first()), $loop->last && ActivityLog::joins($this->edges[1], $run->last())])
-                    @if ($run->count() > 1 || $continued || $continues)
+                    @if ($run->count() > 2 || $continued || $continues)
                         @php($runId = $run->first()->id)
                         <flux:table.row :key="'run-'.$runId">
-                            <flux:table.cell>
-                                <div class="tabular-nums text-zinc-800">{{ ActivityLog::runSpan($run) }}</div>
-                                <div class="text-xs text-zinc-500">{{ $run->first()->day() }}</div>
-                            </flux:table.cell>
+                            <flux:table.cell class="tabular-nums text-zinc-800">{{ ActivityLog::runSpan($run) }}</flux:table.cell>
                             <flux:table.cell colspan="3">
                                 <button type="button" x-on:click="open[{{ $runId }}] = ! open[{{ $runId }}]" x-bind:aria-expanded="open[{{ $runId }}] ? 'true' : 'false'" aria-expanded="false" class="flex items-center gap-2 text-zinc-600 hover:text-zinc-800">
                                     <flux:icon.chevron-right variant="micro" class="transition-transform motion-reduce:transition-none" x-bind:class="open[{{ $runId }}] && 'rotate-90'" />
@@ -239,10 +245,11 @@ new #[Title('Activity Log')] class extends Component {
                             </flux:table.cell>
                         </flux:table.row>
 
+                        {{-- Indented to line up under the summary, past its chevron, so they read as the run's own rows --}}
                         @foreach ($run as $log)
-                            <flux:table.row :key="$log->id" class="bg-zinc-50" x-show="open[{{ $runId }}]" x-cloak>
+                            <flux:table.row :key="$log->id" x-show="open[{{ $runId }}]" x-cloak>
                                 <flux:table.cell class="tabular-nums">{{ $log->created_at->format('g:i A') }}</flux:table.cell>
-                                <flux:table.cell>@include('pages.activity-log.member', ['log' => $log])</flux:table.cell>
+                                <flux:table.cell class="ps-9">@include('pages.activity-log.member', ['log' => $log])</flux:table.cell>
                                 <flux:table.cell>{{ Str::ucfirst($log->summary()) }}</flux:table.cell>
                                 <flux:table.cell />
                             </flux:table.row>
@@ -251,61 +258,60 @@ new #[Title('Activity Log')] class extends Component {
                         @continue
                     @endif
 
-                    @php($log = $run->first())
-                    <flux:table.row :key="$log->id" :class="$log->isWarning() ? 'bg-highlight-soft' : ''">
-                        <flux:table.cell>
-                            <div class="tabular-nums text-zinc-800">{{ $log->created_at->format('g:i A') }}</div>
-                            <div class="text-xs text-zinc-500">{{ $log->day() }}</div>
-                        </flux:table.cell>
+                    {{-- A shorter run stays as plain rows: folding two saves one row at the cost of a click --}}
+                    @foreach ($run as $log)
+                        <flux:table.row :key="$log->id" :class="$log->isWarning() ? 'bg-highlight-soft' : ''">
+                            <flux:table.cell class="tabular-nums text-zinc-800">{{ $log->created_at->format('g:i A') }}</flux:table.cell>
 
-                        <flux:table.cell>@include('pages.activity-log.member', ['log' => $log])</flux:table.cell>
+                            <flux:table.cell>@include('pages.activity-log.member', ['log' => $log])</flux:table.cell>
 
-                        <flux:table.cell>
-                            <div class="flex items-center gap-2">
-                                <span class="truncate text-zinc-800">{{ Str::ucfirst($log->summary()) }}</span>
-                                {{-- Names why the row is tinted, so the flag doesn't rest on colour alone --}}
-                                @if ($log->isWarning())
-                                    <flux:badge size="sm" color="amber" inset="top bottom" class="shrink-0">{{ __('Security') }}</flux:badge>
-                                @endif
-                            </div>
-                        </flux:table.cell>
-
-                        <flux:table.cell>
-                            @if ($subject = $log->subject())
-                                <p class="truncate text-zinc-800" title="{{ $subject }}">
-                                    @if ($url = $log->subjectUrl())
-                                        <a href="{{ $url }}" wire:navigate>{{ $subject }}</a>
-                                    @else
-                                        {{ $subject }}
+                            <flux:table.cell>
+                                <div class="flex items-center gap-2">
+                                    <span class="truncate text-zinc-800">{{ Str::ucfirst($log->summary()) }}</span>
+                                    {{-- Names why the row is tinted, so the flag doesn't rest on colour alone --}}
+                                    @if ($log->isWarning())
+                                        <flux:badge size="sm" color="amber" inset="top bottom" class="shrink-0">{{ __('Security') }}</flux:badge>
                                     @endif
-                                </p>
-                            @endif
+                                </div>
+                            </flux:table.cell>
 
-                            @php([$change, $note] = [$log->change(), $log->note()])
-                            @if ($change || $note)
-                                <p class="whitespace-normal break-words text-xs text-zinc-500">
-                                    @if ($change)
-                                        {{ $change[0] }}
-                                        <flux:icon.arrow-right variant="micro" class="inline size-3 align-[-2px]" />
-                                        <span class="sr-only">{{ __('to') }}</span>
-                                        <span class="font-medium text-zinc-700">{{ $change[1] }}</span>
-                                        @if ($note)
-                                            <span aria-hidden="true">·</span>
+                            <flux:table.cell>
+                                @if ($subject = $log->subject())
+                                    <p class="truncate text-zinc-800" title="{{ $subject }}">
+                                        @if ($url = $log->subjectUrl())
+                                            <a href="{{ $url }}" wire:navigate>{{ $subject }}</a>
+                                        @else
+                                            {{ $subject }}
                                         @endif
-                                    @endif
-                                    {{ $note }}
-                                </p>
-                            @endif
+                                    </p>
+                                @endif
 
-                            @if ($remarks = $log->remarks())
-                                <p class="mt-0.5 line-clamp-2 whitespace-normal break-words text-xs text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
-                            @endif
+                                @php([$change, $note] = [$log->change(), $log->note()])
+                                @if ($change || $note)
+                                    <p class="whitespace-normal break-words text-xs text-zinc-500">
+                                        @if ($change)
+                                            {{ $change[0] }}
+                                            <flux:icon.arrow-right variant="micro" class="inline size-3 align-[-2px]" />
+                                            <span class="sr-only">{{ __('to') }}</span>
+                                            <span class="font-medium text-zinc-700">{{ $change[1] }}</span>
+                                            @if ($note)
+                                                <span aria-hidden="true">·</span>
+                                            @endif
+                                        @endif
+                                        {{ $note }}
+                                    </p>
+                                @endif
 
-                            @if (! $subject && ! $change && ! $note)
-                                <span class="text-zinc-400" aria-hidden="true">—</span>
-                            @endif
-                        </flux:table.cell>
-                    </flux:table.row>
+                                @if ($remarks = $log->remarks())
+                                    <p class="mt-0.5 line-clamp-2 whitespace-normal break-words text-xs text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                                @endif
+
+                                @if (! $subject && ! $change && ! $note)
+                                    <span class="text-zinc-400" aria-hidden="true">—</span>
+                                @endif
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
                 @endforeach
             </flux:table.rows>
         </flux:table>

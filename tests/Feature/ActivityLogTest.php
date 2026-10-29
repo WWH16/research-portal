@@ -150,7 +150,7 @@ class ActivityLogTest extends TestCase
             ->assertSee('No activity matches these filters');
     }
 
-    public function test_runs_of_sign_ins_fold_into_one_line_around_changes(): void
+    public function test_runs_of_three_or_more_sign_ins_fold_into_one_line_around_changes(): void
     {
         $maria = User::factory()->create(['name' => 'Maria Santos']);
         $jose = User::factory()->create(['name' => 'Jose Reyes']);
@@ -163,10 +163,45 @@ class ActivityLogTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        // Newest first: the later run of three, then the change, then the earlier run of two.
-        $this->get(route('activity-log.index'))
-            ->assertSeeInOrder(['3 sign-ins · 3 people', 'Jose Reyes', 'Added a category', '1 sign-in, 1 sign-out · 1 person'])
-            ->assertSeeHtml('aria-expanded="false"');
+        // Newest first: the later run of three folds; the earlier run of two stays as two plain rows,
+        // since folding it would save one row at the cost of a click.
+        $page = $this->get(route('activity-log.index'))
+            ->assertSeeInOrder(['Research Office, Jose Reyes +1 other · 3 sign-ins', 'Added a category', 'Signed out', 'Signed in'])
+            ->getContent();
+
+        $this->assertSame(1, substr_count($page, 'aria-expanded="false"'));
+    }
+
+    public function test_a_folded_run_names_who_signed_in_and_out(): void
+    {
+        $maria = User::factory()->create(['name' => 'Maria Santos']);
+        $jose = User::factory()->create(['name' => 'Jose Reyes']);
+        $login = fn (User $user) => ActivityLog::record('auth.login', user: $user);
+        $logout = fn (User $user) => ActivityLog::record('auth.logout', user: $user);
+
+        $this->assertSame('Maria Santos · 2 sign-ins, 1 sign-out', ActivityLog::runSummary(collect([$login($maria), $logout($maria), $login($maria)])));
+        $this->assertSame('Jose Reyes and Maria Santos · 2 sign-ins, 1 sign-out', ActivityLog::runSummary(collect([$login($jose), $logout($maria), $login($maria)])));
+        $this->assertSame('Research Office, Jose Reyes +2 others · 4 sign-ins', ActivityLog::runSummary(collect([
+            $login($this->admin), $login($jose), $login($maria), $login(User::factory()->create(['name' => 'Ana Cruz'])),
+        ])));
+    }
+
+    public function test_each_day_is_named_once_above_its_entries(): void
+    {
+        $this->travelTo(now()->subDay());
+        ActivityLog::record('filing.created', Category::create(['name' => 'Computing']), ['kind' => 'category'], $this->admin);
+        ActivityLog::record('filing.created', Category::create(['name' => 'Education']), ['kind' => 'category'], $this->admin);
+        $this->travelBack();
+        $this->freezeTime();
+        ActivityLog::record('filing.created', Category::create(['name' => 'Nursing']), ['kind' => 'category'], $this->admin);
+
+        $this->actingAs($this->admin);
+
+        $page = $this->get(route('activity-log.index'))
+            ->assertSeeInOrder(['data-test="day"', 'Today', 'Nursing', 'data-test="day"', 'Yesterday', 'Education', 'Computing'], escape: false)
+            ->getContent();
+
+        $this->assertSame(2, substr_count($page, 'data-test="day"'));
     }
 
     public function test_a_folded_run_shows_the_time_span_it_covers(): void
@@ -244,10 +279,10 @@ class ActivityLogTest extends TestCase
         $this->actingAs($this->admin);
 
         $this->get(route('activity-log.index'))
-            ->assertSee('100 sign-ins · 1 person')
+            ->assertSee('Research Office · 100 sign-ins')
             ->assertSee('continues on the next page');
         $this->get(route('activity-log.index', ['page' => 2]))
-            ->assertSee('3 sign-ins · 1 person')
+            ->assertSee('Research Office · 3 sign-ins')
             ->assertSee('continued from the previous page');
     }
 

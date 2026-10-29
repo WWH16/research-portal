@@ -180,8 +180,10 @@ new #[Title('Notifications')] class extends Component {
         // had when it was sent, which may not be this one, and it never leads off the portal.
         $url = $notification->data['url'];
         $query = parse_url($url, PHP_URL_QUERY);
+        $fragment = parse_url($url, PHP_URL_FRAGMENT);
 
-        $this->redirect((parse_url($url, PHP_URL_PATH) ?: '/').($query ? "?{$query}" : ''), navigate: true);
+        // A link to one item on a page loads in full, so the browser scrolls to it and marks it as the target.
+        $this->redirect((parse_url($url, PHP_URL_PATH) ?: '/').($query ? "?{$query}" : '').($fragment ? "#{$fragment}" : ''), navigate: ! $fragment);
     }
 
     /**
@@ -235,7 +237,7 @@ new #[Title('Notifications')] class extends Component {
                         <span @class(['mt-2 size-2 shrink-0 rounded-full', 'bg-isu-gold-700' => ! $notification->read_at]) @if (! $notification->read_at) data-test="unread-dot" @endif aria-hidden="true"></span>
                         {{-- Two lines of the message, like an inbox; it opens in full in the message panel --}}
                         <div class="min-w-0">
-                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" @class(['line-clamp-2 cursor-pointer text-start text-sm wrap-anywhere', 'font-semibold text-zinc-900!' => ! $notification->read_at])>
+                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" @class(['line-clamp-2 text-start text-sm wrap-anywhere', 'font-semibold text-zinc-900!' => ! $notification->read_at])>
                                 @unless ($notification->read_at)
                                     <span class="sr-only">{{ __('Unread:') }}</span>
                                 @endunless
@@ -247,7 +249,7 @@ new #[Title('Notifications')] class extends Component {
 
                     <div class="flex shrink-0 items-center gap-1">
                         <flux:dropdown position="bottom" align="end">
-                            <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" class="cursor-pointer" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" />
+                            <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" />
                             <flux:menu>
                                 <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')">
                                     {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}
@@ -256,7 +258,7 @@ new #[Title('Notifications')] class extends Component {
                             </flux:menu>
                         </flux:dropdown>
                         {{-- An arrow, as in an inbox, shows the row opens in full --}}
-                        <flux:button size="sm" variant="ghost" icon="chevron-right" class="cursor-pointer" wire:click="read('{{ $notification->id }}')" :aria-label="__('Open: :message', ['message' => $notification->data['message']])" data-test="open-notice" />
+                        <flux:button size="sm" variant="ghost" icon="chevron-right" wire:click="read('{{ $notification->id }}')" :aria-label="__('Open: :message', ['message' => $notification->data['message']])" data-test="open-notice" />
                     </div>
                 </li>
             @endforeach

@@ -176,7 +176,7 @@ class AnnouncementsTest extends TestCase
         $memo = Announcement::factory()->withMemo()->create(['title' => 'Memo on the research agenda']);
 
         $this->actingAs(User::factory()->create())->get(route('announcements.index'))
-            ->assertSeeInOrder(['Upcoming deadlines', $sooner->title, 'in 3 days', $later->title, 'Other announcements', $memo->title, 'Open memo', $closed->title, 'Closed on'], false);
+            ->assertSeeInOrder(['Upcoming deadlines', $sooner->title, 'in 3 days', $later->title, 'Other announcements', $memo->title, 'Preview memo', $closed->title, 'Closed on'], false);
 
         // With nothing open, the one list is simply every announcement.
         $sooner->delete();
@@ -223,7 +223,8 @@ class AnnouncementsTest extends TestCase
             'The Research Office has posted a new announcement: “Schedule of Submission of Concept Proposals”. The deadline is November 15, 2026. A memo is attached.',
             $faculty->notifications()->sole()->data['message'],
         );
-        $this->assertSame(route('announcements.index'), $faculty->notifications()->sole()->data['url']);
+        $link = route('announcements.index', ['show' => Announcement::sole()->id]).'#announcement-'.Announcement::sole()->id;
+        $this->assertSame($link, $faculty->notifications()->sole()->data['url']);
         $this->assertSame(0, $pending->notifications()->count() + $admin->notifications()->count() + $otherAdmin->notifications()->count());
         Mail::assertNothingOutgoing();
 
@@ -235,7 +236,12 @@ class AnnouncementsTest extends TestCase
         Livewire::actingAs($faculty)->test('pages::notifications.index')
             ->call('read', $faculty->notifications()->sole()->id)
             ->assertSee('New announcement')
-            ->assertSee('Open Announcements');
+            ->assertSee('Open Announcements')
+            // Its button lands on the announcement itself, with the page loaded in full so the browser marks it.
+            ->call('open', $faculty->notifications()->sole()->id)
+            ->assertRedirect($link);
+
+        $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('id="announcement-'.Announcement::sole()->id.'"', false);
     }
 
     public function test_a_plain_notice_is_announced_in_one_sentence(): void
@@ -253,10 +259,114 @@ class AnnouncementsTest extends TestCase
         Livewire::actingAs($this->admin())->test('pages::announcements.index')
             ->call('create')
             ->set('title', '   ')
-            ->set('memo', UploadedFile::fake()->create('memo.png', 10, 'image/png'))
+            ->set('memo', UploadedFile::fake()->create('memo.txt', 10, 'text/plain'))
             ->call('save')
             ->assertHasErrors(['title' => 'required', 'description' => 'required', 'memo' => 'mimes'])
             ->assertSee('Enter a title.')
-            ->assertSee('The memo must be a PDF or Word file.');
+            ->assertSee('The memo must be a PDF, a Word file or an image (JPG, PNG or WebP).');
+    }
+
+    public function test_each_kind_of_memo_previews_its_own_way(): void
+    {
+        $memo = fn (string $name) => Announcement::factory()->create(['title' => $name, 'attachment_path' => "drive-1/announcements/{$name}", 'attachment_name' => $name]);
+        $image = $memo('Schedule.PNG');
+        $pdf = $memo('Memorandum.pdf');
+        $docx = $memo('Guidelines.docx');
+        $memo('Old memo.doc');
+
+        $this->assertSame(['image', 'pdf', 'docx', null], Announcement::orderBy('id')->get()->map->memoPreview()->all());
+
+        // An image shows on the page; a PDF or .docx opens in the viewer; an old .doc only downloads.
+        $this->actingAs(User::factory()->create())->get(route('announcements.index'))
+            ->assertSee('src="'.e($image->memoPreviewUrl()).'"', false)
+            ->assertSee('Preview memo: Memorandum.pdf')
+            ->assertSee('Preview memo: Guidelines.docx')
+            ->assertSee('Download memo: Old memo.doc')
+            ->assertSee('data-test="memo-preview"', false);
+    }
+
+    public function test_the_date_tile_shows_the_deadline_while_open_and_the_posted_day_after(): void
+    {
+        $this->travelTo('2026-10-29 09:00');
+        Announcement::factory()->dueIn(3)->create(['title' => 'Open schedule', 'created_at' => '2026-10-01']);
+        Announcement::factory()->dueIn(-5)->create(['title' => 'Closed schedule', 'created_at' => '2026-10-02']);
+
+        // Open: the deadline, November 1. Closed: the day it was posted, October 2, so the dates follow the list's order.
+        $this->actingAs(User::factory()->create())->get(route('announcements.index'))
+            ->assertSeeInOrder(['data-test="date-tile"', '>1<', '>Nov<', 'Open schedule', 'data-test="date-tile"', '>2<', '>Oct<', 'Closed schedule'], false);
+    }
+
+    public function test_an_image_memo_is_read_out_in_the_words_the_admin_gives(): void
+    {
+        $this->fakeDrive();
+        $admin = $this->admin();
+        $page = Livewire::actingAs($admin)->test('pages::announcements.index')
+            ->call('create')->set('title', 'Schedule')->set('description', 'See the poster.')
+            ->set('memo', UploadedFile::fake()->create('poster.png', 50, 'image/png'))
+            ->assertSee('Image description')
+            ->set('memoAlt', '  Concept proposals are due on November 15, 2026.  ')
+            ->call('save');
+
+        $announcement = Announcement::sole();
+        $this->assertSame('Concept proposals are due on November 15, 2026.', $announcement->attachment_alt);
+        $this->actingAs(User::factory()->create())->get(route('announcements.index'))
+            ->assertSee('alt="Concept proposals are due on November 15, 2026. (opens the memo in a new tab)"', false);
+
+        // A PDF in its place carries its own text, so the description goes with the image.
+        $this->actingAs($admin);
+        $page->call('edit', $announcement->id)->assertSet('memoAlt', 'Concept proposals are due on November 15, 2026.')
+            // Ticking "Remove the memo" leaves nothing to describe.
+            ->set('removeMemo', true)->assertDontSee('Image description')
+            ->set('removeMemo', false)->set('memo', $this->memo())->call('save');
+        $this->assertNull($announcement->fresh()->attachment_alt);
+    }
+
+    public function test_a_memo_link_naming_its_version_is_kept_by_the_browser(): void
+    {
+        $this->fakeDrive();
+        Livewire::actingAs($this->admin())->test('pages::announcements.index')
+            ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())->call('save');
+        $announcement = Announcement::sole();
+        $this->actingAs(User::factory()->create());
+
+        $this->assertStringContainsString('max-age=604800', $this->get($announcement->memoUrl())->headers->get('Cache-Control'));
+        // The preview falls back to the whole file while there is no smaller copy (always, on the tests' disk), and a
+        // browser mustn't keep that in the copy's place.
+        $this->assertStringNotContainsString('max-age', $this->get($announcement->memoPreviewUrl())->assertOk()->headers->get('Cache-Control'));
+
+        // An old or bare link still opens the memo, but nothing keeps it.
+        $this->assertStringNotContainsString('max-age', $this->get(route('announcements.memo', [$announcement, 'v' => 'old']))->headers->get('Cache-Control'));
+        $this->assertStringNotContainsString('max-age', $this->get(route('announcements.memo', $announcement))->headers->get('Cache-Control'));
+    }
+
+    public function test_a_notification_lands_on_its_announcement_even_on_a_later_page(): void
+    {
+        $this->travelTo('2026-10-29 09:00');
+        $oldest = Announcement::factory()->create(['title' => 'Oldest memo', 'created_at' => now()->subDays(20)]);
+        Announcement::factory()->count(10)->sequence(fn ($sequence) => ['created_at' => now()->subDays(10 - $sequence->index)])->create();
+        $this->actingAs(User::factory()->create());
+
+        // Ten newer ones fill the first page, so the link opens the second.
+        Livewire::test('pages::announcements.index')->assertDontSee('Oldest memo');
+        Livewire::withQueryParams(['show' => $oldest->id])->test('pages::announcements.index')->assertSee('Oldest memo')->assertDontSee('no longer on the portal');
+
+        // One deleted since says so, rather than leaving the member to look for it.
+        Livewire::withQueryParams(['show' => $oldest->id + 100])->test('pages::announcements.index')
+            ->assertSee('The announcement you followed is no longer on the portal.');
+    }
+
+    public function test_a_new_schedule_cannot_open_already_closed_but_an_old_one_can_be_corrected(): void
+    {
+        $this->travelTo('2026-10-29 09:00');
+        $closed = Announcement::factory()->dueIn(-5)->create();
+
+        Livewire::actingAs($this->admin())->test('pages::announcements.index')
+            ->call('create')->set('title', 'Late schedule')->set('description', 'Due yesterday.')->set('dueOn', '2026-10-28')->call('save')
+            ->assertHasErrors(['dueOn' => 'after_or_equal'])
+            ->assertSee('The deadline can’t be in the past. Enter today or a later date.')
+            ->set('dueOn', '2026-10-29')->call('save')->assertHasNoErrors()
+            ->call('edit', $closed->id)->set('title', 'Mid-year reports, corrected')->call('save')->assertHasNoErrors();
+
+        $this->assertSame('Mid-year reports, corrected', $closed->fresh()->title);
     }
 }

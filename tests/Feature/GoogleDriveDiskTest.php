@@ -119,6 +119,28 @@ class GoogleDriveDiskTest extends TestCase
         $this->assertSame('pdf-bytes', ob_get_clean());
     }
 
+    public function test_an_image_has_drives_smaller_copy_once_drive_has_made_it(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+        $path = "drive-{$account->id}/announcements/poster.png";
+        Cache::forever(DocumentStorage::fileIdKey($path), 'file-456');
+        $sent = fn ($response) => tap(ob_start(), fn () => $response->sendContent()) ? ob_get_clean() : '';
+        $token = new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}');
+        $thumbnailLink = new Response(200, ['Content-Type' => 'application/json'], '{"thumbnailLink": "https://lh3.googleusercontent.com/drive-storage/abc=s220"}');
+
+        $this->googleAnswers([$token, $thumbnailLink, new Response(200, ['Content-Type' => 'image/jpeg'], 'small-jpeg')]);
+        $response = app(DocumentStorage::class)->thumbnail($path, 'poster.png', 1000);
+        $this->assertSame('image/jpeg', $response->headers->get('Content-Type'));
+        $this->assertSame('small-jpeg', $sent($response));
+
+        // Drive has no copy yet, as just after an upload: there is none, and the caller sends the file. The token from before still holds.
+        $this->googleAnswers([$thumbnailLink, new Response(404, [], 'Not Found'), new Response(200, ['Content-Type' => 'image/png'], 'full-png')]);
+        $this->assertNull(app(DocumentStorage::class)->thumbnail($path, 'poster.png', 1000));
+        $response = app(DocumentStorage::class)->respond($path, 'poster.png');
+        $this->assertSame('image/png', $response->headers->get('Content-Type'));
+        $this->assertSame('full-png', $sent($response));
+    }
+
     public function test_opening_a_document_on_a_disconnected_account_says_storage_is_down(): void
     {
         $account = GoogleDriveConnection::factory()->unconnected()->create();

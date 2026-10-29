@@ -84,9 +84,23 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     })->name('profile-photo');
 
     // A memo is for every member, so any approved account opens it, under the name it was uploaded with.
-    Route::get('announcements/{announcement}/memo', function (Announcement $announcement) {
-        return app(DocumentStorage::class)->respond($announcement->attachment_path ?? abort(404), (string) $announcement->attachment_name);
+    Route::get('announcements/{announcement}/memo', function (Request $request, Announcement $announcement) {
+        $response = app(DocumentStorage::class)->respond($announcement->attachment_path ?? abort(404), (string) $announcement->attachment_name);
+
+        return $announcement->keepIfCurrent($response, $request->string('v')->value());
     })->name('announcements.memo');
+
+    // An image memo as the Announcements page shows it: at most 1000px on its longest side, enough for a sharp
+    // picture at the page's size, so a 2 MB poster isn't downloaded whole just to be drawn small.
+    Route::get('announcements/{announcement}/memo/preview', function (Request $request, Announcement $announcement) {
+        $storage = app(DocumentStorage::class);
+        $path = $announcement->attachment_path ?? abort(404);
+        $copy = $storage->thumbnail($path, (string) $announcement->attachment_name, 1000);
+
+        // Only the small copy is kept. Until Drive has made it, the whole picture comes uncached, so the next visit
+        // gets the copy instead of a week of the full file.
+        return $copy ? $announcement->keepIfCurrent($copy, $request->string('v')->value()) : $storage->respond($path, (string) $announcement->attachment_name);
+    })->name('announcements.memo.preview');
 
     Route::middleware('admin')->group(function () {
         Route::livewire('reviews', 'pages::reviews.index')->name('reviews.index');

@@ -28,6 +28,7 @@ class AnnouncementPosted extends PortalNotification
 
     protected function url(): string
     {
-        return route('announcements.index');
+        // The id in the query opens the page of the list that holds it; the one in the fragment scrolls to it there.
+        return route('announcements.index', ['show' => $this->announcement->id]).'#announcement-'.$this->announcement->id;
     }
 }

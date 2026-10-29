@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * A notice from the Research Office: a schedule of submissions when it has a deadline, a memo when it has a file, or
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $due_on
  * @property string|null $attachment_path
  * @property string|null $attachment_name
+ * @property string|null $attachment_alt
  */
 #[Fillable(['posted_by', 'title', 'description', 'due_on'])]
 class Announcement extends Model
@@ -49,6 +51,55 @@ class Announcement extends Model
             $days === 1 => __('Due tomorrow, :date.', ['date' => $date]),
             default => __('Due on :date, in :days days.', ['date' => $date, 'days' => $days]),
         };
+    }
+
+    /**
+     * How the memo previews in the portal: an image shows on the page, a PDF opens in the browser's own viewer, and a
+     * .docx is drawn by docx-preview. An old .doc, or no memo, has no preview and is only downloaded.
+     *
+     * @return 'image'|'pdf'|'docx'|null
+     */
+    public function memoPreview(): ?string
+    {
+        return match (strtolower(pathinfo((string) $this->attachment_name, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg', 'png', 'webp' => 'image',
+            'pdf' => 'pdf',
+            'docx' => 'docx',
+            default => null,
+        };
+    }
+
+    /**
+     * The memo's link. It names the stored file's version, so a browser may keep the file: a replaced memo gets a new
+     * path, and with it a new link.
+     */
+    public function memoUrl(): string
+    {
+        return route('announcements.memo', [$this, 'v' => $this->memoVersion()]);
+    }
+
+    /** An image memo's smaller copy, for showing it on the page; the same versioning as memoUrl(). */
+    public function memoPreviewUrl(): string
+    {
+        return route('announcements.memo.preview', [$this, 'v' => $this->memoVersion()]);
+    }
+
+    public function memoVersion(): string
+    {
+        return substr(sha1((string) $this->attachment_path), 0, 12);
+    }
+
+    /**
+     * A link naming the current file's version always means the same file, so the member's own browser keeps it for a
+     * week instead of fetching it from Google Drive on every visit. An old link still opens the memo, uncached.
+     */
+    public function keepIfCurrent(Response $response, string $version): Response
+    {
+        if ($version === $this->memoVersion()) {
+            $response->headers->set('Cache-Control', 'private, max-age=604800');
+        }
+
+        return $response;
     }
 
     /**

@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '../../vendor/livewire/flux/dist/flux.css';
+@import './announcements.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -115,6 +116,12 @@
     ::selection {
         background-color: var(--color-isu-gold-200);
         color: var(--color-isu-green-950);
+    }
+
+    /* Tailwind leaves buttons on the plain arrow; the hand shows they can be clicked, as links do. */
+    button:not(:disabled),
+    [role='button']:not([aria-disabled='true']) {
+        cursor: pointer;
     }
 }
 
@@ -246,13 +253,12 @@ select:focus[data-flux-control] {
     color: var(--color-isu-green-300);
 }
 
-/* Faculty headings don't fold, so they are text-only divs; items are elements, so they never pick up this style. */
+/* Group headings read as written, untracked, a step smaller than the links. Faculty headings don't fold, so they are
+   text-only divs; items are elements, so they never pick up this style. */
 .isu-sidebar [data-flux-sidebar-group] > div:first-child:not(:has(*)) {
     color: var(--color-isu-green-300);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
 }
 
 /*
@@ -276,10 +282,8 @@ select:focus[data-flux-control] {
 }
 
 .isu-sidebar ui-disclosure[data-flux-sidebar-group] > button span {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
 }
 
 .isu-sidebar ui-disclosure[data-flux-sidebar-group] > div > div:first-child {

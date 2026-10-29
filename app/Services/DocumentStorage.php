@@ -145,16 +145,66 @@ class DocumentStorage
         $media = $id ? rescue(fn () => $files->get($id, ['alt' => 'media']), report: false) : null;
 
         if (! $media instanceof ResponseInterface) {
-            $found = $adapter->getMetadata($location);
-
-            if (! $found instanceof FileAttributes) {
+            if (! $id = $this->findFileId($adapter, $path, $location)) {
                 return null;
             }
 
-            Cache::forever(self::fileIdKey($path), $id = $found->extraMetadata()['id']);
             $media = $files->get($id, ['alt' => 'media']);
         }
 
+        return $this->stream($media, $name);
+    }
+
+    /**
+     * A stored image at most $size pixels on its longest side: Google Drive's own smaller copy, so a page showing the
+     * picture small doesn't download it at full size. Null when there is none to send: Drive makes the copy a little
+     * after an upload, any other disk has none, and a copy that can't be fetched counts as none. The caller then sends
+     * the file itself, and shouldn't let a browser keep that in the copy's place.
+     */
+    public function thumbnail(string $path, string $name, int $size): ?StreamedResponse
+    {
+        return rescue(function () use ($path, $name, $size) {
+            [$disk, $location] = $this->locate($path);
+            $adapter = $disk->getAdapter();
+
+            if (! $adapter instanceof GoogleDriveAdapter) {
+                return null;
+            }
+
+            $id = Cache::get(self::fileIdKey($path)) ?? $this->findFileId($adapter, $path, $location);
+            $link = $id ? $adapter->getService()->files->get($id, ['fields' => 'thumbnailLink'])->getThumbnailLink() : null;
+
+            if (! $link) {
+                return null;
+            }
+
+            // Drive names the copy's size at the end of its link, as "=s220"; the same link serves any size asked for,
+            // and "-rj" asks for a JPEG, about a tenth the size of a PNG poster. A transparent image gets a solid
+            // background. Google's client hands an error back as a response, so anything but a picture falls back.
+            $copy = $adapter->getService()->getClient()->authorize()->request('GET', preg_replace('/=s\d+$/', "=s{$size}-rj", $link));
+
+            return $copy->getStatusCode() === 200 ? $this->stream($copy, $name) : null;
+        }, report: false);
+    }
+
+    /**
+     * Find a stored document's Google file ID by its name and remember it, or null when it isn't there.
+     */
+    private function findFileId(GoogleDriveAdapter $adapter, string $path, string $location): ?string
+    {
+        $found = $adapter->getMetadata($location);
+
+        if (! $found instanceof FileAttributes) {
+            return null;
+        }
+
+        Cache::forever(self::fileIdKey($path), $id = $found->extraMetadata()['id']);
+
+        return $id;
+    }
+
+    private function stream(ResponseInterface $media, string $name): StreamedResponse
+    {
         $body = $media->getBody();
 
         return response()->stream(fn () => fpassthru($body->detach()), 200, array_filter([

@@ -1,0 +1,28 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full
+ * paper: oklch(98.5% 0.003 160) · accent: isu-green-700 #0b5e36 · display: Instrument Sans · body: Instrument Sans
+ * nav: kept, the portal sidebar · signature: the deadline agenda, a date tile leading every row · states: empty, memo loading, memo failed
+ * axes: light/grotesk-sans/chromatic-green · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V3 · weakest: V, an agenda is a familiar calendar pattern; kept it because faculty read deadlines by date and a novel layout would cost them that */
+/* Hallmark · finish-review: subagent · 8 findings · 6 resolved 2 partial · gap: iOS Safari shows one PDF page in the frame; the Word viewer's refit on resize is in place but untested */
+
+/* The Announcements page. Its layout is in the page's own classes; these are the parts a class can't reach. */
+
+:root {
+    --shadow-memo-page: 0 1px 2px oklch(20% 0.01 160 / 0.08), 0 0 0 1px oklch(30% 0.01 160 / 0.06);
+}
+
+/* docx-preview draws Word pages on its own grey backdrop with a heavy halo; sit them on the viewer's pale ground instead. */
+[data-memo-pages] .docx-wrapper {
+    background: transparent;
+    padding: 1.5rem;
+}
+
+[data-memo-pages] .docx-wrapper > section.docx {
+    box-shadow: var(--shadow-memo-page);
+    margin-bottom: 1.5rem;
+}
+
+/* Tailwind caps images at 100% of their box, and docx-preview's picture boxes shrink to fit them, so they collapse to nothing. */
+[data-memo-pages] img {
+    max-width: none;
+}

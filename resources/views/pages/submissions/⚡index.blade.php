@@ -208,7 +208,8 @@ new #[Title('Submissions')] class extends Component {
     }
 
     /**
-     * Save the new dates, logged like a project edit: "Changed the completion date from … to …".
+     * Save the new dates, logged like a project edit: "Changed the completion date from … to …". A completed
+     * project's dates are locked, so whether it finished on time can't change after the fact.
      */
     public function saveDates(): void
     {
@@ -217,13 +218,16 @@ new #[Title('Submissions')] class extends Component {
         $validated = $this->validate([
             'start_date' => ['required', 'date'],
             'target_date' => ['required', 'date', 'after:start_date'],
-        ], attributes: [
+        ], [
+            'target_date.after' => __('The completion date must be after the starting date.'),
+        ], [
             'start_date' => __('starting date'),
             'target_date' => __('completion date'),
         ]);
 
         [$submission, $dates] = DB::transaction(function () use ($validated) {
             $submission = Submission::findOrFail($this->datingId);
+            abort_if($submission->status === 'Completed', 403);
             $submission->update($validated);
 
             // Compared by day, so a saved time of day on the old date doesn't count as a change.
@@ -248,7 +252,7 @@ new #[Title('Submissions')] class extends Component {
         }
 
         Flux::modal('project-dates')->close();
-        Flux::toast(variant: 'success', text: __('Dates changed.'));
+        Flux::toast(variant: $dates === [] ? 'warning' : 'success', text: $dates === [] ? __('No changes to save.') : __('Dates changed.'));
         $this->datingId = null;
         unset($this->submissions, $this->dating);
 
@@ -452,7 +456,10 @@ new #[Title('Submissions')] class extends Component {
                             <div class="text-sm {{ $standingClass }}">{{ $standing }}</div>
                         </flux:table.cell>
                         <flux:table.cell align="end">
-                            @if ($this->monitoring)
+                            @if ($this->monitoring && $submission->status === 'Completed')
+                                <span class="text-zinc-500" aria-hidden="true">–</span>
+                                <span class="sr-only">{{ __('Dates locked: project completed') }}</span>
+                            @elseif ($this->monitoring)
                                 <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
                             @else
                                 <flux:button size="sm" variant="ghost" inset="top bottom" icon="pencil-square" :href="route('submissions.edit', $submission)" wire:navigate :aria-label="__('Edit :title', ['title' => $submission->title])" data-test="edit-submission-button" class="max-sm:h-11">
@@ -475,7 +482,7 @@ new #[Title('Submissions')] class extends Component {
                 <form wire:submit="saveDates" class="flex flex-col gap-6">
                     <div>
                         <flux:heading size="lg" id="project-dates-heading">{{ __('Change dates') }}</flux:heading>
-                        <flux:text class="mt-1">{{ $this->dating->title }}</flux:text>
+                        <flux:text class="mt-1 line-clamp-2 [overflow-wrap:anywhere]" title="{{ $this->dating->displayTitle() }}">{{ $this->dating->displayTitle() }}</flux:text>
                     </div>
 
                     <div class="grid gap-6 sm:grid-cols-2">
@@ -483,7 +490,7 @@ new #[Title('Submissions')] class extends Component {
                         <flux:input wire:model="target_date" :label="__('Completion date')" type="date" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required />
                     </div>
 
-                    <flux:text class="text-sm">{{ __('For an extension or a correction. The status and review list stay as they are.') }}</flux:text>
+                    <flux:text class="text-sm">{{ __('For an extension or a correction. The faculty on this project will be notified of the new dates. The status and review list stay as they are.') }}</flux:text>
 
                     <div class="flex justify-end gap-2">
                         <flux:modal.close>

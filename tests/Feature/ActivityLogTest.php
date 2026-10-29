@@ -427,6 +427,50 @@ class ActivityLogTest extends TestCase
         Livewire::test('pages::submissions.index')->call('editDates', $project->id)->assertForbidden();
     }
 
+    public function test_saving_unchanged_dates_logs_nothing_and_says_so(): void
+    {
+        $project = $this->project('Solar Dryer Study');
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::submissions.index')
+            ->call('editDates', $project->id)
+            ->call('saveDates')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast-show', fn ($event, $params) => $params['slots']['text'] === 'No changes to save.');
+
+        $this->assertFalse(ActivityLog::where('action', 'submission.dates_changed')->exists());
+    }
+
+    public function test_a_completion_date_before_the_start_reads_plainly(): void
+    {
+        $project = $this->project('Solar Dryer Study');
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::submissions.index')
+            ->call('editDates', $project->id)
+            ->set('target_date', $project->start_date->toDateString())
+            ->call('saveDates')
+            ->assertHasErrors(['target_date' => 'The completion date must be after the starting date.']);
+    }
+
+    public function test_a_completed_projects_dates_are_locked(): void
+    {
+        $project = $this->project('Solar Dryer Study');
+        $project->update(['status' => 'Completed']);
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::submissions.index')
+            ->assertDontSeeHtml('data-test="change-dates-button"')
+            ->set('datingId', $project->id)
+            ->set('start_date', today()->toDateString())
+            ->set('target_date', today()->addYear()->toDateString())
+            ->call('saveDates')
+            ->assertForbidden();
+    }
+
     public function test_each_review_keeps_its_own_remarks(): void
     {
         $project = $this->project('Solar Dryer Study');

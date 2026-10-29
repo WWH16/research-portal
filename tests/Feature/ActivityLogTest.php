@@ -10,6 +10,7 @@ use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -268,6 +269,48 @@ class ActivityLogTest extends TestCase
         $this->get(route('activity-log.index', ['page' => 9]))
             ->assertSee('This page is past the end of the log')
             ->assertDontSee('No activity recorded yet');
+    }
+
+    public function test_new_activity_does_not_shift_the_pages_being_read(): void
+    {
+        foreach (range(1, 150) as $i) {
+            ActivityLog::record('filing.created', Category::create(['name' => "Category {$i}"]), ['kind' => 'category'], $this->admin);
+        }
+        $firstOnPageTwo = ActivityLog::query()->orderByDesc('id')->skip(100)->value('id');
+
+        $this->actingAs($this->admin);
+        $component = Livewire::test('pages::activity-log.index')->assertDontSee('New activity since you opened the log');
+
+        foreach (range(1, 3) as $i) {
+            ActivityLog::record('auth.login', user: $this->admin);
+        }
+
+        $component->call('nextPage')->assertSee('New activity since you opened the log');
+        $this->assertSame($firstOnPageTwo, $component->instance()->logs->first()->id);
+
+        $component->call('showNew')
+            ->assertDontSee('New activity since you opened the log')
+            ->assertSet('paginators.page', 1);
+        $this->assertSame(ActivityLog::max('id'), $component->instance()->logs->first()->id);
+    }
+
+    public function test_a_page_reads_the_log_in_one_query_without_counting_it(): void
+    {
+        foreach (range(1, 250) as $i) {
+            ActivityLog::record('auth.login', user: $this->admin);
+        }
+        $reads = 0;
+        DB::listen(function ($query) use (&$reads) {
+            $reads += str_contains($query->sql, 'from "activity_logs"') ? 1 : 0;
+        });
+
+        $this->actingAs($this->admin)
+            ->get(route('activity-log.index', ['page' => 2]))
+            ->assertSee('continued from the previous page')
+            ->assertSee('continues on the next page');
+
+        // The page with its neighbours, and whether anything is newer than the page was opened at.
+        $this->assertSame(2, $reads);
     }
 
     public function test_a_run_cut_by_the_page_break_says_where_the_rest_is(): void

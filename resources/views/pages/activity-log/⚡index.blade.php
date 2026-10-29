@@ -2,7 +2,7 @@
 
 use App\Models\ActivityLog;
 use App\Models\User;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
@@ -33,10 +33,38 @@ new #[Title('Activity Log')] class extends Component {
     public ?int $user = null;
 
     /**
-     * Every property here is a filter, so any change starts again from the first page.
+     * The newest entry when the log was opened. Pages count from it, so entries recorded while someone reads
+     * don't push rows onto the next page; showNew() moves it up. Paging keeps it; a reload starts from the newest.
+     */
+    #[Url]
+    public ?int $until = null;
+
+    /** Set on the request that just read $until, when nothing can be newer yet; not kept between requests. */
+    protected bool $pinnedNow = false;
+
+    public function mount(): void
+    {
+        if ($this->until === null) {
+            $this->until = ActivityLog::max('id');
+            $this->pinnedNow = true;
+        }
+    }
+
+    /**
+     * Every property here is a filter, so any change starts again from the first page, with the latest entries.
      */
     public function updated(): void
     {
+        $this->showNew();
+    }
+
+    /**
+     * Start again from the first page, with entries recorded since the log was opened.
+     */
+    public function showNew(): void
+    {
+        $this->until = ActivityLog::max('id');
+        $this->pinnedNow = true;
         $this->resetPage();
     }
 
@@ -45,7 +73,7 @@ new #[Title('Activity Log')] class extends Component {
      */
     public function preset(string $key): void
     {
-        $this->resetPage();
+        $this->showNew();
 
         if ($key === 'any') {
             $this->reset('from', 'to');
@@ -64,37 +92,67 @@ new #[Title('Activity Log')] class extends Component {
     public function clearFilters(): void
     {
         $this->reset('search', 'group', 'from', 'to', 'user');
-        $this->resetPage();
-    }
-
-    #[Computed]
-    public function logs(): LengthAwarePaginator
-    {
-        // Sign-ins fold into runs on the page, so a page holds more entries than it shows lines.
-        return $this->filtered()->with('user:id,name,profile_image')->paginate(100);
+        $this->showNew();
     }
 
     /**
-     * The entries just before and after this page, so a run of sign-ins the page break cuts through
-     * says it continues. Null at either end of the log.
+     * This page of entries, read in one query together with the entry just before and just after it, so a run
+     * of sign-ins the page break cuts through says it continues. Pages have Previous and Next only: numbering
+     * them would count the whole log on every load.
      *
+     * @return array{0: Paginator, 1: ActivityLog|null, 2: ActivityLog|null}
+     */
+    #[Computed]
+    public function page(): array
+    {
+        // Sign-ins fold into runs on the page, so a page holds more entries than it shows lines.
+        $perPage = 100;
+        // Asked of Laravel, as paginate() does: that's how Livewire learns to keep ?page= in the URL.
+        $page = Paginator::resolveCurrentPage();
+        $offset = ($page - 1) * $perPage;
+
+        $rows = $this->filtered()->with('user:id,name,profile_image')
+            ->skip(max(0, $offset - 1))
+            ->take($perPage + ($offset > 0 ? 2 : 1))
+            ->get();
+        $before = $offset > 0 ? $rows->shift() : null;
+
+        return [
+            // Given one entry too many, the paginator knows there is a next page and keeps only $perPage.
+            new Paginator($rows, $perPage, $page, ['path' => Paginator::resolveCurrentPath()]),
+            $before,
+            $rows->get($perPage),
+        ];
+    }
+
+    #[Computed]
+    public function logs(): Paginator
+    {
+        return $this->page[0];
+    }
+
+    /**
      * @return array{0: ActivityLog|null, 1: ActivityLog|null}
      */
     #[Computed]
     public function edges(): array
     {
-        $logs = $this->logs;
-
-        return [
-            $logs->isNotEmpty() && $logs->firstItem() > 1 ? $this->filtered()->skip($logs->firstItem() - 2)->first() : null,
-            $logs->hasMorePages() ? $this->filtered()->skip($logs->lastItem())->first() : null,
-        ];
+        return [$this->page[1], $this->page[2]];
     }
 
     /**
-     * Entries matching the filters, newest first.
+     * Whether anything matching the filters was recorded since the log was opened.
      */
-    private function filtered(): Builder
+    #[Computed]
+    public function hasNew(): bool
+    {
+        return ! $this->pinnedNow && $this->until !== null && $this->filtered(pinned: false)->where('id', '>', $this->until)->exists();
+    }
+
+    /**
+     * Entries matching the filters, newest first, up to the entry the log was opened at unless unpinned.
+     */
+    private function filtered(bool $pinned = true): Builder
     {
         $search = trim($this->search);
         // A half-typed, impossible or hand-edited date in the URL is ignored, and a reversed range is swapped.
@@ -110,6 +168,7 @@ new #[Title('Activity Log')] class extends Component {
         }
 
         return ActivityLog::query()
+            ->when($pinned && $this->until !== null, fn ($query) => $query->where('id', '<=', $this->until))
             ->when($this->user, fn ($query) => $query->where('user_id', $this->user))
             ->when(isset(ActivityLog::GROUPS[$this->group]), fn ($query) => $query->where('action', 'like', $this->group.'.%'))
             ->when($from, fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
@@ -186,6 +245,14 @@ new #[Title('Activity Log')] class extends Component {
                 {{ $this->person?->name ?? __('a deleted account') }}
                 <flux:badge.close wire:click="$set('user', null)" :aria-label="__('Show everyone')" />
             </flux:badge>
+        </div>
+    @endif
+
+    {{-- The log stays as it was when opened, so new entries never shift the page being read; this says they exist --}}
+    @if ($this->hasNew)
+        <div class="mt-3 flex items-center gap-3 text-sm text-zinc-600" data-test="new-activity">
+            {{ __('New activity since you opened the log.') }}
+            <flux:button size="sm" wire:click="showNew">{{ __('Show it') }}</flux:button>
         </div>
     @endif
 

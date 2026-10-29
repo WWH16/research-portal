@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use App\Models\Submission;
-use App\Models\User;
 
 /**
  * Tells the Research Office, the day after, that a project passed its completion date without a terminal report.
@@ -11,17 +10,11 @@ use App\Models\User;
  */
 class ProjectLate extends PortalNotification
 {
+    protected const bool EMAILED = false;
+
     public function __construct(
         public readonly Submission $submission,
     ) {}
-
-    /**
-     * @return list<string>
-     */
-    public function via(User $notifiable): array
-    {
-        return ['database'];
-    }
 
     protected function message(): string
     {

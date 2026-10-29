@@ -20,6 +20,12 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     /** The User::EMAIL_KINDS switch this notice's email follows; null for notices that are always emailed. */
     protected const ?string EMAIL_KIND = null;
 
+    /** False for a notice that stays in the portal and is never emailed. */
+    protected const bool EMAILED = true;
+
+    /** The email's subject, for a notice without its own toMail(). */
+    protected const string SUBJECT = 'Faculty Research Portal';
+
     /** A mail server that is down for a moment gets two more tries, a minute apart. */
     public int $tries = 3;
 
@@ -40,7 +46,7 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     public function via(User $notifiable): array
     {
         // An address the member hasn't confirmed gets no mail, nor does a kind they turned off; the notice still waits in the portal.
-        $emails = $notifiable->hasVerifiedEmail() && (static::EMAIL_KIND === null || $notifiable->wantsEmail(static::EMAIL_KIND));
+        $emails = static::EMAILED && $notifiable->hasVerifiedEmail() && (static::EMAIL_KIND === null || $notifiable->wantsEmail(static::EMAIL_KIND));
 
         return $emails ? ['database', 'mail'] : ['database'];
     }
@@ -62,7 +68,7 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject(__('Faculty Research Portal'))
+            ->subject(__(static::SUBJECT))
             ->line(self::plain($this->message()))
             ->action(__('Open the portal'), $this->url());
     }

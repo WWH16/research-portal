@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use App\Models\Submission;
-use App\Models\User;
 
 /**
  * Tells the Research Office a project is complete, the first time its terminal report comes in, so it can record
@@ -11,18 +10,12 @@ use App\Models\User;
  */
 class ProjectCompleted extends PortalNotification
 {
+    protected const bool EMAILED = false;
+
     public function __construct(
         public readonly Submission $submission,
         public readonly string $uploader,
     ) {}
-
-    /**
-     * @return list<string>
-     */
-    public function via(User $notifiable): array
-    {
-        return ['database'];
-    }
 
     protected function message(): string
     {

@@ -3,8 +3,6 @@
 namespace App\Notifications;
 
 use App\Models\GoogleDriveConnection;
-use App\Models\User;
-use Illuminate\Notifications\Messages\MailMessage;
 
 /**
  * Tells the Research Office that a storage account stopped answering (access removed, password changed, or its
@@ -12,14 +10,11 @@ use Illuminate\Notifications\Messages\MailMessage;
  */
 class DriveDisconnected extends PortalNotification
 {
+    protected const string SUBJECT = 'Google Drive is disconnected';
+
     public function __construct(
         public readonly GoogleDriveConnection $account,
     ) {}
-
-    public function toMail(User $notifiable): MailMessage
-    {
-        return parent::toMail($notifiable)->subject(__('Google Drive is disconnected'));
-    }
 
     protected function message(): string
     {

@@ -232,7 +232,7 @@ new #[Title('Research Project')] class extends Component {
 
         // The Research Office hears of each concept proposal that waits for a decision, once the save has committed.
         if (isset($this->documents['concept']) && $submission->awaiting_review) {
-            Notification::send(User::where('role', 'admin')->whereKeyNot(Auth::id())->get(), new ConceptAwaitingReview($submission, Auth::user()->name));
+            Notification::send(User::where('role', 'admin')->whereKeyNot(Auth::id())->get(), new ConceptAwaitingReview($submission, Auth::user()->shortName(), corrected: $this->submission !== null));
         }
 
         // Only the concept proposal goes to the Research Office; the other documents are filed as they come in.

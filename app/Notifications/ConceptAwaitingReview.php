@@ -7,13 +7,15 @@ use App\Models\User;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
- * Tells the Research Office that a concept proposal came in and waits for a decision.
+ * Tells the Research Office that a concept proposal came in and waits for a decision. One uploaded again over an
+ * earlier one says it's corrected, so the two notices don't read as a duplicate.
  */
 class ConceptAwaitingReview extends PortalNotification
 {
     public function __construct(
         public readonly Submission $submission,
         public readonly string $uploader,
+        public readonly bool $corrected = false,
     ) {}
 
     public function toMail(User $notifiable): MailMessage
@@ -26,7 +28,11 @@ class ConceptAwaitingReview extends PortalNotification
 
     protected function message(): string
     {
-        return __('New concept proposal to review: :title, from :name.', ['title' => $this->submission->displayTitle(), 'name' => $this->uploader]);
+        $replace = ['title' => $this->submission->displayTitle(), 'name' => $this->uploader];
+
+        return $this->corrected
+            ? __('Corrected concept proposal to review: :title, from :name.', $replace)
+            : __('New concept proposal to review: :title, from :name.', $replace);
     }
 
     protected function url(): string

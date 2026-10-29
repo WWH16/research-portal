@@ -155,7 +155,7 @@ class NotificationsTest extends TestCase
 
         $project = Submission::sole();
         Notification::assertSentTo([$first, $second], ConceptAwaitingReview::class, fn (ConceptAwaitingReview $notification) => $notification->submission->is($project)
-            && $notification->uploader === 'Maria Santos'
+            && $notification->uploader === 'M Santos' && str_starts_with($notification->toArray($first)['message'], 'New concept proposal to review: Solar Dryer Study, from M Santos.')
             && $notification->toArray($first)['url'] === route('reviews.index', ['review' => $project->id]));
         Notification::assertNotSentTo($this->maria, ConceptAwaitingReview::class);
     }
@@ -171,7 +171,7 @@ class NotificationsTest extends TestCase
         Notification::assertSentTo([$first, $second], SignupAwaitingApproval::class, fn (SignupAwaitingApproval $notification) => $notification->user->is($signUp)
             && $notification->via($first) === ['database']
             && $notification->toArray($first) === [
-                'message' => 'New sign-up waiting for approval: Juan Dela Cruz (juan@isu.edu.ph).',
+                'message' => 'New sign-up waiting for approval: JD Cruz (juan@isu.edu.ph).',
                 'url' => route('users.index', ['status' => 'pending']),
             ]);
         Notification::assertNotSentTo($this->maria, SignupAwaitingApproval::class);
@@ -200,7 +200,25 @@ class NotificationsTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
+        // Worded apart from the first notice, so the two don't read as a duplicate.
+        Notification::assertSentTo($admin, ConceptAwaitingReview::class, fn (ConceptAwaitingReview $notification) => str_starts_with($notification->toArray($admin)['message'], 'Corrected concept proposal to review: Solar Dryer Study, from M Santos.'));
         Notification::assertSentToTimes($admin, ConceptAwaitingReview::class, 1);
+    }
+
+    public function test_unread_notices_carry_a_dot_and_one_page_shows_no_pager(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $this->maria->notify(new ConceptReviewed($project, 'returned', 'Narrow the scope.'));
+        $this->maria->notifications()->latest()->first()->markAsRead();
+
+        $this->actingAs($this->maria)
+            ->get(route('notifications.index'))
+            ->assertSee('isu_seal-128.png')
+            ->assertDontSee('Showing 1 to');
+
+        $page = $this->get(route('notifications.index'))->getContent();
+        $this->assertSame(1, substr_count($page, 'data-test="unread-dot"'));
     }
 
     public function test_replacing_a_passed_concept_or_uploading_a_later_document_tells_no_admin(): void

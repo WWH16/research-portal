@@ -24,7 +24,7 @@ class SignupAwaitingApproval extends PortalNotification
 
     protected function message(): string
     {
-        return __('New sign-up waiting for approval: :name (:email).', ['name' => $this->user->name, 'email' => $this->user->email]);
+        return __('New sign-up waiting for approval: :name (:email).', ['name' => $this->user->shortName(), 'email' => $this->user->email]);
     }
 
     protected function url(): string

@@ -42,8 +42,9 @@ new #[Title('Notifications')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-4xl">
-    <header class="flex items-center justify-between gap-4 border-b border-line pb-6">
-        <div class="min-w-0">
+    <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
+        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+        <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ __('Notifications') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Reviews, concept proposals and target dates that need your attention.') }}</flux:text>
         </div>
@@ -59,14 +60,18 @@ new #[Title('Notifications')] class extends Component {
         <ul class="divide-y divide-line">
             @foreach ($this->notifications as $notification)
                 <li wire:key="{{ $notification->id }}" class="flex items-center justify-between gap-4 py-4">
-                    <div class="min-w-0">
-                        <flux:text @class(['font-semibold text-zinc-900' => ! $notification->read_at])>
-                            @unless ($notification->read_at)
-                                <span class="sr-only">{{ __('Unread:') }}</span>
-                            @endunless
-                            {{ $notification->data['message'] }}
-                        </flux:text>
-                        <flux:text size="sm" class="mt-1">{{ $notification->created_at->diffForHumans() }}</flux:text>
+                    {{-- A gold dot, as on the sidebar, marks what's unread; screen readers hear "Unread:" instead --}}
+                    <div class="flex min-w-0 items-start gap-3">
+                        <span @class(['mt-2 size-2 shrink-0 rounded-full', 'bg-isu-gold-700' => ! $notification->read_at]) @if (! $notification->read_at) data-test="unread-dot" @endif aria-hidden="true"></span>
+                        <div class="min-w-0">
+                            <flux:text @class(['font-semibold text-zinc-900' => ! $notification->read_at])>
+                                @unless ($notification->read_at)
+                                    <span class="sr-only">{{ __('Unread:') }}</span>
+                                @endunless
+                                {{ $notification->data['message'] }}
+                            </flux:text>
+                            <flux:text size="sm" class="mt-1">{{ $notification->created_at->diffForHumans() }}</flux:text>
+                        </div>
                     </div>
 
                     <flux:button size="sm" wire:click="open('{{ $notification->id }}')" aria-label="{{ __('Open: :message', ['message' => $notification->data['message']]) }}">{{ __('Open') }}</flux:button>
@@ -74,6 +79,8 @@ new #[Title('Notifications')] class extends Component {
             @endforeach
         </ul>
 
-        <flux:pagination :paginator="$this->notifications" class="mt-4" />
+        @if ($this->notifications->hasPages())
+            <flux:pagination :paginator="$this->notifications" class="mt-4" />
+        @endif
     @endif
 </section>

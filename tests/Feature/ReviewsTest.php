@@ -64,6 +64,21 @@ class ReviewsTest extends TestCase
             ->assertSeeHtml('aria-label="Concept proposal for Solar Dryer Study, opens in a new tab"');
     }
 
+    public function test_rows_read_like_the_submissions_list(): void
+    {
+        // Same title, names and pager as the Submissions list shows for the same project.
+        $this->maria->update(['name' => 'MARIA DELA PAZ SANTOS']);
+        $this->project('Solar_Dryer_Study');
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->get(route('reviews.index'))
+            ->assertSee('title="Solar Dryer Study"', escape: false)
+            ->assertDontSee('Solar_Dryer_Study')
+            ->assertSee('MDP Santos')
+            ->assertDontSee('MARIA DELA PAZ SANTOS')
+            ->assertDontSee('Showing 1 to');
+    }
+
     public function test_faculty_see_no_reviews_link(): void
     {
         $this->actingAs($this->maria)->get(route('dashboard'))->assertDontSeeHtml('data-test="reviews-nav"');

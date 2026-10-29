@@ -68,35 +68,40 @@ new #[Title('Concept Reviews')] class extends Component {
             <flux:link :href="route('submissions.index')" wire:navigate class="ms-1">{{ __('See all submissions') }}</flux:link>
         </flux:text>
     @else
-        <flux:table class="mt-6" :paginate="$this->queue">
+        {{-- The pager shows only once there is a second page, as on Submissions. relative keeps the cells' screen-reader-only
+             text inside the table's scroll area, so on phones it can't widen the whole page --}}
+        <flux:table class="relative mt-6" :paginate="$this->queue->hasPages() ? $this->queue : null">
             <flux:table.columns>
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
-                <flux:table.column>{{ __('College') }}</flux:table.column>
-                <flux:table.column>{{ __('Waiting since') }}</flux:table.column>
+                {{-- Phones keep the project and its Review button; the project cell repeats college and wait in short --}}
+                <flux:table.column class="max-sm:hidden">{{ __('College') }}</flux:table.column>
+                <flux:table.column class="max-sm:hidden">{{ __('Waiting since') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
                 @foreach ($this->queue as $submission)
+                    @php($title = $submission->displayTitle())
                     <flux:table.row :key="$submission->id">
-                        <flux:table.cell class="max-w-sm">
-                            <p class="truncate font-medium text-zinc-800">{{ $submission->title }}</p>
-                            <p class="truncate text-zinc-500">{{ $submission->proponents->pluck('user.name')->unique()->join(', ') }}</p>
+                        <flux:table.cell class="max-w-sm max-sm:whitespace-normal">
+                            <p class="font-medium text-zinc-800 max-sm:line-clamp-2 sm:truncate" title="{{ $title }}">{{ $title }}</p>
+                            <p class="truncate text-zinc-500">{{ $submission->proponents->pluck('user')->unique('id')->map->shortName()->join(', ') }}</p>
+                            <p class="text-sm text-zinc-500 sm:hidden">{{ $submission->department->code }} · {{ $submission->updated_at->diffForHumans() }}</p>
                             @if ($submission->concept_path)
                                 {{-- Every row has this link and a Review button, so screen readers also hear which project each one is for --}}
-                                <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" :aria-label="__('Concept proposal for :title, opens in a new tab', ['title' => $submission->title])" class="mt-1 text-sm">
+                                <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" :aria-label="__('Concept proposal for :title, opens in a new tab', ['title' => $title])" class="mt-1 text-sm">
                                     {{ __('Concept proposal') }}
                                     <flux:icon.arrow-top-right-on-square variant="micro" class="inline size-3 align-[-1px]" />
                                 </flux:link>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell>{{ $submission->department->code }}</flux:table.cell>
-                        <flux:table.cell class="tabular-nums">
+                        <flux:table.cell class="max-sm:hidden">{{ $submission->department->code }}</flux:table.cell>
+                        <flux:table.cell class="tabular-nums max-sm:hidden">
                             <div class="whitespace-nowrap">{{ $submission->updated_at->format('M j, Y') }}</div>
                             <div class="text-sm text-zinc-500">{{ $submission->updated_at->diffForHumans() }}</div>
                         </flux:table.cell>
                         <flux:table.cell>
-                            <flux:button size="sm" variant="primary" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" :aria-label="__('Review :title', ['title' => $submission->title])" data-test="review-submission-button" class="max-sm:h-11">
+                            <flux:button size="sm" variant="primary" inset="top bottom" wire:click="review({{ $submission->id }})" wire:island="review" :aria-label="__('Review :title', ['title' => $title])" data-test="review-submission-button" class="max-sm:h-11">
                                 {{ __('Review') }}
                             </flux:button>
                         </flux:table.cell>

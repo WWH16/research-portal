@@ -282,8 +282,9 @@ class Submission extends Model
     }
 
     /**
-     * When each document was uploaded, keyed by stage. A page can ask for these more than once, so Google Drive
-     * is read once per request: each read is a network call. A file missing from Google Drive is left out.
+     * When each document was uploaded, keyed by stage. Each time is asked of Google Drive once and then kept, see
+     * DocumentStorage::uploadedAt(); a page asking more than once reads it once per request. A file missing from
+     * Google Drive the first time it is asked is left out.
      *
      * @return array<string, Carbon>
      */
@@ -291,11 +292,7 @@ class Submission extends Model
     {
         return $this->uploadTimes ??= collect(self::DOCUMENTS)
             ->map(fn (string $label, string $stage) => ($path = $this->{$stage.'_path'})
-                ? rescue(function () use ($path) {
-                    [$disk, $location] = app(DocumentStorage::class)->locate($path);
-
-                    return Carbon::createFromTimestamp($disk->lastModified($location));
-                }, function (Throwable $e) use ($path) {
+                ? rescue(fn () => app(DocumentStorage::class)->uploadedAt($path), function (Throwable $e) use ($path) {
                     app(DocumentStorage::class)->noticeFailure($path, $e);
 
                     return null;

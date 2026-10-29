@@ -102,6 +102,35 @@ class DocumentStorageTest extends TestCase
     /**
      * A Drive that fails every write with the given error, the way Google answers once access is revoked.
      */
+    public function test_a_new_upload_knows_its_time_without_asking_google(): void
+    {
+        GoogleDriveConnection::factory()->create();
+        $this->freezeTime();
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('putFile')->andReturn('submissions/proposal.pdf');
+        $disk->shouldNotReceive('lastModified');
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
+
+        $storage = app(DocumentStorage::class);
+        $path = $storage->store($this->pdf());
+
+        $this->assertSame(now()->timestamp, $storage->uploadedAt($path)->timestamp);
+    }
+
+    public function test_an_older_document_asks_google_for_its_time_once(): void
+    {
+        $account = GoogleDriveConnection::factory()->create();
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('lastModified')->once()->with('submissions/old.pdf')->andReturn(1_790_000_000);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
+        $path = "drive-{$account->id}/submissions/old.pdf";
+
+        $storage = app(DocumentStorage::class);
+
+        $this->assertSame(1_790_000_000, $storage->uploadedAt($path)->timestamp);
+        $this->assertSame(1_790_000_000, $storage->uploadedAt($path)->timestamp);
+    }
+
     private function failingDrive(string $error): void
     {
         $disk = Mockery::mock(FilesystemAdapter::class);

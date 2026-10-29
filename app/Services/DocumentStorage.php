@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\DriveDisconnected;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -48,7 +49,29 @@ class DocumentStorage
         $location ?: throw new DocumentStorageUnavailable('The document could not be stored.');
         Cache::forget($account->fullKey());
 
-        return "drive-{$account->id}/{$location}";
+        // Known now, so no page ever has to ask Google when this was uploaded.
+        $path = "drive-{$account->id}/{$location}";
+        Cache::forever(self::uploadedAtKey($path), now()->timestamp);
+
+        return $path;
+    }
+
+    /**
+     * When a stored document was uploaded. A saved path never changes, so the time is asked of Google at most once
+     * and kept; a new upload records it as it saves.
+     */
+    public function uploadedAt(string $path): Carbon
+    {
+        return Carbon::createFromTimestamp(Cache::rememberForever(self::uploadedAtKey($path), function () use ($path) {
+            [$disk, $location] = $this->locate($path);
+
+            return $disk->lastModified($location);
+        }));
+    }
+
+    private static function uploadedAtKey(string $path): string
+    {
+        return 'drive-uploaded.'.sha1($path);
     }
 
     /**
@@ -58,6 +81,7 @@ class DocumentStorage
     public function delete(string $path): void
     {
         Cache::forget(self::fileIdKey($path));
+        Cache::forget(self::uploadedAtKey($path));
 
         rescue(function () use ($path) {
             [$disk, $location] = $this->locate($path);

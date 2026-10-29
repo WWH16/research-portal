@@ -121,9 +121,9 @@ class ProjectProgressTest extends TestCase
         Storage::disk('drive')->delete('submissions/concept.pdf');
         $this->assertSame(['concept'], array_keys($project->uploadTimes()));
 
-        // A new upload changes the files, so the times are read afresh.
+        // A new upload changes the files, so the times are read afresh; a time already known is kept, so it's never asked of Google again.
         $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 10, 'application/pdf'));
-        $this->assertSame(['detailed'], array_keys($project->uploadTimes()));
+        $this->assertSame(['concept', 'detailed'], array_keys($project->uploadTimes()));
     }
 
     public function test_the_drive_page_and_edit_form_show_the_stages_and_the_next_step(): void

@@ -3,6 +3,7 @@
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
 use App\Http\Controllers\VerifyEmailController;
+use App\Models\Announcement;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
@@ -91,6 +92,21 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             abort(503);
         }
     })->name('profile-photo');
+
+    // A memo is for every member, so any approved account opens it, under the name it was uploaded with.
+    Route::get('announcements/{announcement}/memo', function (Announcement $announcement) {
+        $path = $announcement->attachment_path ?? abort(404);
+
+        try {
+            $response = app(DocumentStorage::class)->open($path, (string) $announcement->attachment_name);
+        } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
+            report($e);
+            app(DocumentStorage::class)->noticeFailure($path, $e);
+            abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
+        }
+
+        return $response ?? abort(404);
+    })->name('announcements.memo');
 
     Route::middleware('admin')->group(function () {
         Route::livewire('reviews', 'pages::reviews.index')->name('reviews.index');

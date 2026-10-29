@@ -155,6 +155,52 @@ class AnnouncementsTest extends TestCase
         $this->assertSame(0, Announcement::count());
     }
 
+    public function test_a_deadline_reads_as_a_full_sentence(): void
+    {
+        $this->travelTo('2026-10-29 09:00');
+        $sentence = fn (int $days) => Announcement::factory()->dueIn($days)->make()->deadline();
+
+        $this->assertSame('Due on November 15, 2026, in 17 days.', $sentence(17));
+        $this->assertSame('Due tomorrow, October 30, 2026.', $sentence(1));
+        $this->assertSame('Due today, October 29, 2026.', $sentence(0));
+        $this->assertSame('Closed on October 28, 2026.', $sentence(-1));
+        $this->assertNull(Announcement::factory()->make()->deadline());
+    }
+
+    public function test_open_schedules_come_first_soonest_first_and_the_rest_newest_first(): void
+    {
+        $later = Announcement::factory()->dueIn(30)->create(['title' => 'Detailed proposals due']);
+        $sooner = Announcement::factory()->dueIn(3)->create(['title' => 'Concept proposals due']);
+        $closed = Announcement::factory()->dueIn(-5)->create(['title' => 'Mid-year reports were due', 'created_at' => now()->subWeek()]);
+        $memo = Announcement::factory()->withMemo()->create(['title' => 'Memo on the research agenda']);
+
+        $this->actingAs(User::factory()->create())->get(route('announcements.index'))
+            ->assertSeeInOrder(['Upcoming deadlines', $sooner->title, 'in 3 days', $later->title, 'Other announcements', $memo->title, 'Open memo', $closed->title, 'Closed on'], false);
+
+        // With nothing open, the one list is simply every announcement.
+        $sooner->delete();
+        $later->delete();
+        $this->get(route('announcements.index'))->assertDontSee('Upcoming deadlines')->assertSee('All announcements');
+    }
+
+    public function test_members_open_a_memo_under_its_own_name(): void
+    {
+        $disk = $this->fakeDrive();
+        Livewire::actingAs($this->admin())->test('pages::announcements.index')
+            ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())->call('save');
+        $announcement = Announcement::sole();
+
+        $this->actingAs(User::factory()->create())->get(route('announcements.memo', $announcement))
+            ->assertOk()
+            ->assertHeader('Content-Disposition');
+        $this->assertStringContainsString('Memorandum No. 12', $this->get(route('announcements.memo', $announcement))->headers->get('Content-Disposition'));
+
+        // Without a memo there is nothing to open, and a sign-up still waiting for approval can't open one.
+        $this->get(route('announcements.memo', Announcement::factory()->create()))->assertNotFound();
+        $this->actingAs(User::factory()->pending()->create())->get(route('announcements.memo', $announcement))->assertRedirect(route('approval.notice'));
+        $disk->assertExists(Str::after($announcement->attachment_path, '/'));
+    }
+
     public function test_the_form_says_what_to_fix(): void
     {
         Livewire::actingAs($this->admin())->test('pages::announcements.index')

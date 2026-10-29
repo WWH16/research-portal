@@ -6,6 +6,7 @@ use App\Models\Announcement;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -39,10 +40,22 @@ new #[Title('Announcements')] class extends Component {
 
     public ?int $deletingId = null;
 
+    /**
+     * Schedules still open, soonest first. All of them show above the list, so none is missed on a later page.
+     *
+     * @return Collection<int, Announcement>
+     */
+    #[Computed]
+    public function upcoming(): Collection
+    {
+        return Announcement::with('poster')->upcoming()->get();
+    }
+
+    /** Everything else, newest first: notices and memos without a deadline, and schedules that have closed. */
     #[Computed]
     public function announcements(): LengthAwarePaginator
     {
-        $announcements = Announcement::with('poster')->latest()->orderByDesc('id')->paginate(10);
+        $announcements = Announcement::with('poster')->notUpcoming()->paginate(10);
 
         // A page past the end, as once its last announcement was deleted, shows the last page that has any.
         if ($announcements->isEmpty() && $announcements->currentPage() > 1 && $announcements->total() > 0) {
@@ -148,7 +161,7 @@ new #[Title('Announcements')] class extends Component {
         Flux::toast(variant: 'success', text: $this->editingId ? __('Announcement updated.') : __('Announcement posted.'));
 
         $this->reset('editingId', 'title', 'description', 'dueOn', 'memo', 'removeMemo');
-        unset($this->announcements, $this->editing);
+        unset($this->upcoming, $this->announcements, $this->editing);
     }
 
     public function confirmDelete(int $id): void
@@ -179,7 +192,7 @@ new #[Title('Announcements')] class extends Component {
         Flux::toast(variant: 'success', text: __('Announcement deleted.'));
 
         $this->reset('deletingId');
-        unset($this->announcements, $this->deleting);
+        unset($this->upcoming, $this->announcements, $this->deleting);
     }
 }; ?>
 
@@ -196,48 +209,69 @@ new #[Title('Announcements')] class extends Component {
         @endcan
     </header>
 
-    @if ($this->announcements->isEmpty())
+    @if ($this->upcoming->isEmpty() && $this->announcements->isEmpty())
         <flux:text class="mt-8">{{ __('No announcements yet.') }}</flux:text>
-    @else
-        <ul class="divide-y divide-line">
-            @foreach ($this->announcements as $announcement)
-                <li wire:key="announcement-{{ $announcement->id }}" class="py-6" data-test="announcement">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="min-w-0">
-                            <flux:heading size="lg" level="2" class="wrap-anywhere">{{ $announcement->title }}</flux:heading>
-                            <flux:text size="sm" class="mt-1">
+    @endif
+
+    {{-- Open schedules first, as their own section, so a deadline is never buried under newer memos --}}
+    @foreach (array_filter(['upcoming' => $this->upcoming, 'other' => $this->announcements], fn ($list) => $list->isNotEmpty()) as $section => $list)
+        <section wire:key="section-{{ $section }}" class="mt-8" aria-labelledby="announcements-{{ $section }}" data-test="{{ $section }}-announcements">
+            <flux:heading level="2" id="announcements-{{ $section }}" class="text-zinc-600!">
+                {{ $section === 'upcoming' ? __('Upcoming deadlines') : ($this->upcoming->isEmpty() ? __('All announcements') : __('Other announcements')) }}
+            </flux:heading>
+
+            <ul class="mt-2 divide-y divide-line">
+                @foreach ($list as $announcement)
+                    <li wire:key="announcement-{{ $announcement->id }}" class="py-6" data-test="announcement">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <flux:heading size="lg" level="3" class="wrap-anywhere">{{ $announcement->title }}</flux:heading>
+
+                                {{-- The deadline is what a schedule is for, so it sits under the title: green while open, muted once closed --}}
+                                @if ($deadline = $announcement->deadline())
+                                    <p @class([
+                                        'mt-1 flex items-center gap-1.5 text-sm font-medium',
+                                        'text-isu-green-800' => $section === 'upcoming',
+                                        'text-zinc-500' => $section !== 'upcoming',
+                                    ]) data-test="deadline">
+                                        <flux:icon.calendar-days variant="micro" class="shrink-0" aria-hidden="true" />
+                                        {{ $deadline }}
+                                    </p>
+                                @endif
+                            </div>
+
+                            @can('update', $announcement)
+                                <flux:dropdown position="bottom" align="end">
+                                    <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" :aria-label="__('Actions for :title', ['title' => $announcement->title])" />
+                                    <flux:menu>
+                                        <flux:menu.item icon="pencil-square" wire:click="edit({{ $announcement->id }})">{{ __('Edit') }}</flux:menu.item>
+                                        <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $announcement->id }})">{{ __('Delete') }}</flux:menu.item>
+                                    </flux:menu>
+                                </flux:dropdown>
+                            @endcan
+                        </div>
+
+                        <flux:text class="mt-3 max-w-prose whitespace-pre-line wrap-anywhere text-zinc-800">{{ $announcement->description }}</flux:text>
+
+                        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                            @if ($announcement->attachment_path)
+                                <flux:button size="sm" icon="document-text" :href="route('announcements.memo', $announcement)" target="_blank" rel="noopener" :aria-label="__('Open memo: :name', ['name' => $announcement->attachment_name])" data-test="open-memo">
+                                    {{ __('Open memo') }}
+                                </flux:button>
+                            @endif
+                            <flux:text size="sm">
                                 {{ __('Posted by :name on :date', ['name' => $announcement->poster->displayName(), 'date' => $announcement->created_at->format('F j, Y')]) }}
                             </flux:text>
                         </div>
+                    </li>
+                @endforeach
+            </ul>
 
-                        @can('update', $announcement)
-                            <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" :aria-label="__('Actions for :title', ['title' => $announcement->title])" />
-                                <flux:menu>
-                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $announcement->id }})">{{ __('Edit') }}</flux:menu.item>
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $announcement->id }})">{{ __('Delete') }}</flux:menu.item>
-                                </flux:menu>
-                            </flux:dropdown>
-                        @endcan
-                    </div>
-
-                    <flux:text class="mt-3 whitespace-pre-line wrap-anywhere text-zinc-800">{{ $announcement->description }}</flux:text>
-
-                    @if ($announcement->due_on)
-                        <flux:text class="mt-3 font-medium text-zinc-800">{{ __('Deadline: :date', ['date' => $announcement->due_on->format('F j, Y')]) }}</flux:text>
-                    @endif
-
-                    @if ($announcement->attachment_name)
-                        <flux:text class="mt-1 wrap-anywhere">{{ __('Memo: :name', ['name' => $announcement->attachment_name]) }}</flux:text>
-                    @endif
-                </li>
-            @endforeach
-        </ul>
-
-        @if ($this->announcements->hasPages())
-            <flux:pagination :paginator="$this->announcements" class="mt-4" />
-        @endif
-    @endif
+            @if ($section === 'other' && $this->announcements->hasPages())
+                <flux:pagination :paginator="$this->announcements" class="mt-4" />
+            @endif
+        </section>
+    @endforeach
 
     @can('create', App\Models\Announcement::class)
         {{-- Livewire sets no loading state while a file is still uploading, so the form counts uploads and holds Save until

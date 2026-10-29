@@ -238,6 +238,30 @@ class ManageUsersTest extends TestCase
         $this->assertTrue($this->admin->fresh()->isAdmin());
     }
 
+    public function test_a_page_past_the_end_shows_the_last_page_instead_of_claiming_no_one_matches(): void
+    {
+        // With the admin, 15 members fill page one; the 16th sits alone on page two.
+        foreach (range(1, 14) as $i) {
+            User::factory()->create(['name' => sprintf('Member %02d', $i)]);
+        }
+        $last = User::factory()->create(['name' => 'Zed Lastname']);
+
+        $this->actingAs($this->admin);
+
+        $this->get(route('users.index', ['page' => 9]))
+            ->assertSee('Zed Lastname')
+            ->assertDontSee('No users match these filters');
+
+        // Deleting the only member on the last page lands on the page before, not on an empty one.
+        Livewire::withQueryParams(['page' => 2])
+            ->test('pages::users.index')
+            ->call('confirmDelete', $last->id)
+            ->call('delete')
+            ->assertSet('paginators.page', 1)
+            ->assertSee('Member 01')
+            ->assertDontSee('No users match these filters');
+    }
+
     public function test_unused_user_can_be_deleted(): void
     {
         $user = User::factory()->create();

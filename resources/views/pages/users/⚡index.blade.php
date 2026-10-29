@@ -62,7 +62,7 @@ new #[Title('Manage Users')] class extends Component {
     {
         $search = trim($this->search);
 
-        return User::query()
+        $users = User::query()
             ->with('department:id,code')
             ->when($search !== '', function ($query) use ($search) {
                 $term = '%'.$search.'%';
@@ -79,7 +79,19 @@ new #[Title('Manage Users')] class extends Component {
             ->when($this->college === 'none', fn ($query) => $query->whereNull('department_id'))
             ->when(! in_array($this->college, ['', 'none'], true), fn ($query) => $query->whereRelation('department', 'code', $this->college))
             ->orderBy('name')
+            // Members with the same name keep one order, so none shows on two pages or on neither.
+            ->orderBy('id')
             ->paginate(15);
+
+        // A page past the end, from a link or once its last member was deleted or approved off a filter,
+        // shows the last page that has members rather than claiming no one matches.
+        if ($users->isEmpty() && $users->currentPage() > 1 && $users->total() > 0) {
+            $this->setPage($users->lastPage());
+
+            return $this->users();
+        }
+
+        return $users;
     }
 
     #[Computed]

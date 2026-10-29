@@ -8,8 +8,18 @@
         @else
             <x-auth-header
                 :title="__('Waiting for approval')"
-                :description="__('Your email is verified. The Research Office will review your sign-up, and you can use the portal once it’s approved.')"
+                :description="__('The Research Office will now review your sign-up. You will receive an email once your account has been approved, and you may then sign in to the portal.')"
             />
+
+            {{-- Right after the emailed link, so the member knows that step worked; same quiet green as the verify page's notice --}}
+            @if ($verified = session('verified'))
+                <flux:callout
+                    icon="check-circle"
+                    :text="$verified"
+                    data-test="email-verified"
+                    class="[--callout-border:var(--color-isu-green-50)]! [--callout-background:var(--color-isu-green-50)]! [--callout-text:var(--color-isu-green-800)]! [--callout-icon:var(--color-isu-green-700)]!"
+                />
+            @endif
         @endif
 
         <form method="POST" action="{{ route('logout') }}">

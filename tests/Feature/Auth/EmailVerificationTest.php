@@ -128,6 +128,25 @@ class EmailVerificationTest extends TestCase
         $this->get(route('submissions.index'))->assertDontSee('Email verified. Welcome to the portal.');
     }
 
+    public function test_a_sign_up_waiting_for_review_is_told_its_email_is_verified_and_what_happens_next(): void
+    {
+        $user = User::factory()->unverified()->pending()->create();
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        // The link goes to the dashboard, which sends a pending sign-up on to the notice; the message survives the hop.
+        $this->actingAs($user)->get($verificationUrl);
+        $this->followingRedirects()->get(route('dashboard', ['verified' => 1]))
+            ->assertSeeInOrder(['Waiting for approval', 'You will receive an email once your account has been approved', 'Your email address has been verified.'])
+            ->assertDontSee('Welcome to the portal');
+
+        $this->get(route('approval.notice'))->assertSee('Waiting for approval')->assertDontSee('Your email address has been verified.');
+    }
+
     public function test_email_is_not_verified_with_invalid_hash(): void
     {
         $user = User::factory()->unverified()->create();

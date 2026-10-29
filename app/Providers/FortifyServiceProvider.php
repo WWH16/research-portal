@@ -46,8 +46,11 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->logAuthEvents();
 
-        // Fortify fires Verified when the emailed link verifies someone; the app layout shows this as a toast.
-        Event::listen(Verified::class, fn () => session()->flash('verified', __('Email verified. Welcome to the portal.')));
+        // Fortify fires Verified when the emailed link verifies someone. The app layout shows this as a toast; a sign-up
+        // still waiting for review lands on the approval notice instead, which shows it above what happens next.
+        Event::listen(Verified::class, fn (Verified $event) => session()->flash('verified', $event->user instanceof User && $event->user->isApproved()
+            ? __('Email verified. Welcome to the portal.')
+            : __('Your email address has been verified.')));
 
         $this->configureEmails();
     }

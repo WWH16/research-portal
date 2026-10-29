@@ -14,6 +14,9 @@ class EnsureUserIsApproved
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user() && ! $request->user()->isApproved()) {
+            // Keeps a message flashed for the page they tried to open, such as the email verified one, for the notice.
+            $request->session()->reflash();
+
             return redirect()->route('approval.notice');
         }
 

@@ -610,6 +610,16 @@ class NotificationsTest extends TestCase
         $this->assertSame(1, DB::table('jobs')->count(), 'Only the email waits for the queue.');
     }
 
+    public function test_a_concept_notice_queued_before_corrections_were_recorded_still_sends(): void
+    {
+        // A queued copy leaves out a property still at its default, so this is the same shape as one saved before
+        // $corrected existed, which has no value for it at all.
+        $queued = serialize(new ConceptAwaitingReview($this->project(), 'M Santos'));
+        $this->assertStringNotContainsString('corrected', $queued);
+
+        $this->assertSame('New concept proposal to review: Solar Dryer Study, from M Santos.', unserialize($queued)->toArray($this->maria)['message']);
+    }
+
     public function test_a_failed_send_is_retried(): void
     {
         $project = $this->project();

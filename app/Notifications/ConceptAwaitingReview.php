@@ -14,11 +14,19 @@ class ConceptAwaitingReview extends PortalNotification
 {
     protected const ?string EMAIL_KIND = 'to_review';
 
+    /**
+     * Uploaded again over an earlier one. A plain property with a default, not a promoted one, so a notice queued
+     * before this was recorded still sends, reading as new.
+     */
+    public bool $corrected = false;
+
     public function __construct(
         public readonly Submission $submission,
         public readonly string $uploader,
-        public readonly bool $corrected = false,
-    ) {}
+        bool $corrected = false,
+    ) {
+        $this->corrected = $corrected;
+    }
 
     public function toMail(User $notifiable): MailMessage
     {

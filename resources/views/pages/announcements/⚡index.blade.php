@@ -3,6 +3,8 @@
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\ActivityLog;
 use App\Models\Announcement;
+use App\Models\User;
+use App\Notifications\AnnouncementPosted;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
@@ -10,6 +12,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -157,6 +160,11 @@ new #[Title('Announcements')] class extends Component {
             return;
         }
 
+        // Faculty hear of a new announcement once it has saved, in the portal only; an edit tells no one again.
+        if (! $this->editingId) {
+            Notification::send(User::where('role', 'faculty')->whereNotNull('approved_at')->get(), new AnnouncementPosted($announcement));
+        }
+
         Flux::modal('announcement-form')->close();
         Flux::toast(variant: 'success', text: $this->editingId ? __('Announcement updated.') : __('Announcement posted.'));
 
@@ -199,7 +207,8 @@ new #[Title('Announcements')] class extends Component {
 <section class="mx-auto w-full max-w-4xl">
     <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
+        {{-- At least 14rem wide, so on a phone the button wraps below instead of squeezing the description --}}
+        <div class="min-w-0 flex-1 basis-56">
             <flux:heading size="xl" level="1">{{ __('Announcements') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Schedules of submissions and memos from the Research Office.') }}</flux:text>
         </div>

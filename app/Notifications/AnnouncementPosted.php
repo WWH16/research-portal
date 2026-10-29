@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Notifications;
+
+use App\Models\Announcement;
+
+/**
+ * Tells faculty the Research Office posted a schedule of submissions or a memo. Portal only: the portal's free Gmail
+ * account sends about 500 emails a day, and one announcement to every member would use most of them. See
+ * docs/announcements.md for turning email on later.
+ */
+class AnnouncementPosted extends PortalNotification
+{
+    protected const bool EMAILED = false;
+
+    public function __construct(public readonly Announcement $announcement) {}
+
+    protected function message(): string
+    {
+        $replace = ['title' => $this->announcement->title, 'date' => $this->announcement->due_on?->format('F j, Y')];
+
+        return implode(' ', array_filter([
+            __('The Research Office has posted a new announcement: “:title”.', $replace),
+            $this->announcement->due_on ? __('The deadline is :date.', $replace) : null,
+            $this->announcement->attachment_path ? __('A memo is attached.') : null,
+        ]));
+    }
+
+    protected function url(): string
+    {
+        return route('announcements.index');
+    }
+}

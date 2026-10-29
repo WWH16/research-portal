@@ -1,6 +1,7 @@
 <?php
 
 use App\Notifications\AccountApproved;
+use App\Notifications\AnnouncementPosted;
 use App\Notifications\ConceptReviewed;
 use App\Notifications\DriveDisconnected;
 use App\Notifications\DriveFull;
@@ -33,6 +34,7 @@ new #[Title('Notifications')] class extends Component {
     /** What each kind of notice is called when it opens, and what its button says. */
     private const KINDS = [
         AccountApproved::class => ['Welcome', 'Start a proposal'],
+        AnnouncementPosted::class => ['New announcement', 'Open Announcements'],
         ConceptReviewed::class => ['Concept proposal decision', 'Open the project'],
         ProjectDeadline::class => ['Completion date reminder', 'Open the project'],
         ProjectDatesChanged::class => ['Project dates changed', 'Open the project'],

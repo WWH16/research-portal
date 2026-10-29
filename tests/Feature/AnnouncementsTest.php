@@ -6,6 +6,7 @@ use App\Models\Announcement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -199,6 +200,52 @@ class AnnouncementsTest extends TestCase
         $this->get(route('announcements.memo', Announcement::factory()->create()))->assertNotFound();
         $this->actingAs(User::factory()->pending()->create())->get(route('announcements.memo', $announcement))->assertRedirect(route('approval.notice'));
         $disk->assertExists(Str::after($announcement->attachment_path, '/'));
+    }
+
+    public function test_posting_tells_approved_faculty_in_the_portal_only(): void
+    {
+        $this->fakeDrive();
+        Mail::fake();
+        $faculty = User::factory()->create();
+        $pending = User::factory()->pending()->create();
+        $admin = $this->admin();
+        $otherAdmin = $this->admin();
+
+        $page = Livewire::actingAs($admin)->test('pages::announcements.index')
+            ->call('create')
+            ->set('title', 'Schedule of Submission of Concept Proposals')
+            ->set('description', 'Concept proposals for 2027 are due on the date below.')
+            ->set('dueOn', '2026-11-15')
+            ->set('memo', $this->memo())
+            ->call('save');
+
+        $this->assertSame(
+            'The Research Office has posted a new announcement: “Schedule of Submission of Concept Proposals”. The deadline is November 15, 2026. A memo is attached.',
+            $faculty->notifications()->sole()->data['message'],
+        );
+        $this->assertSame(route('announcements.index'), $faculty->notifications()->sole()->data['url']);
+        $this->assertSame(0, $pending->notifications()->count() + $admin->notifications()->count() + $otherAdmin->notifications()->count());
+        Mail::assertNothingOutgoing();
+
+        // A correction tells no one again.
+        $page->call('edit', Announcement::sole()->id)->set('title', 'Schedule of Submission of Concept Proposals, revised')->call('save');
+        $this->assertSame(1, $faculty->notifications()->count());
+
+        // The notice opens like a message, with its own heading and button.
+        Livewire::actingAs($faculty)->test('pages::notifications.index')
+            ->call('read', $faculty->notifications()->sole()->id)
+            ->assertSee('New announcement')
+            ->assertSee('Open Announcements');
+    }
+
+    public function test_a_plain_notice_is_announced_in_one_sentence(): void
+    {
+        $faculty = User::factory()->create();
+
+        Livewire::actingAs($this->admin())->test('pages::announcements.index')
+            ->call('create')->set('title', 'Research Office closed on November 2')->set('description', 'The office reopens on November 3.')->call('save');
+
+        $this->assertSame('The Research Office has posted a new announcement: “Research Office closed on November 2”.', $faculty->notifications()->sole()->data['message']);
     }
 
     public function test_the_form_says_what_to_fix(): void

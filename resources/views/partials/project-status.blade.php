@@ -5,12 +5,15 @@
     Expects: $submission; optional $class for the wrapper, such as items-end to keep the badge at the right edge;
     optional $timing to flag completed projects that finished late (judged on the terminal report's upload date),
     and to say how many days a delayed project is overdue instead of just "Delayed"; optional $delay = false to leave
-    "Delayed" out where the list already shows the overdue days beside the due date.
+    "Delayed" out where the list already shows the overdue days beside the due date; optional $stageAfterReview = true to
+    leave the stage badge out until the concept proposal passes, where document pills already show the concept on file.
     On time is the norm, so it gets no line: an unmarked completed project finished on time.
 --}}
 @php($line = 'flex items-center gap-1 whitespace-nowrap text-xs font-medium')
 <div class="flex flex-col items-start gap-1 {{ $class ?? '' }}">
-    <flux:badge size="sm" inset="top bottom" :color="\App\Models\Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">{{ __($submission->status) }}</flux:badge>
+    @unless (($stageAfterReview ?? false) && ! $submission->concept_passed)
+        <flux:badge size="sm" inset="top bottom" :color="\App\Models\Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">{{ __($submission->status) }}</flux:badge>
+    @endunless
     @if ($submission->awaiting_review)
         <span class="{{ $line }} text-amber-800" title="{{ __('The concept proposal is waiting for the Research Office to review') }}">
             <flux:icon.clock variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />

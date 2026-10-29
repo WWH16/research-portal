@@ -107,7 +107,8 @@ new #[Title('Submissions')] class extends Component {
             ->when($this->monitoring && trim($this->search) !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';
                 $query->where(fn ($query) => $query
-                    ->whereHas('user', fn ($query) => $query->where('name', 'like', $term))
+                    ->where('title', 'like', $term)
+                    ->orWhereHas('user', fn ($query) => $query->where('name', 'like', $term))
                     ->orWhereHas('proponents.user', fn ($query) => $query->where('name', 'like', $term)));
             });
     }
@@ -268,29 +269,32 @@ new #[Title('Submissions')] class extends Component {
     @island(name: 'list', always: true)
     <div class="mt-6 flex flex-wrap items-center gap-3 [&_[data-flux-control]]:border-b-zinc-200 [&_[data-flux-control]]:shadow-none">
         @if ($this->monitoring)
-            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search by faculty name')" :aria-label="__('Search by faculty name')" class="min-w-48 flex-1" />
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search titles or faculty')" :aria-label="__('Search titles or faculty')" class="min-w-48 flex-1" />
         @endif
 
-        <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-48" data-test="status-filter">
-            <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
-            <flux:select.option value="proposal">{{ __('At proposal stage') }}</flux:select.option>
-            <flux:select.option value="revision">{{ __('Concept needs revision') }}</flux:select.option>
-            <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
-            @if ($this->monitoring)
-                <flux:select.option value="presented">{{ __('Presented in-house') }}</flux:select.option>
-                <flux:select.option value="not-presented">{{ __('Not presented in-house') }}</flux:select.option>
-            @endif
-            @foreach (Submission::STATUSES as $option)
-                <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
-            @endforeach
-        </flux:select>
+        {{-- On phones the two filters share one row at half width each, instead of two uneven rows --}}
+        <div class="flex gap-3 max-sm:w-full">
+            <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-48 max-sm:max-w-none max-sm:flex-1" data-test="status-filter">
+                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+                <flux:select.option value="proposal">{{ __('At proposal stage') }}</flux:select.option>
+                <flux:select.option value="revision">{{ __('Concept needs revision') }}</flux:select.option>
+                <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
+                @if ($this->monitoring)
+                    <flux:select.option value="presented">{{ __('Presented in-house') }}</flux:select.option>
+                    <flux:select.option value="not-presented">{{ __('Not presented in-house') }}</flux:select.option>
+                @endif
+                @foreach (Submission::STATUSES as $option)
+                    <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
+                @endforeach
+            </flux:select>
 
-        <flux:select wire:model.live="yearFilter" :aria-label="__('Filter by year')" class="max-w-36">
-            <flux:select.option value="">{{ __('All years') }}</flux:select.option>
-            @foreach (Submission::years() as $option)
-                <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-            @endforeach
-        </flux:select>
+            <flux:select wire:model.live="yearFilter" :aria-label="__('Filter by year')" class="max-w-36 max-sm:max-w-none max-sm:flex-1">
+                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+                @foreach (Submission::years() as $option)
+                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
 
         {{-- The count sits with the filters it answers; the pager below only appears once there is a second page --}}
         @if ($this->submissions->isNotEmpty())
@@ -300,7 +304,7 @@ new #[Title('Submissions')] class extends Component {
         @endif
 
         @if ($this->monitoring)
-            <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:h-11 max-sm:w-full">
+            <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:ms-auto max-sm:h-11">
                 {{ __('Export CSV') }}
             </flux:button>
         @endif
@@ -319,8 +323,9 @@ new #[Title('Submissions')] class extends Component {
         </flux:text>
     @else
         {{-- Every cell starts at the top, so each row reads across one line from the title. relative anchors the cells'
-             screen-reader-only text to the table, inside its scroll area, so on phones it can't widen the whole page --}}
-        <flux:table class="relative mt-4 [&_td]:align-top" :paginate="$this->submissions->hasPages() ? $this->submissions : null">
+             screen-reader-only text to the table, inside its scroll area, so on phones it can't widen the whole page. Columns sit
+             a little closer than Flux's default, so the seven of them fit a laptop screen with the document pills on one line --}}
+        <flux:table class="relative mt-4 [&_td]:align-top [&_td+td]:ps-1 [&_th+th]:ps-1" :paginate="$this->submissions->hasPages() ? $this->submissions : null">
             <flux:table.columns>
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
                 @if ($this->monitoring)
@@ -328,39 +333,63 @@ new #[Title('Submissions')] class extends Component {
                         <x-college-filter model="department" :value="$department" />
                     </flux:table.column>
                 @endif
-                <flux:table.column>{{ __('Year') }}</flux:table.column>
-                <flux:table.column>{{ __('Status') }}</flux:table.column>
+                {{-- Phones keep the project and its actions; the project cell repeats status and due date in short --}}
+                <flux:table.column class="max-sm:hidden">{{ __('Year') }}</flux:table.column>
+                <flux:table.column class="max-sm:hidden">{{ __('Status') }}</flux:table.column>
                 @if ($this->monitoring)
-                    <flux:table.column>{{ __('Presented in-house') }}</flux:table.column>
+                    <flux:table.column class="max-sm:hidden">{{ __('Presented') }}</flux:table.column>
                 @endif
-                <flux:table.column>{{ __('Schedule') }}</flux:table.column>
+                <flux:table.column class="max-sm:hidden">{{ __('Schedule') }}</flux:table.column>
                 <flux:table.column align="end">{{ $this->monitoring ? __('Dates') : __('Actions') }}</flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
                 @foreach ($this->submissions as $submission)
-                    @php($title = $submission->displayTitle())
+                    @php
+                        $title = $submission->displayTitle();
+                        $overdue = $submission->isDelayed();
+                        $onTime = $submission->completedOnTime();
+                        // How the project stands against its due date, in the schedule column and on phones
+                        $standing = match (true) {
+                            $onTime !== null => $onTime ? __('Finished on time') : __('Finished late'),
+                            $overdue => trans_choice('{1} 1 day overdue|[2,*] :count days overdue', (int) $submission->target_date->diffInDays(today())),
+                            $submission->target_date !== null => trans_choice('{0} Due today|{1} 1 day left|[2,*] :count days left', (int) today()->diffInDays($submission->target_date)),
+                            default => __('No schedule yet'),
+                        };
+                        $standingClass = match (true) {
+                            $onTime === true => 'text-green-700',
+                            $onTime === false => 'text-orange-700',
+                            $overdue => 'font-medium text-red-700',
+                            default => 'text-zinc-500',
+                        };
+                        $due = __('Due :date', ['date' => $submission->target_date?->format('M j, Y') ?? __('not set')]);
+                    @endphp
                     <flux:table.row :key="$submission->id">
-                        <flux:table.cell class="min-w-64 max-w-sm whitespace-normal">
+                        <flux:table.cell class="max-w-sm whitespace-normal sm:min-w-64">
                             <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline">{{ $title }}</a>
                             <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->pluck('user')->unique('id')->map->shortName()->join(', ') }}</p>
                             {{-- All four documents in stage order: a filled pill opens one on file, a dashed one is still to come, so
-                                 every row shows the same sequence. Screen readers hear the full document name and which project it is for --}}
-                            <ul class="mt-2 flex flex-wrap gap-1.5" aria-label="{{ __('Documents') }}">
+                                 every row shows the same sequence, on one line from tablet width up; no check icon, so four filled pills
+                                 still fit there. Screen readers hear the full document name and which project it is for --}}
+                            <ul class="mt-2 flex flex-wrap gap-1 sm:flex-nowrap" aria-label="{{ __('Documents') }}">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
                                     <li>
                                         @if ($submission->{$stage.'_path'})
                                             <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
-                                                <flux:badge size="sm" icon="check" class="bg-isu-green-50! text-isu-green-800!">{{ Str::before(__($label), ' ') }}</flux:badge>
+                                                <flux:badge size="sm" class="bg-isu-green-50! px-1.5! text-isu-green-800!">{{ Str::before(__($label), ' ') }}</flux:badge>
                                             </a>
                                         @else
-                                            <span class="inline-flex items-center rounded-md border border-dashed border-zinc-300 px-2 py-[3px] text-xs font-medium text-zinc-500">
+                                            <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500">
                                                 {{ Str::before(__($label), ' ') }}<span class="sr-only">{{ __(': not uploaded yet') }}</span>
                                             </span>
                                         @endif
                                     </li>
                                 @endforeach
                             </ul>
+                            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden" data-test="phone-summary">
+                                @include('partials.project-status', ['delay' => false, 'stageAfterReview' => true])
+                                <p class="text-xs tabular-nums {{ $standingClass }}">{{ $due }} · {{ $standing }}</p>
+                            </div>
                             @if (! $this->monitoring && $submission->conceptReview() === 'returned')
                                 <p class="mt-2 text-sm text-amber-800">{{ __('Research Office remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
                             @endif
@@ -370,15 +399,16 @@ new #[Title('Submissions')] class extends Component {
                                 {{ $submission->department->code }}
                             </flux:table.cell>
                         @endif
-                        <flux:table.cell class="tabular-nums">{{ $submission->year }}</flux:table.cell>
-                        <flux:table.cell>
-                            {{-- Delayed shows in the schedule as the overdue days, so the status keeps to stage and review --}}
-                            @include('partials.project-status', ['delay' => false])
+                        <flux:table.cell class="tabular-nums max-sm:hidden">{{ $submission->year }}</flux:table.cell>
+                        <flux:table.cell class="max-sm:hidden">
+                            {{-- Delayed shows in the schedule as the overdue days, so the status keeps to stage and review; the stage
+                                 waits until the concept passes, since the pills already show the concept on file --}}
+                            @include('partials.project-status', ['delay' => false, 'stageAfterReview' => true])
                         </flux:table.cell>
                         @if ($this->monitoring)
                             {{-- Completed rows only; the key redraws the box to the saved value. The accessible name starts with the
                                  visible state, so voice control matches it, and adds which project. --}}
-                            <flux:table.cell>
+                            <flux:table.cell class="max-sm:hidden">
                                 @if ($submission->status === 'Completed')
                                     @php($state = $submission->presented ? __('Presented') : __('Not presented'))
                                     <flux:checkbox
@@ -391,7 +421,7 @@ new #[Title('Submissions')] class extends Component {
                                         data-test="presented-checkbox"
                                     />
                                     @unless ($submission->midyear_path)
-                                        <p class="mt-1.5 flex items-center gap-1 whitespace-nowrap text-sm text-amber-800" data-test="skipped-stage">
+                                        <p class="mt-1.5 flex items-center gap-1 text-sm text-amber-800" data-test="skipped-stage">
                                             <flux:icon.exclamation-triangle variant="micro" class="shrink-0" aria-hidden="true" />
                                             {{ __('No mid-year report') }}
                                         </p>
@@ -405,30 +435,10 @@ new #[Title('Submissions')] class extends Component {
                         @endif
                         {{-- Three lines on every row: the due date leads, the start date follows, and the last line says how the
                              project stands against the due date, so the column never shifts from row to row --}}
-                        <flux:table.cell class="whitespace-nowrap tabular-nums">
-                            @php($overdue = $submission->isDelayed())
-                            @php($onTime = $submission->completedOnTime())
-                            <div @class(['font-medium', 'text-red-700' => $overdue, 'text-zinc-800' => ! $overdue])>
-                                {{ __('Due :date', ['date' => $submission->target_date?->format('M j, Y') ?? __('not set')]) }}
-                            </div>
+                        <flux:table.cell class="whitespace-nowrap tabular-nums max-sm:hidden">
+                            <div @class(['font-medium', 'text-red-700' => $overdue, 'text-zinc-800' => ! $overdue])>{{ $due }}</div>
                             <div class="text-sm text-zinc-500">{{ __('Starts :date', ['date' => $submission->start_date?->format('M j, Y') ?? __('not set')]) }}</div>
-                            <div @class([
-                                'text-sm',
-                                'text-green-700' => $onTime === true,
-                                'text-orange-700' => $onTime === false,
-                                'font-medium text-red-700' => $overdue,
-                                'text-zinc-500' => $onTime === null && ! $overdue,
-                            ])>
-                                @if ($onTime !== null)
-                                    {{ $onTime ? __('Finished on time') : __('Finished late') }}
-                                @elseif ($overdue)
-                                    {{ trans_choice('{1} 1 day overdue|[2,*] :count days overdue', (int) $submission->target_date->diffInDays(today())) }}
-                                @elseif ($submission->target_date)
-                                    {{ trans_choice('{0} Due today|{1} 1 day left|[2,*] :count days left', (int) today()->diffInDays($submission->target_date)) }}
-                                @else
-                                    {{ __('No schedule yet') }}
-                                @endif
-                            </div>
+                            <div class="text-sm {{ $standingClass }}">{{ $standing }}</div>
                         </flux:table.cell>
                         <flux:table.cell align="end">
                             @if ($this->monitoring)

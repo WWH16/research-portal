@@ -1042,6 +1042,37 @@ class SubmissionTest extends TestCase
     /**
      * @return array{User, User}
      */
+    public function test_admins_search_titles_as_well_as_faculty(): void
+    {
+        [, $jose] = $this->twoFacultyWithSubmissions();
+        $jose->submissions()->sole()->update(['title' => 'Water Quality of the Cagayan River']);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::test('pages::submissions.index')
+            ->set('search', 'cagayan')
+            ->assertSee('Water Quality of the Cagayan River')
+            ->assertDontSee('Maria Proposal');
+    }
+
+    public function test_the_list_names_the_stage_only_once_the_concept_has_passed(): void
+    {
+        // The list's document pills already show the concept on file, so while it is in review the status says only that.
+        $status = fn (array $state) => view('partials.project-status', [
+            'submission' => new Submission($state), 'delay' => false, 'stageAfterReview' => true,
+        ])->render();
+
+        $inReview = $status(['status' => 'Concept', 'awaiting_review' => true, 'concept_passed' => false]);
+        $this->assertStringContainsString('Awaiting review', $inReview);
+        $this->assertStringNotContainsString('data-flux-badge', $inReview);
+
+        $returned = $status(['status' => 'Concept', 'awaiting_review' => false, 'concept_passed' => false]);
+        $this->assertStringContainsString('Needs revision', $returned);
+        $this->assertStringNotContainsString('data-flux-badge', $returned);
+
+        $this->assertStringContainsString('Detailed', $status(['status' => 'Detailed', 'awaiting_review' => false, 'concept_passed' => true]));
+    }
+
     public function test_list_rows_read_the_same_whatever_is_on_file(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();

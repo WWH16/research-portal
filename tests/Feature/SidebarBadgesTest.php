@@ -93,11 +93,39 @@ class SidebarBadgesTest extends TestCase
     {
         $this->project('Decided Proposal', ['awaiting_review' => false, 'concept_passed' => true]);
 
+        // Still in the page, hidden, so a live count can show it without a reload.
         $this->actingAs($this->admin())
             ->get(route('dashboard'))
-            ->assertDontSeeHtml('data-flux-navlist-badge>')
             ->assertSeeHtml('<span class="sr-only" x-show="toReview" x-text="reviewLabel"></span>')
             ->assertSeeHtml('style="display: none;" aria-hidden="true"');
+    }
+
+    public function test_open_work_comes_back_as_json_for_the_signed_in_member(): void
+    {
+        $this->project('Waiting Proposal');
+        User::factory()->pending()->create();
+
+        $this->actingAs($this->admin())
+            ->getJson(route('open-work'))
+            ->assertOk()
+            ->assertJson(['toReview' => 1, 'toApprove' => 1, 'toRevise' => 0, 'unread' => 0, 'reviewLabel' => '1 concept proposal to review']);
+
+        // Faculty never learn the admins' counts.
+        $this->project('Returned Proposal', ['awaiting_review' => false, 'concept_passed' => false]);
+        $this->actingAs($this->maria)
+            ->getJson(route('open-work'))
+            ->assertJson(['toReview' => 0, 'toApprove' => 0, 'toRevise' => 1]);
+
+        auth()->logout();
+        $this->getJson(route('open-work'))->assertUnauthorized();
+    }
+
+    public function test_the_sidebar_keeps_its_counts_live_while_the_tab_is_open(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('dashboard'))
+            ->assertSeeHtml('/open-work')
+            ->assertSeeHtml('setInterval');
     }
 
     public function test_the_review_badge_caps_at_99_and_keeps_the_exact_count_in_its_title(): void
@@ -174,6 +202,6 @@ class SidebarBadgesTest extends TestCase
 
         $this->actingAs($this->admin())
             ->get(route('dashboard'))
-            ->assertDontSeeHtml('data-flux-navlist-badge>');
+            ->assertDontSeeHtml(' data-tone="revision"');
     }
 }

@@ -84,6 +84,33 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     ];
 
     /**
+     * The open work behind the sidebar badges and the phone menu dot, with the hover titles that go with them. The
+     * sidebar draws it on load and asks for it again while the tab stays open; faculty never get the admins' counts.
+     *
+     * @return array{toReview: int, toRevise: int, toApprove: int, unread: int, reviewLabel: string, revisionLabel: string, approveLabel: string|null, unreadLabel: string|null}
+     */
+    public function openWork(): array
+    {
+        $admin = $this->isAdmin();
+        $toReview = $admin ? Submission::where('awaiting_review', true)->count() : 0;
+        $toRevise = $admin ? 0 : Submission::involving($this)->where('awaiting_review', false)->where('concept_passed', false)->count();
+        $toApprove = $admin ? self::pendingApproval()->count() : 0;
+        $unread = $this->unreadNotifications()->count();
+
+        return [
+            'toReview' => $toReview,
+            'toRevise' => $toRevise,
+            'toApprove' => $toApprove,
+            'unread' => $unread,
+            'reviewLabel' => Submission::reviewQueueLabel($toReview),
+            'revisionLabel' => trans_choice('{1} 1 project needs revision|[2,*] :count projects need revision', $toRevise),
+            // Null with nothing waiting, so no stray "0 …" title is left on the item.
+            'approveLabel' => $toApprove ? trans_choice('{1} 1 sign-up to approve|[2,*] :count sign-ups to approve', $toApprove) : null,
+            'unreadLabel' => $unread ? trans_choice('{1} 1 unread notification|[2,*] :count unread notifications', $unread) : null,
+        ];
+    }
+
+    /**
      * Whether this member wants a kind of notice by email too. Every kind is on until they turn it off.
      */
     public function wantsEmail(string $kind): bool

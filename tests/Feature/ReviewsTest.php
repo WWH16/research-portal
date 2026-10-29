@@ -79,6 +79,17 @@ class ReviewsTest extends TestCase
             ->assertDontSee('Showing 1 to');
     }
 
+    public function test_the_list_redraws_when_the_live_count_finds_a_new_proposal(): void
+    {
+        $this->project('First Proposal');
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $page = Livewire::test('pages::reviews.index')->assertSee('First Proposal');
+
+        $this->project('Newly Uploaded Proposal');
+
+        $page->dispatch('open-work-changed', changed: ['toReview'])->assertSee('Newly Uploaded Proposal');
+    }
+
     public function test_faculty_see_no_reviews_link(): void
     {
         $this->actingAs($this->maria)->get(route('dashboard'))->assertDontSeeHtml('data-test="reviews-nav"');

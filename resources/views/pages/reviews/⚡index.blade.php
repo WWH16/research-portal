@@ -5,6 +5,7 @@ use App\Models\Submission;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -48,6 +49,24 @@ new #[Title('Concept Reviews')] class extends Component {
             $this->previousPage();
         }
 
+        $this->renderIsland('list');
+    }
+
+    /**
+     * The sidebar found the review count moved, as when a new proposal came in: redraw the list. Other counts leave it be.
+     *
+     * @param  list<string>  $changed
+     */
+    #[On('open-work-changed')]
+    public function openWorkChanged(array $changed): void
+    {
+        if (! in_array('toReview', $changed, true)) {
+            $this->skipRender();
+
+            return;
+        }
+
+        unset($this->queue);
         $this->renderIsland('list');
     }
 }; ?>

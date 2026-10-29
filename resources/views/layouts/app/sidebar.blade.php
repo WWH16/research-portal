@@ -5,20 +5,33 @@
     </head>
     {{-- Open work behind the sidebar badges and the phone menu dot. A saved review sends the new queue size, so the count updates without a reload. --}}
     @php
-        $toReview = auth()->user()->isAdmin() ? \App\Models\Submission::where('awaiting_review', true)->count() : 0;
-        $toRevise = auth()->user()->isAdmin() ? 0 : \App\Models\Submission::involving(auth()->user())->where('awaiting_review', false)->where('concept_passed', false)->count();
-        $toApprove = auth()->user()->isAdmin() ? \App\Models\User::pendingApproval()->count() : 0;
-        $reviewLabel = \App\Models\Submission::reviewQueueLabel($toReview);
-        // Null with nothing waiting, so no stray "0 sign-ups" title is left on the item.
-        $approveLabel = $toApprove ? trans_choice('{1} 1 sign-up to approve|[2,*] :count sign-ups to approve', $toApprove) : null;
-        $revisionLabel = trans_choice('{1} 1 project needs revision|[2,*] :count projects need revision', $toRevise);
-        $unread = auth()->user()->unreadNotifications()->count();
-        // Null with nothing unread, so no stray "0 unread" title is left on the item.
-        $unreadLabel = $unread ? trans_choice('{1} 1 unread notification|[2,*] :count unread notifications', $unread) : null;
+        $work = auth()->user()->openWork();
+        ['toReview' => $toReview, 'toRevise' => $toRevise, 'toApprove' => $toApprove, 'unread' => $unread] = $work;
+        ['reviewLabel' => $reviewLabel, 'revisionLabel' => $revisionLabel, 'approveLabel' => $approveLabel, 'unreadLabel' => $unreadLabel] = $work;
         // Two digits at most, so the badge never crowds the label; the hover title keeps the exact count.
         $capped = fn (int $count) => $count > 99 ? '99+' : $count;
     @endphp
-    <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), unread: @js($unread), toApprove: @js($toApprove), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
+    {{-- The counts are asked for again every minute while the tab is in view, and as soon as it comes back into view.
+         Pages showing a count that moved hear of it through the open-work-changed event and redraw. --}}
+    <body class="min-h-screen bg-surface"
+        x-data="{
+            ...@js($work),
+            timer: null,
+            init() { this.timer = setInterval(() => document.hidden || this.refresh(), 60000) },
+            destroy() { clearInterval(this.timer) },
+            refresh() {
+                fetch(@js(route('open-work')), { headers: { Accept: 'application/json' } })
+                    .then(response => response.ok ? response.json() : null)
+                    .then(work => {
+                        if (! work) return
+                        const changed = Object.keys(work).filter(key => work[key] !== this[key])
+                        Object.assign(this, work)
+                        if (changed.length) Livewire.dispatch('open-work-changed', { changed })
+                    })
+            },
+        }"
+        x-on:visibilitychange.document="document.hidden || refresh()"
+        x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}
         <flux:sidebar sticky collapsible="mobile" class="isu-sidebar w-72 border-e">
             {{-- The brand and the account menu stay put while the links between them scroll; each covers the sidebar's
@@ -56,7 +69,7 @@
                 <flux:sidebar.group :heading="__('Research')" icon="academic-cap" :expandable="auth()->user()->isAdmin()" class="grid" data-test="research-nav">
                     @if (auth()->user()->isAdmin())
                         {{-- The Research Office's open work leads the group, with a count visible from every page. Screen readers hear the sentence, not the bare number. --}}
-                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$toReview ? $capped($toReview) : null" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$capped($toReview)" :badge:style="$toReview ? null : 'display: none'" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
                             {{ __('Concept Reviews') }}
                             <span class="sr-only" x-show="toReview" x-text="reviewLabel">{{ $toReview ? $reviewLabel : '' }}</span>
                         </flux:sidebar.item>

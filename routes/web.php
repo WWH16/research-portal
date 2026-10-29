@@ -33,6 +33,9 @@ Route::get('approval', fn () => request()->user()->isApproved()
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 
+    // The sidebar asks for its counts again every minute while the tab is open, so badges move without a reload.
+    Route::get('open-work', fn (Request $request) => $request->user()->openWork())->name('open-work');
+
     Route::livewire('announcements', 'pages::announcements.index')->name('announcements.index');
     Route::livewire('notifications', 'pages::notifications.index')->name('notifications.index');
     Route::livewire('drive', 'pages::drive.index')->name('drive.index');

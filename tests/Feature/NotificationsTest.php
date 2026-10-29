@@ -338,6 +338,33 @@ class NotificationsTest extends TestCase
         $this->assertNotNull($notification->fresh()->read_at);
     }
 
+    public function test_a_notice_opens_like_a_message_and_is_marked_read(): void
+    {
+        $project = $this->project();
+        $this->maria->notify(new ConceptReviewed($project, 'passed', null));
+        $notice = $this->maria->notifications()->sole();
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::notifications.index')
+            ->call('read', $notice->id)
+            ->assertDispatched('open-work-stale')
+            ->assertSee('Concept proposal decision')
+            ->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”. You may now upload the detailed proposal.')
+            ->assertSee($notice->created_at->format('F j, Y, g:i A'))
+            ->assertSee('Open the project')
+            ->assertNoRedirect();
+
+        $this->assertNotNull($notice->fresh()->read_at);
+    }
+
+    public function test_another_members_notice_cannot_be_read(): void
+    {
+        $this->jose->notify(new ConceptReviewed($this->project(), 'passed', null));
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::notifications.index')->call('read', $this->jose->notifications()->sole()->id)->assertStatus(404);
+    }
+
     public function test_opening_a_notice_stays_on_the_address_the_member_is_using(): void
     {
         // Saved with the address the portal had when it was sent; another address, or another site, never takes over.

@@ -192,15 +192,24 @@ class ProjectProgressTest extends TestCase
         $this->get(route('drive.show', $done))->assertSee('All documents are uploaded.');
     }
 
-    public function test_the_review_panel_shows_the_stages_without_repeating_what_to_review(): void
+    public function test_the_review_panel_shows_the_stages_only_once_the_concept_is_decided(): void
     {
-        $project = $this->project(['awaiting_review' => true, 'concept_path' => 'drive-1/submissions/concept.pdf']);
+        $waiting = $this->project(['awaiting_review' => true, 'concept_path' => 'drive-1/submissions/concept.pdf']);
+        $passed = $this->project(['awaiting_review' => false, 'concept_passed' => true, 'concept_path' => 'drive-1/submissions/concept.pdf']);
         $this->actingAs($this->admin);
 
+        // A waiting concept can only be at the first stage, so the panel leaves the bar out and offers Cancel.
         Livewire::test('pages::reviews.index')
-            ->call('review', $project->id)
+            ->call('review', $waiting->id)
+            ->assertDontSee('data-test="project-stages"', false)
+            ->assertSee('Cancel');
+
+        // A decided one shows where the project stands, still without repeating the next step, and offers Close instead of Cancel.
+        Livewire::test('pages::reviews.index')
+            ->call('review', $passed->id)
             ->assertSee('data-test="project-stages"', false)
-            ->assertDontSee('data-test="project-next-step"', false);
+            ->assertDontSee('data-test="project-next-step"', false)
+            ->assertDontSee('Cancel');
     }
 
     public function test_the_drive_page_lists_uploads_and_reviews_newest_first(): void

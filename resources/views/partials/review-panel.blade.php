@@ -4,37 +4,38 @@
     @island(name: 'review', always: true)
     @if ($this->reviewing)
         {{-- Not a form: Enter must never pass a concept proposal by accident, so each decision is its own button --}}
+        {{-- Block @php only in this file: Blade reads an inline @php() up to the next @endphp --}}
+        @php
+            $review = $this->reviewing->conceptReview();
+            $uploaded = $this->reviewing->uploadTimes()['concept'] ?? null;
+            [$color, $icon, $heading, $text] = match ($review) {
+                'pending' => ['zinc', 'document-arrow-up', null, ($uploaded ? __('Uploaded :date.', ['date' => $uploaded->format('M j, Y, g:i A')]).' ' : '').__('Open it, then pass it or return it for revision. The detailed proposal stays locked until it passes.')],
+                'passed' => ['green', 'check-circle', __('Concept proposal passed'), __('The proponents can upload the detailed proposal. A replaced concept proposal stays passed.')],
+                default => ['amber', 'arrow-uturn-left', __('Returned for revision'), __('Waiting for the proponents to upload a corrected concept proposal.')],
+            };
+        @endphp
         <div class="flex flex-col gap-6">
             <div class="pe-8">
                 <flux:heading size="lg" id="review-submission-heading">{{ $this->reviewing->title }}</flux:heading>
-                <flux:text class="mt-1">{{ __('Filed by :name · :college', ['name' => $this->reviewing->user->name, 'college' => $this->reviewing->department->code]) }}</flux:text>
+                <flux:text class="mt-1">{{ __('Filed by :name · :college', ['name' => $this->reviewing->user->displayName(), 'college' => $this->reviewing->department->code]) }}</flux:text>
             </div>
 
-            @include('partials.project-stages', ['submission' => $this->reviewing, 'next' => false])
+            {{-- Left out while a concept proposal waits: the project can only be at Concept then, with every later stage locked --}}
+            @if ($review !== 'pending')
+                @include('partials.project-stages', ['submission' => $this->reviewing, 'next' => false])
+            @endif
 
-            @php($uploaded = $this->reviewing->uploadTimes()['concept'] ?? null)
-            @switch ($this->reviewing->conceptReview())
-                @case ('pending')
-                    <flux:callout color="blue" icon="document-arrow-up" data-test="review-to-check">
-                        <flux:callout.heading>{{ __('To review: Concept proposal') }}</flux:callout.heading>
-                        <flux:callout.text>
-                            {{ $uploaded ? __('Uploaded :date.', ['date' => $uploaded->format('M j, Y, g:i A')]) : '' }}
-                            {{ __('Open it, then pass it or return it for revision. The detailed proposal stays locked until it passes.') }}
-                        </flux:callout.text>
-                    </flux:callout>
-                    @break
-                @case ('passed')
-                    <flux:callout color="green" icon="check-circle" data-test="review-nothing-new">
-                        <flux:callout.heading>{{ __('Concept proposal passed') }}</flux:callout.heading>
-                        <flux:callout.text>{{ __('The proponents can upload the detailed proposal. A replaced concept proposal stays passed.') }}</flux:callout.text>
-                    </flux:callout>
-                    @break
-                @default
-                    <flux:callout color="amber" icon="arrow-uturn-left" data-test="review-nothing-new">
-                        <flux:callout.heading>{{ __('Returned for revision') }}</flux:callout.heading>
-                        <flux:callout.text>{{ __('Waiting for the proponents to upload a corrected concept proposal.') }}</flux:callout.text>
-                    </flux:callout>
-            @endswitch
+            {{-- A waiting review reads neutral, apart from the green of a pass and the amber of a return. The document opens
+                 from here, beside the line that says to open it, and leaves the panel's one primary button to the decision. --}}
+            <flux:callout :color="$color" :icon="$icon" :heading="$heading" :text="$text" :data-test="$review === 'pending' ? 'review-to-check' : 'review-nothing-new'">
+                @if ($this->reviewing->concept_path)
+                    <x-slot name="actions">
+                        <flux:button size="sm" variant="outline" :href="route('submissions.document', [$this->reviewing, 'concept'])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11">
+                            {{ __('Open concept proposal') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
+            </flux:callout>
 
             <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
                 {{-- Full width, so year and encoded date, then the two project dates, stay paired below --}}
@@ -79,7 +80,7 @@
                     <dt class="text-zinc-500">{{ __('Proponents') }}</dt>
                     <dd class="mt-1 grid gap-1 text-zinc-800">
                         @foreach ($this->reviewing->proponents->sortBy('study')->groupBy('study') as $study => $rows)
-                            <p><span class="font-medium">{{ __('Study :number', ['number' => $study]) }}:</span> {{ $rows->map(fn ($row) => $row->user->name.' ('.__($row->role).', '.($row->user->department?->code ?? __('No college')).')')->join(', ') }}</p>
+                            <p><span class="font-medium">{{ __('Study :number', ['number' => $study]) }}:</span> {{ $rows->map(fn ($row) => $row->user->displayName().' ('.__($row->role).', '.($row->user->department?->code ?? __('No college')).')')->join(', ') }}</p>
                         @endforeach
                     </dd>
                 </div>
@@ -91,20 +92,12 @@
                 @endif
             </dl>
 
-            @if ($this->reviewing->concept_path)
-                <div>
-                    <flux:button size="sm" :href="route('submissions.document', [$this->reviewing, 'concept'])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" :variant="$this->reviewing->awaiting_review ? 'primary' : 'outline'" class="max-sm:h-11">
-                        {{ __('Open concept proposal') }}
-                    </flux:button>
-                </div>
-            @endif
-
             {{--
                 Only an upload waiting for review can be decided. Nothing is picked at first, so a pass is always a
                 choice, never the nearest button. The remarks show for a return, or while they hold text, so a pass
                 refused for carrying remarks shows its error under them. Keyed by project, so each review starts unpicked.
             --}}
-            @if ($this->reviewing->conceptReview() === 'pending')
+            @if ($review === 'pending')
                 <flux:separator variant="subtle" />
 
                 <div x-data="{ decision: '' }" wire:key="decision-{{ $this->reviewing->id }}" class="grid gap-4">
@@ -128,7 +121,7 @@
             <flux:error name="review" />
 
             <flux:modal.close>
-                <flux:button variant="ghost" class="w-full max-sm:h-11">{{ __('Cancel') }}</flux:button>
+                <flux:button variant="ghost" class="w-full max-sm:h-11">{{ $review === 'pending' ? __('Cancel') : __('Close') }}</flux:button>
             </flux:modal.close>
         </div>
     @endif

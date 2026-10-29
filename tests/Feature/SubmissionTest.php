@@ -419,7 +419,7 @@ class SubmissionTest extends TestCase
         $this->actingAs($admin);
         Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
-            ->assertSee('To review: Concept proposal')
+            ->assertSeeHtml('data-test="review-to-check"')
             ->assertDontSeeHtml('data-test="review-nothing-new"');
         $this->reviewAs($project);
         $this->assertSame('Concept', $project->fresh()->status, 'A review never moves the status.');
@@ -598,7 +598,7 @@ class SubmissionTest extends TestCase
         $this->get(route('dashboard'))->assertSeeInOrder(['data-test="reviews-nav"', 'Reviews', '2'], false);
         $panel = Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
-            ->assertSee('To review: Concept proposal')
+            ->assertSeeHtml('data-test="review-to-check"')
             ->assertSeeHtml('data-test="review-decision"')
             ->assertSeeHtml('data-test="save-review-button"');
 

@@ -15,14 +15,16 @@
                 <span class="h-1.5 rounded-full {{ $index <= $current ? 'bg-isu-green-700' : 'bg-zinc-200' }}" aria-hidden="true"></span>
                 {{-- A stage whose document can't be uploaded yet: the concept proposal hasn't passed, or the document before it isn't in --}}
                 @php($locked = $index > $current && ! in_array(\App\Models\Submission::STAGE_DOCUMENTS[$stage], $open, true))
+                {{-- Phones drop the lock and a type size, so "Completed" fits whole beside three others; the grey bar and
+                     label still mark a locked stage, and screen readers still hear it --}}
                 <span @class([
-                    'flex min-w-0 items-center gap-1 text-sm',
+                    'flex min-w-0 items-center gap-1 text-sm max-sm:text-xs',
                     'font-semibold text-zinc-800' => $index === $current,
                     'text-zinc-600' => $index !== $current && ! $locked,
                     'text-zinc-500' => $locked,
                 ])>
                     @if ($locked)
-                        <flux:icon.lock-closed variant="micro" class="shrink-0" aria-hidden="true" />
+                        <flux:icon.lock-closed variant="micro" class="shrink-0 max-sm:hidden" aria-hidden="true" />
                     @endif
                     <span class="truncate">{{ __($stage) }}</span>
                     <span class="sr-only">{{ match (true) { $index < $current => __('(done)'), $index === $current => __('(current stage)'), $locked => __('(locked)'), default => __('(next)') } }}</span>

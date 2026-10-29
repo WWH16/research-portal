@@ -382,7 +382,7 @@ class DashboardTest extends TestCase
         Livewire::withQueryParams(['review' => $waiting->id])
             ->test('pages::reviews.index')
             ->assertSet('reviewingId', $waiting->id)
-            ->assertSee('To review: Concept proposal');
+            ->assertSeeHtml('data-test="review-to-check"');
     }
 
     public function test_faculty_tiles_open_the_list_they_count(): void

@@ -262,6 +262,24 @@ class ManageUsersTest extends TestCase
             ->assertDontSee('No users match these filters');
     }
 
+    public function test_the_list_redraws_when_the_live_count_finds_a_new_sign_up(): void
+    {
+        $this->actingAs($this->admin);
+        $page = Livewire::test('pages::users.index', ['statusFilter' => 'pending'])->assertDontSee('Newly Signed Up');
+
+        User::factory()->pending()->create(['name' => 'Newly Signed Up']);
+
+        $page->dispatch('open-work-changed', changed: ['toApprove'])->assertSee('Newly Signed Up');
+    }
+
+    public function test_the_sign_up_badge_stays_in_the_page_hidden_so_it_can_appear_live(): void
+    {
+        $this->actingAs($this->admin)
+            ->get(route('dashboard'))
+            ->assertSeeHtml('x-show="toApprove"')
+            ->assertDontSee('sign-ups to approve');
+    }
+
     public function test_unused_user_can_be_deleted(): void
     {
         $user = User::factory()->create();

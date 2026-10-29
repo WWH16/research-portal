@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -93,6 +94,22 @@ new #[Title('Manage Users')] class extends Component {
         }
 
         return $users;
+    }
+
+    /**
+     * The sidebar found the sign-up count moved, as when someone new confirmed their email: redraw the list.
+     * Other counts leave it be.
+     *
+     * @param  list<string>  $changed
+     */
+    #[On('open-work-changed')]
+    public function openWorkChanged(array $changed): void
+    {
+        if (in_array('toApprove', $changed, true)) {
+            unset($this->users);
+        } else {
+            $this->skipRender();
+        }
     }
 
     #[Computed]

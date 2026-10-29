@@ -102,7 +102,7 @@
                 @if (auth()->user()->isAdmin())
                     {{-- Sign-ups waiting for approval keep the group open and show as a count; the item opens straight to them --}}
                     <flux:sidebar.group :heading="__('Administration')" icon="shield-check" expandable :expanded="$toApprove > 0 || request()->routeIs('users.*', 'activity-log.*')" class="grid" data-test="administration-nav">
-                        <flux:sidebar.item icon="users" :href="route('users.index', $toApprove ? ['status' => 'pending'] : [])" :current="request()->routeIs('users.*')" :badge="$toApprove ? $capped($toApprove) : null" :badge:title="$approveLabel" badge:aria-hidden="true" wire:navigate data-test="users-nav">
+                        <flux:sidebar.item icon="users" :href="route('users.index', $toApprove ? ['status' => 'pending'] : [])" :current="request()->routeIs('users.*')" :badge="$capped($toApprove)" :badge:style="$toApprove ? null : 'display: none'" :badge:title="$approveLabel" badge:x-bind:title="approveLabel" badge:x-show="toApprove" badge:x-text="toApprove > 99 ? '99+' : toApprove" badge:aria-hidden="true" wire:navigate data-test="users-nav">
                             {{ __('Manage Users') }}
                             @if ($toApprove)
                                 <span class="sr-only">{{ $approveLabel }}</span>

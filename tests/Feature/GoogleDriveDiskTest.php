@@ -77,6 +77,27 @@ class GoogleDriveDiskTest extends TestCase
         $this->assertSame($disk, app(GoogleDrive::class)->disk($account));
     }
 
+    public function test_later_requests_reuse_the_access_token_until_google_refuses_it(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123', 'refresh_token' => 'saved-token']);
+        $token = fn (string $value) => new Response(200, ['Content-Type' => 'application/json'], json_encode(['access_token' => $value, 'expires_in' => 3599]));
+        $accessToken = fn () => app(GoogleDrive::class)->disk($account)->getAdapter()->getService()->getClient()->getAccessToken()['access_token'];
+
+        $this->googleAnswers([$token('first-token'), new Response(401, ['Content-Type' => 'application/json'], '{"error": {"code": 401, "message": "Invalid Credentials"}}')]);
+        $this->assertSame('first-token', $accessToken());
+
+        // A later request signs in no more: it has no answer for a sign-in, and keeps the token from before.
+        $this->googleAnswers([new Response(401, ['Content-Type' => 'application/json'], '{"error": {"code": 401, "message": "Invalid Credentials"}}')]);
+        $service = app(GoogleDrive::class)->disk($account)->getAdapter()->getService();
+        $this->assertSame('first-token', $service->getClient()->getAccessToken()['access_token']);
+
+        // Google refusing the token, as after someone removes the portal's access, drops it, so the next request signs in again
+        // and learns whether the account is still reachable.
+        rescue(fn () => $service->files->get('folder-123'), report: false);
+        $this->googleAnswers([$token('second-token')]);
+        $this->assertSame('second-token', $accessToken());
+    }
+
     public function test_opening_a_document_on_a_disconnected_account_says_storage_is_down(): void
     {
         $account = GoogleDriveConnection::factory()->unconnected()->create();

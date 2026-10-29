@@ -66,16 +66,30 @@ class GoogleDrive
 
         // Signed in here, not on the first file request: the adapter turns a refused token into "file not found",
         // which would show a missing document instead of storage being down, and hide a revoked account.
+        // The access token lasts about an hour, so later requests reuse it, kept encrypted, rather than wait on
+        // Google to sign in again on every upload and open. It's kept under its grant, so reconnecting starts afresh.
         $client = $this->client($account->refresh_token);
-        $token = $client->fetchAccessTokenWithRefreshToken();
+        $tokenKey = 'google-drive.token.'.hash('sha256', (string) $account->refresh_token);
 
-        if (isset($token['error'])) {
-            throw new DocumentStorageUnavailable("Google refused Google Drive {$account->email}: {$token['error']}.");
-        }
+        // Google's access tokens last an hour; a refusal throws, so it's never kept.
+        $token = Cache::remember($tokenKey, now()->addMinutes(55), function () use ($client, $account) {
+            $token = $client->fetchAccessTokenWithRefreshToken();
+
+            return isset($token['error'])
+                ? throw new DocumentStorageUnavailable("Google refused Google Drive {$account->email}: {$token['error']}.")
+                : encrypt($token);
+        });
+        $client->setAccessToken(decrypt($token));
 
         // A school account's own limit is never reported, so a refused upload is how the Google Drive page learns
         // it's full. Read off the response: the adapter drops Google's error and only says the write failed.
-        $client->getHttpClient()->getConfig('handler')->push(Middleware::mapResponse(function (ResponseInterface $response) use ($account) {
+        // A refused token, as once someone removes the portal's access, is dropped, so the next request signs in
+        // again and marks the account not connected.
+        $client->getHttpClient()->getConfig('handler')->push(Middleware::mapResponse(function (ResponseInterface $response) use ($account, $tokenKey) {
+            if ($response->getStatusCode() === 401) {
+                Cache::forget($tokenKey);
+            }
+
             // Only the first refusal tells the admins; the ones after it, until an upload goes through, stay quiet.
             if ($response->getStatusCode() === 403 && str_contains((string) $response->getBody(), 'storageQuotaExceeded')
                 && Cache::add($account->fullKey(), now())) {

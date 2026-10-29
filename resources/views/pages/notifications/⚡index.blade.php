@@ -81,7 +81,6 @@ new #[Title('Notifications')] class extends Component {
     {
         $notice = Auth::user()->notifications()->findOrFail($id);
         $this->readingId = $id;
-        unset($this->reading);
 
         if (! $notice->read_at) {
             $notice->markAsRead();
@@ -245,7 +244,6 @@ new #[Title('Notifications')] class extends Component {
                     </div>
 
                     <div class="flex shrink-0 items-center gap-1">
-                        <flux:button size="sm" wire:click="read('{{ $notification->id }}')" aria-label="{{ __('Open: :message', ['message' => $notification->data['message']]) }}">{{ __('Open') }}</flux:button>
                         <flux:dropdown position="bottom" align="end">
                             <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" />
                             <flux:menu>

@@ -38,6 +38,16 @@ class GoogleDriveConnection extends Model
     }
 
     /**
+     * Where the cache keeps when Google last refused an upload because the account is full. A school account's
+     * own limit is never reported, so a refused upload is the only sign; losing the entry only means the warning
+     * waits for the next refusal.
+     */
+    public function fullKey(): string
+    {
+        return "google-drive.full.{$this->id}";
+    }
+
+    /**
      * The account new documents go to: the one an admin hasn't replaced.
      */
     public static function current(): ?self

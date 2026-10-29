@@ -7,10 +7,13 @@ use App\Models\GoogleDriveConnection;
 use Google\Client;
 use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
+use GuzzleHttp\Middleware;
 use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Support\Facades\Cache;
 use League\Flysystem\Filesystem;
 use Masbug\Flysystem\GoogleDriveAdapter;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * The Google API calls the portal makes itself: everything else goes through the "google" disk.
@@ -67,6 +70,16 @@ class GoogleDrive
             throw new DocumentStorageUnavailable("Google refused Google Drive {$account->email}: {$token['error']}.");
         }
 
+        // A school account's own limit is never reported, so a refused upload is how the Google Drive page learns
+        // it's full. Read off the response: the adapter drops Google's error and only says the write failed.
+        $client->getHttpClient()->getConfig('handler')->push(Middleware::mapResponse(function (ResponseInterface $response) use ($account) {
+            if ($response->getStatusCode() === 403 && str_contains((string) $response->getBody(), 'storageQuotaExceeded')) {
+                Cache::forever($account->fullKey(), now());
+            }
+
+            return $response;
+        }));
+
         $config = ['visibility' => 'private'];
         $adapter = new GoogleDriveAdapter(new Drive($client), options: ['sharedFolderId' => $account->folder_id]);
 
@@ -78,13 +91,18 @@ class GoogleDrive
      * in all, in Drive, and by the portal's own documents. The drive.file scope lists only the files the portal
      * made, so their sizes add up to the portal's share; Gmail and Photos are the rest outside Drive.
      *
-     * @return array{used: int, limit: int|null, drive: int, portal: int}
+     * A school or company account (Google Workspace) shares its organization's storage pool, and Google reports
+     * the whole pool's use and limit, not the account's own. For those only the account's Drive use is real, so
+     * that is the use, with no limit: Google doesn't tell the portal the account's own cap.
+     *
+     * @return array{used: int, limit: int|null, drive: int, portal: int, pooled: bool}
      */
     public function usage(GoogleDriveConnection $account): array
     {
         /** @var GoogleDriveAdapter $adapter */
         $adapter = $this->disk($account)->getAdapter();
         $service = $adapter->getService();
+        $pooled = $this->pooled($service->getClient());
         // Fails with "File not found" once someone deleted the folder, so the page stops claiming all is well.
         $service->files->get((string) $account->folder_id, ['fields' => 'id']);
         $quota = $service->about->get(['fields' => 'storageQuota'])->getStorageQuota();
@@ -100,11 +118,24 @@ class GoogleDrive
         } while ($page);
 
         return [
-            'used' => (int) $quota->getUsage(),
-            'limit' => $quota->getLimit() === null ? null : (int) $quota->getLimit(),
+            'used' => (int) ($pooled ? $quota->getUsageInDrive() : $quota->getUsage()),
+            'limit' => $pooled || $quota->getLimit() === null ? null : (int) $quota->getLimit(),
             'drive' => (int) $quota->getUsageInDrive(),
             'portal' => $portal,
+            'pooled' => $pooled,
         ];
+    }
+
+    /**
+     * Whether the account belongs to a Workspace organization: its ID token, sent with the access token, names the
+     * organization (hd); a personal account's doesn't. The token came straight from Google's token endpoint over
+     * TLS, so its claims are read without checking the signature, as OpenID Connect allows.
+     */
+    private function pooled(Client $client): bool
+    {
+        $payload = explode('.', $client->getAccessToken()['id_token'] ?? '')[1] ?? '';
+
+        return isset(json_decode((string) base64_decode(strtr($payload, '-_', '+/')), true)['hd']);
     }
 
     /**

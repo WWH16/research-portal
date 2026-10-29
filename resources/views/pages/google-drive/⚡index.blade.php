@@ -30,7 +30,7 @@ new #[Title('Google Drive')] class extends Component {
     /** Which step of a confirmation dialog is showing: 1 explains what happens, 2 asks for the confirmation. */
     public int $step = 1;
 
-    /** @var array{used: int, limit: int|null, drive: int, portal: int}|false|null The current account's Google storage, asked for after the page shows: null while checking, false when Google can't answer. */
+    /** @var array{used: int, limit: int|null, drive: int, portal: int, pooled: bool}|false|null The current account's Google storage, asked for after the page shows: null while checking, false when Google can't answer. */
     public array|false|null $usage = null;
 
     /**
@@ -73,7 +73,7 @@ new #[Title('Google Drive')] class extends Component {
      * Drive, then Gmail and Photos. Each part's width is its share of the limit (of all use on a plan without
      * one), never below a sliver, so a small share still shows.
      *
-     * @return array{used: string, limit: string|null, free: string|null, percent: float|null, parts: list<array{label: string, size: string, width: float, color: string}>}|null
+     * @return array{pooled: bool, used: string, limit: string|null, free: string|null, percent: float|null, parts: list<array{label: string, size: string, width: float, color: string}>}|null
      */
     #[Computed]
     public function storage(): ?array
@@ -82,15 +82,17 @@ new #[Title('Google Drive')] class extends Component {
             return null;
         }
 
-        ['used' => $used, 'limit' => $limit, 'drive' => $drive, 'portal' => $portal] = $this->usage;
+        ['used' => $used, 'limit' => $limit, 'drive' => $drive, 'portal' => $portal, 'pooled' => $pooled] = $this->usage;
         $whole = $limit ?: max(1, $used);
         $parts = [
             [__('Research portal documents'), $portal, 'bg-isu-green-600'],
             [__('Other Google Drive files'), max(0, $drive - $portal), 'bg-isu-gold-400'],
-            [__('Gmail, Google Photos and other'), max(0, $used - $drive), 'bg-zinc-400'],
+            // A pooled account's Gmail and Photos aren't reported on their own, so they aren't shown as nothing.
+            ...$pooled ? [] : [[__('Gmail, Google Photos and other'), max(0, $used - $drive), 'bg-zinc-400']],
         ];
 
         return [
+            'pooled' => $pooled,
             'used' => self::size($used),
             'limit' => $limit ? self::size($limit) : null,
             'free' => $limit ? self::size(max(0, $limit - $used)) : null,
@@ -393,6 +395,13 @@ new #[Title('Google Drive')] class extends Component {
         <div class="mt-8 border-t border-line pt-6" wire:init="loadUsage" data-test="drive-storage">
             <flux:heading size="lg" level="2">{{ __('Storage') }}</flux:heading>
 
+            {{-- Known from a refused upload, so it shows whatever Google says about the figures below --}}
+            @if ($fullSince = Cache::get($this->connection->fullKey()))
+                <flux:callout variant="danger" icon="exclamation-triangle" class:icon="text-red-600!" class="mt-3" data-test="drive-full"
+                    :heading="__('Google Drive is full')"
+                    :text="__('Google refused an upload on :date because :email has no space left. Free up space in it, or change the storage account.', ['date' => $fullSince->format('F j, Y'), 'email' => $this->connection->email])" />
+            @endif
+
             @if ($usage === null)
                 <flux:text class="mt-1">{{ __('Checking storage…') }}</flux:text>
             @elseif ($usage === false)
@@ -402,14 +411,15 @@ new #[Title('Google Drive')] class extends Component {
                 <div class="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1" data-test="drive-usage">
                     <p class="flex items-baseline gap-2">
                         <span class="text-3xl font-semibold tabular-nums text-zinc-800">{{ $storage['used'] }}</span>
-                        <span class="text-zinc-500">{{ $storage['limit'] ? __('of :limit used', ['limit' => $storage['limit']]) : __('used') }}</span>
+                        <span class="text-zinc-500">{{ $storage['pooled'] ? __('used in Google Drive') : ($storage['limit'] ? __('of :limit used', ['limit' => $storage['limit']]) : __('used')) }}</span>
                     </p>
                     @if ($storage['free'])
                         <flux:text class="tabular-nums">{{ __(':free free', ['free' => $storage['free']]) }}</flux:text>
                     @endif
                 </div>
 
-                {{-- What fills the account, in the order storage() gives it; a screen reader hears the amount, not a bare number --}}
+                {{-- What fills the account, in the order storage() gives it; a screen reader hears the amount, not a bare number.
+                     Without a limit, as on a school account, the bar splits what is used rather than measuring it. --}}
                 <div class="mt-3 flex h-2 gap-px overflow-hidden rounded-full bg-zinc-200" role="meter" aria-valuemin="0" aria-valuemax="100"
                     aria-valuenow="{{ round($storage['percent'] ?? 100, 1) }}" aria-valuetext="{{ $storage['used'] }} {{ $storage['limit'] ? __('of :limit used', ['limit' => $storage['limit']]) : __('used') }}" aria-label="{{ __('Google storage used') }}">
                     @foreach ($storage['parts'] as $part)
@@ -418,6 +428,10 @@ new #[Title('Google Drive')] class extends Component {
                         @endif
                     @endforeach
                 </div>
+
+                @if ($storage['pooled'])
+                    <flux:text class="mt-3">{{ __('This account shares its organization’s storage, so Google doesn’t tell the portal how much space it has left. The portal warns you here if Google refuses an upload because the account is full.') }}</flux:text>
+                @endif
 
                 <ul class="mt-3 flex flex-wrap gap-x-6 gap-y-1.5" data-test="drive-usage-parts">
                     @foreach ($storage['parts'] as $part)

@@ -9,6 +9,7 @@ use App\Services\GoogleDrive;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Mockery\MockInterface;
@@ -144,6 +145,29 @@ class DocumentStorageTest extends TestCase
 
         $this->assertTrue($account->fresh()->isConnected());
         $this->assertSame('folder-123', $account->fresh()->folder_id);
+    }
+
+    public function test_a_full_account_stays_marked_full_until_an_upload_goes_through(): void
+    {
+        $account = GoogleDriveConnection::factory()->create();
+        // GoogleDrive::disk() marked it on Google's refusal; the disk itself only answers false.
+        Cache::forever($account->fullKey(), now());
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('putFile')->andReturnFalse();
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
+
+        try {
+            app(DocumentStorage::class)->store($this->pdf());
+            $this->fail('The upload should have failed.');
+        } catch (DocumentStorageUnavailable) {
+            $this->assertTrue(Cache::has($account->fullKey()));
+            $this->assertTrue($account->fresh()->isConnected());
+        }
+
+        $this->fakeDrives();
+        app(DocumentStorage::class)->store($this->pdf());
+
+        $this->assertFalse(Cache::has($account->fullKey()));
     }
 
     public function test_other_google_failures_leave_the_account_connected(): void

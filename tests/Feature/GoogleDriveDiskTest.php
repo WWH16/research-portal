@@ -13,6 +13,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Mockery\MockInterface;
@@ -145,6 +146,35 @@ class GoogleDriveDiskTest extends TestCase
             new Response(200, ['Content-Type' => 'application/json'], '{"files": [{"size": "1000"}, {"size": "2500"}]}'),
         ]);
 
-        $this->assertSame(['used' => 4509715660, 'limit' => 16106127360, 'drive' => 3000000000, 'portal' => 3500], app(GoogleDrive::class)->usage($account));
+        $this->assertSame(['used' => 4509715660, 'limit' => 16106127360, 'drive' => 3000000000, 'portal' => 3500, 'pooled' => false], app(GoogleDrive::class)->usage($account));
+    }
+
+    public function test_an_upload_google_refuses_for_lack_of_space_marks_the_account_full(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+        $this->googleAnswers([
+            new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
+            new Response(403, ['Content-Type' => 'application/json'], '{"error": {"code": 403, "message": "The user\'s Drive storage quota has been exceeded.", "errors": [{"reason": "storageQuotaExceeded"}]}}'),
+        ]);
+
+        // The adapter swallows Google's error and only reports a failed write, so the refusal is read off the response.
+        $this->assertFalse(app(GoogleDrive::class)->disk($account)->put('proposal.pdf', 'pdf'));
+
+        $this->assertTrue(Cache::has($account->fullKey()));
+    }
+
+    public function test_a_school_account_reports_its_own_drive_not_its_organizations_pool(): void
+    {
+        $account = GoogleDriveConnection::factory()->create();
+        // Google names the account's organization (hd) in the ID token it sends with the access token.
+        $idToken = 'header.'.rtrim(strtr(base64_encode(json_encode(['email' => 'office@isu.edu.ph', 'hd' => 'isu.edu.ph'])), '+/', '-_'), '=').'.signature';
+        $this->googleAnswers([
+            new Response(200, ['Content-Type' => 'application/json'], json_encode(['access_token' => 'fresh-access-token', 'expires_in' => 3599, 'id_token' => $idToken])),
+            new Response(200, ['Content-Type' => 'application/json'], '{"id": "folder-123"}'),
+            new Response(200, ['Content-Type' => 'application/json'], '{"storageQuota": {"limit": "217331566661632", "usage": "135151520000000", "usageInDrive": "497000000"}}'),
+            new Response(200, ['Content-Type' => 'application/json'], '{"files": [{"size": "209000"}]}'),
+        ]);
+
+        $this->assertSame(['used' => 497000000, 'limit' => null, 'drive' => 497000000, 'portal' => 209000, 'pooled' => true], app(GoogleDrive::class)->usage($account));
     }
 }

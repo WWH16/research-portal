@@ -6,6 +6,7 @@ use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\GoogleDriveConnection;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
@@ -34,7 +35,11 @@ class DocumentStorage
             throw new DocumentStorageUnavailable(previous: $e);
         }
 
-        return $location ? "drive-{$account->id}/{$location}" : throw new DocumentStorageUnavailable('The document could not be stored.');
+        // The disk answers false, not an error, when Google refuses the upload; GoogleDrive::disk() marks a full account then.
+        $location ?: throw new DocumentStorageUnavailable('The document could not be stored.');
+        Cache::forget($account->fullKey());
+
+        return "drive-{$account->id}/{$location}";
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Models\Submission;
 use App\Models\User;
 use App\Services\GoogleDrive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
@@ -188,7 +189,7 @@ class GoogleDrivePageTest extends TestCase
         $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
         $email2 = GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
         $this->documentsOn($email2, 1);
-        $storage = fn (int $used) => ['used' => $used, 'limit' => 100, 'drive' => $used, 'portal' => 0];
+        $storage = fn (int $used) => ['used' => $used, 'limit' => 100, 'drive' => $used, 'portal' => 0, 'pooled' => false];
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')
             ->andReturnUsing(fn (GoogleDriveConnection $account) => $storage($account->is($email1) ? 10 : 20)));
         $this->actingAs($this->admin);
@@ -333,7 +334,7 @@ class GoogleDrivePageTest extends TestCase
     {
         GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
         $gib = 1024 ** 3;
-        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->once()->andReturn(['used' => (int) (14.5 * $gib), 'limit' => 15 * $gib, 'drive' => 13 * $gib, 'portal' => 2 * $gib]));
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->once()->andReturn(['used' => (int) (14.5 * $gib), 'limit' => 15 * $gib, 'drive' => 13 * $gib, 'portal' => 2 * $gib, 'pooled' => false]));
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')
@@ -343,6 +344,32 @@ class GoogleDrivePageTest extends TestCase
             ->assertSee('of 15 GB used')
             ->assertSeeInOrder(['Research portal documents', '2 GB', 'Other Google Drive files', '11 GB', 'Gmail, Google Photos and other', '1.5 GB'])
             ->assertSee('Google Drive is almost full');
+    }
+
+    public function test_a_school_account_shows_its_own_drive_without_a_limit(): void
+    {
+        GoogleDriveConnection::factory()->create(['email' => 'office@isu.edu.ph']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->andReturn(['used' => 497000000, 'limit' => null, 'drive' => 497000000, 'portal' => 209000, 'pooled' => true]));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->call('loadUsage')
+            ->assertSee('473.98 MB')
+            ->assertSee('used in Google Drive')
+            ->assertSee('shares its organization’s storage')
+            ->assertDontSee('Gmail, Google Photos and other')
+            ->assertSeeHtml('role="meter"');
+    }
+
+    public function test_the_page_says_when_google_refused_an_upload_for_a_full_account(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['email' => 'office@isu.edu.ph']);
+        Cache::forever($account->fullKey(), now());
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSeeHtml('data-test="drive-full"')
+            ->assertSee('Google Drive is full');
     }
 
     public function test_the_usage_stays_hidden_when_google_cannot_answer(): void
@@ -466,7 +493,7 @@ class GoogleDrivePageTest extends TestCase
     public function test_a_large_plan_reads_in_terabytes_without_a_warning(): void
     {
         GoogleDriveConnection::factory()->create();
-        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->andReturn(['used' => (int) (24.9 * 1024 ** 3), 'limit' => 5 * 1024 ** 4, 'drive' => (int) (20 * 1024 ** 3), 'portal' => (int) (1.2 * 1024 ** 3)]));
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('usage')->andReturn(['used' => (int) (24.9 * 1024 ** 3), 'limit' => 5 * 1024 ** 4, 'drive' => (int) (20 * 1024 ** 3), 'portal' => (int) (1.2 * 1024 ** 3), 'pooled' => false]));
         $this->actingAs($this->admin);
 
         Livewire::test('pages::google-drive.index')

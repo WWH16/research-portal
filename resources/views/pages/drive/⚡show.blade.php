@@ -188,7 +188,7 @@ new #[Title('Research Drive')] class extends Component {
                                 <p class="mt-1 text-sm text-zinc-600">{{ $note }}</p>
                             @endif
                             @if ($remarks = $entry->remarks())
-                                <p class="mt-1 whitespace-pre-line text-sm text-amber-800">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                                <p class="mt-1 whitespace-pre-line text-sm text-amber-800 wrap-anywhere">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
                             @endif
                         </li>
                     @endforeach

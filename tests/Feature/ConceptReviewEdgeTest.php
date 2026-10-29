@@ -139,6 +139,19 @@ class ConceptReviewEdgeTest extends TestCase
         $this->assertNull($this->project->fresh()->detailed_path);
     }
 
+    public function test_remarks_with_a_very_long_word_wrap_instead_of_running_off_the_page(): void
+    {
+        $remarks = 'Fix '.str_repeat('d', 300);
+        Livewire::actingAs($this->admin())->test('pages::reviews.index')
+            ->call('review', $this->project->id)->set('remarks', $remarks)->call('saveReview', 'returned');
+
+        // Every place the remarks show may break inside a word, as a last resort, so the card holds them.
+        $this->actingAs($this->maria)->get(route('drive.show', $this->project))
+            ->assertSee($remarks)
+            ->assertSeeInOrder(['data-test="concept-remarks"', $remarks], false)
+            ->assertSeeHtml('wrap-anywhere');
+    }
+
     public function test_passing_a_revision_drops_the_remarks_of_the_earlier_return(): void
     {
         $admin = $this->admin();

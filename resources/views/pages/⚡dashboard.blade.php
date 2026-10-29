@@ -706,7 +706,7 @@ new #[Title('Dashboard')] class extends Component {
                                     <p class="mt-1 text-sm text-zinc-600">{{ __('Target date :date has passed. Upload the terminal report when it’s ready.', ['date' => $submission->target_date->format('M j, Y')]) }}</p>
                                 @endif
                                 @if ($submission->conceptReview() === 'returned')
-                                    <p class="mt-1 text-sm text-amber-800">{{ __('What to fix: :remarks', ['remarks' => $submission->remarks]) }}</p>
+                                    <p class="mt-1 text-sm text-amber-800 wrap-anywhere">{{ __('What to fix: :remarks', ['remarks' => $submission->remarks]) }}</p>
                                 @endif
                                 <flux:link :href="route('submissions.edit', $submission)" wire:navigate class="mt-2 inline-block text-sm">{{ __('Open project') }}</flux:link>
                             </li>

@@ -369,7 +369,7 @@ new #[Title('Activity Log')] class extends Component {
                                 @endif
 
                                 @if ($remarks = $log->remarks())
-                                    <p class="mt-0.5 line-clamp-2 whitespace-normal break-words text-xs text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                                    <p class="mt-0.5 line-clamp-2 whitespace-normal wrap-anywhere text-xs text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
                                 @endif
 
                                 @if (! $subject && ! $change && ! $note)

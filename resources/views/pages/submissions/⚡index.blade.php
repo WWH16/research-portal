@@ -406,7 +406,7 @@ new #[Title('Submissions')] class extends Component {
                                 <p class="text-xs tabular-nums {{ $standingClass }}">{{ $due }} · {{ $standing }}</p>
                             </div>
                             @if (! $this->monitoring && $submission->conceptReview() === 'returned')
-                                <p class="mt-2 text-sm text-amber-800">{{ __('Research Office remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
+                                <p class="mt-2 text-sm text-amber-800 wrap-anywhere">{{ __('Research Office remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
                             @endif
                         </flux:table.cell>
                         @if ($this->monitoring)

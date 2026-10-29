@@ -233,7 +233,7 @@ new #[Title('Notifications')] class extends Component {
                         <span @class(['mt-2 size-2 shrink-0 rounded-full', 'bg-isu-gold-700' => ! $notification->read_at]) @if (! $notification->read_at) data-test="unread-dot" @endif aria-hidden="true"></span>
                         {{-- Two lines of the message, like an inbox; it opens in full in the message panel --}}
                         <div class="min-w-0">
-                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" @class(['line-clamp-2 text-start text-sm', 'font-semibold text-zinc-900!' => ! $notification->read_at])>
+                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" @class(['line-clamp-2 text-start text-sm wrap-anywhere', 'font-semibold text-zinc-900!' => ! $notification->read_at])>
                                 @unless ($notification->read_at)
                                     <span class="sr-only">{{ __('Unread:') }}</span>
                                 @endunless
@@ -269,7 +269,7 @@ new #[Title('Notifications')] class extends Component {
             @php([$heading, $action] = $this->kind($notice))
             <flux:heading size="lg">{{ __($heading) }}</flux:heading>
             <flux:text size="sm" class="mt-1">{{ $notice->created_at->format('F j, Y, g:i A') }}</flux:text>
-            <flux:text class="mt-4 whitespace-pre-line text-zinc-800">{{ $notice->data['message'] }}</flux:text>
+            <flux:text class="mt-4 whitespace-pre-line wrap-anywhere text-zinc-800">{{ $notice->data['message'] }}</flux:text>
 
             <div class="mt-6 flex flex-wrap items-center gap-2">
                 <flux:button variant="ghost" size="sm" icon="envelope" wire:click="toggleRead('{{ $notice->id }}')" x-on:click="$flux.modal('notice').close()">{{ __('Mark as unread') }}</flux:button>

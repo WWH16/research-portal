@@ -133,11 +133,7 @@
             {{-- Rare and high-stakes, so it sits apart at the bottom, away from everyday clicks --}}
             @if (auth()->user()->isAdmin())
                 <flux:sidebar.nav>
-                    <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="$driveIssue !== null || request()->routeIs('backups.*', 'google-drive.*')" class="grid" data-test="system-nav">
-                        <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
-                            {{ __('Backup and Restore') }}
-                        </flux:sidebar.item>
-
+                    <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="$driveIssue !== null || request()->routeIs('google-drive.*')" class="grid" data-test="system-nav">
                         {{-- A rose "!" while uploads can't work: no account saved, disconnected, or full. The title says which,
                              and screen readers hear it after the link name --}}
                         <flux:sidebar.item icon="cloud" :href="route('google-drive.index')" :current="request()->routeIs('google-drive.*')" badge="!" badge:data-tone="alert" :badge:style="$driveIssue ? null : 'display: none'" :badge:title="$driveIssue" badge:x-bind:title="driveIssue" badge:x-show="driveIssue" badge:aria-hidden="true" wire:navigate data-test="google-drive-nav">

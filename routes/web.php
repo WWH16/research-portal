@@ -93,7 +93,6 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         Route::livewire('faculty', 'pages::faculty.index')->name('faculty.index');
         Route::livewire('users', 'pages::users.index')->name('users.index');
         Route::livewire('activity-log', 'pages::activity-log.index')->name('activity-log.index');
-        Route::livewire('backups', 'pages::backups.index')->name('backups.index');
         Route::livewire('google-drive', 'pages::google-drive.index')->name('google-drive.index');
 
         // Only the files the portal creates, kept after the sign-in ends; prompt=consent makes Google send a refresh token

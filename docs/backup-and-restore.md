@@ -3,23 +3,20 @@
 The portal holds two kinds of data:
 
 - **The database:** projects, users, reviews, filing options and the activity log.
-- **Uploaded files:** project documents and profile photos, on the Research Office's Google Drive. The portal uses no bucket.
+- **Uploaded files:** project documents on the Research Office's Google Drive, and profile photos on the `public` disk. The portal uses no bucket for documents.
 
-There are two ways to get data back:
-
-1. **The whole portal:** restore a portal backup from **Administration → Backup and Restore**.
-2. **The database only:** restore a Laravel Cloud database backup from the Laravel Cloud dashboard.
+The portal has no backup page of its own. Laravel Cloud backs up the database, and Google Drive keeps the documents.
 
 ## Setting up Laravel Cloud
 
 Do this once, before the first deploy.
 
-1. Open the database cluster's **Backups** page and choose **Daily**. Laravel Cloud keeps backups for 7 days unless you change it.
-2. Add a queue worker to the environment. Portal backups and restores run on the queue, and so does every notification email, so without a worker they never start and no email is sent. Notices in the portal don't need it.
-3. Set `DB_QUEUE_RETRY_AFTER=2000` in the environment variables. A backup or restore can run for up to 30 minutes (1800 seconds). With the default of 90 seconds, a second worker picks up the same job while the first is still running.
+1. In Laravel Cloud, open **Organization**, then **Resources**, then **Databases**, and open the portal's database cluster.
+2. In its **Backups** section, choose **Settings**, turn on **Backups**, and keep them for at least 7 days.
+3. Add a queue worker to the environment, as described in [Notifications](notifications.md). Every notification email goes through the queue.
 4. Redeploy the environment.
 
-Don't attach a bucket. Documents, profile photos and portal backups all go to Google Drive, which replaced the bucket to save its cost.
+Don't attach a bucket for documents. They go to Google Drive, which replaced the bucket to save its cost.
 
 ## Storing documents on Google Drive
 
@@ -45,49 +42,21 @@ Project documents and profile photos are stored only on the Research Office's Go
 - **Disconnect** revokes the portal's access at Google. The saved account and the files on Drive stay.
 - **Replaced documents** go to the Drive trash, so they still count against storage for 30 days.
 
-## Portal backups
+## Database backups on Laravel Cloud
 
-Portal backups are manual, from **Administration → Backup and Restore**, and they live on Google Drive, in a `Backups` folder inside the storage account's "Faculty Research Portal" folder. The page asks for your password again before it opens. Until a storage account is connected, the page says so and offers neither a backup nor a restore.
+Laravel Cloud takes a database backup every day between 3 AM and 6 AM EDT and keeps it for 1 to 30 days. The backups cover the database only, not the documents on Google Drive.
 
-### Taking a backup
+### Taking a backup by hand
 
-1. Choose **Back up now**.
-2. Keep the page open. The download starts on its own when the backup is ready. Large portals can take several minutes, because every document is read from Google Drive.
-3. Store the zip on a drive the university controls. A copy on the storage account alone is not enough: if that Google account is lost, its backups go with it.
-
-Each backup is one zip:
-
-- `database/<table>.jsonl`: every table, one JSON row per line. Sessions, cache, queued jobs, password reset tokens and the Google Drive connection are left out, so a zip never carries the Google token.
-- `documents/drive-<account number>/...`: every project document, read from the storage account that holds it (`App\Services\DocumentStorage::locate()`), under the same path the database saves.
-- `photos/...`: every file on the `public` disk.
-
-The portal saves the zip to the `Backups` folder of the current storage account and keeps the 10 newest there, deleting older ones. Each backup and each download is recorded in the activity log. Backups saved before a **Change account** stay in the earlier account's folder; the list shows the current account's backups.
+Before a migration, a large import or any deploy that changes data, open the cluster's **Backups** section and choose **New backup**. Give it a name that says why, such as "Before the 2027 categories import".
 
 ### Restoring a backup
 
-**A restore replaces all of the portal's data with the backup's.** Anything added or changed after the backup was taken is lost from the portal, except in the safety backup described below.
+1. In Laravel Cloud, open **Organization**, then **Resources**, then **Databases**, and open the portal's database cluster.
+2. In the **Backups** section, open the backup's **...** menu and choose **Restore**.
+3. Name the new cluster and confirm. Cloud restores the backup into the new cluster and leaves the current data as it is.
+4. Attach the restored database to the environment and redeploy. Delete the cluster you no longer need once you're sure.
 
-1. To restore a zip you kept outside the portal, choose it under **Upload a backup**, then **Upload**. The portal saves it to the `Backups` folder and it appears in the list.
-2. In the list, choose **Restore** on the backup, then confirm.
-3. The portal first takes a safety backup named `portal-before-restore-...zip`, then restores. Keep the page open until it reports that the restore finished.
-4. Tell users to sign out and back in. Accounts and passwords are now the ones in the backup.
+### Keeping a copy outside Laravel Cloud
 
-What a restore does:
-
-- Checks first that every storage account a document path names is saved and connected here. If one isn't, the restore stops before it changes anything and names the account to reconnect.
-- Writes every document in the zip back to the storage account its path names, and every photo back to the `public` disk. Files uploaded after the backup stay where they are, but nothing in the restored data points to them.
-- Empties every table except sessions, cache, queued jobs, password reset tokens, the Google Drive connection and the migrations list, then fills them from the zip, in one transaction. If anything fails, the database is left exactly as it was. The Google Drive connection is kept as it is, so the portal stays connected after a restore.
-- Records the restore in the activity log.
-
-The portal refuses a backup made by a newer version of the portal than the one deployed. Deploy that version first, then restore. Older backups restore into the newer version, as long as every new column has a default.
-
-Uploads go through Livewire and are limited to 500 MB. The server's PHP `upload_max_filesize` and `post_max_size` must also allow the file. A zip put into the `Backups` folder by hand on drive.google.com never appears in the list: the portal's Google access covers only the files it saved itself. Upload every zip through the page.
-
-## Restoring a Laravel Cloud database backup
-
-Laravel Cloud takes a database backup every day between 3 AM and 6 AM EDT and keeps it for 1 to 30 days. You can also take one by hand before a big change. It covers the database only, not the uploaded files.
-
-1. In Laravel Cloud, open **Organization**, then **Resources**, then **Databases**.
-2. Open the portal's database cluster, then **Backups**.
-3. Choose **Restore backup** and pick the date. Cloud restores it into a new cluster and leaves the current data as it is.
-4. Attach the restored database to the environment and redeploy.
+Cloud backups live only in the Laravel Cloud account. To keep a copy the university controls, restore a backup into a new cluster, turn on that cluster's public endpoint, and export it with TablePlus or `mysqldump`. Then turn the endpoint off and delete the temporary cluster.

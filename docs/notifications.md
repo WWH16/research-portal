@@ -14,7 +14,7 @@ Every notification, the in-app one included, is sent by the queue worker. Withou
 
 Do this once, in the Laravel Cloud environment:
 
-1. Check that the environment has a queue worker. Portal backups need one too (see [Backup and restore](backup-and-restore.md)), so it may already be there. If not, add one.
+1. Check that the environment has a queue worker. If not, add one.
 2. Turn on the scheduler for the environment. It runs `projects:remind` every morning at 07:00. If the scheduler is off, no reminders go out.
 3. Check that `APP_URL` is the portal's public address. The Open links in emails and in the bell are built from it.
 4. Ask ISU IT for SMTP details and set them in the environment variables:

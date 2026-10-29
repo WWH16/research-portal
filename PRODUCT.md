@@ -8,7 +8,7 @@ web
 
 ## Users
 
-- **Admins (Research Office staff).** They manage users, colleges/departments and categories. They review concept proposals (pass or return for revision), read the activity log and look after backups.
+- **Admins (Research Office staff).** They manage users, colleges/departments and categories. They review concept proposals (pass or return for revision) and read the activity log.
 - **Faculty (proponents).** They submit research projects and upload each stage's document as the project moves forward.
 
 ## Product Purpose
@@ -28,7 +28,7 @@ The Faculty Research Portal tracks ISU Cauayan (Isabela State University, Cauaya
 - Laravel 13, Livewire 4, Flux and Fortify. Roles are `admin` and `faculty`.
 - Only verified accounts reach the portal. Admin pages sit behind the `admin` middleware.
 - Project documents live only in the "Faculty Research Portal" folder of the Google Drive storage account an admin connects on System → Google Drive; with none connected, uploads are refused. Profile photos live on the `public` disk, a Laravel Cloud bucket in production.
-- Laravel Cloud backs up the database daily. Its object storage keeps no file backups. The planned portal backup and restore is in `docs/backup-and-restore.md`.
+- Laravel Cloud backs up the database daily. The portal has no backup page of its own; see `docs/backup-and-restore.md`.
 - Tracking starts in 2026. No earlier data exists.
 
 ## Brand Commitments

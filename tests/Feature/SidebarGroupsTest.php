@@ -22,7 +22,7 @@ class SidebarGroupsTest extends TestCase
         $this->assertSame($defaults, $this->openGroups('dashboard'));
         $this->assertSame([...$defaults, 'administration-nav' => true], $this->openGroups('users.index'));
         $this->assertSame([...$defaults, 'filing-options-nav' => true], $this->openGroups('categories.index'));
-        $this->assertSame([...$defaults, 'system-nav' => true], $this->openGroups('backups.index'));
+        $this->assertSame([...$defaults, 'system-nav' => true], $this->openGroups('google-drive.index'));
     }
 
     public function test_faculty_groups_do_not_fold(): void

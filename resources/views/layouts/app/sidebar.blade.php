@@ -21,7 +21,9 @@
     <body class="min-h-screen bg-surface" x-data="{ toReview: @js($toReview), toRevise: @js($toRevise), unread: @js($unread), toApprove: @js($toApprove), reviewLabel: @js($reviewLabel) }" x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}
         <flux:sidebar sticky collapsible="mobile" class="isu-sidebar w-72 border-e">
-            <flux:sidebar.header>
+            {{-- The brand and the account menu stay put while the links between them scroll; each covers the sidebar's
+                 padding with its own green, so links slide under them rather than showing through --}}
+            <flux:sidebar.header class="sticky -top-4 z-10 -mx-2 -mt-4 shrink-0 bg-isu-green-800 px-2 pt-4 pb-2">
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
@@ -129,7 +131,10 @@
                 </flux:sidebar.nav>
             @endif
 
-            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            {{-- A column, so the menu button still stretches the full width as it did straight inside the sidebar --}}
+            <div class="sticky -bottom-4 z-10 -mx-2 -mb-4 flex shrink-0 flex-col bg-isu-green-800 px-2 pt-2 pb-4">
+                <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            </div>
         </flux:sidebar>
 
         <!-- Mobile User Menu -->

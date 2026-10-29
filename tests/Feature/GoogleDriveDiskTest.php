@@ -8,6 +8,7 @@ use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\DriveFull;
+use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;
@@ -96,6 +97,26 @@ class GoogleDriveDiskTest extends TestCase
         rescue(fn () => $service->files->get('folder-123'), report: false);
         $this->googleAnswers([$token('second-token')]);
         $this->assertSame('second-token', $accessToken());
+    }
+
+    public function test_a_document_opened_before_downloads_straight_from_its_saved_file_id(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+        $path = "drive-{$account->id}/submissions/proposal.pdf";
+        Cache::forever(DocumentStorage::fileIdKey($path), 'file-456');
+        // Sign-in and one download, nothing more: finding the file by name again would find no answer and fail.
+        $this->googleAnswers([
+            new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
+            new Response(200, ['Content-Type' => 'application/pdf', 'Content-Length' => '9'], 'pdf-bytes'),
+        ]);
+
+        $response = app(DocumentStorage::class)->open($path, 'solar-dryer-concept.pdf');
+
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('inline; filename=solar-dryer-concept.pdf', $response->headers->get('Content-Disposition'));
+        ob_start();
+        $response->sendContent();
+        $this->assertSame('pdf-bytes', ob_get_clean());
     }
 
     public function test_opening_a_document_on_a_disconnected_account_says_storage_is_down(): void

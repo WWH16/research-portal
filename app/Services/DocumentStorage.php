@@ -10,6 +10,12 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
+use League\Flysystem\FileAttributes;
+use Masbug\Flysystem\GoogleDriveAdapter;
+use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
@@ -51,10 +57,64 @@ class DocumentStorage
      */
     public function delete(string $path): void
     {
+        Cache::forget(self::fileIdKey($path));
+
         rescue(function () use ($path) {
             [$disk, $location] = $this->locate($path);
             $disk->delete($location);
         });
+    }
+
+    /**
+     * Where the cache keeps a stored document's Google file ID, once it has been opened. Losing it only means the
+     * next open finds the file by name again.
+     */
+    public static function fileIdKey(string $path): string
+    {
+        return 'drive-file.'.sha1($path);
+    }
+
+    /**
+     * Stream a stored document to the browser, or null when it isn't there. Finding a file by its name in Drive
+     * takes several requests, so the first open remembers its Google file ID and later opens download it straight
+     * away. An ID that stopped working, as for a file someone moved, is looked up by name again.
+     */
+    public function open(string $path, string $name): ?StreamedResponse
+    {
+        [$disk, $location] = $this->locate($path);
+        $adapter = $disk->getAdapter();
+
+        // Only Google Drive needs the shortcut; any other disk, such as the tests' fake, answers from the path.
+        if (! $adapter instanceof GoogleDriveAdapter) {
+            return $disk->exists($location) ? $disk->response($location, $name) : null;
+        }
+
+        $files = $adapter->getService()->files;
+        $id = Cache::get(self::fileIdKey($path));
+        $media = $id ? rescue(fn () => $files->get($id, ['alt' => 'media']), report: false) : null;
+
+        if (! $media instanceof ResponseInterface) {
+            $found = $adapter->getMetadata($location);
+
+            if (! $found instanceof FileAttributes) {
+                return null;
+            }
+
+            Cache::forever(self::fileIdKey($path), $id = $found->extraMetadata()['id']);
+            $media = $files->get($id, ['alt' => 'media']);
+        }
+
+        $body = $media->getBody();
+
+        return response()->stream(function () use ($body) {
+            while (! $body->eof()) {
+                echo $body->read(1024 * 1024);
+            }
+        }, 200, array_filter([
+            'Content-Type' => $media->getHeaderLine('Content-Type') ?: 'application/octet-stream',
+            'Content-Length' => $media->getHeaderLine('Content-Length') ?: null,
+            'Content-Disposition' => HeaderUtils::makeDisposition('inline', $name, str_replace('%', '', Str::ascii($name))),
+        ]));
     }
 
     /**

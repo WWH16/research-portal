@@ -58,17 +58,14 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
 
         // On Google Drive the account can't be reached while it isn't connected, its access was revoked, or Google is down.
         try {
-            [$disk, $location] = app(DocumentStorage::class)->locate($path);
-            $exists = $disk->exists($location);
+            $response = app(DocumentStorage::class)->open($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
         } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
             report($e);
             app(DocumentStorage::class)->noticeFailure($path, $e);
             abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
         }
 
-        abort_unless($exists, 404);
-
-        return $disk->response($location, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
+        return $response ?? abort(404);
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     // Profile photos sit on the same private Google Drive, so any signed-in member's page shows them through here.
@@ -77,9 +74,10 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         abort_if($user->profile_image === null, 404);
 
         try {
-            [$disk, $location] = app(DocumentStorage::class)->locate($user->profile_image);
+            $response = app(DocumentStorage::class)->open($user->profile_image, basename($user->profile_image)) ?? abort(404);
+            $response->headers->set('Cache-Control', 'private, max-age=31536000, immutable');
 
-            return $disk->response($location, headers: ['Cache-Control' => 'private, max-age=31536000, immutable']);
+            return $response;
         } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
             app(DocumentStorage::class)->noticeFailure($user->profile_image, $e);
             abort(503);

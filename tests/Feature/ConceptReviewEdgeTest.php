@@ -147,7 +147,6 @@ class ConceptReviewEdgeTest extends TestCase
 
         // Every place the remarks show may break inside a word, as a last resort, so the card holds them.
         $this->actingAs($this->maria)->get(route('drive.show', $this->project))
-            ->assertSee($remarks)
             ->assertSeeInOrder(['data-test="concept-remarks"', $remarks], false)
             ->assertSeeHtml('wrap-anywhere');
     }

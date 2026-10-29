@@ -7,12 +7,14 @@ use App\Models\Department;
 use App\Models\Proponent;
 use App\Models\Submission;
 use App\Models\User;
+use App\Notifications\ProjectCompleted;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -173,6 +175,9 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
+        // The first terminal report completes the project; a corrected one later is no news.
+        $completing = isset($this->documents['terminal']) && $this->submission?->terminal_uploaded_at === null;
+
         try {
             $submission = DB::transaction(function () use ($validated, $rows) {
                 $submission = $this->submission ?? Auth::user()->submissions()->make(['department_id' => $this->department->id]);
@@ -226,6 +231,11 @@ new #[Title('Research Project')] class extends Component {
             $this->addError('documents', __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
 
             return;
+        }
+
+        // The Research Office records whether a completed project presented in-house, so it hears once the save has committed.
+        if ($completing) {
+            Notification::send(User::where('role', 'admin')->whereKeyNot(Auth::id())->get(), new ProjectCompleted($submission, Auth::user()->displayName()));
         }
 
         // Only the concept proposal goes to the Research Office; the other documents are filed as they come in.

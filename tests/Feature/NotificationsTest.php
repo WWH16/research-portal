@@ -11,6 +11,7 @@ use App\Notifications\AccountApproved;
 use App\Notifications\ConceptReviewed;
 use App\Notifications\DriveDisconnected;
 use App\Notifications\DriveFull;
+use App\Notifications\ProjectCompleted;
 use App\Notifications\ProjectDatesChanged;
 use App\Notifications\ProjectDeadline;
 use App\Services\DocumentStorage;
@@ -548,6 +549,40 @@ class NotificationsTest extends TestCase
         $this->get(route('notifications.index'))
             ->assertSeeHtml('x-show="unread"')
             ->assertSeeHtml('x-on:open-work-stale.window="refresh()"');
+    }
+
+    public function test_the_first_terminal_report_tells_admins_the_project_is_complete(): void
+    {
+        Notification::fake();
+        $this->fakeDrive();
+        $admin = $this->admin();
+        $this->maria->update(['name' => 'MARIA DELA PAZ SANTOS']);
+        $project = $this->project(['awaiting_review' => false, 'concept_passed' => true, 'status' => 'Mid-year', 'detailed_path' => 'drive-1/submissions/detailed.pdf', 'midyear_path' => 'drive-1/submissions/midyear.pdf']);
+        $this->actingAs($this->maria);
+
+        $upload = fn () => Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $upload();
+        Notification::assertSentTo($admin, ProjectCompleted::class, fn (ProjectCompleted $notification) => $notification->via($admin) === ['database']
+            && $notification->toArray($admin) === [
+                'message' => '“Solar Dryer Study” is complete: Maria Dela Paz Santos uploaded the terminal report on '.today()->format('F j, Y').', on time. Record whether it was presented in-house under Submissions.',
+                'url' => route('submissions.index', ['status' => 'not-presented']),
+            ]);
+        Notification::assertNotSentTo($this->maria, ProjectCompleted::class);
+
+        // A corrected terminal report later is no news.
+        $upload();
+        Notification::assertSentToTimes($admin, ProjectCompleted::class, 1);
+    }
+
+    public function test_a_late_finish_says_how_late(): void
+    {
+        $project = $this->project(['target_date' => today()->subDays(12), 'terminal_uploaded_at' => now()]);
+
+        $this->assertStringContainsString(', 12 days after its completion date of '.$project->target_date->format('F j, Y').'.', (new ProjectCompleted($project, 'Maria Santos'))->toArray($this->admin())['message']);
     }
 
     public function test_an_empty_list_says_so(): void

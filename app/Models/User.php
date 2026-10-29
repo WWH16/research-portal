@@ -137,9 +137,15 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
      */
     public function shortName(): string
     {
-        $name = $this->name === mb_strtoupper($this->name) ? Str::title($this->name) : $this->name;
+        return Publication::shortName($this->displayName());
+    }
 
-        return Publication::shortName($name);
+    /**
+     * The full name as messages print it: a name registered in capitals is put in title case, so it doesn't shout.
+     */
+    public function displayName(): string
+    {
+        return $this->name === mb_strtoupper($this->name) ? Str::title($this->name) : $this->name;
     }
 
     /**

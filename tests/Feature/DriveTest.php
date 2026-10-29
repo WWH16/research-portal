@@ -282,6 +282,25 @@ class DriveTest extends TestCase
         $this->assertSame(1, $cas['submitted']);
     }
 
+    public function test_a_college_folder_reads_like_the_submissions_list(): void
+    {
+        // Same title, filer name and count as the Submissions list shows for the same projects.
+        $santos = User::factory()->create(['name' => 'MARIA DELA PAZ SANTOS', 'department_id' => $this->ccsict->id]);
+        $this->project($santos, 'Mining_Student_Feedback');
+
+        $this->actingAs($this->admin());
+
+        Livewire::withQueryParams(['college' => 'CCSICT'])
+            ->test('pages::drive.index')
+            ->assertSee('title="Mining Student Feedback"', escape: false)
+            ->assertDontSee('Mining_Student_Feedback')
+            ->assertSee('MDP Santos')
+            ->assertDontSee('MARIA DELA PAZ SANTOS')
+            ->assertSee('2 projects')
+            ->set('search', 'mining')
+            ->assertSee('1 project');
+    }
+
     private function admin(): User
     {
         return User::factory()->create(['role' => 'admin']);

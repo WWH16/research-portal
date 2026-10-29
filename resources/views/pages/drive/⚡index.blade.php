@@ -80,17 +80,37 @@ new #[Title('Research Drive')] class extends Component {
             <flux:heading size="xl" level="1">{{ __('Research Drive') }}</flux:heading>
             <flux:text class="mt-1">{{ $this->isAdmin ? __('Documents for every project, filed under its college.') : __('Documents for the projects you filed or are a proponent on.') }}</flux:text>
         </div>
+    </header>
 
-        <flux:select wire:model.live="year" :aria-label="__('Year')" class="w-full sm:w-36" data-test="drive-year-select">
+    {{-- Where you are, then what narrows it: the count, search and year sit together, as on Submissions. On phones the
+         search takes its own row, with the count and year under it --}}
+    <div class="mt-6 flex flex-wrap items-center gap-3">
+        @if ($this->folder)
+            <flux:breadcrumbs class="min-w-0 flex-1 max-sm:basis-full">
+                <flux:breadcrumbs.item :href="route('drive.index', array_filter(['year' => $year]))" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
+                <flux:breadcrumbs.item>{{ $this->folder->code }}</flux:breadcrumbs.item>
+            </flux:breadcrumbs>
+        @else
+            <div class="flex-1 max-sm:hidden"></div>
+        @endif
+
+        @unless ($browsingFolders)
+            @if ($this->projects->isNotEmpty())
+                <flux:text class="text-sm tabular-nums max-sm:order-2">{{ trans_choice('{1} 1 project|[2,*] :count projects', $this->projects->count()) }}</flux:text>
+            @endif
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search titles')" :aria-label="__('Search titles')" class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none" clearable />
+        @endunless
+
+        <flux:select wire:model.live="year" :aria-label="__('Year')" class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
             <flux:select.option value="">{{ __('All years') }}</flux:select.option>
             @foreach (Submission::years() as $option)
                 <flux:select.option :value="$option">{{ $option }}</flux:select.option>
             @endforeach
         </flux:select>
-    </header>
+    </div>
 
     @if ($browsingFolders)
-        <flux:table class="mt-6" data-test="college-folders">
+        <flux:table class="mt-4" data-test="college-folders">
             <flux:table.columns>
                 <flux:table.column>{{ __('College') }}</flux:table.column>
                 <flux:table.column align="end">{{ $year !== '' ? __('Projects in :year', ['year' => $year]) : __('Projects') }}</flux:table.column>
@@ -116,19 +136,6 @@ new #[Title('Research Drive')] class extends Component {
             </flux:table.rows>
         </flux:table>
     @else
-        <div class="mt-6 flex flex-wrap items-center gap-3">
-            @if ($this->folder)
-                <flux:breadcrumbs class="min-w-0 flex-1">
-                    <flux:breadcrumbs.item :href="route('drive.index', array_filter(['year' => $year]))" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
-                    <flux:breadcrumbs.item>{{ $this->folder->code }}</flux:breadcrumbs.item>
-                </flux:breadcrumbs>
-            @else
-                <div class="flex-1"></div>
-            @endif
-
-            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search titles')" :aria-label="__('Search titles')" class="w-full sm:w-64" clearable />
-        </div>
-
         @if ($this->projects->isEmpty())
             <div class="mt-10 text-center">
                 @if (trim($search) !== '')
@@ -147,24 +154,25 @@ new #[Title('Research Drive')] class extends Component {
                 <flux:table.columns>
                     <flux:table.column>{{ __('Project') }}</flux:table.column>
                     <flux:table.column class="max-sm:hidden">{{ $this->isAdmin ? __('Filed by') : __('My role') }}</flux:table.column>
-                    <flux:table.column>{{ __('Year') }}</flux:table.column>
+                    <flux:table.column class="max-sm:hidden">{{ __('Year') }}</flux:table.column>
                     <flux:table.column>{{ __('Status') }}</flux:table.column>
                 </flux:table.columns>
                 <flux:table.rows>
                     @foreach ($this->projects as $submission)
+                        @php($title = $submission->displayTitle())
                         <flux:table.row :key="$submission->id">
                             <flux:table.cell class="max-w-sm max-sm:whitespace-normal">
-                                <a href="{{ route('drive.show', $submission) }}" wire:navigate class="flex min-w-0 items-center gap-3 font-medium text-zinc-800 hover:underline max-sm:-my-3 max-sm:py-3">
+                                <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="flex min-w-0 items-center gap-3 font-medium text-zinc-800 hover:underline max-sm:-my-3 max-sm:py-3">
                                     <flux:icon.folder variant="mini" class="shrink-0 text-isu-green-700" />
-                                    <span class="max-sm:line-clamp-2 sm:truncate">{{ $submission->title }}</span>
+                                    <span class="max-sm:line-clamp-2 sm:truncate">{{ $title }}</span>
                                 </a>
                             </flux:table.cell>
                             <flux:table.cell class="max-sm:hidden">
                                 {{ $this->isAdmin
-                                    ? $submission->user->name
+                                    ? $submission->user->shortName()
                                     : ($submission->proponents->map(fn ($row) => __('Study :number', ['number' => $row->study]).' '.__($row->role))->join(', ') ?: __('Filed by you')) }}
                             </flux:table.cell>
-                            <flux:table.cell class="tabular-nums">{{ $submission->year }}</flux:table.cell>
+                            <flux:table.cell class="tabular-nums max-sm:hidden">{{ $submission->year }}</flux:table.cell>
                             <flux:table.cell>@include('partials.project-status')</flux:table.cell>
                         </flux:table.row>
                     @endforeach

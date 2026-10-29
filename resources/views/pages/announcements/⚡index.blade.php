@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\AnnouncementPosted;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -51,14 +52,16 @@ new #[Title('Announcements')] class extends Component {
     #[Computed]
     public function upcoming(): Collection
     {
-        return Announcement::with('poster')->upcoming()->get();
+        return Announcement::with('poster')->whereDate('due_on', '>=', today())->orderBy('due_on')->orderBy('id')->get();
     }
 
     /** Everything else, newest first: notices and memos without a deadline, and schedules that have closed. */
     #[Computed]
     public function announcements(): LengthAwarePaginator
     {
-        $announcements = Announcement::with('poster')->notUpcoming()->paginate(10);
+        $announcements = Announcement::with('poster')
+            ->where(fn (Builder $query) => $query->whereNull('due_on')->orWhereDate('due_on', '<', today()))
+            ->latest()->orderByDesc('id')->paginate(10);
 
         // A page past the end, as once its last announcement was deleted, shows the last page that has any.
         if ($announcements->isEmpty() && $announcements->currentPage() > 1 && $announcements->total() > 0) {
@@ -80,13 +83,6 @@ new #[Title('Announcements')] class extends Component {
     public function deleting(): ?Announcement
     {
         return $this->deletingId ? Announcement::find($this->deletingId) : null;
-    }
-
-    /** The largest memo the server takes, in MB, so the hint and the rule never promise more than PHP accepts. */
-    #[Computed]
-    public function maxUploadMb(): int
-    {
-        return min(25, intdiv(UploadedFile::getMaxFilesize(), 1024 * 1024));
     }
 
     public function create(): void
@@ -127,13 +123,13 @@ new #[Title('Announcements')] class extends Component {
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:5000'],
             'dueOn' => ['nullable', 'date_format:Y-m-d'],
-            'memo' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:'.$this->maxUploadMb * 1024],
+            'memo' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:'.\App\Services\DocumentStorage::maxUploadMb() * 1024],
         ], [
             'title.required' => __('Enter a title.'),
             'description.required' => __('Enter what the announcement says.'),
             'dueOn.date_format' => __('Enter the deadline as a full date.'),
             'memo.mimes' => __('The memo must be a PDF or Word file.'),
-            'memo.max' => __('The memo must be :size MB or less.', ['size' => $this->maxUploadMb]),
+            'memo.max' => __('The memo must be :size MB or less.', ['size' => \App\Services\DocumentStorage::maxUploadMb()]),
         ]);
 
         $announcement->fill(['title' => $this->title, 'description' => $this->description, 'due_on' => $this->dueOn ?: null]);
@@ -144,13 +140,11 @@ new #[Title('Announcements')] class extends Component {
                     $announcement->replaceMemo($this->memo);
                 }
 
-                $posting = ! $announcement->exists;
-                $changed = $announcement->isDirty();
                 $announcement->save();
 
                 // An edit that changed nothing is left out of the log.
-                if ($posting || $changed) {
-                    ActivityLog::record($posting ? 'announcement.posted' : 'announcement.updated', $announcement);
+                if ($announcement->wasRecentlyCreated || $announcement->wasChanged()) {
+                    ActivityLog::record($announcement->wasRecentlyCreated ? 'announcement.posted' : 'announcement.updated', $announcement);
                 }
             });
         } catch (DocumentStorageUnavailable) {
@@ -315,7 +309,7 @@ new #[Title('Announcements')] class extends Component {
                         type="file"
                         accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         :label="__('Memo')"
-                        :description="__('PDF or Word, up to :size MB. Optional.', ['size' => $this->maxUploadMb])"
+                        :description="__('PDF or Word, up to :size MB. Optional.', ['size' => \App\Services\DocumentStorage::maxUploadMb()])"
                     />
 
                     @if ($this->editing?->attachment_name)

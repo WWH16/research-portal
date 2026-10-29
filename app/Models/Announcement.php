@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Services\DocumentStorage;
 use Database\Factories\AnnouncementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,27 +29,6 @@ class Announcement extends Model
     protected function casts(): array
     {
         return ['due_on' => 'date'];
-    }
-
-    /**
-     * Schedules whose deadline is today or later, soonest first.
-     *
-     * @param  Builder<self>  $query
-     */
-    public function scopeUpcoming(Builder $query): void
-    {
-        $query->whereDate('due_on', '>=', today())->orderBy('due_on')->orderBy('id');
-    }
-
-    /**
-     * Everything else, newest first: notices and memos without a deadline, and schedules that have closed.
-     *
-     * @param  Builder<self>  $query
-     */
-    public function scopeNotUpcoming(Builder $query): void
-    {
-        $query->where(fn (Builder $query) => $query->whereNull('due_on')->orWhereDate('due_on', '<', today()))
-            ->latest()->orderByDesc('id');
     }
 
     /**

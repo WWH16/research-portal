@@ -6,6 +6,8 @@ use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\GoogleDriveConnection;
 use App\Models\User;
 use App\Notifications\DriveDisconnected;
+use Google\Exception as GoogleException;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -96,6 +98,31 @@ class DocumentStorage
     public static function fileIdKey(string $path): string
     {
         return 'drive-file.'.sha1($path);
+    }
+
+    /**
+     * A stored document as a route's answer: a 404 when it isn't there, a 503 when its storage can't be reached.
+     */
+    public function respond(string $path, string $name): StreamedResponse
+    {
+        // On Google Drive the account can't be reached while it isn't connected, its access was revoked, or Google is down.
+        try {
+            return $this->open($path, $name) ?? abort(404);
+        } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
+            report($e);
+            $this->noticeFailure($path, $e);
+            abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
+        }
+    }
+
+    /**
+     * The largest document that gets through, in MB: the 25 MB rule, or less when PHP's upload_max_filesize
+     * or post_max_size is lower, since PHP drops a bigger file before Laravel sees it.
+     */
+    public static function maxUploadMb(): int
+    {
+        // A byte count, which PHP reports as a float when the limit is unlimited or very large.
+        return (int) min(25, UploadedFile::getMaxFilesize() / (1024 * 1024));
     }
 
     /**

@@ -62,19 +62,9 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
 
     // Documents live on the portal's private Google Drive, so only the project's proponents and admins can open one.
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
-        $path = $submission->{$stage.'_path'};
-        abort_unless($path, 404);
+        $path = $submission->{$stage.'_path'} ?? abort(404);
 
-        // On Google Drive the account can't be reached while it isn't connected, its access was revoked, or Google is down.
-        try {
-            $response = app(DocumentStorage::class)->open($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
-        } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
-            report($e);
-            app(DocumentStorage::class)->noticeFailure($path, $e);
-            abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
-        }
-
-        return $response ?? abort(404);
+        return app(DocumentStorage::class)->respond($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     // Profile photos sit on the same private Google Drive, so any signed-in member's page shows them through here.
@@ -95,17 +85,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
 
     // A memo is for every member, so any approved account opens it, under the name it was uploaded with.
     Route::get('announcements/{announcement}/memo', function (Announcement $announcement) {
-        $path = $announcement->attachment_path ?? abort(404);
-
-        try {
-            $response = app(DocumentStorage::class)->open($path, (string) $announcement->attachment_name);
-        } catch (DocumentStorageUnavailable|GoogleException|GuzzleException $e) {
-            report($e);
-            app(DocumentStorage::class)->noticeFailure($path, $e);
-            abort(503, __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
-        }
-
-        return $response ?? abort(404);
+        return app(DocumentStorage::class)->respond($announcement->attachment_path ?? abort(404), (string) $announcement->attachment_name);
     })->name('announcements.memo');
 
     Route::middleware('admin')->group(function () {

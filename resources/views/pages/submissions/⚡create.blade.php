@@ -9,7 +9,6 @@ use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\ProjectCompleted;
 use Flux\Flux;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -291,16 +290,6 @@ new #[Title('Research Project')] class extends Component {
     }
 
     /**
-     * The largest document that gets through, in MB: the 25 MB rule, or less when PHP's upload_max_filesize
-     * or post_max_size is lower, since PHP drops a bigger file before Laravel sees it.
-     */
-    #[Computed]
-    public function maxUploadMb(): int
-    {
-        return min(25, intdiv(UploadedFile::getMaxFilesize(), 1024 * 1024));
-    }
-
-    /**
      * A file refused before it reached the form. Livewire's own message names the field key ("documents.detailed").
      * A file over PHP's limit and a dropped connection look the same here (no errors either way), so name the
      * document and both things to check rather than guess.
@@ -312,7 +301,7 @@ new #[Title('Research Project')] class extends Component {
 
         $message = __('The :document couldn’t be uploaded. Check it is a PDF or Word file of :size MB or less and your connection is on, then try again.', [
             'document' => Str::lower(__(Submission::DOCUMENTS[$stage] ?? 'document')),
-            'size' => $this->maxUploadMb,
+            'size' => \App\Services\DocumentStorage::maxUploadMb(),
         ]);
         $this->failedUploads[$stage] = $message;
         Flux::toast(variant: 'danger', text: $message);
@@ -592,7 +581,7 @@ new #[Title('Research Project')] class extends Component {
                                     <flux:icon.arrow-up-tray class="size-5 text-zinc-500" aria-hidden="true" />
                                     <span class="text-sm font-medium break-all text-zinc-800" wire:loading.remove wire:target="documents.{{ $stage }}" x-text="name || prompt">{{ $prompt }}</span>
                                     <span class="text-sm font-medium break-all text-zinc-800" wire:loading wire:target="documents.{{ $stage }}" x-text="@js(__('Uploading')) + ' ' + name + '…'"></span>
-                                    <span id="documents-{{ $stage }}-hint" class="text-xs text-zinc-600">{{ __('PDF or Word, up to :size MB', ['size' => $this->maxUploadMb]) }}</span>
+                                    <span id="documents-{{ $stage }}-hint" class="text-xs text-zinc-600">{{ __('PDF or Word, up to :size MB', ['size' => \App\Services\DocumentStorage::maxUploadMb()]) }}</span>
                                 </label>
 
                                 <flux:error name="documents.{{ $stage }}" class="mt-2" />

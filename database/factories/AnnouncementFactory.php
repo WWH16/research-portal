@@ -36,8 +36,8 @@ class AnnouncementFactory extends Factory
     /**
      * A memo, with its file on the portal's Google Drive.
      */
-    public function withMemo(string $name = 'Memorandum No. 12, s. 2026.pdf'): static
+    public function withMemo(): static
     {
-        return $this->state(fn (array $attributes) => ['attachment_path' => 'drive-1/announcements/memo.pdf', 'attachment_name' => $name]);
+        return $this->state(fn (array $attributes) => ['attachment_path' => 'drive-1/announcements/memo.pdf', 'attachment_name' => 'Memorandum No. 12, s. 2026.pdf']);
     }
 }

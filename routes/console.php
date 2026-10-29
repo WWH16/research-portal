@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Submission;
+use App\Models\User;
 use App\Notifications\ProjectDeadline;
+use App\Notifications\ProjectLate;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;
@@ -23,6 +25,11 @@ Artisan::command('projects:remind', function () {
 
         if (in_array($days, [30, 7], true) || ($days <= -1 && (-$days - 1) % 7 === 0)) {
             Notification::send($submission->people(), new ProjectDeadline($submission, $days));
+        }
+
+        // The Research Office hears once, the day after a project runs late; the weekly reminders after that stay with its people.
+        if ($days === -1) {
+            Notification::send(User::where('role', 'admin')->get(), new ProjectLate($submission));
         }
     });
 })->purpose('Remind proponents of near and passed target dates');

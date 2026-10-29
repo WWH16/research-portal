@@ -14,6 +14,7 @@ use App\Notifications\DriveFull;
 use App\Notifications\ProjectCompleted;
 use App\Notifications\ProjectDatesChanged;
 use App\Notifications\ProjectDeadline;
+use App\Notifications\ProjectLate;
 use App\Services\DocumentStorage;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Console\Scheduling\Schedule;
@@ -252,6 +253,27 @@ class NotificationsTest extends TestCase
         $this->artisan('projects:remind')->assertSuccessful();
 
         $this->assertSame([-15, -8, -1], $this->remindedDays());
+    }
+
+    public function test_admins_hear_once_the_day_after_a_project_runs_late(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $this->maria->update(['name' => 'MARIA DELA PAZ SANTOS']);
+        foreach ([-1, -2, -8] as $days) {
+            $this->project(['target_date' => today()->addDays($days), 'title' => "Study {$days}"]);
+        }
+
+        $this->artisan('projects:remind')->assertSuccessful();
+
+        // Only the project that passed its date yesterday; the weekly overdue reminders stay with its proponents.
+        Notification::assertSentToTimes($admin, ProjectLate::class, 1);
+        Notification::assertSentTo($admin, ProjectLate::class, fn (ProjectLate $notification) => $notification->via($admin) === ['database']
+            && $notification->toArray($admin) === [
+                'message' => '“Study -1”, filed by Maria Dela Paz Santos, passed its completion date of '.today()->subDay()->format('F j, Y').' without a terminal report. Its proponents have been reminded.',
+                'url' => route('submissions.index', ['status' => 'delayed']),
+            ]);
+        Notification::assertNotSentTo($this->maria, ProjectLate::class);
     }
 
     public function test_no_reminder_on_the_day_itself_without_a_target_date_or_once_finished(): void

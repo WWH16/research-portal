@@ -31,7 +31,7 @@ class ActivityLog extends Model
     public const KEEP_MONTHS = 12;
 
     /** The filters on the Activity Log page, keyed by the action prefix each one covers. */
-    public const GROUPS = ['auth' => 'Sign-ins and security', 'submission' => 'Projects', 'publication' => 'Publications', 'user' => 'Users', 'filing' => 'Filing options', 'drive' => 'Google Drive'];
+    public const GROUPS = ['auth' => 'Sign-ins and security', 'submission' => 'Projects', 'publication' => 'Publications', 'user' => 'Users', 'filing' => 'Filing options', 'drive' => 'Google Drive', 'announcement' => 'Announcements'];
 
     /** How a project edit names each field it changed, keyed by the column. */
     public const PROJECT_FIELDS = [
@@ -84,7 +84,7 @@ class ActivityLog extends Model
             'subject_id' => $subject?->getKey(),
             'subject_label' => $subject?->getAttribute(match (true) {
                 $subject instanceof Department => 'code',
-                $subject instanceof Submission, $subject instanceof Publication => 'title',
+                $subject instanceof Submission, $subject instanceof Publication, $subject instanceof Announcement => 'title',
                 $subject instanceof GoogleDriveConnection => 'email',
                 default => 'name',
             }),
@@ -221,6 +221,9 @@ class ActivityLog extends Model
             'drive.connected' => __('connected Google Drive'),
             'drive.disconnected' => __('disconnected Google Drive'),
             'drive.account_removed' => __('removed an earlier Google Drive storage account'),
+            'announcement.posted' => __('posted an announcement'),
+            'announcement.updated' => __('edited an announcement'),
+            'announcement.deleted' => __('deleted an announcement'),
 
             'filing.created' => __('added a :kind', ['kind' => $kind]),
             'filing.updated' => isset($p['from']) ? __('renamed a :kind', ['kind' => $kind]) : __('edited a :kind', ['kind' => $kind]),
@@ -231,7 +234,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * The project, account or filing option the entry is about.
+     * The project, account, filing option or announcement the entry is about.
      */
     public function subject(): ?string
     {

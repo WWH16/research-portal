@@ -23,6 +23,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use RuntimeException;
 use Tests\TestCase;
@@ -335,6 +336,18 @@ class NotificationsTest extends TestCase
             ->assertRedirect(route('drive.show', $project));
 
         $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_opening_a_notice_stays_on_the_address_the_member_is_using(): void
+    {
+        // Saved with the address the portal had when it was sent; another address, or another site, never takes over.
+        $this->maria->notifications()->create(['id' => (string) Str::uuid(), 'type' => AccountApproved::class, 'data' => ['message' => 'Welcome.', 'url' => 'http://192.168.1.50:8000/submissions/create?from=welcome']]);
+        $notice = $this->maria->notifications()->sole();
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::notifications.index')
+            ->call('open', $notice->id)
+            ->assertRedirect(url('/submissions/create?from=welcome'));
     }
 
     public function test_another_members_notification_cannot_be_opened(): void

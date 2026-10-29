@@ -115,7 +115,12 @@ new #[Title('Notifications')] class extends Component {
         $notification = Auth::user()->notifications()->findOrFail($id);
         $notification->markAsRead();
 
-        $this->redirect($notification->data['url'], navigate: true);
+        // Only the path is followed, on the address the member is using: the saved link names the address the portal
+        // had when it was sent, which may not be this one, and it never leads off the portal.
+        $url = $notification->data['url'];
+        $query = parse_url($url, PHP_URL_QUERY);
+
+        $this->redirect((parse_url($url, PHP_URL_PATH) ?: '/').($query ? "?{$query}" : ''), navigate: true);
     }
 
     /**

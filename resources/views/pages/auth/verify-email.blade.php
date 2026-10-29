@@ -9,6 +9,20 @@
             :description="new Illuminate\Support\HtmlString(__('We sent a verification link to :email. Open it to continue.', ['email' => $email]))"
         />
 
+        {{-- The link also works on another device, such as a phone. The approval notice answers only once the address is
+             verified, so any answer means the member can move on. --}}
+        <x-auth-recheck data-test="verified-poll" />
+
+        {{-- An expired or altered link brings the member back here; the resend button below is the way forward --}}
+        @if (session('status') == 'verification-link-expired')
+            <flux:callout
+                variant="warning"
+                icon="exclamation-triangle"
+                :text="__('That verification link has expired or is no longer valid. Request a new link below.')"
+                data-test="verification-link-expired"
+            />
+        @endif
+
         {{-- Only after a resend, as a notice rather than a second paragraph; the line above already says what to do --}}
         @if (session('status') == 'verification-link-sent')
             @php($sent = __('New link sent at :time', ['time' => now()->format('g:i A')]))

@@ -2,6 +2,7 @@
 
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
+use App\Http\Controllers\VerifyEmailController;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
@@ -21,6 +22,11 @@ Route::redirect('/', '/dashboard')->name('home');
 // Public, no sign-in: Google's consent screen and the sign-in pages link to these.
 Route::view('privacy', 'pages::legal.privacy')->name('privacy');
 Route::view('terms', 'pages::legal.terms')->name('terms');
+
+// Takes the place of Fortify's route of the same address and name, which asks the member to sign in first.
+Route::get('email/verify/{id}/{hash}', VerifyEmailController::class)
+    ->middleware('throttle:verify-email')
+    ->name('verification.verify');
 
 // A verified sign-up waits here until an admin approves it; an approved account goes on to the portal. The page asks
 // for the JSON form while it waits, so it reloads into the decision as soon as one is made.

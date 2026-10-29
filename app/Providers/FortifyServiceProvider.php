@@ -46,7 +46,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->logAuthEvents();
 
-        // Fortify fires Verified when the emailed link verifies someone. The app layout shows this as a toast; a sign-up
+        // The emailed link fires Verified when it verifies someone. The app layout shows this as a toast; a sign-up
         // still waiting for review lands on the approval notice instead, which shows it above what happens next.
         Event::listen(Verified::class, fn (Verified $event) => session()->flash('verified', $event->user instanceof User && $event->user->isApproved()
             ? __('Email verified. Welcome to the portal.')
@@ -84,7 +84,7 @@ class FortifyServiceProvider extends ServiceProvider
         // The body is parsed as Markdown, so an address like first_last@isu.edu.ph must not turn into italics.
         $md = fn (string $text) => addcslashes($text, '\\`*_[]<>');
 
-        $expires = fn (int $minutes) => __('Link expires in :count minutes.', ['count' => $minutes]);
+        $expires = fn (int $minutes) => trans_choice('{1} This link expires in 1 hour.|[2,*] This link expires in :count hours.', intdiv($minutes, 60));
 
         VerifyEmail::toMailUsing(fn ($user, string $url) => (new MailMessage)
             ->subject(__('Verify your email for the Faculty Research Portal'))
@@ -143,6 +143,10 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($throttleKey);
         });
+
+        // The verify link opens signed out, so guests share a campus network's one address. Keyed by the account in the
+        // link as well, so one college verifying together isn't turned away.
+        RateLimiter::for('verify-email', fn (Request $request) => Limit::perMinute(6)->by($request->route('id').'|'.$request->ip()));
 
         RateLimiter::for('passkeys', function (Request $request) {
             $credentialId = $request->input('credential.id');

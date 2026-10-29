@@ -286,7 +286,9 @@ class GoogleDrivePageTest extends TestCase
             ->set('confirmEmail', 'Research.Office@isu.edu.ph')
             ->set('password', 'password')
             ->call('disconnect')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            // The sidebar's Google Drive warning shows at once, without waiting for its next check.
+            ->assertDispatched('open-work-stale');
 
         $connection->refresh();
         $this->assertFalse($connection->isConnected());

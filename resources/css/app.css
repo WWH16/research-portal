@@ -371,6 +371,26 @@ select:focus[data-flux-control] {
     color: var(--color-rose-950);
 }
 
+/*
+ * A folded group keeps a dot after its name while a badge inside it is showing, so a count or a Google Drive warning
+ * never hides in a closed group. Live badges hide with display: none, which the selector skips. Rose when a rose
+ * badge is inside, as it outranks a gold count.
+ */
+.isu-sidebar ui-disclosure[data-flux-sidebar-group]:not([data-open]):has([data-flux-navlist-badge]:not([style*='display: none'])) > button > span::after {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-inline-start: 0.5rem;
+    vertical-align: middle;
+    border-radius: 9999px;
+    background-color: var(--color-highlight);
+}
+
+.isu-sidebar ui-disclosure[data-flux-sidebar-group]:not([data-open]):has([data-flux-navlist-badge][data-tone]:not([style*='display: none'])) > button > span::after {
+    background-color: var(--color-rose-300);
+}
+
 /* Keyboard focus shows as a pale ring that reads on every sidebar green. */
 .isu-sidebar [data-flux-sidebar-item]:focus-visible,
 .isu-sidebar [data-flux-sidebar-brand]:focus-visible,

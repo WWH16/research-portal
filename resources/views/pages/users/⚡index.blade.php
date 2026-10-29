@@ -295,6 +295,7 @@ new #[Title('Manage Users')] class extends Component {
 
         Flux::modal('user-delete')->close();
         Flux::toast(variant: 'success', text: __('User deleted.'));
+        $this->dispatch('open-work-stale');
         $this->reset('deletingId');
         unset($this->users, $this->deleting, $this->deletingBlocker);
     }
@@ -319,6 +320,8 @@ new #[Title('Manage Users')] class extends Component {
         $user->notify(new AccountApproved);
 
         Flux::toast(variant: 'success', text: __(':name can now use the portal.', ['name' => $user->name]));
+        // The sidebar's sign-up count changes, so it counts again at once.
+        $this->dispatch('open-work-stale');
         unset($this->users);
     }
 
@@ -359,6 +362,7 @@ new #[Title('Manage Users')] class extends Component {
 
         Flux::modal('user-reject')->close();
         Flux::toast(variant: 'success', text: __('Sign-up rejected.'));
+        $this->dispatch('open-work-stale');
         $this->reset('rejectingId');
         unset($this->users, $this->rejecting);
     }

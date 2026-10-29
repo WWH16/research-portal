@@ -385,7 +385,8 @@ class ManageUsersTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        Livewire::test('pages::users.index')->call('approve', $user->id);
+        // The sidebar's sign-up count drops at once, without waiting for its next check.
+        Livewire::test('pages::users.index')->call('approve', $user->id)->assertDispatched('open-work-stale');
 
         $this->assertTrue($user->refresh()->isApproved());
         $this->assertFalse($user->isRejected());

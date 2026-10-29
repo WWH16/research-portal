@@ -196,6 +196,8 @@ new #[Title('Google Drive')] class extends Component {
         });
 
         Flux::toast(variant: 'success', text: __('Storage account saved. Connect it to start storing documents.'));
+        // The sidebar's Google Drive warning changes with the account, so it counts again at once.
+        $this->dispatch('open-work-stale');
         unset($this->connection);
     }
 
@@ -249,6 +251,8 @@ new #[Title('Google Drive')] class extends Component {
             ? __('Storage account changed. New uploads go to :email.', ['email' => $this->connection->email])
             : __('Storage account changed. Connect it so new uploads can be saved.'));
 
+        $this->dispatch('open-work-stale');
+
         // The storage section only asks on page load, so it would keep showing the old account's figures.
         $this->loadUsage();
     }
@@ -278,6 +282,7 @@ new #[Title('Google Drive')] class extends Component {
         $this->resetConfirmation();
         Flux::modal('drive-disconnect')->close();
         Flux::toast(variant: 'success', text: __('Google Drive disconnected.'));
+        $this->dispatch('open-work-stale');
         unset($this->connection);
     }
 

@@ -567,12 +567,12 @@ class NotificationsTest extends TestCase
         $notice = $this->maria->notifications()->sole();
         $this->actingAs($this->maria);
 
-        Livewire::test('pages::notifications.index')->call('toggleRead', $notice->id)->assertDispatched('notifications-changed');
-        Livewire::test('pages::notifications.index')->call('delete', $notice->id)->assertDispatched('notifications-changed');
+        Livewire::test('pages::notifications.index')->call('toggleRead', $notice->id)->assertDispatched('open-work-stale');
+        Livewire::test('pages::notifications.index')->call('delete', $notice->id)->assertDispatched('open-work-stale');
 
         $this->get(route('notifications.index'))
             ->assertSeeHtml('x-show="unread"')
-            ->assertSeeHtml('x-on:notifications-changed.window="refresh()"');
+            ->assertSeeHtml('x-on:open-work-stale.window="refresh()"');
     }
 
     public function test_an_empty_list_says_so(): void

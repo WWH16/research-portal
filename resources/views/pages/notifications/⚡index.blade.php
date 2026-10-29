@@ -47,7 +47,7 @@ new #[Title('Notifications')] class extends Component {
         $notice->read_at ? $notice->markAsUnread() : $notice->markAsRead();
 
         // The sidebar counts again at once, so the bell matches without a reload.
-        $this->dispatch('notifications-changed');
+        $this->dispatch('open-work-stale');
     }
 
     /**
@@ -89,7 +89,7 @@ new #[Title('Notifications')] class extends Component {
         }
 
         $this->reset('undo', 'deleted');
-        $this->dispatch('notifications-changed');
+        $this->dispatch('open-work-stale');
     }
 
     /**
@@ -104,7 +104,7 @@ new #[Title('Notifications')] class extends Component {
         $this->undo = (string) Str::uuid();
         $this->deleted = count($rows);
         Cache::put("notifications.undo.{$this->undo}", ['user' => Auth::id(), 'rows' => $rows], now()->addSeconds(15));
-        $this->dispatch('notifications-changed');
+        $this->dispatch('open-work-stale');
     }
 
     /**

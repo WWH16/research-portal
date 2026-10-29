@@ -87,7 +87,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
      * The open work behind the sidebar badges and the phone menu dot, with the hover titles that go with them. The
      * sidebar draws it on load and asks for it again while the tab stays open; faculty never get the admins' counts.
      *
-     * @return array{toReview: int, toRevise: int, toApprove: int, unread: int, reviewLabel: string, revisionLabel: string, approveLabel: string|null, unreadLabel: string|null}
+     * @return array{toReview: int, toRevise: int, toApprove: int, unread: int, reviewLabel: string, revisionLabel: string, approveLabel: string|null, unreadLabel: string|null, driveIssue: string|null}
      */
     public function openWork(): array
     {
@@ -107,6 +107,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             // Null with nothing waiting, so no stray "0 …" title is left on the item.
             'approveLabel' => $toApprove ? trans_choice('{1} 1 sign-up to approve|[2,*] :count sign-ups to approve', $toApprove) : null,
             'unreadLabel' => $unread ? trans_choice('{1} 1 unread notification|[2,*] :count unread notifications', $unread) : null,
+            // Only admins can fix Google Drive, so only they see what's wrong with it.
+            'driveIssue' => $admin ? GoogleDriveConnection::issue() : null,
         ];
     }
 

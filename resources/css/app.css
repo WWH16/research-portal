@@ -363,8 +363,10 @@ select:focus[data-flux-control] {
     color: var(--color-isu-green-950);
 }
 
-/* Faculty's "needs revision" count is rose, so it never reads as the Research Office's gold review queue. */
-.isu-sidebar [data-flux-navlist-badge][data-tone='revision'] {
+/* Faculty's "needs revision" count is rose, so it never reads as the Research Office's gold review queue; so is the
+   Google Drive "!", since uploads are failing rather than work waiting. */
+.isu-sidebar [data-flux-navlist-badge][data-tone='revision'],
+.isu-sidebar [data-flux-navlist-badge][data-tone='alert'] {
     background-color: var(--color-rose-200);
     color: var(--color-rose-950);
 }

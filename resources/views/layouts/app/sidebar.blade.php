@@ -7,7 +7,7 @@
     @php
         $work = auth()->user()->openWork();
         ['toReview' => $toReview, 'toRevise' => $toRevise, 'toApprove' => $toApprove, 'unread' => $unread] = $work;
-        ['reviewLabel' => $reviewLabel, 'revisionLabel' => $revisionLabel, 'approveLabel' => $approveLabel, 'unreadLabel' => $unreadLabel] = $work;
+        ['reviewLabel' => $reviewLabel, 'revisionLabel' => $revisionLabel, 'approveLabel' => $approveLabel, 'unreadLabel' => $unreadLabel, 'driveIssue' => $driveIssue] = $work;
         // Two digits at most, so the badge never crowds the label; the hover title keeps the exact count.
         $capped = fn (int $count) => $count > 99 ? '99+' : $count;
     @endphp
@@ -133,13 +133,16 @@
             {{-- Rare and high-stakes, so it sits apart at the bottom, away from everyday clicks --}}
             @if (auth()->user()->isAdmin())
                 <flux:sidebar.nav>
-                    <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="request()->routeIs('backups.*', 'google-drive.*')" class="grid" data-test="system-nav">
+                    <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="$driveIssue !== null || request()->routeIs('backups.*', 'google-drive.*')" class="grid" data-test="system-nav">
                         <flux:sidebar.item icon="circle-stack" :href="route('backups.index')" :current="request()->routeIs('backups.*')" wire:navigate>
                             {{ __('Backup and Restore') }}
                         </flux:sidebar.item>
 
-                        <flux:sidebar.item icon="cloud" :href="route('google-drive.index')" :current="request()->routeIs('google-drive.*')" wire:navigate>
+                        {{-- A rose "!" while uploads can't work: no account saved, disconnected, or full. The title says which,
+                             and screen readers hear it after the link name --}}
+                        <flux:sidebar.item icon="cloud" :href="route('google-drive.index')" :current="request()->routeIs('google-drive.*')" badge="!" badge:data-tone="alert" :badge:style="$driveIssue ? null : 'display: none'" :badge:title="$driveIssue" badge:x-bind:title="driveIssue" badge:x-show="driveIssue" badge:aria-hidden="true" wire:navigate data-test="google-drive-nav">
                             {{ __('Google Drive') }}
+                            <span class="sr-only" x-show="driveIssue" x-text="driveIssue">{{ $driveIssue }}</span>
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 </flux:sidebar.nav>
@@ -156,7 +159,7 @@
             {{-- The dot keeps open work in sight while the sidebar is tucked away; the inset moves to the wrapper so the dot lines up with the icon --}}
             <div class="relative -ms-2.5 lg:hidden">
                 <flux:sidebar.toggle icon="bars-2" />
-                <span x-show="toReview || toRevise || unread || toApprove" @style(['display: none' => ! ($toReview || $toRevise || $unread || $toApprove)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" x-bind:class="{ 'bg-rose-600': toRevise, 'bg-isu-gold-700': ! toRevise }" data-test="sidebar-toggle-dot"></span>
+                <span x-show="toReview || toRevise || unread || toApprove || driveIssue" @style(['display: none' => ! ($toReview || $toRevise || $unread || $toApprove || $driveIssue)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" x-bind:class="{ 'bg-rose-600': toRevise, 'bg-isu-gold-700': ! toRevise }" data-test="sidebar-toggle-dot"></span>
             </div>
 
             <flux:spacer />

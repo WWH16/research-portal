@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Department;
+use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -92,6 +94,8 @@ class SidebarBadgesTest extends TestCase
     public function test_the_review_badge_and_dot_hide_when_nothing_waits(): void
     {
         $this->project('Decided Proposal', ['awaiting_review' => false, 'concept_passed' => true]);
+        // A working storage account, so Google Drive doesn't light the dot either.
+        GoogleDriveConnection::factory()->create();
 
         // Still in the page, hidden, so a live count can show it without a reload.
         $this->actingAs($this->admin())
@@ -118,6 +122,32 @@ class SidebarBadgesTest extends TestCase
 
         auth()->logout();
         $this->getJson(route('open-work'))->assertUnauthorized();
+    }
+
+    public function test_the_google_drive_link_warns_admins_when_storage_has_a_problem(): void
+    {
+        $admin = $this->admin();
+        $issue = fn () => $this->actingAs($admin)->getJson(route('open-work'))->json('driveIssue');
+
+        $this->assertSame('No Google Drive storage account is saved, so documents can’t be uploaded.', $issue());
+
+        $account = GoogleDriveConnection::factory()->create(['email' => 'office@isu.edu.ph']);
+        $this->assertNull($issue());
+
+        Cache::forever($account->fullKey(), now());
+        $this->assertSame('Google Drive office@isu.edu.ph is full, so documents can’t be uploaded.', $issue());
+
+        $account->update(['refresh_token' => null]);
+        $this->assertSame('Google Drive office@isu.edu.ph is disconnected, so documents can’t be uploaded or opened.', $issue());
+
+        // The link carries a red "!" with the reason, and its group opens so the warning is in view.
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertSeeHtml('title="Google Drive office@isu.edu.ph is disconnected, so documents can’t be uploaded or opened."')
+            ->assertSeeHtml('x-show="driveIssue"')
+            ->assertSeeInOrder(['data-test="system-nav"', 'open'], false);
+
+        // Faculty can't fix it, so they're never told.
+        $this->actingAs($this->maria)->getJson(route('open-work'))->assertJson(['driveIssue' => null]);
     }
 
     public function test_the_sidebar_keeps_its_counts_live_while_the_tab_is_open(): void

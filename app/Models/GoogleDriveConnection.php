@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * A Google account whose Drive stores submission documents. The current one, without retired_at, takes new
@@ -61,6 +62,23 @@ class GoogleDriveConnection extends Model
     public function isConnected(): bool
     {
         return $this->refresh_token !== null;
+    }
+
+    /**
+     * What stops uploads right now, in a sentence for the sidebar's Google Drive warning; null when all is well.
+     */
+    public static function issue(): ?string
+    {
+        $account = self::current();
+
+        $issue = match (true) {
+            $account === null => __('No Google Drive storage account is saved, so documents can’t be uploaded.'),
+            ! $account->isConnected() => __('Google Drive :email is disconnected, so documents can’t be uploaded or opened.', ['email' => $account->email]),
+            Cache::has($account->fullKey()) => __('Google Drive :email is full, so documents can’t be uploaded.', ['email' => $account->email]),
+            default => null,
+        };
+
+        return is_string($issue) ? $issue : null;
     }
 
     /**

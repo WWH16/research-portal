@@ -419,8 +419,8 @@ class DashboardTest extends TestCase
         }
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
-        // Two of these are the sidebar's counts: unread notifications, and sign-ups to approve.
-        $this->assertQueriesAtMost(20, fn () => $this->get(route('dashboard'))->assertOk());
+        // Three of these are the sidebar's: unread notifications, sign-ups to approve, and the Google Drive check.
+        $this->assertQueriesAtMost(21, fn () => $this->get(route('dashboard'))->assertOk());
 
         $this->actingAs($maria);
         // Two of these are the sidebar's counts: projects that need revision, and unread notifications.

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\GoogleDriveConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,6 +13,8 @@ class SidebarGroupsTest extends TestCase
 
     public function test_the_daily_groups_start_open_and_the_rest_open_on_their_own_pages(): void
     {
+        // A working storage account, so System stays closed; a Google Drive problem opens it on every page.
+        GoogleDriveConnection::factory()->create();
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $defaults = ['overview-nav' => true, 'research-nav' => true, 'administration-nav' => false, 'filing-options-nav' => false, 'system-nav' => false];

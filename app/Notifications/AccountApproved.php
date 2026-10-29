@@ -15,7 +15,9 @@ class AccountApproved extends PortalNotification
     {
         return (new MailMessage)
             ->subject(__('Your account has been approved'))
-            ->line(__('Your Faculty Research Portal account has been approved by the Research Office. You may now sign in to submit research proposals, upload the documents for each stage, and follow the progress of your projects.'))
+            ->line(__('The Research Office has **approved** your Faculty Research Portal account for :email.', ['email' => self::bold($notifiable->email)]))
+            ->line(__('You may now sign in to submit research proposals, upload the documents for each stage, and follow the progress of your projects.'))
+            ->line(__('To begin, sign in and **submit your concept proposal** under Submissions. The Research Office will review it, and you will be notified of its decision.'))
             ->action(__('Sign in'), route('login'));
     }
 

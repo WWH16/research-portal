@@ -24,7 +24,8 @@ class AccountRejected extends PortalNotification
     {
         return (new MailMessage)
             ->subject(__('Your portal sign-up was not approved'))
-            ->line($this->message());
+            ->line(__('Your sign-up for the Faculty Research Portal with :email was **not approved** by the Research Office.', ['email' => self::bold($notifiable->email)]))
+            ->line(__('If you think this is a mistake, please contact the Research Office by replying to this email.'));
     }
 
     protected function message(): string

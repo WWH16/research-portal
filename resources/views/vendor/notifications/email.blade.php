@@ -1,16 +1,7 @@
-{{-- Hands the mail message down to the HTML header, which embeds the seal; null in previews and test renders.
-     The first intro line, without its Markdown escapes, doubles as the inbox preview text. --}}
-<x-mail::message :seal-from="$message ?? null" :preheader="isset($introLines[0]) ? stripslashes($introLines[0]) : null">
-{{-- Greeting --}}
-@if (! empty($greeting))
-# {{ $greeting }}
-@else
-@if ($level === 'error')
-# @lang('Whoops!')
-@else
-# @lang('Hello!')
-@endif
-@endif
+{{-- The first intro line, without its bold marks and Markdown escapes, doubles as the inbox preview text. --}}
+<x-mail::message :preheader="isset($introLines[0]) ? stripslashes(str_replace('**', '', $introLines[0])) : null">
+{{-- Headline: what the email is about, its own greeting or else its subject, in place of a bare "Hello!" --}}
+# {{ $greeting ?: $subject }}
 
 {{-- Intro Lines --}}
 @foreach ($introLines as $line)

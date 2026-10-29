@@ -1,9 +1,4 @@
-@props(['sealFrom' => null, 'preheader' => null])
-@php
-    // Sent mail carries the seal inside it (cid:), so it shows even before the portal has a public address.
-    // Only the HTML copy has this header, so the seal is attached once. Previews link the public file instead.
-    $seal = $sealFrom ? $sealFrom->embed(public_path('images/isu_seal-128.png')) : asset('images/isu_seal-128.png');
-@endphp
+@props(['preheader' => null])
 <tr>
 <td class="masthead" bgcolor="#0b5e36" align="left">
 @if ($preheader)
@@ -14,8 +9,8 @@
 <table cellpadding="0" cellspacing="0" role="presentation">
 <tr>
 <td class="seal-cell" width="52" valign="middle">
-{{-- Decorative: the university's name is set right beside it --}}
-<img src="{{ $seal }}" class="seal" width="52" height="52" alt="">
+{{-- Decorative: the university's name is set right beside it. Linked from APP_URL, not embedded, so no attachment. --}}
+<img src="{{ asset('images/isu_seal-128.png') }}" class="seal" width="52" height="52" alt="">
 </td>
 <td valign="middle">
 {!! $slot !!}

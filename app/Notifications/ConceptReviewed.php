@@ -26,15 +26,20 @@ class ConceptReviewed extends PortalNotification
 
     public function toMail(User $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
-            ->subject($this->decision === 'passed' ? __('Concept proposal passed') : __('Concept proposal returned for revision'))
-            ->line(self::plain($this->message()));
+        $passed = $this->decision === 'passed';
+        $replace = ['title' => self::bold('“'.$this->submission->displayTitle().'”')];
 
-        if ($this->remarks) {
-            $mail->line(self::plain(__('Remarks: :remarks', ['remarks' => $this->remarks])));
-        }
-
-        return $mail->action(__('Open project'), $this->url());
+        // Written in full for the faculty who read it: what was decided, on which project, and what to do next.
+        return (new MailMessage)
+            ->subject($passed ? __('Concept proposal passed') : __('Concept proposal returned for revision'))
+            ->line($passed
+                ? __('The Research Office has reviewed your concept proposal for :title and has **passed** it.', $replace)
+                : __('The Research Office has reviewed your concept proposal for :title and has **returned it for revision**.', $replace))
+            ->lineIf((bool) $this->remarks, __('**Remarks from the Research Office:** :remarks', ['remarks' => self::plain((string) $this->remarks)]))
+            ->line($passed
+                ? __('You may now **upload the detailed proposal** for this project. Open the project in the portal to upload it.')
+                : __('Please **revise your concept proposal** and upload the revised version in the portal. The Research Office will review it again once it is uploaded.'))
+            ->action(__('Open project'), $this->url());
     }
 
     protected function message(): string

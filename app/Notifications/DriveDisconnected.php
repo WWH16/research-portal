@@ -21,6 +21,14 @@ class DriveDisconnected extends PortalNotification
         return __('Google Drive :email is disconnected, so documents can’t be uploaded or opened. Connect it again on System → Google Drive.', ['email' => $this->account->email]);
     }
 
+    protected function mailLines(): array
+    {
+        return [
+            __('The Google Drive account :email is **disconnected**, so documents can’t be uploaded or opened in the portal.', ['email' => self::bold($this->account->email)]),
+            __('This happens when the portal’s access to the account is removed, its password is changed, or its folder is deleted. Please **connect it again** on System → Google Drive.'),
+        ];
+    }
+
     protected function url(): string
     {
         return route('google-drive.index');

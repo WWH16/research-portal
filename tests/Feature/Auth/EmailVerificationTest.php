@@ -54,7 +54,8 @@ class EmailVerificationTest extends TestCase
         $this->assertSame('Verify your email for the Faculty Research Portal', $mail->subject);
         $this->assertSame('Verify email', $mail->actionText);
         $this->assertStringContainsString('Verify your email', $html);
-        $this->assertStringContainsString('Confirm '.$user->email.' to activate your Faculty Research Portal account.', $html);
+        // The address is set in bold, so the member sees at a glance which one they are confirming.
+        $this->assertMatchesRegularExpression('/Please confirm that <strong[^>]*>'.preg_quote($user->email, '/').'<\/strong> is your email address to activate your Faculty Research Portal account\./', $html);
         $this->assertStringContainsString('This link expires in 24 hours.', $html);
         $this->assertMatchesRegularExpression('/<a href="mailto:'.preg_quote(config('mail.from.address'), '/').'"[^>]*>Contact the Research Office<\/a>/', $html);
         $this->assertStringContainsString('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela', $html);
@@ -64,21 +65,21 @@ class EmailVerificationTest extends TestCase
         $this->assertStringContainsString('class="sheet"', $html);
 
         // The first line is the inbox preview, and the seal is not a nameless link.
-        $this->assertMatchesRegularExpression('/<div style="[^"]*display: none;[^>]*>Confirm \S+ to activate/', $html);
+        $this->assertMatchesRegularExpression('/<div style="[^"]*display: none;[^>]*>Please confirm that [^*\\\\\s]+ is your email address/', $html);
         $this->assertDoesNotMatchRegularExpression('/<a [^>]*>\s*<img/', $html);
     }
 
-    public function test_sent_verification_email_carries_the_seal_inside_it(): void
+    public function test_sent_verification_email_links_the_seal_instead_of_attaching_it(): void
     {
         config(['mail.default' => 'array']);
         $user = User::factory()->unverified()->create();
 
         $user->sendEmailVerificationNotification();
 
-        // Embedded (cid:), not linked, so the seal shows even before the portal has a public address.
+        // Loaded from the portal's public address, so the email carries no attachment.
         $email = Mail::mailer('array')->getSymfonyTransport()->messages()->first()->getOriginalMessage();
-        $this->assertStringContainsString('src="cid:', $email->getHtmlBody());
-        $this->assertCount(1, $email->getAttachments());
+        $this->assertStringContainsString('src="'.asset('images/isu_seal-128.png').'"', $email->getHtmlBody());
+        $this->assertCount(0, $email->getAttachments());
     }
 
     public function test_unverified_users_are_redirected_to_the_email_verification_prompt(): void

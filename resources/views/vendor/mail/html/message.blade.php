@@ -1,8 +1,8 @@
-@props(['sealFrom' => null, 'preheader' => null])
+@props(['preheader' => null])
 <x-mail::layout>
 {{-- Banner: the seal beside the portal's and the university's names, on the green band across the card --}}
 <x-slot:header>
-<x-mail::header :seal-from="$sealFrom" :preheader="$preheader">
+<x-mail::header :preheader="$preheader">
 <p class="masthead-name">{{ __('Faculty Research Portal') }}</p>
 <p class="masthead-institution">{{ __('Isabela State University - Cauayan Campus') }}</p>
 </x-mail::header>

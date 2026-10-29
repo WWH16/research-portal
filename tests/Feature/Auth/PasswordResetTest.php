@@ -56,7 +56,7 @@ class PasswordResetTest extends TestCase
         $this->assertSame('Reset your Faculty Research Portal password', $mail->subject);
         $this->assertStringContainsString(route('password.reset', ['token' => 'reset-token', 'email' => $user->email]), $mail->actionUrl);
         $this->assertStringContainsString('Reset your password', $html);
-        $this->assertStringContainsString('Set a new password for '.$user->email.'.', $html);
+        $this->assertMatchesRegularExpression('/reset the password of the Faculty Research Portal account for <strong[^>]*>'.preg_quote($user->email, '/').'<\/strong>\./', $html);
         $this->assertStringContainsString('Isabela State University', $html);
         $this->assertStringNotContainsString('All rights reserved', $html);
     }

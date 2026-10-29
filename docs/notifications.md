@@ -27,7 +27,7 @@ Do this once, in the Laravel Cloud environment:
 
 1. Check that the environment has a queue worker. If not, add one.
 2. Turn on the scheduler for the environment. It runs `projects:remind` every morning at 07:00.
-3. Check that `APP_URL` is the portal's public address. The Open links in emails and in the bell are built from it.
+3. Check that `APP_URL` is the portal's public address. The Open links in emails and in the bell are built from it, and the university seal at the top of each email loads from it.
 4. Sign in to **isucyn.facultyresearchportal@gmail.com**, turn on 2-Step Verification, and create an **App Password** under Google Account → Security → App passwords. Gmail refuses the account's normal password over SMTP.
 5. Set these environment variables, with the App Password (16 letters, spaces removed) as `MAIL_PASSWORD`:
 

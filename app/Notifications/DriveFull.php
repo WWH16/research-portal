@@ -22,6 +22,14 @@ class DriveFull extends PortalNotification
         return __('Google Drive :email is full, so documents can’t be uploaded. Free up space in it, or change the storage account.', ['email' => $this->account->email]);
     }
 
+    protected function mailLines(): array
+    {
+        return [
+            __('The Google Drive account :email is **full**, so documents can’t be uploaded to the portal.', ['email' => self::bold($this->account->email)]),
+            __('Every upload will fail until there is space again. Please **free up space** in this account, or change the storage account on System → Google Drive.'),
+        ];
+    }
+
     protected function url(): string
     {
         return route('google-drive.index');

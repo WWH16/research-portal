@@ -489,7 +489,7 @@ class NotificationsTest extends TestCase
                 'message' => 'Welcome to the Faculty Research Portal. Your account has been approved by the Research Office. To begin, submit your concept proposal under Submissions; the Research Office will review it, and you will be notified of its decision here. You may also add your mobile number and profile photo under My Profile.',
                 'url' => route('submissions.create'),
             ]
-            && $notification->toMail($waiting)->introLines === ['Your Faculty Research Portal account has been approved by the Research Office. You may now sign in to submit research proposals, upload the documents for each stage, and follow the progress of your projects.']
+            && $notification->toMail($waiting)->introLines[1] === 'You may now sign in to submit research proposals, upload the documents for each stage, and follow the progress of your projects.'
             && $notification->toMail($waiting)->actionUrl === route('login'));
     }
 
@@ -544,10 +544,10 @@ class NotificationsTest extends TestCase
 
     public function test_every_notice_that_emails_has_an_email(): void
     {
-        // A notice without its own email gets the portal's plain one, with the same sentence and link.
+        // A notice without its own email gets the portal's plain one, with its lines and the same link.
         $mail = (new DriveFull(GoogleDriveConnection::factory()->create(['email' => 'office@isu.edu.ph'])))->toMail($this->maria);
 
-        $this->assertStringContainsString('Google Drive office@isu.edu.ph is full', $mail->introLines[0]);
+        $this->assertSame('The Google Drive account **office@isu.edu.ph** is **full**, so documents can’t be uploaded to the portal.', $mail->introLines[0]);
         $this->assertSame(route('google-drive.index'), $mail->actionUrl);
         $this->assertSame('Google Drive is full', $mail->subject);
     }
@@ -703,6 +703,35 @@ class NotificationsTest extends TestCase
 
             $this->assertStringNotContainsString('href="https://evil.example"', $html, $notification::class);
             $this->assertStringContainsString('[Review here](https://evil.example)', $html, $notification::class);
+        }
+    }
+
+    public function test_emails_open_with_a_headline_and_set_the_key_facts_in_bold(): void
+    {
+        $project = $this->project(['title' => 'Solar*Dryer Study', 'target_date' => today()->addDays(7)]);
+        $start = $project->start_date->format('F j, Y');
+        $due = $project->target_date->format('F j, Y');
+
+        $emails = [
+            [new ConceptReviewed($project, 'returned', 'Cite your sources.'), 'Concept proposal returned for revision', ['“Solar*Dryer Study”', 'returned it for revision', 'Remarks from the Research Office:', 'revise your concept proposal']],
+            [new ConceptReviewed($project, 'passed', null), 'Concept proposal passed', ['“Solar*Dryer Study”', 'passed', 'upload the detailed proposal']],
+            [new ProjectDeadline($project, 7), 'Completion date in 7 days', ['“Solar*Dryer Study”', $due, 'upload the terminal report']],
+            [new ProjectDeadline($project, -1), 'Terminal report overdue', ['“Solar*Dryer Study”', $due, 'upload the terminal report']],
+            [new ProjectDatesChanged($project), 'Project dates changed', ['“Solar*Dryer Study”', $start, $due]],
+            [new AccountApproved, 'Your account has been approved', ['approved', $this->maria->email, 'submit your concept proposal']],
+        ];
+
+        foreach ($emails as [$notification, $headline, $bold]) {
+            $html = (string) $notification->toMail($this->maria)->render();
+
+            // The headline says what happened, in place of a bare "Hello!".
+            $this->assertMatchesRegularExpression('/<h1[^>]*>'.preg_quote($headline, '/').'<\/h1>/', $html, $notification::class);
+            $this->assertStringNotContainsString('Hello!', $html, $notification::class);
+
+            // The title, dates, decision and next step stand out; a * in the title stays a *.
+            foreach ($bold as $text) {
+                $this->assertMatchesRegularExpression('/<strong[^>]*>'.preg_quote($text, '/').'<\/strong>/', $html, $notification::class);
+            }
         }
     }
 

@@ -63,14 +63,24 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     }
 
     /**
-     * The email for a notice without its own: the same sentence and link as in the portal.
+     * The email for a notice without its own: its lines and the same link as in the portal.
      */
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
             ->subject(__(static::SUBJECT))
-            ->line(self::plain($this->message()))
+            ->lines($this->mailLines())
             ->action(__('Open the portal'), $this->url());
+    }
+
+    /**
+     * The email's lines: the portal's sentence, unless the notice says more by email, with its key facts in bold().
+     *
+     * @return list<string>
+     */
+    protected function mailLines(): array
+    {
+        return [self::plain($this->message())];
     }
 
     /**
@@ -87,5 +97,14 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     protected static function plain(string $text): string
     {
         return addcslashes($text, '\\[]');
+    }
+
+    /**
+     * Sets a title, date or address in bold in an email, so faculty see it at a glance. Its own Markdown is escaped,
+     * so it can't end the bold early or turn into a link.
+     */
+    protected static function bold(string $text): string
+    {
+        return '**'.addcslashes($text, '\\`*_[]').'**';
     }
 }

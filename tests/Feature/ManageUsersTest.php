@@ -437,7 +437,7 @@ class ManageUsersTest extends TestCase
 
             return $notification->via($user) === ['mail']
                 && $mail->subject === 'Your portal sign-up was not approved'
-                && in_array('Your sign-up for the Faculty Research Portal was not approved. Contact the Research Office if you think this is a mistake.', $mail->introLines, true);
+                && str_contains($mail->introLines[0], 'was **not approved** by the Research Office.');
         });
         Notification::assertNotSentTo($this->admin, AccountRejected::class);
     }

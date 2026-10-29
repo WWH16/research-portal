@@ -26,6 +26,18 @@ class ProjectDatesChanged extends PortalNotification
         ]);
     }
 
+    protected function mailLines(): array
+    {
+        return [
+            __('The Research Office has changed the dates of :title.', ['title' => self::bold('“'.$this->submission->displayTitle().'”')]),
+            __('The project now starts on :start and is due on :due.', [
+                'start' => self::bold($this->submission->start_date->format('F j, Y')),
+                'due' => self::bold($this->submission->target_date->format('F j, Y')),
+            ]),
+            __('The completion date reminders for this project now follow the new due date, and the terminal report is due on or before it.'),
+        ];
+    }
+
     protected function url(): string
     {
         return route('drive.show', $this->submission);

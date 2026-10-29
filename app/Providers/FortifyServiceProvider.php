@@ -89,7 +89,8 @@ class FortifyServiceProvider extends ServiceProvider
         VerifyEmail::toMailUsing(fn ($user, string $url) => (new MailMessage)
             ->subject(__('Verify your email for the Faculty Research Portal'))
             ->greeting(__('Verify your email'))
-            ->line(__('Confirm :email to activate your Faculty Research Portal account.', ['email' => $md($user->email)]))
+            ->line(__('Please confirm that :email is your email address to activate your Faculty Research Portal account.', ['email' => '**'.$md($user->email).'**']))
+            ->line(__('Once it is confirmed, the portal can send you email updates about your account and your research.'))
             ->action(__('Verify email'), $url)
             ->line($expires(config('auth.verification.expire', 60)))
             // A Markdown mailto link to the sender, so it reaches the Research Office and reads as a link in plain text.
@@ -98,10 +99,11 @@ class FortifyServiceProvider extends ServiceProvider
         ResetPassword::toMailUsing(fn ($user, string $token) => (new MailMessage)
             ->subject(__('Reset your Faculty Research Portal password'))
             ->greeting(__('Reset your password'))
-            ->line(__('Set a new password for :email.', ['email' => $md($user->getEmailForPasswordReset())]))
+            ->line(__('A request was received to reset the password of the Faculty Research Portal account for :email.', ['email' => '**'.$md($user->getEmailForPasswordReset()).'**']))
+            ->line(__('Press the button below to choose a new password.'))
             ->action(__('Reset password'), url(route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()], false)))
             ->line($expires(config('auth.passwords.'.config('auth.defaults.passwords').'.expire')))
-            ->line(__('Didn’t ask for this? Ignore this email. Your password stays the same.')));
+            ->line(__('Didn’t ask for this? You may ignore this email, and your password will stay the same.')));
     }
 
     /**

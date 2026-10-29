@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -123,17 +122,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
-     * URL of the user's profile photo, or null when they have not uploaded one. A photo on Google Drive opens
-     * through the portal; the file name in the URL changes with the photo, so browsers can keep it for good.
-     * One uploaded before photos moved to Google Drive is still on the public disk.
+     * URL of the user's profile photo, or null when they have not uploaded one. The photo is on Google Drive, so it
+     * opens through the portal; the file name in the URL changes with the photo, so browsers can keep it for good.
      */
     public function profileImageUrl(): ?string
     {
-        return match (true) {
-            ! $this->profile_image => null,
-            str_starts_with($this->profile_image, 'drive-') => route('profile-photo', ['user' => $this, 'v' => basename($this->profile_image)]),
-            default => Storage::disk('public')->url($this->profile_image),
-        };
+        return $this->profile_image ? route('profile-photo', ['user' => $this, 'v' => basename($this->profile_image)]) : null;
     }
 
     /**

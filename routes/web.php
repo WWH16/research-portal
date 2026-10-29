@@ -48,8 +48,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::livewire('publications/{publication}/edit', 'pages::publications.create')->middleware(['faculty', 'can:update,publication'])->name('publications.edit');
     Route::livewire('faculty/{user}', 'pages::faculty.show')->middleware('can:viewPublications,user')->name('faculty.show');
 
-    // Documents live on private storage (the portal's Google Drive, or the server disk for older ones), so only the
-    // project's proponents and admins can open one.
+    // Documents live on the portal's private Google Drive, so only the project's proponents and admins can open one.
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
         $path = $submission->{$stage.'_path'};
         abort_unless($path, 404);
@@ -72,7 +71,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     // Profile photos sit on the same private Google Drive, so any signed-in member's page shows them through here.
     // Each one asks Google, so the browser keeps it: a new photo has a new name in the URL.
     Route::get('profile-photo/{user}', function (User $user) {
-        abort_unless(str_starts_with((string) $user->profile_image, 'drive-'), 404);
+        abort_if($user->profile_image === null, 404);
 
         try {
             [$disk, $location] = app(DocumentStorage::class)->locate($user->profile_image);

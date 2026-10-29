@@ -3,7 +3,7 @@
 The portal holds two kinds of data:
 
 - **The database:** projects, users, reviews, filing options and the activity log.
-- **Uploaded files:** project documents on the Research Office's Google Drive, and profile photos on the `public` disk.
+- **Uploaded files:** project documents and profile photos, on the Research Office's Google Drive. The portal uses no bucket.
 
 There are two ways to get data back:
 
@@ -14,19 +14,16 @@ There are two ways to get data back:
 
 Do this once, before the first deploy.
 
-1. Attach a public bucket with the disk name `public`. It holds profile photos. Project documents and portal backups go to Google Drive, never to a bucket.
-2. Open the database cluster's **Backups** page and choose **Daily**. Laravel Cloud keeps backups for 7 days unless you change it.
-3. Add a queue worker to the environment. Portal backups and restores run on the queue, so without a worker they never start.
-4. Set `DB_QUEUE_RETRY_AFTER=2000` in the environment variables. A backup or restore can run for up to 30 minutes (1800 seconds). With the default of 90 seconds, a second worker picks up the same job while the first is still running.
-5. Redeploy the environment.
+1. Open the database cluster's **Backups** page and choose **Daily**. Laravel Cloud keeps backups for 7 days unless you change it.
+2. Add a queue worker to the environment. Portal backups and restores run on the queue, so without a worker they never start.
+3. Set `DB_QUEUE_RETRY_AFTER=2000` in the environment variables. A backup or restore can run for up to 30 minutes (1800 seconds). With the default of 90 seconds, a second worker picks up the same job while the first is still running.
+4. Redeploy the environment.
 
-Profile photos uploaded before the move to buckets stay on the old server. Copy them into the `public` bucket with a tool such as Cyberduck, keeping the same folders.
-
-If the `public` bucket is missing in production, the Backup and Restore page shows a red warning. Laravel Cloud clears the server disk on every deploy, so attach it before anyone uploads a photo.
+Don't attach a bucket. Documents, profile photos and portal backups all go to Google Drive, which replaced the bucket to save its cost.
 
 ## Storing documents on Google Drive
 
-Project documents are stored only on the Research Office's Google Drive. Each document's saved path starts with `drive-<account number>/`, so it always opens from the account that saved it. Until an admin saves and connects a storage account, uploads are refused.
+Project documents and profile photos are stored only on the Research Office's Google Drive, in the `submissions` and `profile-images` folders. Each saved path starts with `drive-<account number>/`, so a file always opens from the account that saved it. Until an admin saves and connects a storage account, uploads are refused.
 
 ### Setting it up
 

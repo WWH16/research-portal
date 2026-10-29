@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Testing\File;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -107,32 +106,16 @@ class MyProfileTest extends TestCase
         $drive->assertMissing(Str::after($second, '/'));
     }
 
-    public function test_a_photo_on_the_old_public_disk_still_shows_and_is_deleted_when_replaced(): void
-    {
-        Storage::fake('public')->put('profile-images/old.png', 'png');
-        $this->fakeDrive();
-        $user = User::factory()->create(['profile_image' => 'profile-images/old.png']);
-
-        $this->assertStringContainsString('/storage/profile-images/old.png', $user->profileImageUrl());
-
-        $this->actingAs($user);
-        Livewire::test('pages::settings.profile')
-            ->set('photo', $this->png('me.png'))
-            ->assertHasNoErrors();
-
-        Storage::disk('public')->assertMissing('profile-images/old.png');
-    }
-
     public function test_without_a_storage_account_the_photo_is_refused_and_the_old_one_kept(): void
     {
-        $user = User::factory()->create(['profile_image' => 'profile-images/old.png']);
+        $user = User::factory()->create(['profile_image' => 'drive-1/profile-images/old.png']);
 
         $this->actingAs($user);
         Livewire::test('pages::settings.profile')
             ->set('photo', $this->png('me.png'))
             ->assertHasErrors(['photo']);
 
-        $this->assertSame('profile-images/old.png', $user->fresh()->profile_image);
+        $this->assertSame('drive-1/profile-images/old.png', $user->fresh()->profile_image);
     }
 
     public function test_a_photo_on_google_drive_opens_for_signed_in_members_and_is_cached_by_the_browser(): void
@@ -159,7 +142,7 @@ class MyProfileTest extends TestCase
 
         $this->get(route('profile.edit'))->assertDontSee('data-test="remove-photo-button"', escape: false);
 
-        $user->update(['profile_image' => 'profile-images/me.png']);
+        $user->update(['profile_image' => 'drive-1/profile-images/me.png']);
 
         $page = $this->get(route('profile.edit'))
             ->assertSee('data-test="remove-photo-button"', escape: false)
@@ -184,8 +167,6 @@ class MyProfileTest extends TestCase
 
     public function test_photo_must_be_an_image_under_two_megabytes(): void
     {
-        Storage::fake('public');
-
         $user = User::factory()->create();
 
         $this->actingAs($user);

@@ -282,9 +282,8 @@ class Submission extends Model
     }
 
     /**
-     * When each document on disk was uploaded, keyed by stage. A page can ask for these more than once,
-     * so the disk is read once per request; on a cloud disk each read is
-     * a network call. A file missing from the disk is left out.
+     * When each document was uploaded, keyed by stage. A page can ask for these more than once, so Google Drive
+     * is read once per request: each read is a network call. A file missing from Google Drive is left out.
      *
      * @return array<string, Carbon>
      */

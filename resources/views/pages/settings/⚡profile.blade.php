@@ -8,7 +8,6 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -93,7 +92,7 @@ new #[Title('My Profile')] class extends Component {
         }
 
         if ($previous) {
-            $this->deletePhoto($previous);
+            app(DocumentStorage::class)->delete($previous);
         }
 
         Flux::toast(variant: 'success', text: __('Photo updated.'));
@@ -107,20 +106,12 @@ new #[Title('My Profile')] class extends Component {
         $user = Auth::user();
 
         if ($user->profile_image) {
-            $this->deletePhoto($user->profile_image);
+            app(DocumentStorage::class)->delete($user->profile_image);
             $user->update(['profile_image' => null]);
         }
 
         Flux::modal('remove-photo')->close();
         Flux::toast(variant: 'success', text: __('Photo removed.'));
-    }
-
-    /**
-     * Delete a photo from Google Drive, or from the public disk for one uploaded before photos moved to Google Drive.
-     */
-    private function deletePhoto(string $path): void
-    {
-        str_starts_with($path, 'drive-') ? app(DocumentStorage::class)->delete($path) : Storage::disk('public')->delete($path);
     }
 
     /**

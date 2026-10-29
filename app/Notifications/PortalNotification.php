@@ -46,6 +46,17 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     }
 
     /**
+     * The portal copy is saved straight away, so the bell and the Notifications page never wait on a queue worker;
+     * only the email goes through the queue, where a mail server that is down can be retried.
+     *
+     * @return array<string, string>
+     */
+    public function viaConnections(): array
+    {
+        return ['database' => 'sync'];
+    }
+
+    /**
      * The email for a notice without its own: the same sentence and link as in the portal.
      */
     public function toMail(User $notifiable): MailMessage

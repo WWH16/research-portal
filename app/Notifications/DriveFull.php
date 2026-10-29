@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Models\GoogleDriveConnection;
+use App\Models\User;
+use Illuminate\Notifications\Messages\MailMessage;
 
 /**
  * Tells the Research Office that Google refused an upload because the storage account is full, so every upload
@@ -14,6 +16,11 @@ class DriveFull extends PortalNotification
     public function __construct(
         public readonly GoogleDriveConnection $account,
     ) {}
+
+    public function toMail(User $notifiable): MailMessage
+    {
+        return parent::toMail($notifiable)->subject(__('Google Drive is full'));
+    }
 
     protected function message(): string
     {

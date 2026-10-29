@@ -15,7 +15,7 @@ There are two ways to get data back:
 Do this once, before the first deploy.
 
 1. Open the database cluster's **Backups** page and choose **Daily**. Laravel Cloud keeps backups for 7 days unless you change it.
-2. Add a queue worker to the environment. Portal backups and restores run on the queue, so without a worker they never start.
+2. Add a queue worker to the environment. Portal backups and restores run on the queue, and so does every notification email, so without a worker they never start and no email is sent. Notices in the portal don't need it.
 3. Set `DB_QUEUE_RETRY_AFTER=2000` in the environment variables. A backup or restore can run for up to 30 minutes (1800 seconds). With the default of 90 seconds, a second worker picks up the same job while the first is still running.
 4. Redeploy the environment.
 

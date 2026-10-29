@@ -21,6 +21,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\SendQueuedNotifications;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use RuntimeException;
@@ -506,6 +507,7 @@ class NotificationsTest extends TestCase
 
         $this->assertStringContainsString('Google Drive office@isu.edu.ph is full', $mail->introLines[0]);
         $this->assertSame(route('google-drive.index'), $mail->actionUrl);
+        $this->assertSame('Google Drive is full', $mail->subject);
     }
 
     public function test_a_kind_turned_off_still_arrives_in_the_portal_but_not_by_email(): void
@@ -595,6 +597,17 @@ class NotificationsTest extends TestCase
         $this->assertModelMissing($leaving);
         $this->assertDatabaseMissing('notifications', ['notifiable_id' => $leaving->id, 'notifiable_type' => User::class]);
         $this->assertSame(1, $this->maria->notifications()->count());
+    }
+
+    public function test_the_portal_copy_arrives_at_once_and_only_the_email_waits_for_the_queue(): void
+    {
+        // With no queue worker running, the bell and the Notifications page still get the notice.
+        config(['queue.default' => 'database']);
+
+        $this->maria->notify(new ConceptReviewed($this->project(), 'passed', null));
+
+        $this->assertSame(1, $this->maria->notifications()->count());
+        $this->assertSame(1, DB::table('jobs')->count(), 'Only the email waits for the queue.');
     }
 
     public function test_a_failed_send_is_retried(): void

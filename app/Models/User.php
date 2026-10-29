@@ -74,13 +74,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
     /**
      * The kinds of notice a member can choose not to get by email. Notices always arrive in the portal; account and
-     * Google Drive notices are always emailed too. The last is for admins only.
+     * Google Drive notices are always emailed too.
      */
     public const EMAIL_KINDS = [
         'reminders' => 'Deadline reminders',
         'reviews' => 'Concept proposal decisions',
         'dates' => 'Project date changes',
-        'to_review' => 'New concept proposals to review',
     ];
 
     /**

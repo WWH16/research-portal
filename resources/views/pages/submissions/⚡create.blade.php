@@ -7,14 +7,12 @@ use App\Models\Department;
 use App\Models\Proponent;
 use App\Models\Submission;
 use App\Models\User;
-use App\Notifications\ConceptAwaitingReview;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -228,11 +226,6 @@ new #[Title('Research Project')] class extends Component {
             $this->addError('documents', __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
 
             return;
-        }
-
-        // The Research Office hears of each concept proposal that waits for a decision, once the save has committed.
-        if (isset($this->documents['concept']) && $submission->awaiting_review) {
-            Notification::send(User::where('role', 'admin')->whereKeyNot(Auth::id())->get(), new ConceptAwaitingReview($submission, Auth::user()->shortName(), corrected: $this->submission !== null));
         }
 
         // Only the concept proposal goes to the Research Office; the other documents are filed as they come in.

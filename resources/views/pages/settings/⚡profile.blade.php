@@ -5,7 +5,6 @@ use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\ActivityLog;
 use App\Models\User;
 use App\Services\DocumentStorage;
-use Illuminate\Support\Arr;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
@@ -39,17 +38,7 @@ new #[Title('My Profile')] class extends Component {
         $this->name = $user->name;
         $this->email = $user->email;
         $this->mobile = (string) $user->mobile;
-        $this->emailMe = collect($this->emailKinds())->mapWithKeys(fn ($label, string $kind) => [$kind => $user->wantsEmail($kind)])->all();
-    }
-
-    /**
-     * The email switches this member sees: notices for admins only are left out for faculty.
-     *
-     * @return array<string, string>
-     */
-    public function emailKinds(): array
-    {
-        return Arr::except(User::EMAIL_KINDS, Auth::user()->isAdmin() ? [] : ['to_review']);
+        $this->emailMe = collect(User::EMAIL_KINDS)->mapWithKeys(fn ($label, string $kind) => [$kind => $user->wantsEmail($kind)])->all();
     }
 
     /**
@@ -58,7 +47,7 @@ new #[Title('My Profile')] class extends Component {
     public function updatedEmailMe(): void
     {
         $user = Auth::user();
-        $choices = collect($this->emailMe)->only(array_keys($this->emailKinds()))->map(fn ($on) => (bool) $on);
+        $choices = collect($this->emailMe)->only(array_keys(User::EMAIL_KINDS))->map(fn ($on) => (bool) $on);
 
         $user->forceFill(['email_preferences' => $choices->all() + ($user->email_preferences ?? [])])->save();
         $this->emailMe = $choices->all();
@@ -355,7 +344,7 @@ new #[Title('My Profile')] class extends Component {
         {{-- Each switch saves as it flips, so this section needs no Save button --}}
         <x-pages::settings.section :heading="__('Email me about')" :description="__('Notices always show in the portal. These choose which also come by email. Account and Google Drive notices always do.')">
             <div class="flex flex-col gap-4" data-test="email-preferences">
-                @foreach ($this->emailKinds() as $kind => $label)
+                @foreach (User::EMAIL_KINDS as $kind => $label)
                     <flux:switch wire:model.live="emailMe.{{ $kind }}" :label="__($label)" align="left" />
                 @endforeach
             </div>

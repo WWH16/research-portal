@@ -8,13 +8,11 @@ use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\AccountApproved;
-use App\Notifications\ConceptAwaitingReview;
 use App\Notifications\ConceptReviewed;
 use App\Notifications\DriveDisconnected;
 use App\Notifications\DriveFull;
 use App\Notifications\ProjectDatesChanged;
 use App\Notifications\ProjectDeadline;
-use App\Notifications\SignupAwaitingApproval;
 use App\Services\DocumentStorage;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Console\Scheduling\Schedule;
@@ -144,11 +142,12 @@ class NotificationsTest extends TestCase
         $this->assertSame(['database', 'mail'], (new ConceptReviewed($project, 'passed', null))->via($this->maria));
     }
 
-    public function test_a_new_concept_proposal_tells_every_admin(): void
+    public function test_a_new_concept_proposal_sends_admins_no_notice(): void
     {
+        // The Concept Reviews badge counts it live instead.
         Notification::fake();
         $this->fakeDrive();
-        [$first, $second] = [$this->admin(), $this->admin()];
+        $admin = $this->admin();
         $this->actingAs($this->maria);
 
         Livewire::test('pages::submissions.create')
@@ -161,28 +160,19 @@ class NotificationsTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        $project = Submission::sole();
-        Notification::assertSentTo([$first, $second], ConceptAwaitingReview::class, fn (ConceptAwaitingReview $notification) => $notification->submission->is($project)
-            && $notification->uploader === 'M Santos' && str_starts_with($notification->toArray($first)['message'], 'New concept proposal to review: Solar Dryer Study, from M Santos.')
-            && $notification->toArray($first)['url'] === route('reviews.index', ['review' => $project->id]));
-        Notification::assertNotSentTo($this->maria, ConceptAwaitingReview::class);
+        Notification::assertNothingSentTo($admin);
     }
 
-    public function test_a_verified_sign_up_tells_every_admin_in_the_portal_only(): void
+    public function test_a_verified_sign_up_sends_admins_no_notice(): void
     {
+        // The Manage Users badge counts it live instead.
         Notification::fake();
-        [$first, $second] = [$this->admin(), $this->admin()];
+        $this->admin();
         $signUp = User::factory()->pending()->create(['name' => 'Juan Dela Cruz', 'email' => 'juan@isu.edu.ph']);
 
         event(new Verified($signUp));
 
-        Notification::assertSentTo([$first, $second], SignupAwaitingApproval::class, fn (SignupAwaitingApproval $notification) => $notification->user->is($signUp)
-            && $notification->via($first) === ['database']
-            && $notification->toArray($first) === [
-                'message' => 'New sign-up waiting for approval: JD Cruz (juan@isu.edu.ph).',
-                'url' => route('users.index', ['status' => 'pending']),
-            ]);
-        Notification::assertNotSentTo($this->maria, SignupAwaitingApproval::class);
+        Notification::assertNothingSent();
     }
 
     public function test_an_approved_member_verifying_a_new_email_tells_no_admin(): void
@@ -193,24 +183,6 @@ class NotificationsTest extends TestCase
         event(new Verified($this->maria));
 
         Notification::assertNothingSent();
-    }
-
-    public function test_a_concept_reuploaded_while_waiting_tells_admins_again(): void
-    {
-        Notification::fake();
-        $this->fakeDrive();
-        $admin = $this->admin();
-        $project = $this->project();
-        $this->actingAs($this->maria);
-
-        Livewire::test('pages::submissions.create', ['submission' => $project])
-            ->set('documents.concept', UploadedFile::fake()->create('proposal-v2.pdf', 500, 'application/pdf'))
-            ->call('save')
-            ->assertHasNoErrors();
-
-        // Worded apart from the first notice, so the two don't read as a duplicate.
-        Notification::assertSentTo($admin, ConceptAwaitingReview::class, fn (ConceptAwaitingReview $notification) => str_starts_with($notification->toArray($admin)['message'], 'Corrected concept proposal to review: Solar Dryer Study, from M Santos.'));
-        Notification::assertSentToTimes($admin, ConceptAwaitingReview::class, 1);
     }
 
     public function test_unread_notices_carry_a_dot_and_one_page_shows_no_pager(): void
@@ -243,7 +215,7 @@ class NotificationsTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        Notification::assertNotSentTo($admin, ConceptAwaitingReview::class);
+        Notification::assertNothingSentTo($admin);
     }
 
     /**
@@ -319,13 +291,13 @@ class NotificationsTest extends TestCase
     {
         $project = $this->project();
         $this->maria->notify(new ConceptReviewed($project, 'passed', null));
-        $this->admin()->notify(new ConceptAwaitingReview($project, 'Maria Santos'));
+        $this->jose->notify(new ConceptReviewed($project, 'returned', 'Narrow the scope.'));
 
         $this->actingAs($this->maria)
             ->get(route('notifications.index'))
             ->assertOk()
             ->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”.')
-            ->assertDontSee('New concept proposal to review');
+            ->assertDontSee('returned your concept proposal');
     }
 
     public function test_opening_a_notification_marks_it_read_and_goes_to_the_project(): void
@@ -542,7 +514,6 @@ class NotificationsTest extends TestCase
 
         Livewire::test('pages::settings.profile')
             ->assertSee('Deadline reminders')
-            ->assertDontSee('New concept proposals to review')
             ->set('emailMe.reminders', false)
             ->assertHasNoErrors();
 
@@ -553,9 +524,6 @@ class NotificationsTest extends TestCase
         Livewire::test('pages::settings.profile')->set('emailMe.role', false);
         $this->assertArrayNotHasKey('role', $this->maria->fresh()->email_preferences);
         $this->assertSame('faculty', $this->maria->fresh()->role);
-
-        $this->actingAs($this->admin());
-        Livewire::test('pages::settings.profile')->assertSee('New concept proposals to review');
     }
 
     public function test_the_list_shows_a_new_notice_when_the_live_count_finds_it(): void
@@ -617,21 +585,11 @@ class NotificationsTest extends TestCase
         $this->assertSame(1, DB::table('jobs')->count(), 'Only the email waits for the queue.');
     }
 
-    public function test_a_concept_notice_queued_before_corrections_were_recorded_still_sends(): void
-    {
-        // A queued copy leaves out a property still at its default, so this is the same shape as one saved before
-        // $corrected existed, which has no value for it at all.
-        $queued = serialize(new ConceptAwaitingReview($this->project(), 'M Santos'));
-        $this->assertStringNotContainsString('corrected', $queued);
-
-        $this->assertSame('New concept proposal to review: Solar Dryer Study, from M Santos.', unserialize($queued)->toArray($this->maria)['message']);
-    }
-
     public function test_a_failed_send_is_retried(): void
     {
         $project = $this->project();
 
-        foreach ([new ConceptReviewed($project, 'passed', null), new ConceptAwaitingReview($project, 'Maria Santos'), new ProjectDeadline($project, 7)] as $notification) {
+        foreach ([new ConceptReviewed($project, 'passed', null), new ProjectDatesChanged($project), new ProjectDeadline($project, 7)] as $notification) {
             $job = new SendQueuedNotifications(collect([$this->maria]), $notification, ['mail']);
 
             $this->assertSame(3, $job->tries, $notification::class);
@@ -643,7 +601,7 @@ class NotificationsTest extends TestCase
     {
         $project = $this->project(['title' => '[Review here](https://evil.example)']);
 
-        foreach ([new ConceptReviewed($project, 'returned', '[Fix](https://evil.example)'), new ConceptAwaitingReview($project, '[Admin](https://evil.example)'), new ProjectDeadline($project, 7)] as $notification) {
+        foreach ([new ConceptReviewed($project, 'returned', '[Fix](https://evil.example)'), new ProjectDatesChanged($project), new ProjectDeadline($project, 7)] as $notification) {
             $html = (string) $notification->toMail($this->maria)->render();
 
             $this->assertStringNotContainsString('href="https://evil.example"', $html, $notification::class);

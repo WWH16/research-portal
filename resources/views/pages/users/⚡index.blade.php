@@ -4,6 +4,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
+use App\Notifications\AccountApproved;
 use App\Notifications\AccountRejected;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -296,6 +297,9 @@ new #[Title('Manage Users')] class extends Component {
             $user->forceFill(['approved_at' => now(), 'rejected_at' => null])->save();
             ActivityLog::record('user.approved', $user);
         });
+
+        // Told once the approval is saved, so they don't keep trying to sign in.
+        $user->notify(new AccountApproved);
 
         Flux::toast(variant: 'success', text: __(':name can now use the portal.', ['name' => $user->name]));
         unset($this->users);

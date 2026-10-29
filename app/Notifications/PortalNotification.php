@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -37,6 +38,17 @@ abstract class PortalNotification extends Notification implements ShouldQueue
     {
         // An address the member hasn't confirmed gets no mail; the notice still waits in the portal.
         return $notifiable->hasVerifiedEmail() ? ['database', 'mail'] : ['database'];
+    }
+
+    /**
+     * The email for a notice without its own: the same sentence and link as in the portal.
+     */
+    public function toMail(User $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject(__('Faculty Research Portal'))
+            ->line(self::plain($this->message()))
+            ->action(__('Open the portal'), $this->url());
     }
 
     /**

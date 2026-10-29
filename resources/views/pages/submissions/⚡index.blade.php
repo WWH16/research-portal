@@ -2,6 +2,7 @@
 
 use App\Models\ActivityLog;
 use App\Models\Submission;
+use App\Notifications\ProjectDatesChanged;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -220,21 +222,30 @@ new #[Title('Submissions')] class extends Component {
             'target_date' => __('completion date'),
         ]);
 
-        DB::transaction(function () use ($validated) {
+        [$submission, $dates] = DB::transaction(function () use ($validated) {
             $submission = Submission::findOrFail($this->datingId);
             $submission->update($validated);
 
+            // Compared by day, so a saved time of day on the old date doesn't count as a change.
             $dates = collect(['start_date', 'target_date'])
                 ->filter(fn (string $column) => $submission->wasChanged($column))
                 ->mapWithKeys(fn (string $column) => [$column => [
                     ($previous = $submission->getPrevious()[$column]) ? Date::parse($previous)->toDateString() : null,
                     $submission->{$column}->toDateString(),
                 ]])
+                ->filter(fn (array $change) => $change[0] !== $change[1])
                 ->all();
             if ($dates !== []) {
                 ActivityLog::record('submission.dates_changed', $submission, ['values' => $dates]);
             }
+
+            return [$submission, $dates];
         });
+
+        // The deadline reminders move with the dates, so the project's people hear of it, once the save has committed.
+        if ($dates !== []) {
+            Notification::send($submission->people(), new ProjectDatesChanged($submission));
+        }
 
         Flux::modal('project-dates')->close();
         Flux::toast(variant: 'success', text: __('Dates changed.'));

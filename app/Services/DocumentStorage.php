@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\GoogleDriveConnection;
+use App\Models\User;
+use App\Notifications\DriveDisconnected;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Throwable;
 
 /**
@@ -75,19 +78,35 @@ class DocumentStorage
     {
         for ($cause = $e; $cause; $cause = $cause->getPrevious()) {
             if (str_contains($cause->getMessage(), 'invalid_grant')) {
-                $account->update(['refresh_token' => null]);
+                $this->disconnect($account, ['refresh_token' => null]);
 
                 return true;
             }
 
             if (str_contains($cause->getMessage(), "File not found: {$account->folder_id}.")) {
-                $account->update(['refresh_token' => null, 'folder_id' => null]);
+                $this->disconnect($account, ['refresh_token' => null, 'folder_id' => null]);
 
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Mark the account not connected. Only the first failure tells the admins: once marked, the portal doesn't ask
+     * Google again until someone connects it, which starts the next incident afresh.
+     *
+     * @param  array<string, null>  $forget
+     */
+    private function disconnect(GoogleDriveConnection $account, array $forget): void
+    {
+        $wasConnected = $account->isConnected();
+        $account->update($forget);
+
+        if ($wasConnected) {
+            Notification::send(User::where('role', 'admin')->get(), new DriveDisconnected($account));
+        }
     }
 
     /**

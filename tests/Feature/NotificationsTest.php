@@ -4,12 +4,18 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Department;
+use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
 use App\Models\User;
+use App\Notifications\AccountApproved;
 use App\Notifications\ConceptAwaitingReview;
 use App\Notifications\ConceptReviewed;
+use App\Notifications\DriveDisconnected;
+use App\Notifications\DriveFull;
+use App\Notifications\ProjectDatesChanged;
 use App\Notifications\ProjectDeadline;
 use App\Notifications\SignupAwaitingApproval;
+use App\Services\DocumentStorage;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +23,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use RuntimeException;
 use Tests\TestCase;
 
 class NotificationsTest extends TestCase
@@ -429,6 +436,76 @@ class NotificationsTest extends TestCase
 
         $this->assertModelExists($joses);
         $this->assertNull($joses->fresh()->read_at);
+    }
+
+    public function test_an_approved_member_hears_they_can_sign_in(): void
+    {
+        Notification::fake();
+        $waiting = User::factory()->pending()->create();
+        $this->actingAs($this->admin());
+
+        Livewire::test('pages::users.index')->call('approve', $waiting->id);
+
+        Notification::assertSentTo($waiting, AccountApproved::class, fn (AccountApproved $notification) => $notification->via($waiting) === ['database', 'mail']
+            && $notification->toArray($waiting) === ['message' => 'Your account is approved. You can now sign in to the Faculty Research Portal.', 'url' => route('dashboard')]);
+    }
+
+    public function test_changed_dates_tell_the_project_people_once_each(): void
+    {
+        Notification::fake();
+        $project = $this->project();
+        $this->actingAs($this->admin());
+        $due = today()->addYears(2);
+
+        Livewire::test('pages::submissions.index')
+            ->call('editDates', $project->id)
+            ->set('target_date', $due->toDateString())
+            ->call('saveDates')
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo([$this->maria, $this->jose], ProjectDatesChanged::class, fn (ProjectDatesChanged $notification) => $notification->toArray($this->maria) === [
+            'message' => 'New dates for Solar Dryer Study: starts '.$project->start_date->format('M j, Y').', due '.$due->format('M j, Y').'.',
+            'url' => route('drive.show', $project),
+        ]);
+        Notification::assertSentToTimes($this->jose, ProjectDatesChanged::class, 1);
+    }
+
+    public function test_saving_the_same_dates_tells_nobody(): void
+    {
+        Notification::fake();
+        $project = $this->project();
+        $this->actingAs($this->admin());
+
+        Livewire::test('pages::submissions.index')->call('editDates', $project->id)->call('saveDates')->assertHasNoErrors();
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_admins_hear_once_when_google_drive_disconnects(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $account = GoogleDriveConnection::factory()->create(['email' => 'office@isu.edu.ph']);
+        $revoked = new RuntimeException('Client error: 400 Bad Request {"error": "invalid_grant"}');
+
+        app(DocumentStorage::class)->markIfUnreachable($account, $revoked);
+        app(DocumentStorage::class)->markIfUnreachable($account, $revoked);
+
+        Notification::assertSentToTimes($admin, DriveDisconnected::class, 1);
+        Notification::assertSentTo($admin, DriveDisconnected::class, fn (DriveDisconnected $notification) => $notification->toArray($admin) === [
+            'message' => 'Google Drive office@isu.edu.ph is disconnected, so documents can’t be uploaded or opened. Connect it again on System → Google Drive.',
+            'url' => route('google-drive.index'),
+        ]);
+        Notification::assertNotSentTo($this->maria, DriveDisconnected::class);
+    }
+
+    public function test_every_notice_that_emails_has_an_email(): void
+    {
+        // A notice without its own email gets the portal's plain one, with the same sentence and link.
+        $mail = (new DriveFull(GoogleDriveConnection::factory()->create(['email' => 'office@isu.edu.ph'])))->toMail($this->maria);
+
+        $this->assertStringContainsString('Google Drive office@isu.edu.ph is full', $mail->introLines[0]);
+        $this->assertSame(route('google-drive.index'), $mail->actionUrl);
     }
 
     public function test_an_empty_list_says_so(): void

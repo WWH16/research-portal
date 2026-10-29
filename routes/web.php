@@ -22,11 +22,13 @@ Route::redirect('/', '/dashboard')->name('home');
 Route::view('privacy', 'pages::legal.privacy')->name('privacy');
 Route::view('terms', 'pages::legal.terms')->name('terms');
 
-// A verified sign-up waits here until an admin approves it; an approved account goes on to the portal.
-Route::get('approval', fn () => request()->user()->isApproved()
-    ? redirect()->route('dashboard')
-    : view('pages::auth.approval-notice')
-)->middleware(['auth', 'verified'])->name('approval.notice');
+// A verified sign-up waits here until an admin approves it; an approved account goes on to the portal. The page asks
+// for the JSON form while it waits, so it reloads into the decision as soon as one is made.
+Route::get('approval', fn () => match (true) {
+    request()->wantsJson() => ['waiting' => ! request()->user()->isApproved() && ! request()->user()->isRejected()],
+    request()->user()->isApproved() => redirect()->route('dashboard'),
+    default => view('pages::auth.approval-notice'),
+})->middleware(['auth', 'verified'])->name('approval.notice');
 
 // Verified and approved only: anyone with an ISU email can sign up, so an account reaches proposals or admin pages
 // only after it confirms its email and an admin lets it in.

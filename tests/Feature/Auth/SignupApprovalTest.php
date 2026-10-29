@@ -43,6 +43,22 @@ class SignupApprovalTest extends TestCase
             ->assertSee(route('logout'));
     }
 
+    public function test_the_waiting_page_learns_of_the_decision_without_a_reload(): void
+    {
+        $user = User::factory()->pending()->create();
+        $this->actingAs($user)->get(route('approval.notice'))->assertSeeHtml('data-test="approval-poll"');
+        $this->getJson(route('approval.notice'))->assertExactJson(['waiting' => true]);
+
+        $user->forceFill(['approved_at' => now()])->save();
+        $this->getJson(route('approval.notice'))->assertExactJson(['waiting' => false]);
+        $this->get(route('approval.notice'))->assertRedirect(route('dashboard'));
+
+        // A rejected sign-up gets its answer the same way, and its page has nothing left to wait for.
+        $rejected = User::factory()->rejected()->create();
+        $this->actingAs($rejected)->getJson(route('approval.notice'))->assertExactJson(['waiting' => false]);
+        $this->get(route('approval.notice'))->assertSee('Sign-up not approved')->assertDontSeeHtml('data-test="approval-poll"');
+    }
+
     public function test_rejected_users_see_that_their_sign_up_was_not_approved(): void
     {
         $this->actingAs(User::factory()->rejected()->create())

@@ -6,6 +6,9 @@
                 :description="__('Your sign-up was not approved. Contact the Research Office if you think this is a mistake.')"
             />
         @else
+            {{-- Reloads into the decision once the Research Office makes one --}}
+            <x-auth-recheck when="(await response.json()).waiting === false" data-test="approval-poll" />
+
             <x-auth-header
                 :title="__('Waiting for approval')"
                 :description="__('The Research Office will now review your sign-up. You will receive an email once your account has been approved, and you may then sign in to the portal.')"

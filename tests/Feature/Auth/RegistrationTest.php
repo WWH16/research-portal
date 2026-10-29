@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -81,6 +82,25 @@ class RegistrationTest extends TestCase
         $this->assertSame('faculty', $user->role);
         $this->assertSame($department->id, $user->department_id);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_sign_ups_from_one_network_are_limited_and_told_why_on_the_form(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+        $form = fn (string $email) => ['name' => 'John Doe', 'email' => $email, 'department_id' => $department->id, 'password' => 'password', 'password_confirmation' => 'password'];
+
+        // A sign-up that fails validation sends no email, so it isn't counted.
+        $this->post(route('register.store'), $form('john@gmail.com'))->assertSessionHasErrors('email');
+        $this->assertSame(0, RateLimiter::attempts('sign-up:127.0.0.1'));
+
+        foreach (range(1, 20) as $n) {
+            $this->post(route('register.store'), $form("user{$n}@isu.edu.ph"))->assertSessionHasNoErrors();
+            auth()->logout();
+        }
+
+        $this->post(route('register.store'), $form('user21@isu.edu.ph'))
+            ->assertSessionHasErrors(['email' => 'Too many sign-ups have come from your network. Please try again within the hour.']);
+        $this->assertDatabaseMissing('users', ['email' => 'user21@isu.edu.ph']);
     }
 
     public function test_only_isu_email_addresses_can_sign_up(): void

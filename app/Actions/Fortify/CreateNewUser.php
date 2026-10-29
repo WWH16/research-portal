@@ -5,7 +5,9 @@ namespace App\Actions\Fortify;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -19,6 +21,14 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        // Each sign-up that passes validation sends an email, and the portal's Gmail account sends only so many a day.
+        // ponytail: counted per network address, which a campus shares, so 20 an hour; raise it if a college signs up together.
+        $key = 'sign-up:'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($key, 20)) {
+            throw ValidationException::withMessages(['email' => __('Too many sign-ups have come from your network. Please try again within the hour.')]);
+        }
+
         Validator::make($input, [
             ...$this->profileRules(),
             'department_id' => ['required', 'integer', 'exists:departments,id'],
@@ -29,6 +39,8 @@ class CreateNewUser implements CreatesNewUsers
             'department_id.required' => __('Choose your college.'),
             'department_id' => __('Choose a college from the list.'),
         ])->validate();
+
+        RateLimiter::hit($key, 3600);
 
         // Role is left out on purpose: sign-ups always get the default faculty role.
         return User::create([

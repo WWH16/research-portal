@@ -1,35 +1,49 @@
 # Notifications
 
-The portal tells people about three things, in the portal (the bell in the sidebar) and by email:
+The portal tells people about what needs them, in the portal (the bell in the sidebar) and by email. Emails come from the portal's own Gmail account, **isucyn.facultyresearchportal@gmail.com**.
 
+Faculty hear about:
+
+- **Account approved.** A welcome in the portal, and an email saying they can sign in.
 - **Concept review decision.** When the Research Office passes or returns a concept proposal, the project's filer and proponents are told. A return includes the remarks.
-- **Concept proposal to review.** When a concept proposal is uploaded and waits for a decision, every admin is told.
-- **Target date reminders.** Every morning at 07:00 (Asia/Manila), each open project's people are reminded 30 and 7 days before its target date, the day after it passes, and then every 7 days until the terminal report is uploaded.
+- **Project dates changed.** When the Research Office moves a project's dates.
+- **Completion date reminders.** Every morning at 07:00 (Asia/Manila), each open project's people are reminded 30 and 7 days before its completion date, the day after it passes, and then every 7 days until the terminal report is uploaded.
 
-Members with an unconfirmed email address get the notice in the portal only.
+The Research Office hears about:
+
+- **A project completed** (its first terminal report), in the portal only.
+- **A project running late**, the day after its completion date passes without a terminal report, in the portal only.
+- **Google Drive full or disconnected**, in the portal and by email.
+
+New concept proposals and sign-ups waiting for approval have no notice: the Concept Reviews and Manage Users badges count them live.
+
+Members choose which faculty notices also come by email under My Profile → Email me about. Members with an unconfirmed email address get the notice in the portal only.
 
 ## Setting up Laravel Cloud
 
-Every notification, the in-app one included, is sent by the queue worker. Without a worker nothing arrives, and nothing reports an error. Reminders also need the scheduler.
+Notices in the portal are saved straight away. Emails go through the queue worker, and reminders and late notices need the scheduler; without them no email is sent and no reminder goes out, and nothing reports an error.
 
 Do this once, in the Laravel Cloud environment:
 
 1. Check that the environment has a queue worker. If not, add one.
-2. Turn on the scheduler for the environment. It runs `projects:remind` every morning at 07:00. If the scheduler is off, no reminders go out.
+2. Turn on the scheduler for the environment. It runs `projects:remind` every morning at 07:00.
 3. Check that `APP_URL` is the portal's public address. The Open links in emails and in the bell are built from it.
-4. Ask ISU IT for SMTP details and set them in the environment variables:
+4. Sign in to **isucyn.facultyresearchportal@gmail.com**, turn on 2-Step Verification, and create an **App Password** under Google Account → Security → App passwords. Gmail refuses the account's normal password over SMTP.
+5. Set these environment variables, with the App Password (16 letters, spaces removed) as `MAIL_PASSWORD`:
 
    ```
    MAIL_MAILER=smtp
-   MAIL_HOST=
-   MAIL_PORT=
-   MAIL_USERNAME=
+   MAIL_SCHEME=smtp
+   MAIL_HOST=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USERNAME=isucyn.facultyresearchportal@gmail.com
    MAIL_PASSWORD=
-   MAIL_FROM_ADDRESS=
+   MAIL_FROM_ADDRESS="isucyn.facultyresearchportal@gmail.com"
+   MAIL_FROM_NAME="Faculty Research Portal"
    ```
 
-   Until these are set, keep `MAIL_MAILER=log`. With a worker running, in-app notifications still arrive, and the emails go to the log instead of being sent.
-5. Redeploy the environment.
+   Gmail only sends as the account that signs in, so `MAIL_USERNAME` and `MAIL_FROM_ADDRESS` must be the same address.
+6. Redeploy the environment.
 
 A failed email is tried 3 times, a minute apart.
 

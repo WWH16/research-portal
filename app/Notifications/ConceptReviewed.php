@@ -39,9 +39,10 @@ class ConceptReviewed extends PortalNotification
 
     protected function message(): string
     {
+        // Written in full for the faculty who read it: what was decided, on which project, and what to do next.
         return $this->decision === 'passed'
-            ? __('Concept proposal passed: :title. You can now upload the detailed proposal.', ['title' => $this->submission->displayTitle()])
-            : __('Concept proposal returned for revision: :title.', ['title' => $this->submission->displayTitle()]);
+            ? __('The Research Office has passed your concept proposal for “:title”. You may now upload the detailed proposal.', ['title' => $this->submission->displayTitle()])
+            : __('The Research Office has returned your concept proposal for “:title” for revision. Please read the remarks and upload a revised concept proposal.', ['title' => $this->submission->displayTitle()]);
     }
 
     protected function url(): string

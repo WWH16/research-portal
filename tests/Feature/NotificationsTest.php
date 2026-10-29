@@ -298,8 +298,10 @@ class NotificationsTest extends TestCase
     {
         $project = $this->project(['target_date' => today()->addDays(7)]);
 
-        $this->assertStringContainsString('Due in 7 days: Solar Dryer Study', (new ProjectDeadline($project, 7))->toArray($this->maria)['message']);
-        $this->assertStringContainsString('Overdue by 1 day: Solar Dryer Study', (new ProjectDeadline($project, -1))->toArray($this->maria)['message']);
+        $due = $project->target_date->format('F j, Y');
+
+        $this->assertSame("The completion date of “Solar Dryer Study” is in 7 days, on {$due}. Please upload the terminal report on or before that date.", (new ProjectDeadline($project, 7))->toArray($this->maria)['message']);
+        $this->assertSame("The completion date of “Solar Dryer Study” was {$due}, 1 day ago, and the terminal report has not been uploaded yet. Please upload it as soon as you can.", (new ProjectDeadline($project, -1))->toArray($this->maria)['message']);
         $this->assertSame(route('drive.show', $project), (new ProjectDeadline($project, -8))->toArray($this->maria)['url']);
     }
 
@@ -322,7 +324,7 @@ class NotificationsTest extends TestCase
         $this->actingAs($this->maria)
             ->get(route('notifications.index'))
             ->assertOk()
-            ->assertSee('Concept proposal passed: Solar Dryer Study')
+            ->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”.')
             ->assertDontSee('New concept proposal to review');
     }
 
@@ -386,7 +388,7 @@ class NotificationsTest extends TestCase
             ->assertSee('No notifications yet.');
         $this->assertSame(0, $this->maria->notifications()->count());
 
-        $page->call('undoDelete')->assertSee('Concept proposal passed: Solar Dryer Study');
+        $page->call('undoDelete')->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”.');
         $this->assertSame($before, $this->maria->notifications()->sole()->getRawOriginal());
     }
 
@@ -396,7 +398,7 @@ class NotificationsTest extends TestCase
         $this->maria->notify(new ConceptReviewed($project, 'passed', null));
         $this->maria->notify(new ConceptReviewed($project, 'returned', 'Narrow the scope.'));
         $this->maria->notify(new ProjectDeadline($project, 7));
-        $this->maria->notifications()->where('data->message', 'like', 'Concept%')->update(['read_at' => now()]);
+        $this->maria->notifications()->where('data->message', 'like', '%concept proposal%')->update(['read_at' => now()]);
         $this->actingAs($this->maria);
 
         $page = Livewire::test('pages::notifications.index')
@@ -448,7 +450,12 @@ class NotificationsTest extends TestCase
         Livewire::test('pages::users.index')->call('approve', $waiting->id);
 
         Notification::assertSentTo($waiting, AccountApproved::class, fn (AccountApproved $notification) => $notification->via($waiting) === ['database', 'mail']
-            && $notification->toArray($waiting) === ['message' => 'Your account is approved. You can now sign in to the Faculty Research Portal.', 'url' => route('dashboard')]);
+            && $notification->toArray($waiting) === [
+                'message' => 'Welcome to the Faculty Research Portal. Your account has been approved by the Research Office. To begin, submit your concept proposal under Submissions; the Research Office will review it, and you will be notified of its decision here. You may also add your mobile number and profile photo under My Profile.',
+                'url' => route('submissions.create'),
+            ]
+            && $notification->toMail($waiting)->introLines === ['Your Faculty Research Portal account has been approved by the Research Office. You may now sign in to submit research proposals, upload the documents for each stage, and follow the progress of your projects.']
+            && $notification->toMail($waiting)->actionUrl === route('login'));
     }
 
     public function test_changed_dates_tell_the_project_people_once_each(): void
@@ -465,7 +472,7 @@ class NotificationsTest extends TestCase
             ->assertHasNoErrors();
 
         Notification::assertSentTo([$this->maria, $this->jose], ProjectDatesChanged::class, fn (ProjectDatesChanged $notification) => $notification->toArray($this->maria) === [
-            'message' => 'New dates for Solar Dryer Study: starts '.$project->start_date->format('M j, Y').', due '.$due->format('M j, Y').'.',
+            'message' => 'The Research Office has changed the dates of “Solar Dryer Study”. The project now starts on '.$project->start_date->format('F j, Y').' and is due on '.$due->format('F j, Y').'.',
             'url' => route('drive.show', $project),
         ]);
         Notification::assertSentToTimes($this->jose, ProjectDatesChanged::class, 1);
@@ -558,7 +565,7 @@ class NotificationsTest extends TestCase
 
         $this->maria->notify(new ConceptReviewed($this->project(), 'passed', null));
 
-        $page->dispatch('open-work-changed', changed: ['unread'])->assertSee('Concept proposal passed: Solar Dryer Study');
+        $page->dispatch('open-work-changed', changed: ['unread'])->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”.');
     }
 
     public function test_changing_a_notice_asks_the_sidebar_to_count_again(): void

@@ -19,15 +19,15 @@ class ProjectDatesChanged extends PortalNotification
 
     public function toMail(User $notifiable): MailMessage
     {
-        return parent::toMail($notifiable)->subject(__('New project dates'));
+        return parent::toMail($notifiable)->subject(__('Project dates changed'));
     }
 
     protected function message(): string
     {
-        return __('New dates for :title: starts :start, due :due.', [
+        return __('The Research Office has changed the dates of “:title”. The project now starts on :start and is due on :due.', [
             'title' => $this->submission->displayTitle(),
-            'start' => $this->submission->start_date->format('M j, Y'),
-            'due' => $this->submission->target_date->format('M j, Y'),
+            'start' => $this->submission->start_date->format('F j, Y'),
+            'due' => $this->submission->target_date->format('F j, Y'),
         ]);
     }
 

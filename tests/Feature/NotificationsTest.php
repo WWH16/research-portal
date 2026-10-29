@@ -549,6 +549,30 @@ class NotificationsTest extends TestCase
         Livewire::test('pages::settings.profile')->assertSee('New concept proposals to review');
     }
 
+    public function test_the_list_shows_a_new_notice_when_the_live_count_finds_it(): void
+    {
+        $this->actingAs($this->maria);
+        $page = Livewire::test('pages::notifications.index')->assertSee('No notifications yet.');
+
+        $this->maria->notify(new ConceptReviewed($this->project(), 'passed', null));
+
+        $page->dispatch('open-work-changed', changed: ['unread'])->assertSee('Concept proposal passed: Solar Dryer Study');
+    }
+
+    public function test_changing_a_notice_asks_the_sidebar_to_count_again(): void
+    {
+        $this->maria->notify(new ConceptReviewed($this->project(), 'passed', null));
+        $notice = $this->maria->notifications()->sole();
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::notifications.index')->call('toggleRead', $notice->id)->assertDispatched('notifications-changed');
+        Livewire::test('pages::notifications.index')->call('delete', $notice->id)->assertDispatched('notifications-changed');
+
+        $this->get(route('notifications.index'))
+            ->assertSeeHtml('x-show="unread"')
+            ->assertSeeHtml('x-on:notifications-changed.window="refresh()"');
+    }
+
     public function test_an_empty_list_says_so(): void
     {
         $this->actingAs($this->maria)

@@ -31,7 +31,8 @@
             },
         }"
         x-on:visibilitychange.document="document.hidden || refresh()"
-        x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label">
+        x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label"
+        x-on:notifications-changed.window="refresh()">
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}
         <flux:sidebar sticky collapsible="mobile" class="isu-sidebar w-72 border-e">
             {{-- The brand and the account menu stay put while the links between them scroll; each covers the sidebar's
@@ -57,7 +58,7 @@
                     </flux:sidebar.item>
 
                     {{-- Unread notices show as a count on every page; screen readers hear the sentence, not the bare number --}}
-                    <flux:sidebar.item icon="bell" :href="route('notifications.index')" :current="request()->routeIs('notifications.*')" :badge="$unread ? $capped($unread) : null" :badge:title="$unreadLabel" badge:aria-hidden="true" wire:navigate data-test="notifications-nav">
+                    <flux:sidebar.item icon="bell" :href="route('notifications.index')" :current="request()->routeIs('notifications.*')" :badge="$capped($unread)" :badge:style="$unread ? null : 'display: none'" :badge:title="$unreadLabel" badge:x-bind:title="unreadLabel" badge:x-show="unread" badge:x-text="unread > 99 ? '99+' : unread" badge:aria-hidden="true" wire:navigate data-test="notifications-nav">
                         {{ __('Notifications') }}
                         @if ($unread)
                             <span class="sr-only">{{ $unreadLabel }}</span>
@@ -155,7 +156,7 @@
             {{-- The dot keeps open work in sight while the sidebar is tucked away; the inset moves to the wrapper so the dot lines up with the icon --}}
             <div class="relative -ms-2.5 lg:hidden">
                 <flux:sidebar.toggle icon="bars-2" />
-                <span x-show="toReview || toRevise || unread || toApprove" @style(['display: none' => ! ($toReview || $toRevise || $unread || $toApprove)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" data-test="sidebar-toggle-dot"></span>
+                <span x-show="toReview || toRevise || unread || toApprove" @style(['display: none' => ! ($toReview || $toRevise || $unread || $toApprove)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" x-bind:class="{ 'bg-rose-600': toRevise, 'bg-isu-gold-700': ! toRevise }" data-test="sidebar-toggle-dot"></span>
             </div>
 
             <flux:spacer />

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -44,6 +45,22 @@ new #[Title('Notifications')] class extends Component {
     {
         $notice = Auth::user()->notifications()->findOrFail($id);
         $notice->read_at ? $notice->markAsUnread() : $notice->markAsRead();
+
+        // The sidebar counts again at once, so the bell matches without a reload.
+        $this->dispatch('notifications-changed');
+    }
+
+    /**
+     * The sidebar found the unread count moved, as when a new notice came in: show it. Other counts leave the list be.
+     *
+     * @param  list<string>  $changed
+     */
+    #[On('open-work-changed')]
+    public function openWorkChanged(array $changed): void
+    {
+        if (! in_array('unread', $changed, true)) {
+            $this->skipRender();
+        }
     }
 
     public function delete(string $id): void
@@ -72,6 +89,7 @@ new #[Title('Notifications')] class extends Component {
         }
 
         $this->reset('undo', 'deleted');
+        $this->dispatch('notifications-changed');
     }
 
     /**
@@ -86,6 +104,7 @@ new #[Title('Notifications')] class extends Component {
         $this->undo = (string) Str::uuid();
         $this->deleted = count($rows);
         Cache::put("notifications.undo.{$this->undo}", ['user' => Auth::id(), 'rows' => $rows], now()->addSeconds(15));
+        $this->dispatch('notifications-changed');
     }
 
     /**

@@ -189,7 +189,7 @@ class SidebarBadgesTest extends TestCase
 
         $html = $this->actingAs($this->maria)
             ->get(route('dashboard'))
-            ->assertDontSeeHtml('data-flux-navlist-badge>')
+            ->assertDontSeeHtml(' data-tone="revision"')
             ->getContent();
 
         $this->assertMatchesRegularExpression('#href="'.preg_quote(route('submissions.index'), '#').'"[^

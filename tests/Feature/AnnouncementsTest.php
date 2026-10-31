@@ -26,7 +26,9 @@ class AnnouncementsTest extends TestCase
 
         $this->get(route('announcements.index'))
             ->assertOk()
-            ->assertSee('No announcements yet.');
+            // An empty page keeps its list, heading and all, rather than a box in its place.
+            ->assertSeeInOrder(['All announcements', 'No announcements yet.'])
+            ->assertDontSee('Upcoming deadlines');
     }
 
     public function test_an_announcement_keeps_its_deadline_and_memo(): void
@@ -71,6 +73,11 @@ class AnnouncementsTest extends TestCase
 
         Livewire::actingAs($admin)->test('pages::announcements.index')
             ->assertSeeHtml('data-test="post-announcement"')
+            // While the memo uploads or the post saves, the form says so, and Cancel waits with the dialog's other ways out.
+            ->assertSeeHtml('data-test="uploading-status"')
+            ->assertSee('Stop upload')
+            ->assertSeeHtml('data-test="posting-status"')
+            ->assertSee('Posting… This closes once it’s done.')
             ->call('create')
             ->set('title', '  Schedule of Submission of Concept Proposals  ')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
@@ -244,6 +251,32 @@ class AnnouncementsTest extends TestCase
         $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('id="announcement-'.Announcement::sole()->id.'"', false);
     }
 
+    public function test_each_new_announcement_stays_new_until_the_member_has_seen_it(): void
+    {
+        $faculty = User::factory()->create();
+        Announcement::factory()->create(['title' => 'Already seen']);
+        $page = Livewire::actingAs($this->admin())->test('pages::announcements.index');
+        $page->call('create')->set('title', 'First schedule')->set('description', 'Due soon.')->call('save');
+        $page->call('create')->set('title', 'Second schedule')->set('description', 'Due later.')->call('save');
+        $first = Announcement::firstWhere('title', 'First schedule');
+        $other = $faculty->notifications()->create(['id' => Str::uuid(), 'type' => 'App\Notifications\ProjectCompleted', 'data' => ['message' => 'Done.', 'url' => '/']]);
+
+        // Opening the page reads nothing by itself: both are New, and the bell still counts all three notices.
+        $html = $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('3 unread notifications')->getContent();
+        $this->assertSame(2, substr_count($html, 'data-test="new-badge"'));
+
+        // One that has been on screen is read on its own, and the bell is told to count again.
+        Livewire::test('pages::announcements.index')->call('seen', $first->id)->assertDispatched('open-work-stale');
+        $this->assertSame(2, $faculty->unreadNotifications()->count());
+        $this->assertNull($other->fresh()->read_at);
+
+        // So the next visit marks only the one not yet seen.
+        $html = $this->get(route('announcements.index'))
+            ->assertSeeInOrder(['Second schedule', 'data-test="new-badge"', 'First schedule'], false)
+            ->getContent();
+        $this->assertSame(1, substr_count($html, 'data-test="new-badge"'));
+    }
+
     public function test_a_plain_notice_is_announced_in_one_sentence(): void
     {
         $faculty = User::factory()->create();
@@ -276,13 +309,25 @@ class AnnouncementsTest extends TestCase
 
         $this->assertSame(['image', 'pdf', 'docx', null], Announcement::orderBy('id')->get()->map->memoPreview()->all());
 
-        // An image shows on the page; a PDF or .docx opens in the viewer; an old .doc only downloads.
+        // An image shows on the page, folded on an older announcement, and opens in the viewer like a PDF or .docx; an
+        // old .doc only downloads.
         $this->actingAs(User::factory()->create())->get(route('announcements.index'))
             ->assertSee('src="'.e($image->memoPreviewUrl()).'"', false)
+            ->assertSee('Show image')
+            ->assertSee('Preview memo: Schedule.PNG')
             ->assertSee('Preview memo: Memorandum.pdf')
             ->assertSee('Preview memo: Guidelines.docx')
             ->assertSee('Download memo: Old memo.doc')
-            ->assertSee('data-test="memo-preview"', false);
+            ->assertSee('data-test="memo-preview"', false)
+            // An image opens in its own full-screen viewer rather than a new tab.
+            ->assertSee("\$dispatch('memo-image'", false)
+            ->assertSee('data-test="memo-image-viewer"', false)
+            ->assertSeeHtml('data-test="zoom-in"')
+            ->assertSeeHtml('data-test="zoom-out"')
+            // Share hands over the image, or the announcement's own link.
+            ->assertSeeHtml('data-test="share-image"')
+            ->assertSee('announcements?show='.$image->id.'#announcement-'.$image->id, false)
+            ->assertDontSee('target="_blank" rel="noopener" class="block overflow-hidden', false);
     }
 
     public function test_the_date_tile_shows_the_deadline_while_open_and_the_posted_day_after(): void
@@ -296,28 +341,32 @@ class AnnouncementsTest extends TestCase
             ->assertSeeInOrder(['data-test="date-tile"', '>1<', '>Nov<', 'Open schedule', 'data-test="date-tile"', '>2<', '>Oct<', 'Closed schedule'], false);
     }
 
-    public function test_an_image_memo_is_read_out_in_the_words_the_admin_gives(): void
+    public function test_an_image_memo_is_read_out_by_its_description_or_its_name(): void
     {
         $this->fakeDrive();
         $admin = $this->admin();
         $page = Livewire::actingAs($admin)->test('pages::announcements.index')
             ->call('create')->set('title', 'Schedule')->set('description', 'See the poster.')
             ->set('memo', UploadedFile::fake()->create('poster.png', 50, 'image/png'))
-            ->assertSee('Image description')
-            ->set('memoAlt', '  Concept proposals are due on November 15, 2026.  ')
+            // The form no longer asks for a description.
+            ->assertDontSee('Image description')
             ->call('save');
 
+        // With none, a screen reader hears the memo's name.
         $announcement = Announcement::sole();
-        $this->assertSame('Concept proposals are due on November 15, 2026.', $announcement->attachment_alt);
         $this->actingAs(User::factory()->create())->get(route('announcements.index'))
-            ->assertSee('alt="Concept proposals are due on November 15, 2026. (opens the memo in a new tab)"', false);
+            ->assertSee('alt="Memo: poster.png (opens the memo viewer)"', false);
 
-        // A PDF in its place carries its own text, so the description goes with the image.
+        // One given before the field was removed is still read out, and an edit that leaves the memo alone keeps it.
+        $announcement->forceFill(['attachment_alt' => 'Concept proposals are due on November 15, 2026.'])->save();
+        $this->get(route('announcements.index'))
+            ->assertSee('alt="Concept proposals are due on November 15, 2026. (opens the memo viewer)"', false);
         $this->actingAs($admin);
-        $page->call('edit', $announcement->id)->assertSet('memoAlt', 'Concept proposals are due on November 15, 2026.')
-            // Ticking "Remove the memo" leaves nothing to describe.
-            ->set('removeMemo', true)->assertDontSee('Image description')
-            ->set('removeMemo', false)->set('memo', $this->memo())->call('save');
+        $page->call('edit', $announcement->id)->set('title', 'Schedule, revised')->call('save');
+        $this->assertSame('Concept proposals are due on November 15, 2026.', $announcement->fresh()->attachment_alt);
+
+        // A new memo in its place drops it, since it described the old one.
+        $page->call('edit', $announcement->id)->set('memo', $this->memo())->call('save');
         $this->assertNull($announcement->fresh()->attachment_alt);
     }
 

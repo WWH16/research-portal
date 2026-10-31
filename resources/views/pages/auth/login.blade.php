@@ -58,11 +58,18 @@
             <!-- Remember Me -->
             <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
 
-            <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="login-button">
-                {{ __('Sign in') }}
-            </flux:button>
+            {{-- The reCAPTCHA notice sits with the button, in the same fine print as the sign-up agreement --}}
+            <div class="flex flex-col gap-3">
+                <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="login-button">
+                    {{ __('Sign in') }}
+                </flux:button>
 
-            <x-recaptcha action="login" />
+                @if (config('services.recaptcha.site_key'))
+                    <p class="text-center text-xs leading-5 text-pretty text-zinc-600">
+                        <x-recaptcha action="login" />
+                    </p>
+                @endif
+            </div>
         </form>
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">

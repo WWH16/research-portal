@@ -415,3 +415,9 @@ select:focus[data-flux-control] {
 [x-cloak] {
     display: none !important;
 }
+
+/* The sign-in and sign-up forms carry Google's reCAPTCHA notice in their fine print, so the floating badge would
+   only repeat it. Google allows hiding it while that notice shows. */
+.grecaptcha-badge {
+    visibility: hidden;
+}

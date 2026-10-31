@@ -77,10 +77,9 @@
                     <flux:link :href="route('terms')">{{ __('Terms of Service') }}</flux:link>
                     {{ __('and') }}
                     <flux:link :href="route('privacy')">{{ __('Privacy Policy') }}</flux:link>.
+                    <x-recaptcha action="register" />
                 </p>
             </div>
-
-            <x-recaptcha action="register" />
         </form>
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">

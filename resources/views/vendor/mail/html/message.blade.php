@@ -4,7 +4,7 @@
 <x-slot:header>
 <x-mail::header :preheader="$preheader">
 <p class="masthead-name">{{ __('Faculty Research Portal') }}</p>
-<p class="masthead-institution">{{ __('Isabela State University - Cauayan Campus') }}</p>
+<p class="masthead-institution">{{ __('Isabela State University – Cauayan Campus') }}</p>
 </x-mail::header>
 </x-slot:header>
 
@@ -14,7 +14,7 @@
 {{-- Footer: who sent it, where they are, why this address got it, and the way back to the portal --}}
 <x-slot:footer>
 <x-mail::footer>
-{{ __('Faculty Research Portal · Isabela State University - Cauayan Campus') }}<br>
+{{ __('Faculty Research Portal · Isabela State University – Cauayan Campus') }}<br>
 {{ __('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela') }}
 
 {{ __('You received this email because this address was used on the Faculty Research Portal.') }}

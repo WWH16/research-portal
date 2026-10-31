@@ -1,7 +1,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-@php($siteTitle = config('app.name', 'Laravel').' - '.__('ISU - Cauayan'))
+@php($siteTitle = config('app.name', 'Laravel').' - '.__('ISU – Cauayan'))
 @php($pageTitle = filled($title ?? null) ? $title.' - '.$siteTitle : $siteTitle)
 <title>
     {{ $pageTitle }}

@@ -1,7 +1,7 @@
 <x-layouts::legal
     :title="__('Terms of Service')"
     updated="October 28, 2026"
-    :summary="__('These terms are the rules for using the Faculty Research Portal of Isabela State University - Cauayan Campus. By signing up or signing in, you agree to them.')"
+    :summary="__('These terms are the rules for using the Faculty Research Portal of Isabela State University – Cauayan Campus. By signing up or signing in, you agree to them.')"
 >
     <h2 id="who-may-use">{{ __('Who may use the portal') }}</h2>
     <p>{{ __('The portal is for ISU Cauayan faculty and staff. You sign up with your own ISU email address, ending in @isu.edu.ph, and confirm it from your inbox. The Research Office then approves or turns down each sign-up. You can use the portal only after it is approved.') }}</p>

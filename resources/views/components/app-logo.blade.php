@@ -12,7 +12,7 @@
 
         <x-slot name="name">
             <span class="block whitespace-normal">{{ __('Faculty Research Portal') }}</span>
-            <span class="block truncate text-xs font-normal text-isu-green-200">{{ __('ISU - Cauayan') }}</span>
+            <span class="block truncate text-xs font-normal text-isu-green-200">{{ __('ISU – Cauayan') }}</span>
         </x-slot>
     </flux:sidebar.brand>
 @else

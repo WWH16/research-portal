@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Register')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Create an account')" :description="__('Enter your details below to create your account')" />
+        <x-auth-header :title="__('Create an account')" :description="__('For ISU Cauayan faculty. The Research Office reviews each sign-up before you can sign in.')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -19,13 +19,12 @@
             <!-- Name -->
             <flux:input
                 name="name"
-                :label="__('Name')"
+                :label="__('Full name')"
                 :value="old('name')"
                 type="text"
                 required
                 autofocus
                 autocomplete="name"
-                :placeholder="__('Full name')"
             />
 
             <!-- Email Address -->
@@ -42,7 +41,7 @@
             <!-- College -->
             <flux:select name="department_id" :label="__('College')" :placeholder="__('Choose your college')" required>
                 @foreach ($departments as $department)
-                    <flux:select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->code }}</flux:select.option>
+                    <flux:select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 

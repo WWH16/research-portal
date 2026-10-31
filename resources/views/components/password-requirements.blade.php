@@ -35,7 +35,7 @@
                 <span class="m-px size-3.5 rounded-full border-[1.5px] border-current" x-show="! met"></span>
             </span>
             <span>
-                <span class="sr-only" x-text="met ? @js(__('Done:')) : @js(__('Not yet:'))"></span>
+                <span class="sr-only" aria-live="polite" x-text="met ? @js(__('Done:')) : @js(__('Not yet:'))"></span>
                 {{ $label }}
             </span>
         </li>

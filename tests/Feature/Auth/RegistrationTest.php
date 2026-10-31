@@ -27,7 +27,7 @@ class RegistrationTest extends TestCase
 
         $this->get(route('register'))
             ->assertOk()
-            ->assertSee('CCSICT');
+            ->assertSee('College of Computing Studies');
     }
 
     public function test_create_account_button_shows_a_loading_state_while_submitting(): void
@@ -138,7 +138,7 @@ class RegistrationTest extends TestCase
         $this->get(route('register'))
             ->assertSee('x-model="confirmation"', escape: false)
             ->assertSee('Passwords match')
-            ->assertSee('Passwords don&#039;t match', escape: false);
+            ->assertSee('Passwords don’t match');
     }
 
     public function test_a_password_mismatch_is_reported_on_the_confirm_password_field(): void
@@ -187,7 +187,7 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'other',
         ])->assertSessionHasErrors([
             'password' => 'Use at least 12 characters.',
-            'password_confirmation' => 'Passwords don\'t match.',
+            'password_confirmation' => 'Passwords don’t match.',
         ]);
 
         $this->post(route('register.store'), [

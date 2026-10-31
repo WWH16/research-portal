@@ -26,7 +26,7 @@ return [
         ],
         'password_confirmation' => [
             'required' => 'Confirm your password.',
-            'same' => 'Passwords don\'t match.',
+            'same' => 'Passwords don’t match.',
         ],
     ],
 

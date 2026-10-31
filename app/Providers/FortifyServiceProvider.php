@@ -122,7 +122,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn () => view('pages::auth.login'));
         Fortify::registerView(fn () => view('pages::auth.register', [
-            'departments' => Department::orderBy('code')->get(['id', 'code', 'name']),
+            'departments' => Department::orderBy('name')->get(['id', 'name']),
         ]));
         Fortify::verifyEmailView(fn () => view('pages::auth.verify-email'));
         Fortify::twoFactorChallengeView(fn () => view('pages::auth.two-factor-challenge'));

@@ -28,7 +28,7 @@
         </template>
 
         <template x-if="left && {{ $confirmation }} && {{ $confirmation }} !== {{ $password }}">
-            <flux:error :message="__('Passwords don\'t match')" />
+            <flux:error :message="__('Passwords don’t match')" />
         </template>
     </div>
 

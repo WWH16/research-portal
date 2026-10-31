@@ -65,7 +65,7 @@
                 </flux:button>
 
                 @if (config('services.recaptcha.site_key'))
-                    <p class="text-center text-xs leading-5 text-pretty text-zinc-600">
+                    <p class="text-center text-xs leading-5 text-pretty text-zinc-600 dark:text-zinc-400">
                         <x-recaptcha action="login" />
                     </p>
                 @endif

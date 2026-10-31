@@ -20,9 +20,9 @@
             });
         })();
     </script>
-    {{ __('This form is protected by reCAPTCHA;') }}
-    <flux:link href="https://policies.google.com/privacy">{{ __('Google’s Privacy Policy') }}</flux:link>
+    {{ __('This site is protected by') }} <span translate="no">reCAPTCHA</span> {{ __('and the') }}
+    <flux:link href="https://policies.google.com/privacy">{{ __('Google Privacy Policy') }}</flux:link>
     {{ __('and') }}
-    <flux:link href="https://policies.google.com/terms">{{ __('Google’s Terms') }}</flux:link>
+    <flux:link href="https://policies.google.com/terms">{{ __('Google Terms of Service') }}</flux:link>
     {{ __('apply.') }}
 @endif

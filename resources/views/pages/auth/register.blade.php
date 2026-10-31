@@ -72,7 +72,7 @@
                     {{ __('Create account') }}
                 </flux:button>
 
-                <p class="text-center text-xs leading-5 text-pretty text-zinc-600">
+                <p class="text-center text-xs leading-5 text-pretty text-zinc-600 dark:text-zinc-400">
                     {{ __('By creating an account, you agree to the') }}
                     <flux:link :href="route('terms')">{{ __('Terms of Service') }}</flux:link>
                     {{ __('and') }}
@@ -84,7 +84,7 @@
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
             <span>{{ __('Already have an account?') }}</span>
-            <flux:link :href="route('login')" wire:navigate>{{ __('Log in') }}</flux:link>
+            <flux:link :href="route('login')" wire:navigate>{{ __('Sign in') }}</flux:link>
         </div>
     </div>
 </x-layouts::auth>

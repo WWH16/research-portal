@@ -43,7 +43,8 @@
                     {{ $slot }}
                 </div>
 
-                <footer class="flex flex-col items-center pb-6 text-center lg:pb-8">
+                {{-- On phones the bottom padding clears Google's fixed reCAPTCHA badge (60px, 14px off the edge) --}}
+                <footer class="flex flex-col items-center pb-24 text-center lg:pb-8">
                     {{-- Phones hide the brand panel, so its copyright line moves down here. --}}
                     <p class="text-xs text-zinc-600 lg:hidden">&copy; {{ now()->year }} {{ __('Isabela State University - Cauayan Campus') }}</p>
                     {{-- Sign-up links both policies in its agreement line under the button, so the footer leaves them out there. --}}

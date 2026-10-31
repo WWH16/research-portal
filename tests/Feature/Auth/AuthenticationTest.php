@@ -51,6 +51,8 @@ class AuthenticationTest extends TestCase
 
     public function test_too_many_failed_sign_ins_show_a_wait_page(): void
     {
+        // Frozen, so a second that ticks over between the attempts can't turn 60 into 59.
+        $this->freezeTime();
         $user = User::factory()->create();
 
         foreach (range(1, 5) as $attempt) {

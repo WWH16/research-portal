@@ -43,4 +43,11 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    // reCAPTCHA v3 on the sign-in and sign-up forms; off while the keys are empty. Scores run from 0.0 (bot) to 1.0.
+    'recaptcha' => [
+        'site_key' => env('RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+        'min_score' => (float) env('RECAPTCHA_MIN_SCORE', 0.5),
+    ],
+
 ];

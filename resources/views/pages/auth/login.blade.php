@@ -61,6 +61,8 @@
             <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="login-button">
                 {{ __('Sign in') }}
             </flux:button>
+
+            <x-recaptcha action="login" />
         </form>
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">

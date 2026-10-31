@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -69,10 +70,7 @@ new #[Title('Announcements')] class extends Component {
      */
     public function mount(): void
     {
-        // A notice names its announcement in the fragment of its link (AnnouncementPosted::url()).
-        $this->fresh = Auth::user()->unreadNotifications()->where('type', AnnouncementPosted::class)->get()
-            ->map(fn ($notice) => (int) Str::afterLast($notice->data['url'] ?? '', '#announcement-'))
-            ->filter()->values()->all();
+        $this->fresh = $this->unseen();
 
         if (! $id = request()->integer('show')) {
             return;
@@ -144,6 +142,32 @@ new #[Title('Announcements')] class extends Component {
     public function deleting(): ?Announcement
     {
         return $this->deletingId ? Announcement::find($this->deletingId) : null;
+    }
+
+    /**
+     * The announcements whose notices the member hasn't read. A notice names its announcement in the fragment of its
+     * link (AnnouncementPosted::url()).
+     *
+     * @return list<int>
+     */
+    private function unseen(): array
+    {
+        return Auth::user()->unreadNotifications()->where('type', AnnouncementPosted::class)->get()
+            ->map(fn ($notice) => (int) Str::afterLast($notice->data['url'] ?? '', '#announcement-'))
+            ->filter()->values()->all();
+    }
+
+    /** Redraws when the sidebar's open-work check sees the announcements' version move, marking new arrivals New. */
+    #[On('open-work-changed')]
+    public function openWorkChanged(array $changed): void
+    {
+        if (! in_array('announcements', $changed, true)) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->fresh = [...$this->fresh, ...$this->unseen()];
     }
 
     /**
@@ -317,10 +341,13 @@ new #[Title('Announcements')] class extends Component {
                          schedule included, shows the day it was posted, quietly, so the dates run in the list's own order; the
                          "Closed on" sentence keeps the old deadline. The sentences below carry the same dates for screen
                          readers, so the tile is hidden from them. A notification links here by id; the gold wash, spread past
-                         the edges by an outline of the same colour, shows which announcement it meant. --}}
-                    <li wire:key="announcement-{{ $announcement->id }}" id="announcement-{{ $announcement->id }}" class="grid scroll-mt-6 grid-cols-[auto_minmax(0,1fr)] gap-x-4 py-6 target:rounded-sm target:bg-highlight-soft target:outline-8 target:outline-highlight-soft sm:gap-x-6" data-test="announcement">
+                         the edges by an outline of the same colour, shows which announcement it meant.
+                         A new one is read once the member has taken it in: with a memo, when they open the memo, since that is
+                         the notice itself; without one, when its title has been on screen for a moment. read() asks the server
+                         once, and only for a new one. --}}
+                    @php($isNew = in_array($announcement->id, $fresh))
+                    <li wire:key="announcement-{{ $announcement->id }}" id="announcement-{{ $announcement->id }}" x-data="{ unread: @js($isNew), read() { if (this.unread) { this.unread = false; this.$wire.seen({{ $announcement->id }}) } } }" class="grid scroll-mt-6 grid-cols-[auto_minmax(0,1fr)] gap-x-4 py-6 target:rounded-sm target:bg-highlight-soft target:outline-8 target:outline-highlight-soft sm:gap-x-6" data-test="announcement">
                         @php($day = $section === 'upcoming' ? $announcement->due_on : $announcement->created_at)
-                        @php($isNew = in_array($announcement->id, $fresh))
                         <div aria-hidden="true" @class([
                             'flex min-w-12 flex-col items-center self-start rounded-md px-1 py-2 tabular-nums leading-none sm:min-w-16',
                             'bg-isu-green-50 text-isu-green-800' => $section === 'upcoming' && ! $urgent,
@@ -333,14 +360,13 @@ new #[Title('Announcements')] class extends Component {
 
                         <div class="min-w-0">
                             <div class="flex items-start justify-between gap-4">
-                                {{-- A new one counts as seen once its title has been on screen for a moment while the tab is in
-                                     view, so scrolling straight past it, or opening the page in a background tab, leaves it new --}}
-                                <div class="min-w-0" @if ($isNew) x-data="{ timer: null, done: false, read() { if (! this.done && ! document.hidden) { this.done = true; this.$wire.seen({{ $announcement->id }}) } } }" x-intersect:enter="timer = setTimeout(() => read(), 1500)" x-intersect:leave="clearTimeout(timer)" @endif>
-                                    {{-- New in the unread notices' gold, after the title so a screen reader hears the title first --}}
+                                <div class="min-w-0" @if ($isNew && ! $announcement->attachment_path) x-data="{ timer: null }" x-intersect:enter="timer = setTimeout(() => document.hidden || read(), 1500)" x-intersect:leave="clearTimeout(timer)" @endif>
+                                    {{-- After the title, so a screen reader hears it first; hover says what reads it, and Read shows for the rest of the visit --}}
                                     <flux:heading size="lg" level="3" class="text-balance wrap-anywhere">
                                         {{ $announcement->title }}
                                         @if ($isNew)
-                                            <flux:badge size="sm" class="ms-1 bg-isu-gold-100! align-middle text-isu-gold-800!" data-test="new-badge">{{ __('New') }}</flux:badge>
+                                            <flux:badge size="sm" x-show="unread" class="ms-1 bg-isu-gold-100! align-middle text-isu-gold-800!" :title="$announcement->attachment_path ? __('Unread. Opening the memo marks it as read.') : __('Unread. It is marked as read once it has been on your screen for a moment.')" data-test="new-badge">{{ __('New') }}</flux:badge>
+                                            <flux:badge size="sm" icon="check" x-show="! unread" x-cloak class="ms-1 align-middle" data-test="read-badge">{{ __('Read') }}</flux:badge>
                                         @endif
                                     </flux:heading>
 
@@ -374,31 +400,28 @@ new #[Title('Announcements')] class extends Component {
 
                             @php($preview = $announcement->attachment_path ? $announcement->memoPreview() : null)
 
-                            {{-- An image memo is the notice itself. It shows open on an open schedule or one new to the member, and
-                                 folded under its file row on the rest, so older posters don't stretch the list. The row sits above
-                                 the image, so Show image and Hide image stay under the pointer. The image keeps its own shape in a
-                                 frame that fits it exactly, with no ground beside it. A click opens the viewer on this page. --}}
+                            {{-- Starts folded, and the image gets its address only when first unfolded, so nothing is fetched
+                                 from Google Drive (about 100 KB and a second or more each) until the member asks --}}
                             @if ($preview === 'image')
-                                @php($open = $section === 'upcoming' || $isNew)
                                 @php($image = ['name' => $announcement->attachment_name, 'url' => $announcement->memoUrl(), 'alt' => $announcement->attachment_alt ?: __('Memo: :name', ['name' => $announcement->attachment_name]), 'link' => route('announcements.index', ['show' => $announcement->id]).'#announcement-'.$announcement->id])
-                                <div x-data="{ open: @js($open) }" class="mt-4" data-test="memo-image">
+                                <div x-data="{ open: false }" class="mt-4" data-test="memo-image">
                                     <div class="flex max-w-prose flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2">
                                         <flux:icon icon="photo" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
                                         <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$announcement->attachment_name">{{ $announcement->attachment_name }}</flux:text>
                                         <div class="flex gap-2">
-                                            <flux:button size="sm" variant="ghost" class="max-sm:h-11" x-on:click="open = ! open" x-bind:aria-expanded="open" aria-expanded="{{ $open ? 'true' : 'false' }}" aria-controls="memo-image-{{ $announcement->id }}" data-test="toggle-memo-image">
-                                                <span x-text="open ? @js(__('Hide image')) : @js(__('Show image'))">{{ $open ? __('Hide image') : __('Show image') }}</span>
+                                            <flux:button size="sm" variant="ghost" class="max-sm:h-11" x-on:click="open = ! open; open && read()" x-bind:aria-expanded="open" aria-expanded="false" aria-controls="memo-image-{{ $announcement->id }}" data-test="toggle-memo-image">
+                                                <span x-text="open ? @js(__('Hide image')) : @js(__('Show image'))">{{ __('Show image') }}</span>
                                             </flux:button>
-                                            <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="$dispatch('memo-image', {{ Js::from($image) }})" :aria-label="__('Preview memo: :name', ['name' => $announcement->attachment_name])">
+                                            <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="read(); $dispatch('memo-image', {{ Js::from($image) }})" :aria-label="__('Preview memo: :name', ['name' => $announcement->attachment_name])">
                                                 {{ __('Preview memo') }}
                                             </flux:button>
                                         </div>
                                     </div>
-                                    <div id="memo-image-{{ $announcement->id }}" x-show="open" x-collapse @unless ($open) x-cloak @endunless class="pt-2">
+                                    <div id="memo-image-{{ $announcement->id }}" x-show="open" x-collapse x-cloak class="pt-2">
                                         {{-- Under the pointer or keyboard focus the photo eases in a little, inside its own frame, as a hint
                                              that it opens larger. Members who ask for less motion get a still photo. --}}
                                         <button type="button" x-on:click="$dispatch('memo-image', {{ Js::from($image) }})" class="group block w-fit max-w-full cursor-zoom-in overflow-hidden rounded-lg border border-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                                            <img src="{{ $announcement->memoPreviewUrl() }}" alt="{{ $announcement->attachment_alt ? __(':description (opens the memo viewer)', ['description' => $announcement->attachment_alt]) : __('Memo: :name (opens the memo viewer)', ['name' => $announcement->attachment_name]) }}" loading="lazy" decoding="async" class="max-h-96 w-auto motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.16,1,0.3,1)] motion-safe:group-hover:scale-[1.04] motion-safe:group-focus-visible:scale-[1.04]" />
+                                            <img x-init="$watch('open', () => $el.src = @js($announcement->memoPreviewUrl()))" alt="{{ $announcement->attachment_alt ? __(':description (opens the memo viewer)', ['description' => $announcement->attachment_alt]) : __('Memo: :name (opens the memo viewer)', ['name' => $announcement->attachment_name]) }}" decoding="async" class="max-h-96 w-auto motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.16,1,0.3,1)] motion-safe:group-hover:scale-[1.04] motion-safe:group-focus-visible:scale-[1.04]" />
                                         </button>
                                     </div>
                                 </div>
@@ -410,12 +433,12 @@ new #[Title('Announcements')] class extends Component {
                                     <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$announcement->attachment_name">{{ $announcement->attachment_name }}</flux:text>
                                     @if ($preview)
                                         {{-- 44px tall on a phone, like the actions button, for the thumb --}}
-                                        <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="$dispatch('memo-preview', {{ Js::from(['name' => $announcement->attachment_name, 'url' => $announcement->memoUrl(), 'kind' => $preview]) }})" :aria-label="__('Preview memo: :name', ['name' => $announcement->attachment_name])" data-test="preview-memo">
+                                        <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="read(); $dispatch('memo-preview', {{ Js::from(['name' => $announcement->attachment_name, 'url' => $announcement->memoUrl(), 'kind' => $preview]) }})" :aria-label="__('Preview memo: :name', ['name' => $announcement->attachment_name])" data-test="preview-memo">
                                             {{ __('Preview memo') }}
                                         </flux:button>
                                     @else
                                         {{-- An old .doc can't be shown in a browser, so it downloads --}}
-                                        <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download :aria-label="__('Download memo: :name', ['name' => $announcement->attachment_name])" data-test="download-memo">
+                                        <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="read()" :aria-label="__('Download memo: :name', ['name' => $announcement->attachment_name])" data-test="download-memo">
                                             {{ __('Download memo') }}
                                         </flux:button>
                                     @endif

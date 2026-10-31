@@ -84,6 +84,15 @@ class Announcement extends Model
         return route('announcements.memo.preview', [$this, 'v' => $this->memoVersion()]);
     }
 
+    /**
+     * A number that changes whenever an announcement is posted, edited or deleted, so an open Announcements page knows
+     * to show the list again. One small query; the sidebar asks for it with the rest of the open work.
+     */
+    public static function version(): string
+    {
+        return implode(':', (array) static::toBase()->selectRaw('count(*) as total, max(updated_at) as changed')->first());
+    }
+
     public function memoVersion(): string
     {
         return substr(sha1((string) $this->attachment_path), 0, 12);
@@ -126,7 +135,6 @@ class Announcement extends Model
 
         $this->attachment_path = $new ?? null;
         $this->attachment_name = $file?->getClientOriginalName();
-
         if ($old) {
             DB::afterCommit(fn () => $storage->delete($old));
         }

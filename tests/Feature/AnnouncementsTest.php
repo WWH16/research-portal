@@ -264,6 +264,9 @@ class AnnouncementsTest extends TestCase
         // Opening the page reads nothing by itself: both are New, and the bell still counts all three notices.
         $html = $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('3 unread notifications')->getContent();
         $this->assertSame(2, substr_count($html, 'data-test="new-badge"'));
+        // Each turns to Read the moment it is read, which says so on the page; its hover text says what reads it.
+        $this->assertSame(2, substr_count($html, 'data-test="read-badge"'));
+        $this->assertStringContainsString('Unread. It is marked as read once it has been on your screen for a moment.', $html);
 
         // One that has been on screen is read on its own, and the bell is told to count again.
         Livewire::test('pages::announcements.index')->call('seen', $first->id)->assertDispatched('open-work-stale');
@@ -275,6 +278,53 @@ class AnnouncementsTest extends TestCase
             ->assertSeeInOrder(['Second schedule', 'data-test="new-badge"', 'First schedule'], false)
             ->getContent();
         $this->assertSame(1, substr_count($html, 'data-test="new-badge"'));
+    }
+
+    public function test_a_new_announcement_with_a_memo_is_read_when_its_memo_is_opened(): void
+    {
+        $this->fakeDrive();
+        $faculty = User::factory()->create();
+        $page = Livewire::actingAs($this->admin())->test('pages::announcements.index');
+        $page->call('create')->set('title', 'Text only')->set('description', 'Nothing attached.')->call('save');
+        $page->call('create')->set('title', 'With a poster')->set('description', 'See the poster.')
+            ->set('memo', UploadedFile::fake()->create('poster.png', 50, 'image/png'))->call('save');
+        $page->call('create')->set('title', 'With a PDF')->set('description', 'See the memo.')->set('memo', $this->memo())->call('save');
+
+        // Only the one without a memo is read by being on screen; the others wait for their memo to be opened, by Show
+        // image, Preview memo, or downloading it.
+        $html = $this->actingAs($faculty)->get(route('announcements.index'))->getContent();
+        $this->assertSame(1, substr_count($html, 'x-intersect:enter'));
+        $this->assertStringContainsString('open = ! open; open && read()', $html);
+        $this->assertSame(2, substr_count($html, 'x-on:click="read(); $dispatch(\'memo-'));
+    }
+
+    public function test_the_page_shows_new_announcements_when_the_sidebar_finds_them(): void
+    {
+        $this->travelTo('2026-10-29 09:00');
+        $faculty = User::factory()->create();
+        $page = Livewire::actingAs($faculty)->test('pages::announcements.index');
+        $version = fn () => $this->actingAs($faculty)->getJson(route('open-work'))->json('announcements');
+        $before = $version();
+
+        $this->travel(1)->minute();
+        Livewire::actingAs($this->admin())->test('pages::announcements.index')
+            ->call('create')->set('title', 'Posted while the page was open')->set('description', 'Read me.')->call('save');
+
+        // The sidebar's check every minute sees the version move, and the page draws the list again, the post marked New.
+        $this->assertNotSame($before, $version());
+        $this->actingAs($faculty);
+        $page->dispatch('open-work-changed', changed: ['unread'])->assertDontSee('Posted while the page was open');
+        $page->dispatch('open-work-changed', changed: ['unread', 'announcements'])
+            ->assertSee('Posted while the page was open')
+            ->assertSeeHtml('data-test="new-badge"');
+
+        // An edit or a deletion moves it too.
+        $this->travel(1)->minute();
+        $edited = $version();
+        Announcement::sole()->update(['title' => 'Posted, then corrected']);
+        $this->assertNotSame($edited, $version());
+        Announcement::sole()->delete();
+        $this->assertNotSame($edited, $version());
     }
 
     public function test_a_plain_notice_is_announced_in_one_sentence(): void
@@ -312,7 +362,9 @@ class AnnouncementsTest extends TestCase
         // An image shows on the page, folded on an older announcement, and opens in the viewer like a PDF or .docx; an
         // old .doc only downloads.
         $this->actingAs(User::factory()->create())->get(route('announcements.index'))
-            ->assertSee('src="'.e($image->memoPreviewUrl()).'"', false)
+            // Folded, the picture gets its address only when first unfolded, so it is never fetched before.
+            ->assertSee(str_replace('/', '\/', $image->memoPreviewUrl()), false)
+            ->assertDontSee('src="'.e($image->memoPreviewUrl()).'"', false)
             ->assertSee('Show image')
             ->assertSee('Preview memo: Schedule.PNG')
             ->assertSee('Preview memo: Memorandum.pdf')

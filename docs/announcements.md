@@ -33,7 +33,7 @@ The Research Office uses Announcements for two things: **schedules of submission
 
 ### Phase 4: Tell the faculty, in the portal only
 
-- An `AnnouncementPosted` notice appears in the portal's notifications, written in full sentences. It is sent when an announcement is posted, not when it is edited.
+- An `AnnouncementPosted` notice appears in the portal's notifications, written in full sentences, when an announcement is posted. Each edit that changes something sends an `AnnouncementUpdated` notice the same way, and the announcement's byline then says when it was edited. The form says who will be told before the admin saves.
 - **No email.** The notice sets `EMAILED = false`, as `ProjectCompleted` does, and My Profile gets no new email switch.
 
 ### Later, if wanted

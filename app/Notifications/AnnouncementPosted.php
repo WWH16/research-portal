@@ -15,12 +15,15 @@ class AnnouncementPosted extends PortalNotification
 
     public function __construct(public readonly Announcement $announcement) {}
 
+    /** The notice's first sentence, before translation; AnnouncementUpdated words it for an edit. */
+    protected const string OPENING = 'The Research Office has posted a new announcement: “:title”.';
+
     protected function message(): string
     {
         $replace = ['title' => $this->announcement->title, 'date' => $this->announcement->due_on?->format('F j, Y')];
 
         return implode(' ', array_filter([
-            __('The Research Office has posted a new announcement: “:title”.', $replace),
+            __(static::OPENING, $replace),
             $this->announcement->due_on ? __('The deadline is :date.', $replace) : null,
             $this->announcement->attachment_path ? __('A memo is attached.') : null,
         ]));

@@ -235,10 +235,6 @@ class AnnouncementsTest extends TestCase
         $this->assertSame(0, $pending->notifications()->count() + $admin->notifications()->count() + $otherAdmin->notifications()->count());
         Mail::assertNothingOutgoing();
 
-        // A correction tells no one again.
-        $page->call('edit', Announcement::sole()->id)->set('title', 'Schedule of Submission of Concept Proposals, revised')->call('save');
-        $this->assertSame(1, $faculty->notifications()->count());
-
         // The notice opens like a message, with its own heading and button.
         Livewire::actingAs($faculty)->test('pages::notifications.index')
             ->call('read', $faculty->notifications()->sole()->id)
@@ -249,6 +245,53 @@ class AnnouncementsTest extends TestCase
             ->assertRedirect($link);
 
         $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('id="announcement-'.Announcement::sole()->id.'"', false);
+    }
+
+    public function test_an_edit_tells_faculty_again_and_says_when_it_was_made(): void
+    {
+        $this->travelTo('2026-10-29 09:00');
+        $faculty = User::factory()->create();
+        $admin = $this->admin();
+        $page = Livewire::actingAs($admin)->test('pages::announcements.index')
+            ->call('create')
+            // The form says who hears of it before the admin saves.
+            ->assertSee('Posting sends every faculty member a portal notice.')
+            ->set('title', 'Schedule of Submission of Concept Proposals')
+            ->set('description', 'Concept proposals for 2027 are due on the date below.')
+            ->set('dueOn', '2026-11-15')
+            ->call('save');
+        $announcement = Announcement::sole();
+        $faculty->unreadNotifications->markAsRead();
+
+        // Saving an edit that changed nothing tells no one, and the announcement isn't marked edited.
+        $this->travelTo('2026-11-01 10:00');
+        $page->call('edit', $announcement->id)
+            ->assertSee('Saving a change sends every faculty member a portal notice that this announcement was updated.')
+            ->call('save');
+        $this->assertSame(1, $faculty->notifications()->count());
+        $this->assertStringNotContainsString('edited on', $this->actingAs($faculty)->get(route('announcements.index'))->getContent());
+
+        // A moved deadline tells every faculty member, in its own words, with the same link as the post.
+        $this->actingAs($admin);
+        $page->call('edit', $announcement->id)->set('dueOn', '2026-11-20')->call('save');
+        $notice = $faculty->unreadNotifications()->sole();
+        $this->assertSame('App\Notifications\AnnouncementUpdated', $notice->type);
+        $this->assertSame('The Research Office has updated the announcement “Schedule of Submission of Concept Proposals”. The deadline is November 20, 2026.', $notice->data['message']);
+        $this->assertSame(route('announcements.index', ['show' => $announcement->id]).'#announcement-'.$announcement->id, $notice->data['url']);
+        $this->assertSame(0, $admin->notifications()->count());
+
+        // The announcement is New again for them, and says when it was edited.
+        $this->actingAs($faculty)->get(route('announcements.index'))
+            ->assertSeeHtml('data-test="new-badge"')
+            ->assertSee('on October 29, 2026, and edited on November 1, 2026');
+
+        // Seeing it reads the notice, and the notice opens under its own heading.
+        Livewire::actingAs($faculty)->test('pages::announcements.index')->call('seen', $announcement->id);
+        $this->assertSame(0, $faculty->unreadNotifications()->count());
+        Livewire::actingAs($faculty)->test('pages::notifications.index')
+            ->call('read', $notice->id)
+            ->assertSee('Announcement updated')
+            ->assertSee('Open Announcements');
     }
 
     public function test_each_new_announcement_stays_new_until_the_member_has_seen_it(): void
@@ -264,9 +307,11 @@ class AnnouncementsTest extends TestCase
         // Opening the page reads nothing by itself: both are New, and the bell still counts all three notices.
         $html = $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('3 unread notifications')->getContent();
         $this->assertSame(2, substr_count($html, 'data-test="new-badge"'));
-        // Each turns to Read the moment it is read, which says so on the page; its hover text says what reads it.
+        // Each turns to Read the moment it is read, which says so on the page; the header says what reads it, so a phone
+        // or a screen reader gets it too.
         $this->assertSame(2, substr_count($html, 'data-test="read-badge"'));
-        $this->assertStringContainsString('Unread. It is marked as read once it has been on your screen for a moment.', $html);
+        $this->assertSame(1, substr_count($html, 'data-test="new-explained"'));
+        $this->assertStringContainsString('Each is marked read once it has been on your screen for a moment, or, when it has a memo, once you open the memo.', $html);
 
         // One that has been on screen is read on its own, and the bell is told to count again.
         Livewire::test('pages::announcements.index')->call('seen', $first->id)->assertDispatched('open-work-stale');
@@ -366,6 +411,10 @@ class AnnouncementsTest extends TestCase
             ->assertSee(str_replace('/', '\/', $image->memoPreviewUrl()), false)
             ->assertDontSee('src="'.e($image->memoPreviewUrl()).'"', false)
             ->assertSee('Show image')
+            // While Google Drive sends the picture it says so, and if it never comes the memo still downloads.
+            ->assertSeeHtml('data-test="memo-image-loading"')
+            ->assertSeeHtml('data-test="memo-image-failed"')
+            ->assertSee('The image could not be shown here. Download the memo to see it.')
             ->assertSee('Preview memo: Schedule.PNG')
             ->assertSee('Preview memo: Memorandum.pdf')
             ->assertSee('Preview memo: Guidelines.docx')
@@ -388,9 +437,14 @@ class AnnouncementsTest extends TestCase
         Announcement::factory()->dueIn(3)->create(['title' => 'Open schedule', 'created_at' => '2026-10-01']);
         Announcement::factory()->dueIn(-5)->create(['title' => 'Closed schedule', 'created_at' => '2026-10-02']);
 
-        // Open: the deadline, November 1. Closed: the day it was posted, October 2, so the dates follow the list's order.
-        $this->actingAs(User::factory()->create())->get(route('announcements.index'))
-            ->assertSeeInOrder(['data-test="date-tile"', '>1<', '>Nov<', 'Open schedule', 'data-test="date-tile"', '>2<', '>Oct<', 'Closed schedule'], false);
+        // Open: the deadline, November 1. Closed: the day it was posted, October 2, so the dates follow the list's order,
+        // labelled Posted so it isn't taken for the date of an event.
+        $html = $this->actingAs(User::factory()->create())->get(route('announcements.index'))
+            ->assertSeeInOrder(['data-test="date-tile"', '>1<', '>Nov<', 'Open schedule', 'data-test="date-tile"', 'Posted', '>2<', '>Oct<', 'Closed schedule'], false)
+            ->getContent();
+        $this->assertSame(1, substr_count($html, '>Posted<'));
+        // A member with nothing unread isn't told what New means.
+        $this->assertStringNotContainsString('data-test="new-explained"', $html);
     }
 
     public function test_an_image_memo_is_read_out_by_its_description_or_its_name(): void

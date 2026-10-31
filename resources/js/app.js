@@ -25,6 +25,9 @@ const memoImage = () => ({
     fit: 1,
     // The photo's real width, known once it loads; nothing zooms before then.
     width: 0,
+    // Whether the photo has come from Google Drive yet, or failed to; the viewer says which.
+    loaded: false,
+    failed: false,
     drag: null,
     // The timer that keeps a held zoom button going.
     holding: null,
@@ -32,7 +35,7 @@ const memoImage = () => ({
 
     show({ name, url, alt, link }) {
         const same = url === this.url;
-        Object.assign(this, { name, url, alt, link, zoom: 1, drag: null, ...(same ? {} : { width: 0, fit: 1, file: null }) });
+        Object.assign(this, { name, url, alt, link, zoom: 1, drag: null, ...(same ? {} : { width: 0, fit: 1, file: null, loaded: false, failed: false }) });
         this.$flux.modal('memo-image').show();
         // The same photo again fires no load, so it is measured here, once the viewer has its size.
         this.$nextTick(() => this.$refs.photo.complete && this.measure());
@@ -64,13 +67,15 @@ const memoImage = () => ({
             .catch(() => this.$flux.toast(failed, { variant: 'danger' }));
     },
 
+    // The fit leaves out the frame's padding, which keeps the photo clear of the buttons above and below it.
     measure() {
         const { naturalWidth, naturalHeight } = this.$refs.photo;
         const { clientWidth, clientHeight } = this.$refs.stage;
+        const { paddingTop, paddingBottom } = getComputedStyle(this.$refs.stage);
 
         if (naturalWidth && naturalHeight && clientWidth && clientHeight) {
             this.width = naturalWidth;
-            this.fit = Math.min(1, clientWidth / naturalWidth, clientHeight / naturalHeight);
+            this.fit = Math.min(1, clientWidth / naturalWidth, (clientHeight - parseFloat(paddingTop) - parseFloat(paddingBottom)) / naturalHeight);
         }
     },
 

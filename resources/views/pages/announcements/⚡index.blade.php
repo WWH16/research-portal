@@ -5,6 +5,7 @@ use App\Models\ActivityLog;
 use App\Models\Announcement;
 use App\Models\User;
 use App\Notifications\AnnouncementPosted;
+use App\Notifications\AnnouncementUpdated;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -144,6 +145,9 @@ new #[Title('Announcements')] class extends Component {
         return $this->deletingId ? Announcement::find($this->deletingId) : null;
     }
 
+    /** The notices that tell a member of an announcement: its post, and each edit after it. */
+    private const NOTICES = [AnnouncementPosted::class, AnnouncementUpdated::class];
+
     /**
      * The announcements whose notices the member hasn't read. A notice names its announcement in the fragment of its
      * link (AnnouncementPosted::url()).
@@ -152,7 +156,7 @@ new #[Title('Announcements')] class extends Component {
      */
     private function unseen(): array
     {
-        return Auth::user()->unreadNotifications()->where('type', AnnouncementPosted::class)->get()
+        return Auth::user()->unreadNotifications()->whereIn('type', self::NOTICES)->get()
             ->map(fn ($notice) => (int) Str::afterLast($notice->data['url'] ?? '', '#announcement-'))
             ->filter()->values()->all();
     }
@@ -178,7 +182,7 @@ new #[Title('Announcements')] class extends Component {
     #[Renderless]
     public function seen(int $id): void
     {
-        $read = Auth::user()->unreadNotifications()->where('type', AnnouncementPosted::class)
+        $read = Auth::user()->unreadNotifications()->whereIn('type', self::NOTICES)
             ->where('data->url', 'like', '%#announcement-'.$id)
             ->update(['read_at' => now()]);
 
@@ -260,9 +264,13 @@ new #[Title('Announcements')] class extends Component {
             return;
         }
 
-        // Faculty hear of a new announcement once it has saved, in the portal only; an edit tells no one again.
-        if (! $this->editingId) {
-            Notification::send(User::where('role', 'faculty')->whereNotNull('approved_at')->get(), new AnnouncementPosted($announcement));
+        // Faculty hear of a new announcement once it has saved, and of every edit to one, in the portal only. An edit
+        // that changed nothing tells no one.
+        if ($announcement->wasRecentlyCreated || $announcement->wasChanged()) {
+            Notification::send(
+                User::where('role', 'faculty')->whereNotNull('approved_at')->get(),
+                $announcement->wasRecentlyCreated ? new AnnouncementPosted($announcement) : new AnnouncementUpdated($announcement),
+            );
         }
 
         Flux::modal('announcement-form')->close();
@@ -311,6 +319,10 @@ new #[Title('Announcements')] class extends Component {
         <div class="min-w-0 flex-1 basis-56">
             <flux:heading size="xl" level="1">{{ __('Announcements') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Schedules of submissions and memos from the Research Office.') }}</flux:text>
+            {{-- What the New marks mean, said where a phone or a screen reader gets it too, not in a hover --}}
+            @if ($fresh)
+                <flux:text class="mt-2" data-test="new-explained">{{ __('New marks the announcements you haven’t read yet. Each is marked read once it has been on your screen for a moment, or, when it has a memo, once you open the memo.') }}</flux:text>
+            @endif
         </div>
 
         @can('create', App\Models\Announcement::class)
@@ -329,7 +341,7 @@ new #[Title('Announcements')] class extends Component {
 
         <section wire:key="section-{{ $section }}" class="mt-8" aria-labelledby="announcements-{{ $section }}" data-test="{{ $section }}-announcements">
             {{-- A step above the announcement titles and under the page title, with a rule under it --}}
-            <flux:heading size="lg" level="2" id="announcements-{{ $section }}" class="border-b border-line pb-2 text-lg!">
+            <flux:heading size="lg" level="2" id="announcements-{{ $section }}" class="border-b border-line pb-2 text-xl!">
                 {{ $section === 'upcoming' ? __('Upcoming deadlines') : ($this->upcoming->isEmpty() ? __('All announcements') : __('Other announcements')) }}
             </flux:heading>
 
@@ -338,8 +350,9 @@ new #[Title('Announcements')] class extends Component {
                     @php($urgent = $section === 'upcoming' && $announcement->due_on->lte(today()->addDay()))
                     {{-- An agenda: a date leads each row, so the list reads by date at a glance. An open schedule shows its
                          deadline on a tile, green while open and red when due today or tomorrow. Everything else, a closed
-                         schedule included, shows the day it was posted, quietly, so the dates run in the list's own order; the
-                         "Closed on" sentence keeps the old deadline. The sentences below carry the same dates for screen
+                         schedule included, shows the day it was posted, quietly and labelled Posted, so it isn't read as the
+                         date of an event, and the dates run in the list's own order; the "Closed on" sentence keeps the old
+                         deadline. The sentences below carry the same dates for screen
                          readers, so the tile is hidden from them. A notification links here by id; the gold wash, spread past
                          the edges by an outline of the same colour, shows which announcement it meant.
                          A new one is read once the member has taken it in: with a memo, when they open the memo, since that is
@@ -354,6 +367,9 @@ new #[Title('Announcements')] class extends Component {
                             'bg-red-50 text-red-700' => $urgent,
                             'text-zinc-500' => $section !== 'upcoming',
                         ]) data-test="date-tile">
+                            @if ($section !== 'upcoming')
+                                <span class="mb-1 text-xs">{{ __('Posted') }}</span>
+                            @endif
                             <span @class(['font-semibold', 'text-xl sm:text-2xl' => $section === 'upcoming', 'text-lg' => $section !== 'upcoming'])>{{ $day->format('j') }}</span>
                             <span class="mt-1 text-xs font-medium">{{ $day->format('M') }}</span>
                         </div>
@@ -361,11 +377,13 @@ new #[Title('Announcements')] class extends Component {
                         <div class="min-w-0">
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0" @if ($isNew && ! $announcement->attachment_path) x-data="{ timer: null }" x-intersect:enter="timer = setTimeout(() => document.hidden || read(), 1500)" x-intersect:leave="clearTimeout(timer)" @endif>
-                                    {{-- After the title, so a screen reader hears it first; hover says what reads it, and Read shows for the rest of the visit --}}
-                                    <flux:heading size="lg" level="3" class="text-balance wrap-anywhere">
+                                    {{-- After the title, so a screen reader hears it first; the header says what reads it, and Read
+                                         shows for the rest of the visit. The title is in ink, not the portal's green heading
+                                         colour, so the green on a row is left to mark an open deadline. --}}
+                                    <flux:heading size="lg" level="3" class="text-lg! text-balance wrap-anywhere text-zinc-900!">
                                         {{ $announcement->title }}
                                         @if ($isNew)
-                                            <flux:badge size="sm" x-show="unread" class="ms-1 bg-isu-gold-100! align-middle text-isu-gold-800!" :title="$announcement->attachment_path ? __('Unread. Opening the memo marks it as read.') : __('Unread. It is marked as read once it has been on your screen for a moment.')" data-test="new-badge">{{ __('New') }}</flux:badge>
+                                            <flux:badge size="sm" x-show="unread" class="ms-1 bg-isu-gold-100! align-middle text-isu-gold-800!" data-test="new-badge">{{ __('New') }}</flux:badge>
                                             <flux:badge size="sm" icon="check" x-show="! unread" x-cloak class="ms-1 align-middle" data-test="read-badge">{{ __('Read') }}</flux:badge>
                                         @endif
                                     </flux:heading>
@@ -396,20 +414,31 @@ new #[Title('Announcements')] class extends Component {
                                 @endcan
                             </div>
 
-                            <flux:text class="mt-3 max-w-prose whitespace-pre-line wrap-anywhere text-zinc-800">{{ $announcement->description }}</flux:text>
+                            {{-- At body size, about 70 characters a line. A long announcement shows its first six lines with
+                                 Show more for the rest, so one long post doesn't push the others screens away; the button
+                                 shows only when the text runs past them. That is measured once, on load, so a window resized
+                                 later keeps its first answer. --}}
+                            <div x-data="{ more: false, long: false }">
+                                <flux:text size="lg" x-init="long = $el.scrollHeight > $el.clientHeight" x-bind:class="{ 'line-clamp-6': ! more }" class="mt-3 line-clamp-6 max-w-xl whitespace-pre-line wrap-anywhere text-zinc-800">{{ $announcement->description }}</flux:text>
+                                <flux:button x-show="long" x-cloak size="sm" variant="ghost" inset="left" icon:trailing="chevron-down" icon-trailing:class="in-aria-expanded:rotate-180" class="mt-1" x-on:click="more = ! more" x-bind:aria-expanded="more" aria-expanded="false">
+                                    <span x-text="more ? @js(__('Show less')) : @js(__('Show more'))">{{ __('Show more') }}</span>
+                                </flux:button>
+                            </div>
 
                             @php($preview = $announcement->attachment_path ? $announcement->memoPreview() : null)
 
                             {{-- Starts folded, and the image gets its address only when first unfolded, so nothing is fetched
-                                 from Google Drive (about 100 KB and a second or more each) until the member asks --}}
+                                 from Google Drive (about 100 KB and a second or more each) until the member asks. Show image
+                                 unfolds it here, its arrow turning over when open; Preview memo opens it full screen. On a
+                                 phone the two buttons wrap under each other rather than running past the row. --}}
                             @if ($preview === 'image')
                                 @php($image = ['name' => $announcement->attachment_name, 'url' => $announcement->memoUrl(), 'alt' => $announcement->attachment_alt ?: __('Memo: :name', ['name' => $announcement->attachment_name]), 'link' => route('announcements.index', ['show' => $announcement->id]).'#announcement-'.$announcement->id])
-                                <div x-data="{ open: false }" class="mt-4" data-test="memo-image">
-                                    <div class="flex max-w-prose flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2">
+                                <div x-data="{ open: false, loaded: false, failed: false }" class="mt-4" data-test="memo-image">
+                                    <div class="flex max-w-xl flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2">
                                         <flux:icon icon="photo" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
                                         <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$announcement->attachment_name">{{ $announcement->attachment_name }}</flux:text>
-                                        <div class="flex gap-2">
-                                            <flux:button size="sm" variant="ghost" class="max-sm:h-11" x-on:click="open = ! open; open && read()" x-bind:aria-expanded="open" aria-expanded="false" aria-controls="memo-image-{{ $announcement->id }}" data-test="toggle-memo-image">
+                                        <div class="flex flex-wrap gap-2">
+                                            <flux:button size="sm" variant="ghost" icon:trailing="chevron-down" icon-trailing:class="in-aria-expanded:rotate-180" class="max-sm:h-11" x-on:click="open = ! open; open && read()" x-bind:aria-expanded="open" aria-expanded="false" aria-controls="memo-image-{{ $announcement->id }}" data-test="toggle-memo-image">
                                                 <span x-text="open ? @js(__('Hide image')) : @js(__('Show image'))">{{ __('Show image') }}</span>
                                             </flux:button>
                                             <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="read(); $dispatch('memo-image', {{ Js::from($image) }})" :aria-label="__('Preview memo: :name', ['name' => $announcement->attachment_name])">
@@ -418,17 +447,22 @@ new #[Title('Announcements')] class extends Component {
                                         </div>
                                     </div>
                                     <div id="memo-image-{{ $announcement->id }}" x-show="open" x-collapse x-cloak class="pt-2">
-                                        {{-- Under the pointer or keyboard focus the photo eases in a little, inside its own frame, as a hint
-                                             that it opens larger. Members who ask for less motion get a still photo. --}}
-                                        <button type="button" x-on:click="$dispatch('memo-image', {{ Js::from($image) }})" class="group block w-fit max-w-full cursor-zoom-in overflow-hidden rounded-lg border border-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                                            <img x-init="$watch('open', () => $el.src = @js($announcement->memoPreviewUrl()))" alt="{{ $announcement->attachment_alt ? __(':description (opens the memo viewer)', ['description' => $announcement->attachment_alt]) : __('Memo: :name (opens the memo viewer)', ['name' => $announcement->attachment_name]) }}" decoding="async" class="max-h-96 w-auto motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.16,1,0.3,1)] motion-safe:group-hover:scale-[1.04] motion-safe:group-focus-visible:scale-[1.04]" />
+                                        {{-- While Google Drive sends the picture it says so, and if it never comes the memo can still be
+                                             downloaded. Under the pointer the photo's frame darkens, a hint that it opens larger. --}}
+                                        <flux:text x-show="! loaded && ! failed" role="status" data-test="memo-image-loading">{{ __('Loading the image…') }}</flux:text>
+                                        <div x-show="failed" x-cloak role="alert" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-test="memo-image-failed">
+                                            <flux:text>{{ __('The image could not be shown here. Download the memo to see it.') }}</flux:text>
+                                            <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="read()">{{ __('Download memo') }}</flux:button>
+                                        </div>
+                                        <button type="button" x-show="loaded" x-on:click="$dispatch('memo-image', {{ Js::from($image) }})" class="block w-fit max-w-full cursor-zoom-in overflow-hidden rounded-lg border border-line hover:border-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                                            <img x-init="$watch('open', () => $el.src = @js($announcement->memoPreviewUrl()))" x-on:load="loaded = true" x-on:error="failed = true" alt="{{ $announcement->attachment_alt ? __(':description (opens the memo viewer)', ['description' => $announcement->attachment_alt]) : __('Memo: :name (opens the memo viewer)', ['name' => $announcement->attachment_name]) }}" decoding="async" class="max-h-96 w-auto" />
                                         </button>
                                     </div>
                                 </div>
                             @elseif ($announcement->attachment_path)
                                 {{-- A PDF or Word memo is a file row: what it is, then the one thing to do with it. On a phone the button
                                      drops under the name rather than cutting the name short. --}}
-                                <div class="mt-4 flex max-w-prose flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2" data-test="memo-file">
+                                <div class="mt-4 flex max-w-xl flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2" data-test="memo-file">
                                     <flux:icon :icon="$preview === 'pdf' ? 'document-text' : 'document'" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
                                     <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$announcement->attachment_name">{{ $announcement->attachment_name }}</flux:text>
                                     @if ($preview)
@@ -445,8 +479,13 @@ new #[Title('Announcements')] class extends Component {
                                 </div>
                             @endif
 
+                            {{-- An edit is said beside the post, with its own date, so a changed deadline or memo is never
+                                 taken for the original --}}
                             <flux:text size="sm" class="mt-4">
-                                {{ __('Posted by :name on :date', ['name' => $announcement->poster->displayName(), 'date' => $announcement->created_at->format('F j, Y')]) }}
+                                @php($posted = ['name' => $announcement->poster->displayName(), 'date' => $announcement->created_at->format('F j, Y')])
+                                {{ $announcement->updated_at->gt($announcement->created_at)
+                                    ? __('Posted by :name on :date, and edited on :edited', [...$posted, 'edited' => $announcement->updated_at->format('F j, Y')])
+                                    : __('Posted by :name on :date', $posted) }}
                             </flux:text>
                         </div>
                     </li>
@@ -473,21 +512,28 @@ new #[Title('Announcements')] class extends Component {
 
             {{-- Fitted, the photo is whole at any size: a tall poster is scaled to the screen's height, a wide one to its
                  width. Zoomed, it grows past the screen and this frame scrolls; a mouse drags it, a finger or trackpad
-                 scrolls it. The auto margins centre a fitted photo and let a zoomed one scroll to every edge. --}}
-            <div x-ref="stage" x-on:click.self="$flux.modal('memo-image').close()" x-on:wheel="wheel($event)" class="flex size-full overflow-auto [scrollbar-width:none]">
+                 scrolls it. The auto margins centre a fitted photo and let a zoomed one scroll to every edge. The frame
+                 keeps clear of the buttons above and below, so they never cover the top or foot of a fitted photo. --}}
+            <div x-ref="stage" x-on:click.self="$flux.modal('memo-image').close()" x-on:wheel="wheel($event)" class="flex size-full overflow-auto py-16 [scrollbar-width:none]">
                 <img
                     x-ref="photo"
+                    x-show="loaded"
                     x-bind:src="url || null"
                     x-bind:alt="alt"
                     x-bind:style="photoStyle"
                     x-bind:class="zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'max-h-full max-w-full'"
-                    x-on:load="measure()"
+                    x-on:load="loaded = true; measure()"
+                    x-on:error="failed = true"
                     x-on:pointerdown="grab($event)"
                     x-on:pointermove="pan($event)"
                     draggable="false"
                     class="m-auto shrink-0 touch-manipulation object-contain select-none"
                 />
             </div>
+
+            {{-- Google Drive can take a second or more to send the photo, and may not send it at all --}}
+            <flux:text x-show="! loaded && ! failed" role="status" class="pointer-events-none absolute inset-0 m-auto size-fit text-zinc-200">{{ __('Loading the image…') }}</flux:text>
+            <flux:text x-show="failed" x-cloak role="alert" class="pointer-events-none absolute inset-0 m-auto size-fit px-6 text-center text-zinc-200">{{ __('The image could not be loaded. Close the viewer and try again later.') }}</flux:text>
 
             {{-- Zoom, only when the member asks: out, the share of the photo's real size now shown (a click fits it back to
                  the screen), and in. A press steps to the next ten percent; holding a button then goes on a point at a time.
@@ -626,6 +672,13 @@ new #[Title('Announcements')] class extends Component {
                         <flux:button size="xs" variant="ghost" x-on:click="$wire.cancelUpload('memo')">{{ __('Stop upload') }}</flux:button>
                     </div>
                 </div>
+
+                {{-- Who hears of it, before the admin presses the button --}}
+                <flux:text size="sm">
+                    {{ $editingId
+                        ? __('Saving a change sends every faculty member a portal notice that this announcement was updated.')
+                        : __('Posting sends every faculty member a portal notice.') }}
+                </flux:text>
 
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     {{-- Says why Cancel has gone quiet, and that the dialog closes by itself --}}

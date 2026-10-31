@@ -2,6 +2,7 @@
 
 use App\Notifications\AccountApproved;
 use App\Notifications\AnnouncementPosted;
+use App\Notifications\AnnouncementUpdated;
 use App\Notifications\ConceptReviewed;
 use App\Notifications\DriveDisconnected;
 use App\Notifications\DriveFull;
@@ -35,6 +36,7 @@ new #[Title('Notifications')] class extends Component {
     private const KINDS = [
         AccountApproved::class => ['Welcome', 'Start a proposal'],
         AnnouncementPosted::class => ['New announcement', 'Open Announcements'],
+        AnnouncementUpdated::class => ['Announcement updated', 'Open Announcements'],
         ConceptReviewed::class => ['Concept proposal decision', 'Open the project'],
         ProjectDeadline::class => ['Completion date reminder', 'Open the project'],
         ProjectDatesChanged::class => ['Project dates changed', 'Open the project'],

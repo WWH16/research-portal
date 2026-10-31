@@ -6,8 +6,9 @@
     <body class="min-h-screen bg-surface antialiased">
         <div class="grid min-h-dvh lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             {{-- Brand panel: the same seal green as the app sidebar, so signing in and working inside feel like one place. --}}
-            {{-- Everything in the panel shares one centered axis: brand, seal, and footer. --}}
-            <aside class="hidden flex-col items-center justify-between gap-10 bg-isu-green-800 px-12 py-10 text-center text-isu-green-50 lg:flex">
+            {{-- Everything in the panel shares one centered axis: brand, seal, and footer.
+                 It stays pinned at full viewport height, so a long form (sign-up) scrolls past it. --}}
+            <aside class="sticky top-0 hidden h-dvh flex-col items-center justify-between gap-10 bg-isu-green-800 px-12 py-10 text-center text-isu-green-50 lg:flex">
                 <div class="flex items-center gap-3">
                     <x-app-logo-icon class="size-9 rounded-full bg-white p-px" />
                     <span class="text-base font-semibold text-white">{{ config('app.name') }}</span>

@@ -22,6 +22,19 @@
     margin-bottom: 1.5rem;
 }
 
+/* pdf.js draws each PDF page as a picture, in a stack spaced like docx-preview's, so both kinds sit and zoom alike. */
+[data-memo-pages] .memo-pdf {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+}
+
+[data-memo-pages] .memo-pdf > canvas {
+    box-shadow: var(--shadow-memo-page);
+}
+
 /* Tailwind caps images at 100% of their box, and docx-preview's picture boxes shrink to fit them, so they collapse to nothing. */
 [data-memo-pages] img {
     max-width: none;

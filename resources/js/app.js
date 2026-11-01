@@ -10,22 +10,42 @@ const toPng = async (blob) => {
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 };
 
-// The image memo viewer on Announcements: the photo alone, full screen, with zoom, Copy image, Download and Share. It
-// opens fitted to the screen and zooms only when the member asks; a zoomed photo is sized in pixels and its frame scrolls.
-const memoImage = () => ({
+// Draws a PDF or Word memo's pages: a PDF's as pictures by pdf.js, a Word memo's as HTML by docx-preview. Both load on
+// first use, so pages without such a memo never fetch them. pdf.js draws a PDF, not the browser's own viewer, which a
+// phone shows in a frame poorly or not at all (Chrome on Android draws nothing, Safari on an iPhone only the first page).
+// The pages are drawn apart and handed back, so a memo opened while another is drawing never mixes with it.
+const drawMemo = async (kind, url, label) => {
+    const [response, drawer] = await Promise.all([fetch(url), kind === 'pdf' ? import('./memo-pdf.js') : import('docx-preview')]);
+
+    if (!response.ok) {
+        throw new Error(`The memo could not be loaded (${response.status}).`);
+    }
+
+    const sheet = document.createElement('div');
+    await (kind === 'pdf' ? drawer.drawPdf(await response.arrayBuffer(), sheet, label) : drawer.renderAsync(await response.blob(), sheet));
+
+    return [...sheet.childNodes];
+};
+
+// The memo viewer on Announcements: the memo alone, full screen, with zoom, Download and Share, and Copy image for an
+// image. It opens fitted to the screen and zooms only when the member asks. A zoomed photo is sized in pixels; a PDF or
+// Word memo's pages are fitted to the screen's width, scroll down, and zoom as a whole. Either way the frame scrolls.
+const memoViewer = (pageLabel) => ({
     name: '',
     url: '',
     alt: '',
+    // 'image', 'pdf' or 'docx'.
+    kind: 'image',
     // The announcement's own address on the portal, which Share falls back to.
     link: '',
-    // The photo as a file, fetched when the viewer opens, so Share and Copy image can hand it over inside the click.
+    // The memo as a file, fetched when the viewer opens, so Share and Copy image can hand it over inside the click.
     file: null,
     zoom: 1,
-    // The fitted size over the real size, so zoom × fit is the share of the photo's real pixels on screen.
+    // The fitted size over the real size, so zoom × fit is the share of the memo's real size on screen.
     fit: 1,
-    // The photo's real width, known once it loads; nothing zooms before then.
+    // The memo's real width, known once it loads; nothing zooms before then.
     width: 0,
-    // Whether the photo has come from Google Drive yet, or failed to; the viewer says which.
+    // Whether the memo has come from Google Drive yet, or failed to; the viewer says which.
     loaded: false,
     failed: false,
     drag: null,
@@ -33,14 +53,19 @@ const memoImage = () => ({
     holding: null,
     canCopy: Boolean(navigator.clipboard?.write && window.ClipboardItem),
 
-    show({ name, url, alt, link }) {
+    show({ name, url, alt, link, kind }) {
         const same = url === this.url;
-        Object.assign(this, { name, url, alt, link, zoom: 1, drag: null, ...(same ? {} : { width: 0, fit: 1, file: null, loaded: false, failed: false }) });
-        this.$flux.modal('memo-image').show();
-        // The same photo again fires no load, so it is measured here, once the viewer has its size.
-        this.$nextTick(() => this.$refs.photo.complete && this.measure());
+        Object.assign(this, { name, url, alt, link, kind, zoom: 1, drag: null, ...(same ? {} : { width: 0, fit: 1, file: null, loaded: false, failed: false }) });
+        this.$flux.modal('memo-viewer').show();
 
-        // The browser already holds the photo for the viewer, so this comes from its cache.
+        if (kind !== 'image' && !same) {
+            this.draw();
+        }
+
+        // The same memo again fires no load, so it is measured here, once the viewer has its size.
+        this.$nextTick(() => (kind === 'image' ? this.$refs.photo.complete : this.loaded) && this.measure());
+
+        // The browser already holds the memo for the viewer, so this comes from its cache.
         if (!this.file) {
             fetch(url)
                 .then((response) => (response.ok ? response.blob() : null))
@@ -49,7 +74,27 @@ const memoImage = () => ({
         }
     },
 
-    // The share sheet gets the photo itself where the device can pass a file on, as phones can, and the
+    // A memo opened while another was drawing leaves the viewer, and its state, to the new one.
+    async draw() {
+        const { kind, url } = this;
+        this.$refs.pages.replaceChildren();
+
+        try {
+            const pages = await drawMemo(kind, url, pageLabel);
+
+            if (this.url === url) {
+                this.$refs.pages.replaceChildren(...pages);
+                this.measure();
+                this.loaded = true;
+            }
+        } catch {
+            if (this.url === url) {
+                this.failed = true;
+            }
+        }
+    },
+
+    // The share sheet gets the memo itself where the device can pass a file on, as phones can, and the
     // announcement's link where it can't. With no share sheet at all, as in Firefox on a computer, the link is copied.
     share(copied, failed) {
         const files = this.file ? [this.file] : [];
@@ -67,11 +112,19 @@ const memoImage = () => ({
             .catch(() => this.$flux.toast(failed, { variant: 'danger' }));
     },
 
-    // The fit leaves out the frame's padding, which keeps the photo clear of the buttons above and below it.
+    // The fit leaves out the frame's padding, which keeps the photo clear of the buttons above and below it. Pages fit
+    // the width alone; their real width is taken once, before any zoom.
     measure() {
         const { naturalWidth, naturalHeight } = this.$refs.photo;
         const { clientWidth, clientHeight } = this.$refs.stage;
         const { paddingTop, paddingBottom } = getComputedStyle(this.$refs.stage);
+
+        if (this.kind !== 'image') {
+            this.width ||= this.$refs.pages.offsetWidth;
+            this.fit = this.width && clientWidth ? Math.min(1, clientWidth / this.width) : 1;
+
+            return;
+        }
 
         if (naturalWidth && naturalHeight && clientWidth && clientHeight) {
             this.width = naturalWidth;
@@ -92,6 +145,10 @@ const memoImage = () => ({
         return this.zoom > 1 ? { width: `${Math.round(this.width * this.fit * this.zoom)}px` } : {};
     },
 
+    get pagesStyle() {
+        return { zoom: this.fit * this.zoom };
+    },
+
     // Zooms by a factor, keeping the point under the pointer, or the middle of the screen, where it was.
     zoomBy(factor, at = null) {
         const next = Math.min(this.maxZoom, Math.max(1, this.zoom * factor));
@@ -100,7 +157,8 @@ const memoImage = () => ({
             return;
         }
 
-        const { photo, stage } = this.$refs;
+        const { stage } = this.$refs;
+        const photo = this.kind === 'image' ? this.$refs.photo : this.$refs.pages;
         const before = photo.getBoundingClientRect();
         const frame = stage.getBoundingClientRect();
         const x = at?.clientX ?? frame.left + frame.width / 2;
@@ -188,76 +246,60 @@ const memoImage = () => ({
     },
 });
 
-// The PDF and Word memo viewer on Announcements. A PDF shows in the browser's own viewer; a Word memo is drawn as pages
-// by docx-preview, which loads on first use, so pages without one never fetch it.
-const memoPreview = () => ({
-    name: '',
-    url: '',
-    kind: null,
+// A memo folded under its row on Announcements: the picture of an image memo, or a PDF or Word memo's pages. It is
+// fetched only when first unfolded, so nothing comes from Google Drive until a member asks; a picture ends `loading`
+// from its own load event. Unfolding tells the row the memo was opened.
+const memoFold = (url, kind, pageLabel) => ({
+    open: false,
+    src: null,
     loading: false,
     failed: false,
 
-    async show({ name, url, kind }) {
-        // On a phone or tablet the frame shows a PDF poorly or not at all (Chrome on Android draws nothing, Safari on an
-        // iPhone shows only the first page), so the memo opens in a new tab in the device's own viewer. This runs inside
-        // the click, so it isn't blocked as a popup.
-        if (kind === 'pdf' && (!navigator.pdfViewerEnabled || window.matchMedia('(pointer: coarse)').matches)) {
-            window.open(url, '_blank', 'noopener');
+    async toggle() {
+        this.open = !this.open;
 
+        if (!this.open) {
             return;
         }
 
-        Object.assign(this, { name, url, kind, failed: false });
-        this.$refs.pages.replaceChildren();
-        this.$flux.modal('memo-preview').show();
+        this.$dispatch('memo-opened');
 
-        if (kind !== 'docx') {
+        if (this.src) {
             return;
         }
 
-        // A memo replaced in the viewer while it loaded leaves the viewer, and its state, to the new one.
-        const current = () => this.url === url;
+        this.src = url;
         this.loading = true;
 
-        try {
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error(`The memo could not be loaded (${response.status}).`);
-            }
-
-            const [{ renderAsync }, file] = await Promise.all([import('docx-preview'), response.blob()]);
-
-            if (current()) {
-                this.$refs.pages.style.zoom = '';
-                await renderAsync(file, this.$refs.pages);
-                this.fitPages();
-            }
-        } catch {
-            if (current()) {
-                this.failed = true;
-            }
-        } finally {
-            if (current()) {
-                this.loading = false;
-            }
+        if (kind === 'image') {
+            return;
         }
+
+        try {
+            this.$refs.pages.replaceChildren(...(await drawMemo(kind, url, pageLabel)));
+        } catch {
+            this.failed = true;
+        }
+
+        this.loading = false;
+        // The pages show only once loading ends, and are measured against their frame then.
+        this.$nextTick(() => this.fit());
     },
 
-    // Word pages keep their paper width; on a narrow screen the whole stack is scaled down to fit, so a page reads
-    // without scrolling sideways. The viewer calls it again when the window turns or resizes.
-    fitPages() {
-        const page = this.$refs.pages.querySelector('section.docx');
-        const room = this.$refs.pages.clientWidth;
+    // The pages keep their paper width; in the narrower fold the whole stack is scaled down to fit, so a page reads
+    // without scrolling sideways. The fold calls it again when the window turns or resizes.
+    fit() {
+        const page = this.$refs.pages.querySelector('section.docx, .memo-pdf > canvas');
+        const room = this.$refs.pages.parentElement.clientWidth;
 
-        if (this.kind === 'docx' && page && room) {
+        if (page && room) {
             this.$refs.pages.style.zoom = String(Math.min(1, room / (page.offsetWidth + 48)));
         }
     },
 });
 
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('memoImage', memoImage);
-    window.Alpine.data('memoPreview', memoPreview);
+    window.Alpine.data('memoViewer', memoViewer);
+    window.Alpine.data('memoFold', memoFold);
     window.Alpine.data('avatarCropper', avatarCropper);
 });

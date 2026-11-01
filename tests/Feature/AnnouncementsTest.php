@@ -123,8 +123,7 @@ class AnnouncementsTest extends TestCase
         // The current memo opens in the page's own viewer, to be checked without leaving the form.
         $page->call('edit', Announcement::sole()->id)
             ->assertSee('Current memo: first.pdf')
-            ->assertSeeHtml('data-test="preview-current-memo"')
-            ->assertSeeHtml("\$dispatch('memo-preview'")
+            ->assertSee('Preview memo: first.pdf')
             ->set('memo', $this->memo('second.pdf'))
             ->call('save')
             ->assertHasNoErrors();
@@ -203,7 +202,7 @@ class AnnouncementsTest extends TestCase
 
         // Open ones soonest first, notices newest first, and closed ones in their own list, the latest deadline first.
         $this->actingAs(User::factory()->create())->get(route('announcements.index'))
-            ->assertSeeInOrder(['Upcoming deadlines', $sooner->title, 'in 3 days', $later->title, 'General announcements', $memo->title, 'Preview memo', 'Past deadlines', $closed->title, 'Closed on', $closedFirst->title], false);
+            ->assertSeeInOrder(['Upcoming deadlines', $sooner->title, 'in 3 days', $later->title, 'General announcements', $memo->title, 'Show memo', 'Past deadlines', $closed->title, 'Closed on', $closedFirst->title], false);
 
         // With nothing open, the closed ones still keep to their own list.
         $sooner->delete();
@@ -358,11 +357,11 @@ class AnnouncementsTest extends TestCase
         $page->call('create')->set('title', 'With a PDF')->set('description', 'See the memo.')->set('memo', $this->memo())->call('save');
 
         // Only the one without a memo is read by being on screen; the others wait for their memo to be opened, by Show
-        // image, Preview memo, or downloading it.
+        // image, Show memo, Preview memo, or downloading it.
         $html = $this->actingAs($faculty)->get(route('announcements.index'))->getContent();
         $this->assertSame(1, substr_count($html, 'x-intersect:enter'));
-        $this->assertStringContainsString('open = ! open; open && read()', $html);
-        $this->assertSame(2, substr_count($html, 'x-on:click="read(); $dispatch(\'memo-'));
+        $this->assertSame(2, substr_count($html, 'x-on:memo-opened="read()"'));
+        $this->assertSame(2, substr_count($html, 'x-on:click="$dispatch(\'memo-opened\'); $dispatch(\'memo-viewer\''));
     }
 
     public function test_the_page_shows_new_announcements_when_the_sidebar_finds_them(): void
@@ -422,33 +421,35 @@ class AnnouncementsTest extends TestCase
         $image = $memo('Schedule.PNG');
         $pdf = $memo('Memorandum.pdf');
         $docx = $memo('Guidelines.docx');
-        $memo('Old memo.doc');
+        $doc = $memo('Old memo.doc');
 
         $this->assertSame(['image', 'pdf', 'docx', null], Announcement::orderBy('id')->get()->map->memoPreview()->all());
 
-        // An image shows on the page, folded on an older announcement, and opens in the viewer like a PDF or .docx; an
-        // old .doc only downloads.
+        // An image, a PDF and a .docx work alike: each unfolds on the page, starting folded, and opens full screen in the
+        // memo viewer rather than a new tab. An old .doc only downloads.
         $this->actingAs(User::factory()->create())->get(route('announcements.index'))
             // Folded, the picture gets its address only when first unfolded, so it is never fetched before.
             ->assertSee(str_replace('/', '\/', $image->memoPreviewUrl()), false)
             ->assertDontSee('src="'.e($image->memoPreviewUrl()).'"', false)
             ->assertSee('Show image')
-            // While Google Drive sends the picture it says so, and if it never comes the memo still downloads.
-            ->assertSeeHtml('data-test="memo-image-loading"')
-            ->assertSeeHtml('data-test="memo-image-failed"')
-            ->assertSee('The image could not be shown here. Download the memo to see it.')
+            ->assertSee('Show memo')
+            ->assertSeeHtml('aria-controls="memo-fold-'.$pdf->id.'"')
+            ->assertSeeHtml('aria-controls="memo-fold-'.$docx->id.'"')
+            ->assertDontSeeHtml('aria-controls="memo-fold-'.$doc->id.'"')
+            // While Google Drive sends the memo it says so, and if it never comes the memo still downloads.
+            ->assertSeeHtml('data-test="memo-loading"')
+            ->assertSeeHtml('data-test="memo-failed"')
+            ->assertSee('The memo could not be shown here. Download the memo to see it.')
             ->assertSee('Preview memo: Schedule.PNG')
             ->assertSee('Preview memo: Memorandum.pdf')
             ->assertSee('Preview memo: Guidelines.docx')
             ->assertSee('Download memo: Old memo.doc')
-            ->assertSee('data-test="memo-preview"', false)
-            // An image opens in its own full-screen viewer rather than a new tab.
-            ->assertSee("\$dispatch('memo-image'", false)
-            ->assertSee('data-test="memo-image-viewer"', false)
+            ->assertSee("\$dispatch('memo-viewer'", false)
+            ->assertSee('data-test="memo-viewer"', false)
             ->assertSeeHtml('data-test="zoom-in"')
             ->assertSeeHtml('data-test="zoom-out"')
-            // Share hands over the image, or the announcement's own link.
-            ->assertSeeHtml('data-test="share-image"')
+            // Share hands over the memo, or the announcement's own link.
+            ->assertSeeHtml('data-test="share-memo"')
             ->assertSee('announcements?show='.$image->id.'#announcement-'.$image->id, false)
             ->assertDontSee('target="_blank" rel="noopener" class="block overflow-hidden', false);
     }

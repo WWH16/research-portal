@@ -459,58 +459,8 @@ new #[Title('Announcements')] class extends Component {
                                 </flux:button>
                             </div>
 
-                            @php($preview = $announcement->attachment_path ? $announcement->memoPreview() : null)
-
-                            {{-- Starts folded, and the image gets its address only when first unfolded, so nothing is fetched
-                                 from Google Drive (about 100 KB and a second or more each) until the member asks. Show image
-                                 unfolds it here, its arrow turning over when open; Preview memo opens it full screen. On a
-                                 phone the two buttons wrap under each other rather than running past the row. --}}
-                            @if ($preview === 'image')
-                                @php($image = ['name' => $announcement->attachment_name, 'url' => $announcement->memoUrl(), 'alt' => $announcement->attachment_alt ?: __('Memo: :name', ['name' => $announcement->attachment_name]), 'link' => route('announcements.index', ['show' => $announcement->id]).'#announcement-'.$announcement->id])
-                                <div x-data="{ open: false, loaded: false, failed: false }" class="mt-4" data-test="memo-image">
-                                    <div class="flex max-w-xl flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2">
-                                        <flux:icon icon="photo" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
-                                        <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$announcement->attachment_name">{{ $announcement->attachment_name }}</flux:text>
-                                        <div class="flex flex-wrap gap-2">
-                                            <flux:button size="sm" variant="ghost" icon:trailing="chevron-down" icon-trailing:class="in-aria-expanded:rotate-180" class="max-sm:h-11" x-on:click="open = ! open; open && read()" x-bind:aria-expanded="open" aria-expanded="false" aria-controls="memo-image-{{ $announcement->id }}" data-test="toggle-memo-image">
-                                                <span x-text="open ? @js(__('Hide image')) : @js(__('Show image'))">{{ __('Show image') }}</span>
-                                            </flux:button>
-                                            <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="read(); $dispatch('memo-image', {{ Js::from($image) }})" :aria-label="__('Preview memo: :name', ['name' => $announcement->attachment_name])">
-                                                {{ __('Preview memo') }}
-                                            </flux:button>
-                                        </div>
-                                    </div>
-                                    <div id="memo-image-{{ $announcement->id }}" x-show="open" x-collapse x-cloak class="pt-2">
-                                        {{-- While Google Drive sends the picture it says so, and if it never comes the memo can still be
-                                             downloaded. Under the pointer the photo's frame darkens, a hint that it opens larger. --}}
-                                        <flux:text x-show="! loaded && ! failed" role="status" data-test="memo-image-loading">{{ __('Loading the image…') }}</flux:text>
-                                        <div x-show="failed" x-cloak role="alert" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-test="memo-image-failed">
-                                            <flux:text>{{ __('The image could not be shown here. Download the memo to see it.') }}</flux:text>
-                                            <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="read()">{{ __('Download memo') }}</flux:button>
-                                        </div>
-                                        <button type="button" x-show="loaded" x-on:click="$dispatch('memo-image', {{ Js::from($image) }})" class="block w-fit max-w-full cursor-zoom-in overflow-hidden rounded-lg border border-line hover:border-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                                            <img x-init="$watch('open', () => $el.src = @js($announcement->memoPreviewUrl()))" x-on:load="loaded = true" x-on:error="failed = true" alt="{{ $announcement->attachment_alt ? __(':description (opens the memo viewer)', ['description' => $announcement->attachment_alt]) : __('Memo: :name (opens the memo viewer)', ['name' => $announcement->attachment_name]) }}" decoding="async" class="max-h-96 w-auto" />
-                                        </button>
-                                    </div>
-                                </div>
-                            @elseif ($announcement->attachment_path)
-                                {{-- A PDF or Word memo is a file row: what it is, then the one thing to do with it. On a phone the button
-                                     drops under the name rather than cutting the name short. --}}
-                                <div class="mt-4 flex max-w-xl flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2" data-test="memo-file">
-                                    <flux:icon :icon="$preview === 'pdf' ? 'document-text' : 'document'" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
-                                    <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$announcement->attachment_name">{{ $announcement->attachment_name }}</flux:text>
-                                    @if ($preview)
-                                        {{-- 44px tall on a phone, like the actions button, for the thumb --}}
-                                        <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="read(); $dispatch('memo-preview', {{ Js::from(['name' => $announcement->attachment_name, 'url' => $announcement->memoUrl(), 'kind' => $preview]) }})" :aria-label="__('Preview memo: :name', ['name' => $announcement->attachment_name])" data-test="preview-memo">
-                                            {{ __('Preview memo') }}
-                                        </flux:button>
-                                    @else
-                                        {{-- An old .doc can't be shown in a browser, so it downloads --}}
-                                        <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="read()" :aria-label="__('Download memo: :name', ['name' => $announcement->attachment_name])" data-test="download-memo">
-                                            {{ __('Download memo') }}
-                                        </flux:button>
-                                    @endif
-                                </div>
+                            @if ($announcement->attachment_path)
+                                <x-memo :announcement="$announcement" class="mt-4" x-on:memo-opened="read()" />
                             @endif
 
                             {{-- An edit is said beside the post, with its own date, so a changed deadline or memo is never
@@ -536,23 +486,27 @@ new #[Title('Announcements')] class extends Component {
         </section>
     @endforeach
 
-    {{-- An image memo opens on its own: the photo alone on a dark ground, as large as the screen allows, with nothing
-         beside it. Its file actions float at the top edge, Close at the corner, and the zoom controls at the bottom edge.
-         A click beside the photo or Escape closes it too. The variant is bare, and its size and ground are forced past
-         the phone rule for dialogs in app.css. --}}
-    <flux:modal name="memo-image" variant="bare" class="m-0 size-full max-h-none! max-w-none! bg-black/85! p-0!" aria-labelledby="memo-image-heading" data-test="memo-image-viewer">
-        <div x-data="memoImage" x-on:memo-image.window="show($event.detail)" x-on:keydown.window="key($event)" x-on:resize.window.debounce="measure()" x-on:pointerup.window="release()" x-on:pointercancel.window="release()" class="relative size-full">
-            <h2 id="memo-image-heading" class="sr-only" x-text="name"></h2>
+    {{-- A memo opens on its own: the memo alone on a dark ground, as large as the screen allows, with nothing beside it.
+         Its file actions float at the top edge, Close at the corner, and the zoom controls at the bottom edge. A click
+         beside the memo or Escape closes it too. The variant is bare, and its size and ground are forced past the phone
+         rule for dialogs in app.css. --}}
+    <flux:modal name="memo-viewer" variant="bare" class="m-0 size-full max-h-none! max-w-none! bg-black/85! p-0!" aria-labelledby="memo-viewer-heading" data-test="memo-viewer">
+        <div x-data="memoViewer(@js(__('Page :number of :total')))" x-on:memo-viewer.window="show($event.detail)" x-on:keydown.window="key($event)" x-on:resize.window.debounce="measure()" x-on:pointerup.window="release()" x-on:pointercancel.window="release()" class="relative size-full">
+            <h2 id="memo-viewer-heading" class="sr-only" x-text="name"></h2>
 
-            {{-- Fitted, the photo is whole at any size: a tall poster is scaled to the screen's height, a wide one to its
-                 width. Zoomed, it grows past the screen and this frame scrolls; a mouse drags it, a finger or trackpad
-                 scrolls it. The auto margins centre a fitted photo and let a zoomed one scroll to every edge. The frame
-                 keeps clear of the buttons above and below, so they never cover the top or foot of a fitted photo. --}}
-            <div x-ref="stage" x-on:click.self="$flux.modal('memo-image').close()" x-on:wheel="wheel($event)" class="flex size-full overflow-auto py-16 [scrollbar-width:none]">
+            {{-- Fitted, a photo is whole at any size: a tall poster is scaled to the screen's height, a wide one to its
+                 width. A PDF or Word memo's pages are fitted to the screen's width and scroll down. Zoomed, the memo grows
+                 past the screen and this frame scrolls; a mouse drags a photo, a finger or trackpad scrolls either. The
+                 auto margins centre a fitted memo and let a zoomed one scroll to every edge. The frame keeps clear of the
+                 buttons above and below, so they never cover the top or foot of a fitted photo. wire:ignore keeps a
+                 Livewire refresh of the page from clearing pages already drawn. --}}
+            <div x-ref="stage" x-on:click.self="$flux.modal('memo-viewer').close()" x-on:wheel="wheel($event)" class="flex size-full overflow-auto py-16 [scrollbar-width:none]">
+                {{-- Laid out while hidden, so the pages can be measured the moment they are drawn --}}
+                <div x-ref="pages" x-show="kind !== 'image'" x-bind:class="{ invisible: ! loaded }" x-bind:style="pagesStyle" wire:ignore class="m-auto w-max shrink-0" data-memo-pages></div>
                 <img
                     x-ref="photo"
-                    x-show="loaded"
-                    x-bind:src="url || null"
+                    x-show="kind === 'image' && loaded"
+                    x-bind:src="kind === 'image' ? url : null"
                     x-bind:alt="alt"
                     x-bind:style="photoStyle"
                     x-bind:class="zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'max-h-full max-w-full'"
@@ -565,15 +519,16 @@ new #[Title('Announcements')] class extends Component {
                 />
             </div>
 
-            {{-- Google Drive can take a second or more to send the photo, and may not send it at all --}}
-            <flux:text x-show="! loaded && ! failed" role="status" class="pointer-events-none absolute inset-0 m-auto size-fit text-zinc-200">{{ __('Loading the image…') }}</flux:text>
-            <flux:text x-show="failed" x-cloak role="alert" class="pointer-events-none absolute inset-0 m-auto size-fit px-6 text-center text-zinc-200">{{ __('The image could not be loaded. Close the viewer and try again later.') }}</flux:text>
+            {{-- Google Drive can take a second or more to send the memo, and may not send it at all --}}
+            <flux:text x-show="! loaded && ! failed" role="status" class="pointer-events-none absolute inset-0 m-auto size-fit text-zinc-200">{{ __('Loading the memo…') }}</flux:text>
+            <flux:text x-show="failed" x-cloak role="alert" class="pointer-events-none absolute inset-0 m-auto size-fit px-6 text-center text-zinc-200">{{ __('The memo could not be loaded. Close the viewer and try again later.') }}</flux:text>
 
-            {{-- Zoom, only when the member asks: out, the share of the photo's real size now shown (a click fits it back to
+            {{-- Zoom, only when the member asks: out, the share of the memo's real size now shown (a click fits it back to
                  the screen), and in. A press steps to the next ten percent; holding a button then goes on a point at a time.
                  A press from the keyboard (detail 0) steps once. Also Ctrl or ⌘ with the scroll wheel or a trackpad pinch,
-                 and the + − 0 keys. A click on the photo itself does nothing. --}}
-            <div class="absolute bottom-3 start-1/2 -translate-x-1/2">
+                 and the + − 0 keys. A click on the memo itself does nothing. --}}
+            {{-- On a white ground, so pages scrolling under it never show through a disabled button --}}
+            <div class="absolute bottom-3 start-1/2 -translate-x-1/2 rounded-lg bg-white">
                 {{-- No tooltips here: they would sit between the group and its buttons and break its joined edges --}}
                 <flux:button.group>
                     <flux:button icon="magnifying-glass-minus" class="max-sm:size-11" x-on:pointerdown="hold(-1)" x-on:click="$event.detail || nudge(-1)" x-bind:disabled="zoom <= 1" :aria-label="__('Zoom out')" data-test="zoom-out" />
@@ -586,47 +541,20 @@ new #[Title('Announcements')] class extends Component {
             </div>
 
             <div class="absolute end-3 top-3 flex gap-2">
-                <flux:tooltip :content="__('Copy image')" x-show="canCopy">
+                <flux:tooltip :content="__('Copy image')" x-show="canCopy && kind === 'image'">
                     <flux:button icon="clipboard-document" class="max-sm:size-11" x-bind:disabled="! file" x-on:click="copyImage({{ Js::from(__('Image copied.')) }}, {{ Js::from(__('The image could not be copied. Download it instead.')) }})" :aria-label="__('Copy image')" data-test="copy-image" />
                 </flux:tooltip>
                 <flux:tooltip :content="__('Download')">
                     <flux:button icon="arrow-down-tray" class="max-sm:size-11" href="#" x-bind:href="url" download :aria-label="__('Download')" />
                 </flux:tooltip>
                 <flux:tooltip :content="__('Share')">
-                    <flux:button icon="share" class="max-sm:size-11" x-on:click="share({{ Js::from(__('Link to the announcement copied.')) }}, {{ Js::from(__('The announcement could not be shared. Download the image instead.')) }})" :aria-label="__('Share')" data-test="share-image" />
+                    <flux:button icon="share" class="max-sm:size-11" x-on:click="share({{ Js::from(__('Link to the announcement copied.')) }}, {{ Js::from(__('The announcement could not be shared. Download the memo instead.')) }})" :aria-label="__('Share')" data-test="share-memo" />
                 </flux:tooltip>
                 <flux:tooltip :content="__('Close')">
                     <flux:modal.close>
                         <flux:button icon="x-mark" class="max-sm:size-11" :aria-label="__('Close')" />
                     </flux:modal.close>
                 </flux:tooltip>
-            </div>
-        </div>
-    </flux:modal>
-
-    {{-- The viewer for PDF and Word memos; the Preview memo buttons fill it, so opening one asks nothing of the server but
-         the file itself. It fills the screen and only the memo inside it scrolls, so there is one scrollbar, never one
-         for the dialog and another for the memo. --}}
-    <flux:modal name="memo-preview" class="w-full max-w-5xl" aria-labelledby="memo-preview-heading" data-test="memo-preview">
-        <div x-data="memoPreview" x-on:memo-preview.window="show($event.detail)" x-on:resize.window.debounce="fitPages()" class="flex h-[calc(100dvh-6rem)] flex-col gap-4">
-            {{-- The memo's name, then what can be done with it, above the memo as in a file viewer; the end is kept clear
-                 for the dialog's close button --}}
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 pe-10">
-                <flux:heading size="lg" id="memo-preview-heading" class="min-w-0 flex-1 basis-48 truncate" x-text="name" x-bind:title="name"></flux:heading>
-                <div class="flex flex-wrap gap-2">
-                    <flux:button size="sm" icon="arrow-down-tray" href="#" x-bind:href="url" download>{{ __('Download') }}</flux:button>
-                    <flux:button size="sm" icon="arrow-top-right-on-square" href="#" x-bind:href="url" target="_blank" rel="noopener" x-show="kind === 'pdf'">{{ __('Open in a new tab') }}</flux:button>
-                </div>
-            </div>
-
-            <div class="min-h-0 flex-1 overflow-hidden rounded-md border border-line bg-zinc-100">
-                <iframe x-show="kind === 'pdf'" x-bind:src="kind === 'pdf' ? url : 'about:blank'" x-bind:title="name" class="size-full"></iframe>
-
-                <div x-show="kind === 'docx'" class="h-full overflow-auto [scrollbar-width:thin]" data-memo-pages>
-                    <flux:text x-show="loading" class="p-6" role="status">{{ __('Loading the memo…') }}</flux:text>
-                    <flux:text x-show="failed" x-cloak class="p-6" role="alert">{{ __('The memo could not be shown here. Download it to read it.') }}</flux:text>
-                    <div x-ref="pages"></div>
-                </div>
             </div>
         </div>
     </flux:modal>
@@ -690,23 +618,9 @@ new #[Title('Announcements')] class extends Component {
                             @if ($memo)
                                 <flux:text size="sm" class="wrap-anywhere">{{ __('Replaces :name.', ['name' => $this->editing->attachment_name]) }}</flux:text>
                             @else
-                                {{-- The current memo, as a file row like the page's. Preview memo opens the page's own viewer above
-                                     the form, with its zoom, so the admin checks it without leaving the form; an old .doc has no
-                                     preview. --}}
-                                @php($kind = $this->editing->memoPreview())
-                                {{-- Inline @php only: a @php block here would pair with the file's inline ones and break the view --}}
-                                @php($viewer = [$kind === 'image' ? 'memo-image' : 'memo-preview', ['name' => $this->editing->attachment_name, 'url' => $this->editing->memoUrl()] + ($kind === 'image'
-                                    ? ['alt' => $this->editing->attachment_alt ?: __('Memo: :name', ['name' => $this->editing->attachment_name]), 'link' => route('announcements.index', ['show' => $this->editing->id]).'#announcement-'.$this->editing->id]
-                                    : ['kind' => $kind])])
-                                <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2">
-                                    <flux:icon :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', default => 'document' }" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
-                                    <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$this->editing->attachment_name">{{ __('Current memo: :name', ['name' => $this->editing->attachment_name]) }}</flux:text>
-                                    @if ($kind)
-                                        <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="$dispatch(@js($viewer[0]), @js($viewer[1]))" :aria-label="__('Preview memo: :name', ['name' => $this->editing->attachment_name])" data-test="preview-current-memo">
-                                            {{ __('Preview memo') }}
-                                        </flux:button>
-                                    @endif
-                                </div>
+                                {{-- The current memo, as a file row like the page's, so the admin checks it without leaving the
+                                     form: Preview memo opens the page's own viewer above the form, with its zoom --}}
+                                <x-memo :announcement="$this->editing" :label="__('Current memo: :name', ['name' => $this->editing->attachment_name])" :fold="false" />
 
                                 <flux:checkbox wire:model.live="removeMemo" :label="__('Remove the memo')" />
                             @endif

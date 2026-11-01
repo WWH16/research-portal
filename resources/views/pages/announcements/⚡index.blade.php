@@ -707,13 +707,6 @@ new #[Title('Announcements')] class extends Component {
                     </div>
                 </div>
 
-                {{-- Who hears of it, before the admin presses the button --}}
-                <flux:text size="sm">
-                    {{ $editingId
-                        ? __('Saving a change sends every faculty member a portal notice that this announcement was updated.')
-                        : __('Posting sends every faculty member a portal notice.') }}
-                </flux:text>
-
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     {{-- Says why Cancel has gone quiet, and that the dialog closes by itself --}}
                     <flux:text size="sm" wire:loading wire:target="save" role="status" class="me-auto" data-test="posting-status">

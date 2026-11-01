@@ -276,8 +276,8 @@ class AnnouncementsTest extends TestCase
         $admin = $this->admin();
         $page = Livewire::actingAs($admin)->test('pages::announcements.index')
             ->call('create')
-            // The form says who hears of it before the admin saves.
-            ->assertSee('Posting sends every faculty member a portal notice.')
+            // The form doesn't spell out who hears of it.
+            ->assertDontSee('portal notice')
             ->set('title', 'Schedule of Submission of Concept Proposals')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
             ->set('dueOn', '2026-11-15')
@@ -288,7 +288,7 @@ class AnnouncementsTest extends TestCase
         // Saving an edit that changed nothing tells no one, and the announcement isn't marked edited.
         $this->travelTo('2026-11-01 10:00');
         $page->call('edit', $announcement->id)
-            ->assertSee('Saving a change sends every faculty member a portal notice that this announcement was updated.')
+            ->assertDontSee('portal notice')
             ->call('save');
         $this->assertSame(1, $faculty->notifications()->count());
         $this->assertStringNotContainsString('edited on', $this->actingAs($faculty)->get(route('announcements.index'))->getContent());

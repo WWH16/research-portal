@@ -229,7 +229,16 @@ new #[Title('Notifications')] class extends Component {
     @endif
 
     @if ($this->notifications->isEmpty())
-        <flux:text class="mt-8">{{ __('No notifications yet.') }}</flux:text>
+        {{-- What arrives here differs by role: faculty hear about their projects, admins about finished projects and storage --}}
+        <x-empty-state
+            icon="bell"
+            :heading="__('No notifications yet.')"
+            :text="auth()->user()->isAdmin()
+                ? __('Completed projects and Google Drive storage problems will appear here.')
+                : __('Concept proposal reviews, project deadline reminders and Research Office announcements will appear here.')"
+            class="mt-8"
+            data-test="no-notifications"
+        />
     @else
         <ul class="divide-y divide-line">
             @foreach ($this->notifications as $notification)

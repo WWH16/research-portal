@@ -19,7 +19,7 @@
 <flux:card class="lg:col-span-12" data-test="monthly-chart">
     <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <div>
-            <flux:heading size="lg" :level="$level ?? 2">{{ $heading }}</flux:heading>
+            <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
             <flux:text class="mt-1">{{ __(':period, by current status.', ['period' => ucfirst($period)]) }}</flux:text>
         </div>
 

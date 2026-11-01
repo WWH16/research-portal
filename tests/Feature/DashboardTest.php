@@ -50,7 +50,7 @@ class DashboardTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_admins_see_projects_waiting_for_review_longest_first(): void
+    public function test_admins_are_told_how_many_proposals_wait_for_review_and_how_long(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');
 
@@ -64,13 +64,12 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
+        // One line above the counts instead of the list, which lives on Concept Reviews
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeInOrder(['Concept proposals to review', 'Proposal 1', 'Proposal 5'])
-            ->assertDontSee('Proposal 6')
-            ->assertDontSee('Already reviewed')
-            ->assertSee('View all 6')
-            ->assertSee(route('reviews.index', ['review' => Submission::firstWhere('title', 'Proposal 1')->id]), escape: false)
+            ->assertSee('6 concept proposals are waiting for review.')
+            ->assertSee('The oldest has waited '.Submission::firstWhere('title', 'Proposal 1')->updated_at->diffForHumans(null, true).'.')
+            ->assertDontSee('Proposal 1')
             ->assertSee(route('reviews.index'), escape: false);
     }
 

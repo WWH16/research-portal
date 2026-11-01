@@ -156,6 +156,12 @@
     color: var(--color-zinc-500);
 }
 
+/* Flux draws callout headings a step lighter than their text, and the yellow one (yellow-600 on yellow-50) falls to
+   2.8:1; the text's colour clears 4.5:1 in every hue, and the heading's weight still sets it apart. */
+[data-flux-callout] {
+    --callout-heading: var(--callout-text);
+}
+
 input:focus[data-flux-control],
 textarea:focus[data-flux-control],
 select:focus[data-flux-control] {

@@ -19,9 +19,9 @@ use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /*
- * Admins get the concept proposal review queue first, then faculty progress for a filing-date range: faculty counts
- * per stage, each opening the faculty behind it and exportable as a report, the monthly trend as stacked columns, and
- * "where from / what about" as ranked horizontal bars. Faculty get what needs their attention, their projects beside
+ * Admins get one line on the concept proposals waiting for review, then faculty progress for a filing-date range:
+ * faculty counts per stage, each opening the faculty behind it and exportable as a report, the monthly trend as
+ * stacked columns, and "where from / what about" as ranked horizontal bars. Faculty get what needs their attention, their projects beside
  * the button that starts a new one, then their counts and monthly trend.
  */
 new #[Title('Dashboard')] class extends Component {
@@ -310,16 +310,12 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Projects with a new or corrected concept proposal the Research Office hasn't reviewed, longest waiting first.
+     * When the longest-waiting new or corrected concept proposal the Research Office hasn't reviewed was last updated.
      */
     #[Computed]
-    public function waiting(): Collection
+    public function oldestWaiting(): ?CarbonInterface
     {
-        return Submission::where('awaiting_review', true)
-            ->with(['user:id,name', 'department:id,code'])
-            ->oldest('updated_at')
-            ->limit(5)
-            ->get();
+        return Submission::where('awaiting_review', true)->oldest('updated_at')->value('updated_at');
     }
 
     #[Computed]
@@ -442,217 +438,202 @@ new #[Title('Dashboard')] class extends Component {
             </div>
         @endif
 
-        {{-- The review queue leads: clearing it is what the Research Office comes here to do. New and corrected concept
-             proposals, longest waiting first, so nothing waits forever. With none waiting it shrinks to one line --}}
-        @if ($this->waiting->isEmpty())
+        {{-- Proposals waiting for review get one line above the counts, in pastel seal gold, with the way to Concept
+             Reviews, where the list itself lives. With none waiting the line says so --}}
+        @if ($this->waitingCount === 0)
             <x-empty-state inline good icon="check-circle" :heading="__('No concept proposals are waiting for review.')" class="mt-6" data-test="waiting-tile" />
         @else
-            <flux:card class="mt-6" data-test="waiting-tile">
-                <div class="flex items-baseline justify-between gap-4">
-                    <flux:heading size="lg" level="2">{{ __('Concept proposals to review') }}</flux:heading>
-                    <flux:link :href="route('reviews.index')" wire:navigate class="shrink-0 text-sm">{{ __('View all :count', ['count' => $this->waitingCount]) }}</flux:link>
-                </div>
-
-                <ul class="mt-4 divide-y divide-line">
-                    @foreach ($this->waiting as $submission)
-                        {{-- Phones wrap the title to two lines instead of cutting it to a few words beside the button --}}
-                        <li class="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-                            <div class="min-w-0 flex-1">
-                                <p class="line-clamp-2 text-sm font-medium text-zinc-800 sm:line-clamp-1">{{ $submission->displayTitle() }}</p>
-                                <p class="text-sm text-zinc-500 sm:truncate">
-                                    {{ $submission->user->name }}, {{ $submission->department->code }}.
-                                    {{ __('At :status, updated :when', ['status' => __($submission->status), 'when' => $submission->updated_at->diffForHumans()]) }}
-                                </p>
-                            </div>
-                            <flux:button size="sm" :href="route('reviews.index', ['review' => $submission->id])" wire:navigate class="shrink-0 max-sm:h-11 max-sm:px-4">{{ __('Review') }}</flux:button>
-                        </li>
-                    @endforeach
-                </ul>
-            </flux:card>
+            <flux:callout icon="inbox-arrow-down" inline class="mt-6 [--callout-background:var(--color-highlight-soft)]! [--callout-border:var(--color-isu-gold-200)]! [--callout-icon:var(--color-isu-gold-600)]! [--callout-text:var(--color-isu-gold-800)]!" data-test="waiting-tile">
+                <flux:callout.heading>{{ trans_choice('{1} One concept proposal is waiting for review.|[2,*] :count concept proposals are waiting for review.', $this->waitingCount) }}</flux:callout.heading>
+                <flux:callout.text>{{ trans_choice('{1} It has waited :wait.|[2,*] The oldest has waited :wait.', $this->waitingCount, ['wait' => $this->oldestWaiting->diffForHumans(null, true)]) }}</flux:callout.text>
+                <x-slot name="actions" class="max-sm:grid">
+                    <flux:button size="sm" :href="route('reviews.index')" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Review them') }}</flux:button>
+                </x-slot>
+            </flux:callout>
         @endif
 
-        {{-- Faculty progress. The filters sit with what they narrow, not over the review queue, which they leave alone --}}
-        <section class="mt-10" aria-labelledby="progress-heading">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <flux:heading size="lg" level="2" id="progress-heading" class="text-xl!">{{ __('Faculty progress') }}</flux:heading>
+        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {{-- Faculty progress, with the filters beside its heading: they narrow the counts and charts below --}}
+            <section class="lg:col-span-12" aria-labelledby="progress-heading">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <flux:heading size="lg" level="2" id="progress-heading" class="text-xl!">{{ __('Faculty progress') }}</flux:heading>
 
-                {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
-                     the quick-range button share the first row, so the two dates get the whole second row and show in full --}}
-                <div class="flex w-full flex-wrap gap-3 sm:w-auto">
-                    <flux:select wire:model.live="department" :aria-label="__('College')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
-                        <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
-                        @foreach (Department::orderBy('code')->pluck('code') as $option)
-                            <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
+                    {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
+                         the quick-range button share the first row, so the two dates get the whole second row and show in full --}}
+                    <div class="flex w-full flex-wrap gap-3 sm:w-auto">
+                        <flux:select wire:model.live="department" :aria-label="__('College')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
+                            <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                            @foreach (Department::orderBy('code')->pluck('code') as $option)
+                                <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
 
-                    <div class="flex w-full items-center gap-2 max-sm:order-last sm:w-auto" data-test="date-range">
-                        {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                        <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
-                        <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
-                        <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
+                        <div class="flex w-full items-center gap-2 max-sm:order-last sm:w-auto" data-test="date-range">
+                            {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
+                            <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
+                            <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
+                            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
+                        </div>
+
+                        <flux:dropdown position="bottom" align="end">
+                            <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" class="max-sm:size-11" />
+                            <flux:menu>
+                                <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
+                                @if (now()->year > Submission::FIRST_YEAR)
+                                    <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
+                                @endif
+                                <flux:menu.item wire:click="preset('last-12-months')">{{ __('Last 12 months') }}</flux:menu.item>
+                            </flux:menu>
+                        </flux:dropdown>
                     </div>
-
-                    <flux:dropdown position="bottom" align="end">
-                        <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" class="max-sm:size-11" />
-                        <flux:menu>
-                            <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
-                            @if (now()->year > Submission::FIRST_YEAR)
-                                <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
-                            @endif
-                            <flux:menu.item wire:click="preset('last-12-months')">{{ __('Last 12 months') }}</flux:menu.item>
-                        </flux:menu>
-                    </flux:dropdown>
                 </div>
-            </div>
 
-            <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
                 {{-- Faculty counts by stage, each opening the list of faculty behind it. One strip split by hairlines: pairs on
                      phones, rows of three, then all six in a row once each has room for its note --}}
-                <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line lg:col-span-12 lg:grid-cols-3 xl:grid-cols-6 *:first:rounded-tl-cell *:last:rounded-br-cell max-lg:*:nth-2:rounded-tr-cell max-lg:*:nth-5:rounded-bl-cell lg:max-xl:*:nth-3:rounded-tr-cell lg:max-xl:*:nth-4:rounded-bl-cell xl:*:first:rounded-bl-cell xl:*:last:rounded-tr-cell" data-test="summary-tiles">
+                <div class="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line lg:grid-cols-3 xl:grid-cols-6 *:first:rounded-tl-cell *:last:rounded-br-cell max-lg:*:nth-2:rounded-tr-cell max-lg:*:nth-5:rounded-bl-cell lg:max-xl:*:nth-3:rounded-tr-cell lg:max-xl:*:nth-4:rounded-bl-cell xl:*:first:rounded-bl-cell xl:*:last:rounded-tr-cell" data-test="summary-tiles">
                     @foreach ($kpis as $key => $kpi)
                         @include('partials.stat-tile', $kpi + ['value' => $facultyCounts[$key], 'href' => route('dashboard', $filters + ['group' => $key]).'#faculty-list', 'group' => $key])
                     @endforeach
                 </div>
+            </section>
 
-                {{-- Trend over time, split by status: stacked columns --}}
-                @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope, 'level' => 3])
+            {{-- Trend over time, split by status: stacked columns --}}
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope])
 
-                {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
-                @foreach ($this->breakdowns as $heading => $rows)
-                    {{-- Colleges and categories side by side; the category chart alone takes the row once a college is picked --}}
-                    <flux:card @class(['lg:col-span-6' => count($this->breakdowns) > 1, 'lg:col-span-12' => count($this->breakdowns) === 1])>
-                        <flux:heading size="lg" level="3">{{ $heading }}</flux:heading>
+            {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
+            @foreach ($this->breakdowns as $heading => $rows)
+                {{-- Colleges and categories side by side; the category chart alone takes the row once a college is picked --}}
+                <flux:card @class(['lg:col-span-6' => count($this->breakdowns) > 1, 'lg:col-span-12' => count($this->breakdowns) === 1])>
+                    <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
 
-                        @if ($rows->isEmpty())
-                            <x-empty-state inline icon="chart-bar" :heading="__('No projects for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
-                        @else
-                            @php
-                                $most = $rows->max('count');
-                            @endphp
-                            <dl class="mt-5 grid gap-3">
-                                @foreach ($rows as $row)
-                                    <div class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3 text-sm">
-                                        <dt class="truncate text-zinc-800" title="{{ $row['title'] }}">{{ $row['label'] }}</dt>
-                                        <dd class="flex items-center gap-2 border-s border-zinc-300 py-0.5">
-                                            <span class="h-4 rounded-e bg-isu-green-600" style="width: {{ max(2, $row['count'] / $most * 80) }}%" aria-hidden="true"></span>
-                                            <span class="font-medium tabular-nums text-zinc-700">{{ $row['count'] }}</span>
-                                        </dd>
-                                    </div>
-                                @endforeach
-                            </dl>
-                        @endif
-                    </flux:card>
-                @endforeach
-            </div>
-
-            {{-- The faculty behind a count open in a flyout. Only this island re-renders on tile and page clicks;
-                 closing it clears the group --}}
-            @island(name: 'faculty-list', always: true)
-            <flux:modal name="faculty-list" variant="flyout" class="w-full max-w-none md:w-xl" aria-labelledby="faculty-list-heading" wire:close="$set('group', '')">
-            @if ($this->groupLabel)
-                @php
-                    $faculty = $this->groupFaculty;
-                    $where = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
-                @endphp
-                {{-- Keyed by group, so a newly opened group opens the panel; switching pages leaves it open as it is --}}
-                <div id="faculty-list" wire:key="faculty-list-{{ $group }}" x-init="$flux.modal('faculty-list').show()" data-test="faculty-list">
-                    {{-- Clear of the panel's close button at the top right. Flux focuses nothing in a dialog it opens, so the heading
-                         takes focus and is what a screen reader announces --}}
-                    <div class="pe-10">
-                        <flux:heading size="lg" level="2" id="faculty-list-heading" tabindex="-1" autofocus class="outline-none">{{ $this->groupLabel }}, {{ $where }}</flux:heading>
-                        <flux:text class="mt-1 tabular-nums">{{ trans_choice('{0} No faculty|{1} One faculty member|[2,*] :count faculty', $faculty->total(), ['count' => number_format($faculty->total())]) }}</flux:text>
-                    </div>
-
-                    @if ($faculty->isNotEmpty())
-                        <flux:button size="sm" icon="arrow-down-tray" wire:click="export" data-test="export-button" class="mt-4 max-sm:h-11 max-sm:px-4">{{ __('Export CSV') }}</flux:button>
-                    @endif
-
-                    {{-- An empty list is one line with an icon: a check when empty is good news --}}
-                    @if ($faculty->isEmpty() && $group === 'pending')
-                        <x-empty-state inline good icon="check-circle" :heading="__('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel])" class="mt-4" />
-                    @elseif ($faculty->isEmpty())
-                        <x-empty-state inline icon="users" :heading="__('No faculty in this group for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
+                    @if ($rows->isEmpty())
+                        <x-empty-state inline icon="chart-bar" :heading="__('No projects for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
                     @else
-                        {{-- One compact line per person; their project titles open under the name on demand --}}
-                        <ul class="mt-4 divide-y divide-line border-t border-line text-sm transition-opacity" wire:loading.delay.class="opacity-60">
-                            @foreach ($faculty as $member)
-                                <li class="py-3" wire:key="member-{{ $member->id }}" @if ($group !== 'pending') x-data="{ open: false }" @endif>
-                                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
-                                        {{-- Names run long, so the full name wraps if it must; it is never cut off --}}
-                                        <div class="min-w-0">
-                                            <p class="font-medium text-zinc-800 [overflow-wrap:anywhere]">{{ $member->name }}</p>
-                                            <p class="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
-                                                {{ $member->department?->code ?? __('No college') }}
-                                                @if ($group === 'delayed')
-                                                    {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
-                                                         right above the icon confirms it where the admin is already looking --}}
-                                                    <button
-                                                        type="button"
-                                                        x-data="{ copied: false, message: '' }"
-                                                        x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
-                                                            () => { copied = true; message = @js(__('Copied!')) },
-                                                            () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
-                                                        ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
-                                                        class="relative shrink-0 rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
-                                                        title="{{ __('Copy :email', ['email' => $member->email]) }}"
-                                                        aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
-                                                        data-test="copy-email"
-                                                    >
-                                                        <flux:icon.envelope variant="micro" x-show="! copied" />
-                                                        <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
-                                                        <span
-                                                            x-show="message"
-                                                            x-cloak
-                                                            x-transition.opacity
-                                                            x-text="message"
-                                                            role="status"
-                                                            class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
-                                                        ></span>
-                                                    </button>
-                                                @endif
-                                            </p>
-                                        </div>
+                        @php
+                            $most = $rows->max('count');
+                        @endphp
+                        <dl class="mt-5 grid gap-3">
+                            @foreach ($rows as $row)
+                                <div class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3 text-sm">
+                                    <dt class="truncate text-zinc-800" title="{{ $row['title'] }}">{{ $row['label'] }}</dt>
+                                    <dd class="flex items-center gap-2 border-s border-zinc-300 py-0.5">
+                                        <span class="h-4 rounded-e bg-isu-green-600" style="width: {{ max(2, $row['count'] / $most * 80) }}%" aria-hidden="true"></span>
+                                        <span class="font-medium tabular-nums text-zinc-700">{{ $row['count'] }}</span>
+                                    </dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    @endif
+                </flux:card>
+            @endforeach
+        </div>
 
-                                        @if ($group === 'pending')
-                                            {{-- No projects to list, so show how to reach them for a follow-up --}}
-                                            <flux:link :href="'mailto:'.$member->email" variant="ghost" class="truncate !font-normal">{{ $member->email }}</flux:link>
-                                        @else
-                                            <flux:button
-                                                size="sm"
-                                                variant="ghost"
-                                                x-on:click="open = ! open"
-                                                x-bind:aria-expanded="open"
-                                                aria-controls="projects-{{ $member->id }}"
-                                                class="shrink-0 tabular-nums max-sm:h-11"
-                                                data-test="projects-toggle"
-                                            >
-                                                {{ trans_choice('{1} :count project|[2,*] :count projects', $member->projects->count()) }}
-                                                <flux:icon.chevron-down variant="micro" class="text-zinc-400 transition-transform duration-200 motion-reduce:transition-none" x-bind:class="open && 'rotate-180'" />
-                                            </flux:button>
-                                        @endif
+        {{-- The faculty behind a count open in a flyout. Only this island re-renders on tile and page clicks;
+             closing it clears the group --}}
+        @island(name: 'faculty-list', always: true)
+        <flux:modal name="faculty-list" variant="flyout" class="w-full max-w-none md:w-xl" aria-labelledby="faculty-list-heading" wire:close="$set('group', '')">
+        @if ($this->groupLabel)
+            @php
+                $faculty = $this->groupFaculty;
+                $where = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
+            @endphp
+            {{-- Keyed by group, so a newly opened group opens the panel; switching pages leaves it open as it is --}}
+            <div id="faculty-list" wire:key="faculty-list-{{ $group }}" x-init="$flux.modal('faculty-list').show()" data-test="faculty-list">
+                {{-- Clear of the panel's close button at the top right. Flux focuses nothing in a dialog it opens, so the heading
+                     takes focus and is what a screen reader announces --}}
+                <div class="pe-10">
+                    <flux:heading size="lg" level="2" id="faculty-list-heading" tabindex="-1" autofocus class="outline-none">{{ $this->groupLabel }}, {{ $where }}</flux:heading>
+                    <flux:text class="mt-1 tabular-nums">{{ trans_choice('{0} No faculty|{1} One faculty member|[2,*] :count faculty', $faculty->total(), ['count' => number_format($faculty->total())]) }}</flux:text>
+                </div>
+
+                @if ($faculty->isNotEmpty())
+                    <flux:button size="sm" icon="arrow-down-tray" wire:click="export" data-test="export-button" class="mt-4 max-sm:h-11 max-sm:px-4">{{ __('Export CSV') }}</flux:button>
+                @endif
+
+                {{-- An empty list is one line with an icon: a check when empty is good news --}}
+                @if ($faculty->isEmpty() && $group === 'pending')
+                    <x-empty-state inline good icon="check-circle" :heading="__('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel])" class="mt-4" />
+                @elseif ($faculty->isEmpty())
+                    <x-empty-state inline icon="users" :heading="__('No faculty in this group for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
+                @else
+                    {{-- One compact line per person; their project titles open under the name on demand --}}
+                    <ul class="mt-4 divide-y divide-line border-t border-line text-sm transition-opacity" wire:loading.delay.class="opacity-60">
+                        @foreach ($faculty as $member)
+                            <li class="py-3" wire:key="member-{{ $member->id }}" @if ($group !== 'pending') x-data="{ open: false }" @endif>
+                                <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+                                    {{-- Names run long, so the full name wraps if it must; it is never cut off --}}
+                                    <div class="min-w-0">
+                                        <p class="font-medium text-zinc-800 [overflow-wrap:anywhere]">{{ $member->name }}</p>
+                                        <p class="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
+                                            {{ $member->department?->code ?? __('No college') }}
+                                            @if ($group === 'delayed')
+                                                {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
+                                                     right above the icon confirms it where the admin is already looking --}}
+                                                <button
+                                                    type="button"
+                                                    x-data="{ copied: false, message: '' }"
+                                                    x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
+                                                        () => { copied = true; message = @js(__('Copied!')) },
+                                                        () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
+                                                    ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
+                                                    class="relative shrink-0 rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
+                                                    title="{{ __('Copy :email', ['email' => $member->email]) }}"
+                                                    aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
+                                                    data-test="copy-email"
+                                                >
+                                                    <flux:icon.envelope variant="micro" x-show="! copied" />
+                                                    <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
+                                                    <span
+                                                        x-show="message"
+                                                        x-cloak
+                                                        x-transition.opacity
+                                                        x-text="message"
+                                                        role="status"
+                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
+                                                    ></span>
+                                                </button>
+                                            @endif
+                                        </p>
                                     </div>
 
-                                    @if ($group !== 'pending')
-                                        <ul id="projects-{{ $member->id }}" x-show="open" x-cloak class="mt-2 grid gap-1.5 border-s border-line ps-3">
-                                            @foreach ($member->projects as $project)
-                                                <li>
-                                                    <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
-                                                </li>
-                                            @endforeach
-                                        </ul>
+                                    @if ($group === 'pending')
+                                        {{-- No projects to list, so show how to reach them for a follow-up --}}
+                                        <flux:link :href="'mailto:'.$member->email" variant="ghost" class="truncate !font-normal">{{ $member->email }}</flux:link>
+                                    @else
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            x-on:click="open = ! open"
+                                            x-bind:aria-expanded="open"
+                                            aria-controls="projects-{{ $member->id }}"
+                                            class="shrink-0 tabular-nums max-sm:h-11"
+                                            data-test="projects-toggle"
+                                        >
+                                            {{ trans_choice('{1} :count project|[2,*] :count projects', $member->projects->count()) }}
+                                            <flux:icon.chevron-down variant="micro" class="text-zinc-400 transition-transform duration-200 motion-reduce:transition-none" x-bind:class="open && 'rotate-180'" />
+                                        </flux:button>
                                     @endif
-                                </li>
-                            @endforeach
-                        </ul>
+                                </div>
 
-                        <flux:pagination :paginator="$faculty" scroll-to="#faculty-list" class="mt-2" />
-                    @endif
-                </div>
-            @endif
-            </flux:modal>
-            @endisland
-        </section>
+                                @if ($group !== 'pending')
+                                    <ul id="projects-{{ $member->id }}" x-show="open" x-cloak class="mt-2 grid gap-1.5 border-s border-line ps-3">
+                                        @foreach ($member->projects as $project)
+                                            <li>
+                                                <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <flux:pagination :paginator="$faculty" scroll-to="#faculty-list" class="mt-2" />
+                @endif
+            </div>
+        @endif
+        </flux:modal>
+        @endisland
     @else
         @php
             $counts = $this->statusCounts;

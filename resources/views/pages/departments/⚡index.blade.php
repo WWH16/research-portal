@@ -162,9 +162,14 @@ new #[Title('Colleges')] class extends Component {
     </header>
 
     @if ($this->departments->isEmpty())
-        <div class="mt-8 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-            <flux:heading>{{ __('No colleges yet') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Add one so members and proposals can be assigned to it.') }}</flux:text>
+        {{-- What belongs here, and the one action that fills it, as on Announcements --}}
+        <div class="mt-8 flex flex-col items-center rounded-xl border border-dashed border-line px-6 py-12 text-center" data-test="no-colleges">
+            <span class="grid size-12 place-items-center rounded-full bg-zinc-100" aria-hidden="true">
+                <flux:icon icon="building-library" class="text-zinc-500" />
+            </span>
+            <flux:heading level="2" class="mt-4 text-base!">{{ __('No colleges yet') }}</flux:heading>
+            <flux:text class="mt-1 max-w-sm">{{ __('Add one so members and proposals can be assigned to it.') }}</flux:text>
+            <flux:button icon="plus" wire:click="create" class="mt-5 max-sm:h-11">{{ __('Add the first college') }}</flux:button>
         </div>
     @else
         <flux:table class="mt-6">

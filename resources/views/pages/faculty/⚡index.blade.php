@@ -78,11 +78,13 @@ new #[Title('Faculty Publications')] class extends Component {
     />
 
     @if ($this->faculty->isEmpty())
-        <div class="mt-6 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-            <flux:heading>{{ __('No faculty match these filters') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Try a different name, or show every college.') }}</flux:text>
-            <flux:button variant="ghost" size="sm" class="mt-4" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
-        </div>
+        @if (trim($search) !== '' || $college !== '')
+            <x-empty-state icon="magnifying-glass" :heading="__('No faculty match these filters')" :text="__('Try a different name, or show every college.')" class="mt-6">
+                <flux:button wire:click="clearFilters" class="max-sm:h-11">{{ __('Clear filters') }}</flux:button>
+            </x-empty-state>
+        @else
+            <x-empty-state icon="users" :heading="__('No faculty yet')" :text="__('Faculty members appear here once their accounts are approved, with the publications each one records.')" class="mt-6" />
+        @endif
     @else
         <flux:table class="mt-4" :paginate="$this->faculty" data-test="faculty-table">
             <flux:table.columns>

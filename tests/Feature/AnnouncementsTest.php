@@ -27,7 +27,7 @@ class AnnouncementsTest extends TestCase
         $this->get(route('announcements.index'))
             ->assertOk()
             // An empty page keeps its list, heading and all, rather than a box in its place.
-            ->assertSeeInOrder(['All announcements', 'No announcements yet.'])
+            ->assertSeeInOrder(['General announcements', 'No announcements yet.'])
             ->assertDontSee('Upcoming deadlines');
     }
 
@@ -78,6 +78,8 @@ class AnnouncementsTest extends TestCase
             ->assertSee('Stop upload')
             ->assertSeeHtml('data-test="posting-status"')
             ->assertSee('Posting… This closes once it’s done.')
+            // The deadline field says where a schedule will show, before and after its date.
+            ->assertSee('It shows under Upcoming deadlines until the date passes, then under Past deadlines.')
             ->call('create')
             ->set('title', '  Schedule of Submission of Concept Proposals  ')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
@@ -175,20 +177,27 @@ class AnnouncementsTest extends TestCase
         $this->assertNull(Announcement::factory()->make()->deadline());
     }
 
-    public function test_open_schedules_come_first_soonest_first_and_the_rest_newest_first(): void
+    public function test_open_schedules_come_first_then_the_notices_and_closed_schedules_last(): void
     {
         $later = Announcement::factory()->dueIn(30)->create(['title' => 'Detailed proposals due']);
         $sooner = Announcement::factory()->dueIn(3)->create(['title' => 'Concept proposals due']);
+        $closedFirst = Announcement::factory()->dueIn(-9)->create(['title' => 'Terminal reports were due']);
         $closed = Announcement::factory()->dueIn(-5)->create(['title' => 'Mid-year reports were due', 'created_at' => now()->subWeek()]);
         $memo = Announcement::factory()->withMemo()->create(['title' => 'Memo on the research agenda']);
 
+        // Open ones soonest first, notices newest first, and closed ones in their own list, the latest deadline first.
         $this->actingAs(User::factory()->create())->get(route('announcements.index'))
-            ->assertSeeInOrder(['Upcoming deadlines', $sooner->title, 'in 3 days', $later->title, 'Other announcements', $memo->title, 'Preview memo', $closed->title, 'Closed on'], false);
+            ->assertSeeInOrder(['Upcoming deadlines', $sooner->title, 'in 3 days', $later->title, 'General announcements', $memo->title, 'Preview memo', 'Past deadlines', $closed->title, 'Closed on', $closedFirst->title], false);
 
-        // With nothing open, the one list is simply every announcement.
+        // With nothing open, the closed ones still keep to their own list.
         $sooner->delete();
         $later->delete();
-        $this->get(route('announcements.index'))->assertDontSee('Upcoming deadlines')->assertSee('All announcements');
+        $this->get(route('announcements.index'))->assertDontSee('Upcoming deadlines')->assertSeeInOrder(['General announcements', $memo->title, 'Past deadlines', $closed->title]);
+
+        // With only notices left, only their list shows.
+        $closed->delete();
+        $closedFirst->delete();
+        $this->get(route('announcements.index'))->assertSee('General announcements')->assertDontSee('Past deadlines');
     }
 
     public function test_members_open_a_memo_under_its_own_name(): void
@@ -431,18 +440,24 @@ class AnnouncementsTest extends TestCase
             ->assertDontSee('target="_blank" rel="noopener" class="block overflow-hidden', false);
     }
 
-    public function test_the_date_tile_shows_the_deadline_while_open_and_the_posted_day_after(): void
+    public function test_the_date_tile_shows_the_deadline_or_for_a_notice_the_posted_day(): void
     {
         $this->travelTo('2026-10-29 09:00');
         Announcement::factory()->dueIn(3)->create(['title' => 'Open schedule', 'created_at' => '2026-10-01']);
-        Announcement::factory()->dueIn(-5)->create(['title' => 'Closed schedule', 'created_at' => '2026-10-02']);
+        Announcement::factory()->create(['title' => 'Plain notice', 'created_at' => '2026-10-02']);
+        Announcement::factory()->dueIn(-5)->create(['title' => 'Closed schedule', 'created_at' => '2026-10-03']);
 
-        // Open: the deadline, November 1. Closed: the day it was posted, October 2, so the dates follow the list's order,
-        // labelled Posted so it isn't taken for the date of an event.
+        // Open: the deadline, November 1. A notice: the day it was posted, October 2, labelled Posted so it isn't taken
+        // for the date of an event. Closed: the day it closed, October 24, labelled Closed. Each follows its list's order.
         $html = $this->actingAs(User::factory()->create())->get(route('announcements.index'))
-            ->assertSeeInOrder(['data-test="date-tile"', '>1<', '>Nov<', 'Open schedule', 'data-test="date-tile"', 'Posted', '>2<', '>Oct<', 'Closed schedule'], false)
+            ->assertSeeInOrder([
+                'data-test="date-tile"', '>1<', '>Nov<', 'Open schedule',
+                'data-test="date-tile"', 'Posted', '>2<', '>Oct<', 'Plain notice',
+                'data-test="date-tile"', 'Closed', '>24<', '>Oct<', 'Closed schedule',
+            ], false)
             ->getContent();
         $this->assertSame(1, substr_count($html, '>Posted<'));
+        $this->assertSame(1, substr_count($html, '>Closed<'));
         // A member with nothing unread isn't told what New means.
         $this->assertStringNotContainsString('data-test="new-explained"', $html);
     }
@@ -504,6 +519,12 @@ class AnnouncementsTest extends TestCase
         // Ten newer ones fill the first page, so the link opens the second.
         Livewire::test('pages::announcements.index')->assertDontSee('Oldest memo');
         Livewire::withQueryParams(['show' => $oldest->id])->test('pages::announcements.index')->assertSee('Oldest memo')->assertDontSee('no longer on the portal');
+
+        // A closed schedule is found on its own list's later page, past ten that closed after it.
+        $oldestClosed = Announcement::factory()->dueIn(-30)->create(['title' => 'Oldest closed schedule']);
+        Announcement::factory()->count(10)->sequence(fn ($sequence) => ['due_on' => today()->subDays(10 - $sequence->index)])->create();
+        Livewire::test('pages::announcements.index')->assertDontSee('Oldest closed schedule');
+        Livewire::withQueryParams(['show' => $oldestClosed->id])->test('pages::announcements.index')->assertSee('Oldest closed schedule');
 
         // One deleted since says so, rather than leaving the member to look for it.
         Livewire::withQueryParams(['show' => $oldest->id + 100])->test('pages::announcements.index')

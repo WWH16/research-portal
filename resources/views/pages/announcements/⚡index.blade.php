@@ -89,13 +89,15 @@ new #[Title('Announcements')] class extends Component {
             return;
         }
 
-        // The list runs newest first, ties by id, so this many come before it.
-        $before = $this->others()
-            ->where(fn (Builder $query) => $query->where('created_at', '>', $announcement->created_at)
-                ->orWhere(fn (Builder $query) => $query->where('created_at', $announcement->created_at)->where('id', '>', $announcement->id)))
+        // A notice's list runs newest posted first, a closed schedule's latest deadline first, ties by id, so this many
+        // come before it.
+        [$list, $column, $pageName] = $announcement->due_on ? [$this->past(), 'due_on', 'closed'] : [$this->notices(), 'created_at', 'page'];
+        $before = $list
+            ->where(fn (Builder $query) => $query->where($column, '>', $announcement->{$column})
+                ->orWhere(fn (Builder $query) => $query->where($column, $announcement->{$column})->where('id', '>', $announcement->id)))
             ->count();
 
-        $this->setPage(intdiv($before, self::PER_PAGE) + 1);
+        $this->setPage(intdiv($before, self::PER_PAGE) + 1, $pageName);
     }
 
     /**
@@ -109,28 +111,51 @@ new #[Title('Announcements')] class extends Component {
         return Announcement::with('poster')->whereDate('due_on', '>=', today())->orderBy('due_on')->orderBy('id')->get();
     }
 
-    /** Everything else, newest first: notices and memos without a deadline, and schedules that have closed. */
+    /** Notices and memos without a deadline, newest first. */
     #[Computed]
     public function announcements(): LengthAwarePaginator
     {
-        $announcements = $this->others()->with('poster')->latest()->orderByDesc('id')->paginate(self::PER_PAGE);
+        return $this->paginated($this->notices()->latest()->orderByDesc('id'), 'page');
+    }
+
+    /** Schedules whose deadline has passed, the latest deadline first, kept below the rest as a record. */
+    #[Computed]
+    public function closed(): LengthAwarePaginator
+    {
+        return $this->paginated($this->past()->orderByDesc('due_on')->orderByDesc('id'), 'closed');
+    }
+
+    /**
+     * @param  Builder<Announcement>  $query
+     */
+    private function paginated(Builder $query, string $pageName): LengthAwarePaginator
+    {
+        $list = $query->with('poster')->paginate(self::PER_PAGE, pageName: $pageName);
 
         // A page past the end, as once its last announcement was deleted, shows the last page that has any.
-        if ($announcements->isEmpty() && $announcements->currentPage() > 1 && $announcements->total() > 0) {
-            $this->setPage($announcements->lastPage());
+        if ($list->isEmpty() && $list->currentPage() > 1 && $list->total() > 0) {
+            $this->setPage($list->lastPage(), $pageName);
 
-            return $this->announcements();
+            return $this->paginated($query, $pageName);
         }
 
-        return $announcements;
+        return $list;
     }
 
     /**
      * @return Builder<Announcement>
      */
-    private function others(): Builder
+    private function notices(): Builder
     {
-        return Announcement::where(fn (Builder $query) => $query->whereNull('due_on')->orWhereDate('due_on', '<', today()));
+        return Announcement::whereNull('due_on');
+    }
+
+    /**
+     * @return Builder<Announcement>
+     */
+    private function past(): Builder
+    {
+        return Announcement::whereDate('due_on', '<', today());
     }
 
     #[Computed]
@@ -277,7 +302,7 @@ new #[Title('Announcements')] class extends Component {
         Flux::toast(variant: 'success', text: $this->editingId ? __('Announcement updated.') : __('Announcement posted.'));
 
         $this->reset('editingId', 'title', 'description', 'dueOn', 'memo', 'removeMemo');
-        unset($this->upcoming, $this->announcements, $this->editing);
+        unset($this->upcoming, $this->announcements, $this->closed, $this->editing);
     }
 
     public function confirmDelete(int $id): void
@@ -308,7 +333,7 @@ new #[Title('Announcements')] class extends Component {
         Flux::toast(variant: 'success', text: __('Announcement deleted.'));
 
         $this->reset('deletingId');
-        unset($this->upcoming, $this->announcements, $this->deleting);
+        unset($this->upcoming, $this->announcements, $this->closed, $this->deleting);
     }
 }; ?>
 
@@ -334,15 +359,20 @@ new #[Title('Announcements')] class extends Component {
         <flux:callout variant="secondary" icon="information-circle" class="mt-6" :text="__('The announcement you followed is no longer on the portal. The Research Office has removed it.')" data-test="announcement-gone" />
     @endif
 
-    {{-- Open schedules first, as their own section, so a deadline is never buried under newer memos. With no
-         announcements at all, the one list still shows, saying so, so the page keeps its shape --}}
-    @foreach (['upcoming' => $this->upcoming, 'other' => $this->announcements] as $section => $list)
-        @continue($list->isEmpty() && ($section === 'upcoming' || $this->upcoming->isNotEmpty()))
+    {{-- Open schedules first, as their own section, so a deadline is never buried under newer memos; closed ones last, as
+         a record, so they don't crowd the notices. Each shows only when it has any. With no announcements at all, the
+         one list still shows, saying so, so the page keeps its shape --}}
+    @foreach (['upcoming' => $this->upcoming, 'other' => $this->announcements, 'closed' => $this->closed] as $section => $list)
+        @continue($list->isEmpty() && ! ($section === 'other' && $this->upcoming->isEmpty() && $this->closed->isEmpty()))
 
         <section wire:key="section-{{ $section }}" class="mt-8" aria-labelledby="announcements-{{ $section }}" data-test="{{ $section }}-announcements">
             {{-- A step above the announcement titles and under the page title, with a rule under it --}}
             <flux:heading size="lg" level="2" id="announcements-{{ $section }}" class="border-b border-line pb-2 text-xl!">
-                {{ $section === 'upcoming' ? __('Upcoming deadlines') : ($this->upcoming->isEmpty() ? __('All announcements') : __('Other announcements')) }}
+                {{ match ($section) {
+                    'upcoming' => __('Upcoming deadlines'),
+                    'closed' => __('Past deadlines'),
+                    default => __('General announcements'),
+                } }}
             </flux:heading>
 
             <ul class="mt-3 divide-y divide-line">
@@ -350,18 +380,18 @@ new #[Title('Announcements')] class extends Component {
                     @php($urgent = $section === 'upcoming' && $announcement->due_on->lte(today()->addDay()))
                     {{-- An agenda: a date leads each row, so the list reads by date at a glance. An open schedule shows its
                          deadline on a tile as pale as the canvas grey, tinted green while open and red when due today or
-                         tomorrow, with a hairline ring of the same hue so it doesn't melt into the white page. Everything
-                         else, a closed schedule included, shows the day it was posted, quietly on the canvas grey without
-                         the ring and labelled Posted, so it isn't read as the date of an event, and the dates run in the
-                         list's own order; the "Closed on" sentence keeps the old deadline. The sentences below carry the
-                         same dates for screen readers, so the tile is hidden from them. A notification links here by id;
+                         tomorrow, with a hairline ring of the same hue so it doesn't melt into the white page. A closed
+                         schedule shows the day it closed, labelled Closed, and a notice the day it was posted, labelled
+                         Posted so it isn't read as the date of an event; both sit quietly on the canvas grey without the
+                         ring, and the dates run in the list's own order. The sentences below carry the same dates for
+                         screen readers, so the tile is hidden from them. A notification links here by id;
                          the gold wash, spread past the edges by an outline of the same colour, shows which announcement it meant.
                          A new one is read once the member has taken it in: with a memo, when they open the memo, since that is
                          the notice itself; without one, when its title has been on screen for a moment. read() asks the server
                          once, and only for a new one. --}}
                     @php($isNew = in_array($announcement->id, $fresh))
                     <li wire:key="announcement-{{ $announcement->id }}" id="announcement-{{ $announcement->id }}" x-data="{ unread: @js($isNew), read() { if (this.unread) { this.unread = false; this.$wire.seen({{ $announcement->id }}) } } }" class="grid scroll-mt-6 grid-cols-[auto_minmax(0,1fr)] gap-x-4 py-6 target:rounded-sm target:bg-highlight-soft target:outline-8 target:outline-highlight-soft sm:gap-x-6" data-test="announcement">
-                        @php($day = $section === 'upcoming' ? $announcement->due_on : $announcement->created_at)
+                        @php($day = $section === 'other' ? $announcement->created_at : $announcement->due_on)
                         <div aria-hidden="true" @class([
                             'flex min-w-12 flex-col items-center self-start rounded-md px-1 py-2 tabular-nums leading-none sm:min-w-16',
                             'bg-isu-green-50/50 text-isu-green-800 ring-1 ring-isu-green-100 ring-inset' => $section === 'upcoming' && ! $urgent,
@@ -369,7 +399,7 @@ new #[Title('Announcements')] class extends Component {
                             'bg-canvas text-zinc-600' => $section !== 'upcoming',
                         ]) data-test="date-tile">
                             @if ($section !== 'upcoming')
-                                <span class="mb-1 text-xs">{{ __('Posted') }}</span>
+                                <span class="mb-1 text-xs">{{ $section === 'closed' ? __('Closed') : __('Posted') }}</span>
                             @endif
                             <span @class(['font-semibold', 'text-xl sm:text-2xl' => $section === 'upcoming', 'text-lg' => $section !== 'upcoming'])>{{ $day->format('j') }}</span>
                             <span class="mt-1 text-xs font-medium">{{ $day->format('M') }}</span>
@@ -497,8 +527,8 @@ new #[Title('Announcements')] class extends Component {
                 @endforelse
             </ul>
 
-            @if ($section === 'other' && $this->announcements->hasPages())
-                <flux:pagination :paginator="$this->announcements" class="mt-4" />
+            @if ($section !== 'upcoming' && $list->hasPages())
+                <flux:pagination :paginator="$list" class="mt-4" />
             @endif
         </section>
     @endforeach
@@ -640,7 +670,7 @@ new #[Title('Announcements')] class extends Component {
                     type="date"
                     :min="$editingId ? null : today()->format('Y-m-d')"
                     :label="__('Submission deadline')"
-                    :description="__('For a schedule of submissions. Leave it empty for anything else.')"
+                    :description="__('For a schedule of submissions. It shows under Upcoming deadlines until the date passes, then under Past deadlines. Leave it empty for anything else.')"
                 />
 
                 <div>

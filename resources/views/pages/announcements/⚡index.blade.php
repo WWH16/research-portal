@@ -497,15 +497,12 @@ new #[Title('Announcements')] class extends Component {
                             </li>
                         @empty
                             {{-- What belongs here, and for an admin the one action that fills it --}}
-                            <li class="flex flex-col items-center rounded-xl border border-dashed border-line px-6 py-12 text-center" data-test="no-announcements">
-                                <span class="grid size-12 place-items-center rounded-full bg-zinc-100" aria-hidden="true">
-                                    <flux:icon icon="megaphone" class="text-zinc-500" />
-                                </span>
-                                <flux:heading level="3" class="mt-4 text-base!">{{ __('No announcements yet.') }}</flux:heading>
-                                <flux:text class="mt-1 max-w-sm">{{ __('Schedules of submissions and memos from the Research Office will appear here.') }}</flux:text>
-                                @can('create', App\Models\Announcement::class)
-                                    <flux:button icon="plus" wire:click="create" class="mt-5 max-sm:h-11">{{ __('Post the first announcement') }}</flux:button>
-                                @endcan
+                            <li data-test="no-announcements">
+                                <x-empty-state icon="megaphone" :level="3" :heading="__('No announcements yet.')" :text="__('Schedules of submissions and memos from the Research Office will appear here.')">
+                                    @can('create', App\Models\Announcement::class)
+                                        <flux:button icon="plus" wire:click="create" class="max-sm:h-11">{{ __('Post the first announcement') }}</flux:button>
+                                    @endcan
+                                </x-empty-state>
                             </li>
                         @endforelse
                     </ul>

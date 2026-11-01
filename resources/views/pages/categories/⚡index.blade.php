@@ -137,15 +137,9 @@ new #[Title('Categories')] class extends Component {
     </header>
 
     @if ($this->records->isEmpty())
-        {{-- What belongs here, and the one action that fills it, as on Announcements --}}
-        <div class="mt-8 flex flex-col items-center rounded-xl border border-dashed border-line px-6 py-12 text-center" data-test="no-categories">
-            <span class="grid size-12 place-items-center rounded-full bg-zinc-100" aria-hidden="true">
-                <flux:icon icon="tag" class="text-zinc-500" />
-            </span>
-            <flux:heading level="2" class="mt-4 text-base!">{{ __('No categories yet') }}</flux:heading>
-            <flux:text class="mt-1 max-w-sm">{{ __('Add one so proposals can be classified when they are submitted.') }}</flux:text>
-            <flux:button icon="plus" wire:click="create" class="mt-5 max-sm:h-11">{{ __('Add the first category') }}</flux:button>
-        </div>
+        <x-empty-state icon="tag" :heading="__('No categories yet')" :text="__('Add one so proposals can be classified when they are submitted.')" class="mt-8" data-test="no-categories">
+            <flux:button icon="plus" wire:click="create" class="max-sm:h-11">{{ __('Add the first category') }}</flux:button>
+        </x-empty-state>
     @else
         <flux:table class="mt-6">
             <flux:table.columns>

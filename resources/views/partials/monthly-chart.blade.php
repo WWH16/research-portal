@@ -19,23 +19,26 @@
 <flux:card class="lg:col-span-12" data-test="monthly-chart">
     <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <div>
-            <flux:heading level="2">{{ $heading }}</flux:heading>
+            <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
             <flux:text class="mt-1">{{ __(':period, by current status.', ['period' => ucfirst($period)]) }}</flux:text>
         </div>
 
-        {{-- Grouped the way the stat tiles count them: Concept and Detailed sit under "At proposal stage" --}}
+        {{-- Grouped the way the stat tiles count them: Concept and Detailed sit under "At proposal stage", and a rule
+             sets the later stages apart --}}
         <ul class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-600" data-test="chart-legend">
             <li class="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span class="text-zinc-500">{{ __('At proposal stage:') }}</span>
-                @foreach (\App\Models\Submission::PROPOSAL_STAGES as $status)
-                    <span class="flex items-center gap-2"><span class="h-2.5 w-3 rounded-sm {{ $bars[$status] }}" aria-hidden="true"></span>{{ __($status) }}</span>
+                <span class="flex items-center gap-3">
+                    @foreach (\App\Models\Submission::PROPOSAL_STAGES as $status)
+                        <span class="flex items-center gap-2"><span class="h-2.5 w-3 rounded-sm {{ $bars[$status] }}" aria-hidden="true"></span>{{ __($status) }}</span>
+                    @endforeach
+                </span>
+            </li>
+            <li class="flex items-center gap-x-4 max-sm:basis-full max-sm:border-t max-sm:pt-1.5 sm:border-s sm:ps-4">
+                @foreach (array_diff_key($bars, array_flip(\App\Models\Submission::PROPOSAL_STAGES)) as $status => $class)
+                    <span class="flex items-center gap-2"><span class="h-2.5 w-3 rounded-sm {{ $class }}" aria-hidden="true"></span>{{ __($status) }}</span>
                 @endforeach
             </li>
-            @foreach (array_diff_key($bars, array_flip(\App\Models\Submission::PROPOSAL_STAGES)) as $status => $class)
-                <li class="flex items-center gap-2">
-                    <span class="h-2.5 w-3 rounded-sm {{ $class }}" aria-hidden="true"></span>{{ __($status) }}
-                </li>
-            @endforeach
         </ul>
     </div>
 
@@ -64,13 +67,13 @@
                             @endphp
                             {{-- The whole column is the hover and focus target, not just the painted bar --}}
                             <li
-                                class="group relative flex h-full items-end justify-center rounded outline-none focus-visible:bg-zinc-100"
+                                class="group relative flex h-full items-end justify-center rounded focus-visible:outline-2 focus-visible:outline-accent"
                                 tabindex="0"
                                 aria-label="{{ trans_choice('{0} :month: no projects|{1} :month: one project, :summary|[2,*] :month: :count projects, :summary', $month['total'], ['month' => $label, 'summary' => $summary]) }}"
                             >
                                 @if ($month['total'] > 0)
                                     <div
-                                        class="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t transition group-hover:brightness-110 group-focus-visible:ring-2 group-focus-visible:ring-accent group-focus-visible:ring-offset-2"
+                                        class="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t transition group-hover:brightness-110"
                                         style="height: {{ $month['total'] / $axisMax * 100 }}%"
                                         aria-hidden="true"
                                     >

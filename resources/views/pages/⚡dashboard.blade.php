@@ -396,33 +396,33 @@ new #[Title('Dashboard')] class extends Component {
         </div>
 
         @if ($this->isAdmin)
-            {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways --}}
+            {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
+                 the quick-range button share the first row, so the two dates get the whole second row and show in full --}}
             <div class="flex w-full flex-wrap gap-3 sm:w-auto">
-            <flux:select wire:model.live="department" :aria-label="__('College')" class="w-full sm:w-40" data-test="department-select">
+            <flux:select wire:model.live="department" :aria-label="__('College')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
                 <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
                 @foreach (Department::orderBy('code')->pluck('code') as $option)
                     <flux:select.option :value="$option">{{ $option }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            {{-- On phones the two dates share the row's width so the quick-range button stays on screen --}}
-            <div class="flex w-full items-center gap-2 sm:w-auto" data-test="date-range">
+            <div class="flex w-full items-center gap-2 max-sm:order-last sm:w-auto" data-test="date-range">
                 {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
                 <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
                 <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
                 <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
-
-                <flux:dropdown position="bottom" align="end">
-                    <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" class="max-sm:size-11" />
-                    <flux:menu>
-                        <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
-                        @if (now()->year > Submission::FIRST_YEAR)
-                            <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
-                        @endif
-                        <flux:menu.item wire:click="preset('last-12-months')">{{ __('Last 12 months') }}</flux:menu.item>
-                    </flux:menu>
-                </flux:dropdown>
             </div>
+
+            <flux:dropdown position="bottom" align="end">
+                <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" class="max-sm:size-11" />
+                <flux:menu>
+                    <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
+                    @if (now()->year > Submission::FIRST_YEAR)
+                        <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
+                    @endif
+                    <flux:menu.item wire:click="preset('last-12-months')">{{ __('Last 12 months') }}</flux:menu.item>
+                </flux:menu>
+            </flux:dropdown>
             </div>
         @endif
     </header>
@@ -499,7 +499,7 @@ new #[Title('Dashboard')] class extends Component {
                 >
                     <div class="flex flex-wrap items-baseline justify-between gap-4">
                         <div>
-                            <flux:heading level="2">{{ $this->groupLabel }}, {{ $where }}</flux:heading>
+                            <flux:heading size="lg" level="2">{{ $this->groupLabel }}, {{ $where }}</flux:heading>
                             <flux:text class="mt-1 tabular-nums">{{ trans_choice('{0} No faculty|{1} One faculty member|[2,*] :count faculty', $faculty->total(), ['count' => number_format($faculty->total())]) }}</flux:text>
                         </div>
                         <div class="flex gap-2">
@@ -570,13 +570,13 @@ new #[Title('Dashboard')] class extends Component {
                                                 data-test="projects-toggle"
                                             >
                                                 {{ trans_choice('{1} :count project|[2,*] :count projects', $member->projects->count()) }}
-                                                <flux:icon.chevron-down variant="micro" class="text-zinc-400 transition-transform duration-200" x-bind:class="open && 'rotate-180'" />
+                                                <flux:icon.chevron-down variant="micro" class="text-zinc-400 transition-transform duration-200 motion-reduce:transition-none" x-bind:class="open && 'rotate-180'" />
                                             </flux:button>
                                         @endif
                                     </div>
 
                                     @if ($group !== 'pending')
-                                        <ul id="projects-{{ $member->id }}" x-show="open" x-collapse x-cloak class="mt-2 grid gap-1.5 border-s border-line ps-3">
+                                        <ul id="projects-{{ $member->id }}" x-show="open" x-cloak class="mt-2 grid gap-1.5 border-s border-line ps-3">
                                             @foreach ($member->projects as $project)
                                                 <li>
                                                     <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
@@ -601,7 +601,7 @@ new #[Title('Dashboard')] class extends Component {
             @foreach ($this->breakdowns as $heading => $rows)
                 {{-- Colleges and categories side by side; the category chart alone takes the row once a college is picked --}}
                 <flux:card @class(['lg:col-span-6' => count($this->breakdowns) > 1, 'lg:col-span-12' => count($this->breakdowns) === 1])>
-                    <flux:heading level="2">{{ $heading }}</flux:heading>
+                    <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
 
                     @if ($rows->isEmpty())
                         <x-empty-state inline icon="chart-bar" :heading="__('No projects for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
@@ -627,7 +627,7 @@ new #[Title('Dashboard')] class extends Component {
             {{-- The review queue: new and corrected concept proposals, longest waiting first, so nothing waits forever --}}
             <flux:card class="lg:col-span-12" data-test="waiting-tile">
                 <div class="flex items-baseline justify-between gap-4">
-                    <flux:heading level="2">{{ __('Concept proposals to review') }}</flux:heading>
+                    <flux:heading size="lg" level="2">{{ __('Concept proposals to review') }}</flux:heading>
                     @if ($this->waitingCount > 0)
                         <flux:link :href="route('reviews.index')" wire:navigate class="shrink-0 text-sm">{{ __('View all :count', ['count' => $this->waitingCount]) }}</flux:link>
                     @endif
@@ -684,7 +684,7 @@ new #[Title('Dashboard')] class extends Component {
                 <x-empty-state inline good icon="check-circle" :heading="__('Nothing needs your attention.')" class="lg:col-span-12" data-test="attention-tile" />
             @else
                 <flux:card class="lg:col-span-8" data-test="attention-tile">
-                    <flux:heading level="2">{{ __('Needs your attention') }}</flux:heading>
+                    <flux:heading size="lg" level="2">{{ __('Needs your attention') }}</flux:heading>
 
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->needsAttention as $submission)
@@ -715,7 +715,7 @@ new #[Title('Dashboard')] class extends Component {
             <flux:card @class(['lg:col-span-4' => ! $calm, 'lg:col-span-12' => $calm]) data-test="submit-tile">
                 <div @class(['lg:flex lg:items-center lg:justify-between lg:gap-6' => $calm])>
                     <div>
-                        <flux:heading level="2">{{ __('Start a research project') }}</flux:heading>
+                        <flux:heading size="lg" level="2">{{ __('Start a research project') }}</flux:heading>
 
                         @if (auth()->user()->department_id)
                             <flux:text class="mt-2">{{ __('Upload your concept proposal for the Research Office to review. The detailed proposal and reports go on the same project later.') }}</flux:text>
@@ -734,7 +734,7 @@ new #[Title('Dashboard')] class extends Component {
 
             <flux:card class="lg:col-span-12">
                 <div class="flex items-baseline justify-between gap-4">
-                    <flux:heading level="2">{{ __('Recent projects') }}</flux:heading>
+                    <flux:heading size="lg" level="2">{{ __('Recent projects') }}</flux:heading>
                     @if ($total > 0)
                         <flux:link :href="route('submissions.index')" wire:navigate class="shrink-0 text-sm">{{ __('View all') }}</flux:link>
                     @endif
@@ -749,9 +749,10 @@ new #[Title('Dashboard')] class extends Component {
                             <li class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1 text-sm">
                                     <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline sm:line-clamp-1">{{ $title }}</a>
-                                    <p class="mt-0.5 truncate tabular-nums text-zinc-500">
-                                        {{ $submission->category->name }} ·
-                                        <span @class(['font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('M j, Y')]) : __('No schedule yet') }}</span>
+                                    {{-- Phones wrap this line so the due date is never cut off or split --}}
+                                    <p class="mt-0.5 tabular-nums text-zinc-500 sm:truncate">
+                                        {{ $submission->category->name }}.
+                                        <span @class(['whitespace-nowrap', 'font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('M j, Y')]) : __('No schedule yet') }}</span>
                                     </p>
                                 </div>
                                 @include('partials.project-status', ['class' => 'items-end', 'timing' => true])

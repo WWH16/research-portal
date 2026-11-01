@@ -1,4 +1,5 @@
-/* Hallmark · checked: 2026-11-01 · app: dashboards · built: the project · redesign: polish · v2.0.0 */
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full, the dashboards · signature: the review queue (admin), the project list beside New proposal (faculty) · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S3 R4 V3 · weakest: S, the stat strip and chart are any dashboard's; the queue and the project list lead so the page is this portal's */
 @import 'tailwindcss';
 @import '../../vendor/livewire/flux/dist/flux.css';
 @import './announcements.css';
@@ -77,6 +78,9 @@
     --color-highlight: var(--color-isu-gold-500);
     --color-highlight-soft: var(--color-isu-gold-50);
     --color-highlight-line: var(--color-isu-gold-300);
+
+    /* Corner cells of a 1px-bordered rounded box (the stat strip) take this, so fill and ring follow the curve. */
+    --radius-cell: calc(var(--radius-xl) - 1px);
 
     /* Project stages, shared by the chart, stat tiles and swatches. Each holds at least 3:1 on white
        so a bar or swatch reads as a shape (WCAG 1.4.11). Badges use the matching Flux hues, from

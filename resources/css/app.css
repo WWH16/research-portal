@@ -79,6 +79,14 @@
     --color-highlight-soft: var(--color-isu-gold-50);
     --color-highlight-line: var(--color-isu-gold-300);
 
+    /* Pastel seal gold: the calm "this needs you" surface, such as the dashboard's review notice and an unread notice.
+       Text on it takes pastel-ink (5.9:1). A callout takes the whole set with class="pastel". */
+    --color-pastel: var(--color-isu-gold-50);
+    --color-pastel-hover: color-mix(in oklab, var(--color-isu-gold-100) 50%, var(--color-white));
+    --color-pastel-line: var(--color-isu-gold-200);
+    --color-pastel-icon: var(--color-isu-gold-600);
+    --color-pastel-ink: var(--color-isu-gold-800);
+
     /* Corner cells of a 1px-bordered rounded box (the stat strip) take this, so fill and ring follow the curve. */
     --radius-cell: calc(var(--radius-xl) - 1px);
 
@@ -160,6 +168,14 @@
    2.8:1; the text's colour clears 4.5:1 in every hue, and the heading's weight still sets it apart. */
 [data-flux-callout] {
     --callout-heading: var(--callout-text);
+}
+
+/* A callout that asks for action without warning, in the pastel set. */
+[data-flux-callout].pastel {
+    --callout-background: var(--color-pastel);
+    --callout-border: var(--color-pastel-line);
+    --callout-icon: var(--color-pastel-icon);
+    --callout-text: var(--color-pastel-ink);
 }
 
 input:focus[data-flux-control],

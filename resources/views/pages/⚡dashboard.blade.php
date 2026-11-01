@@ -457,7 +457,7 @@ new #[Title('Dashboard')] class extends Component {
         @if ($this->waitingCount === 0)
             <x-empty-state inline good icon="check-circle" :heading="__('No concept proposals are waiting for review.')" class="mt-6" data-test="waiting-tile" />
         @else
-            <flux:callout icon="inbox-arrow-down" inline class="mt-6 [--callout-background:var(--color-highlight-soft)]! [--callout-border:var(--color-isu-gold-200)]! [--callout-icon:var(--color-isu-gold-600)]! [--callout-text:var(--color-isu-gold-800)]!" data-test="waiting-tile">
+            <flux:callout icon="inbox-arrow-down" inline class="mt-6 pastel" data-test="waiting-tile">
                 <flux:callout.heading>{{ trans_choice('{1} One concept proposal is waiting for review.|[2,*] :count concept proposals are waiting for review.', $this->waitingCount) }}</flux:callout.heading>
                 <flux:callout.text>{{ trans_choice('{1} It has waited :wait.|[2,*] The oldest has waited :wait.', $this->waitingCount, ['wait' => $this->oldestWaiting->diffForHumans(null, true)]) }}</flux:callout.text>
                 <x-slot name="actions" class="max-sm:grid">

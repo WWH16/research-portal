@@ -32,18 +32,18 @@ use Livewire\WithPagination;
 new #[Title('Notifications')] class extends Component {
     use WithPagination;
 
-    /** What each kind of notice is called when it opens, and what its button says. */
+    /** What each kind of notice is called, what its button says when it opens, and its icon in the list. */
     private const KINDS = [
-        AccountApproved::class => ['Welcome', 'Start a proposal'],
-        AnnouncementPosted::class => ['New announcement', 'Open Announcements'],
-        AnnouncementUpdated::class => ['Announcement updated', 'Open Announcements'],
-        ConceptReviewed::class => ['Concept proposal decision', 'Open the project'],
-        ProjectDeadline::class => ['Completion date reminder', 'Open the project'],
-        ProjectDatesChanged::class => ['Project dates changed', 'Open the project'],
-        ProjectCompleted::class => ['Project completed', 'Open Submissions'],
-        ProjectLate::class => ['Project running late', 'Open Submissions'],
-        DriveFull::class => ['Google Drive is full', 'Open Google Drive'],
-        DriveDisconnected::class => ['Google Drive is disconnected', 'Open Google Drive'],
+        AccountApproved::class => ['Welcome', 'Start a proposal', 'check-badge'],
+        AnnouncementPosted::class => ['New announcement', 'Open Announcements', 'megaphone'],
+        AnnouncementUpdated::class => ['Announcement updated', 'Open Announcements', 'megaphone'],
+        ConceptReviewed::class => ['Concept proposal decision', 'Open the project', 'document-check'],
+        ProjectDeadline::class => ['Completion date reminder', 'Open the project', 'calendar-days'],
+        ProjectDatesChanged::class => ['Project dates changed', 'Open the project', 'calendar'],
+        ProjectCompleted::class => ['Project completed', 'Open Submissions', 'flag'],
+        ProjectLate::class => ['Project running late', 'Open Submissions', 'clock'],
+        DriveFull::class => ['Google Drive is full', 'Open Google Drive', 'circle-stack'],
+        DriveDisconnected::class => ['Google Drive is disconnected', 'Open Google Drive', 'exclamation-triangle'],
     ];
 
     /** Where the last deleted notices wait in the cache while Undo is offered; null once it's gone. */
@@ -69,13 +69,13 @@ new #[Title('Notifications')] class extends Component {
     }
 
     /**
-     * The open notice's heading and button wording; a kind no longer sent reads as a plain notice.
+     * A notice's heading, button wording and icon; a kind no longer sent reads as a plain notice.
      *
-     * @return array{0: string, 1: string}
+     * @return array{0: string, 1: string, 2: string}
      */
     public function kind(DatabaseNotification $notice): array
     {
-        return self::KINDS[$notice->type] ?? ['Notice', 'Open'];
+        return self::KINDS[$notice->type] ?? ['Notice', 'Open', 'bell'];
     }
 
     /**
@@ -240,40 +240,56 @@ new #[Title('Notifications')] class extends Component {
             data-test="no-notifications"
         />
     @else
-        <ul class="divide-y divide-line">
-            @foreach ($this->notifications as $notification)
-                <li wire:key="{{ $notification->id }}" class="flex items-center justify-between gap-4 py-4">
-                    {{-- A gold dot, as on the sidebar, marks what's unread; screen readers hear "Unread:" instead --}}
-                    <div class="flex min-w-0 items-start gap-3">
-                        <span @class(['mt-2 size-2 shrink-0 rounded-full', 'bg-isu-gold-700' => ! $notification->read_at]) @if (! $notification->read_at) data-test="unread-dot" @endif aria-hidden="true"></span>
-                        {{-- Two lines of the message, like an inbox; it opens in full in the message panel --}}
-                        <div class="min-w-0">
-                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" @class(['line-clamp-2 text-start text-sm wrap-anywhere', 'font-semibold text-zinc-900!' => ! $notification->read_at])>
+        @php
+            // Grouped by day, newest first, as inboxes do; a later page simply starts in an older group.
+            $groups = $this->notifications->getCollection()->groupBy(fn ($notice) => match (true) {
+                $notice->created_at->isToday() => __('Today'),
+                $notice->created_at->isYesterday() => __('Yesterday'),
+                $notice->created_at->greaterThan(now()->subWeek()) => __('Last 7 days'),
+                default => __('Earlier'),
+            });
+        @endphp
+
+        @foreach ($groups as $label => $notices)
+            <h2 @class(['text-sm font-medium text-zinc-600', 'mt-6' => $loop->first, 'mt-8' => ! $loop->first])>{{ $label }}</h2>
+
+            {{-- Inbox row: the kind as subject, the message under it; unread in pastel with the gold dot ("Unread:" for
+                 screen readers). The whole row opens the notice; its menu sits above --}}
+            <ul class="mt-2 divide-y divide-line rounded-xl border border-line bg-surface">
+                @foreach ($notices as $notification)
+                    @php([$kind, , $icon] = $this->kind($notification))
+                    <li wire:key="{{ $notification->id }}" @class(['relative flex items-start gap-3 px-4 py-3 first:rounded-t-xl last:rounded-b-xl', 'hover:bg-zinc-50' => $notification->read_at, 'bg-pastel hover:bg-pastel-hover' => ! $notification->read_at])>
+                        <flux:icon :icon="$icon" @class(['mt-0.5 size-5 shrink-0', 'text-zinc-400' => $notification->read_at, 'text-isu-green-700' => ! $notification->read_at]) />
+
+                        <div class="min-w-0 flex-1">
+                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" class="block text-start no-underline! after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent">
                                 @unless ($notification->read_at)
                                     <span class="sr-only">{{ __('Unread:') }}</span>
                                 @endunless
-                                {{ $notification->data['message'] }}
+                                <span @class(['block text-sm', 'font-medium text-zinc-800' => $notification->read_at, 'font-semibold text-zinc-900' => ! $notification->read_at])>{{ __($kind) }}</span>
+                                <span class="mt-0.5 block text-sm text-zinc-600 wrap-anywhere">{{ $notification->data['message'] }}</span>
                             </flux:link>
-                            <flux:text size="sm" class="mt-1">{{ $notification->created_at->diffForHumans() }}</flux:text>
+                            <p class="mt-1 text-xs text-zinc-600">{{ $notification->created_at->diffForHumans() }}</p>
                         </div>
-                    </div>
 
-                    <div class="flex shrink-0 items-center gap-1">
-                        <flux:dropdown position="bottom" align="end">
-                            <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" />
-                            <flux:menu>
-                                <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')">
-                                    {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}
-                                </flux:menu.item>
-                                <flux:menu.item icon="trash" variant="danger" wire:click="delete('{{ $notification->id }}')">{{ __('Delete') }}</flux:menu.item>
-                            </flux:menu>
-                        </flux:dropdown>
-                        {{-- An arrow, as in an inbox, shows the row opens in full --}}
-                        <flux:button size="sm" variant="ghost" icon="chevron-right" wire:click="read('{{ $notification->id }}')" :aria-label="__('Open: :message', ['message' => $notification->data['message']])" data-test="open-notice" />
-                    </div>
-                </li>
-            @endforeach
-        </ul>
+                        <div class="relative z-10 flex shrink-0 items-center gap-2">
+                            @unless ($notification->read_at)
+                                <span class="size-2 rounded-full bg-isu-gold-700" data-test="unread-dot" aria-hidden="true"></span>
+                            @endunless
+                            <flux:dropdown position="bottom" align="end">
+                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" />
+                                <flux:menu>
+                                    <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')">
+                                        {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}
+                                    </flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="delete('{{ $notification->id }}')">{{ __('Delete') }}</flux:menu.item>
+                                </flux:menu>
+                            </flux:dropdown>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        @endforeach
 
         @if ($this->notifications->hasPages())
             <flux:pagination :paginator="$this->notifications" class="mt-4" />

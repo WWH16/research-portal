@@ -510,18 +510,11 @@ new #[Title('Dashboard')] class extends Component {
                         </div>
                     </div>
 
-                    {{-- An empty panel inside a card is one line with an icon, like Nothing needs your attention: a check
-                         when empty is good news, a plain mark when it is only empty --}}
-                    @if ($faculty->isEmpty())
-                        <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
-                            @if ($group === 'pending')
-                                <flux:icon.check-circle variant="mini" class="mt-0.5 shrink-0 text-isu-green-700" aria-hidden="true" />
-                                {{ __('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel]) }}
-                            @else
-                                <flux:icon.users variant="mini" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
-                                {{ __('No faculty in this group for :range.', ['range' => $this->rangeLabel]) }}
-                            @endif
-                        </p>
+                    {{-- An empty panel inside a card is one line with an icon: a check when empty is good news --}}
+                    @if ($faculty->isEmpty() && $group === 'pending')
+                        <x-empty-state inline good icon="check-circle" :heading="__('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel])" class="mt-4" />
+                    @elseif ($faculty->isEmpty())
+                        <x-empty-state inline icon="users" :heading="__('No faculty in this group for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
                     @else
                         {{-- One compact line per person; their project titles open under the name on demand --}}
                         <ul class="mt-4 divide-y divide-line border-t border-line text-sm transition-opacity" wire:loading.delay.class="opacity-60">
@@ -611,10 +604,7 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:heading level="2">{{ $heading }}</flux:heading>
 
                     @if ($rows->isEmpty())
-                        <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
-                            <flux:icon.chart-bar variant="mini" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
-                            {{ __('No projects for :range.', ['range' => $this->rangeLabel]) }}
-                        </p>
+                        <x-empty-state inline icon="chart-bar" :heading="__('No projects for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
                     @else
                         @php
                             $most = $rows->max('count');
@@ -644,10 +634,7 @@ new #[Title('Dashboard')] class extends Component {
                 </div>
 
                 @if ($this->waiting->isEmpty())
-                    <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
-                        <flux:icon.check-circle variant="mini" class="mt-0.5 shrink-0 text-isu-green-700" aria-hidden="true" />
-                        {{ __('No concept proposals are waiting for review.') }}
-                    </p>
+                    <x-empty-state inline good icon="check-circle" :heading="__('No concept proposals are waiting for review.')" class="mt-4" />
                 @else
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->waiting as $submission)
@@ -694,10 +681,7 @@ new #[Title('Dashboard')] class extends Component {
 
             {{-- With nothing to act on, the attention panel shrinks to one line so the chart and projects move up --}}
             @if ($calm)
-                <p class="flex items-center gap-2 text-sm text-zinc-600 lg:col-span-12" data-test="attention-tile">
-                    <flux:icon.check-circle variant="mini" class="shrink-0 text-isu-green-700" aria-hidden="true" />
-                    {{ __('Nothing needs your attention.') }}
-                </p>
+                <x-empty-state inline good icon="check-circle" :heading="__('Nothing needs your attention.')" class="lg:col-span-12" data-test="attention-tile" />
             @else
                 <flux:card class="lg:col-span-8" data-test="attention-tile">
                     <flux:heading level="2">{{ __('Needs your attention') }}</flux:heading>
@@ -757,10 +741,7 @@ new #[Title('Dashboard')] class extends Component {
                 </div>
 
                 @if ($total === 0)
-                    <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
-                        <flux:icon.document-plus variant="mini" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
-                        {{ __('You haven’t submitted a proposal yet.') }}
-                    </p>
+                    <x-empty-state inline icon="document-plus" :heading="__('You haven’t submitted a proposal yet.')" class="mt-4" />
                 @else
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->myProjects->take(5) as $submission)

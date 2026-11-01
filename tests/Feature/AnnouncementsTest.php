@@ -154,6 +154,19 @@ class AnnouncementsTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'announcement.deleted', 'subject_label' => 'Old memo']);
     }
 
+    public function test_edit_and_delete_never_open_their_dialogs_together(): void
+    {
+        $announcement = Announcement::factory()->create();
+
+        // Pressed one after the other before the first answers, as on a slow server, only the last dialog stays open.
+        Livewire::actingAs($this->admin())->test('pages::announcements.index')
+            ->call('edit', $announcement->id)
+            ->assertDispatched('modal-close', name: 'announcement-delete')
+            ->call('confirmDelete', $announcement->id)
+            ->assertDispatched('modal-close', name: 'announcement-form')
+            ->assertDispatched('modal-show', name: 'announcement-delete');
+    }
+
     public function test_a_memo_that_cannot_be_stored_saves_nothing(): void
     {
         // No Google Drive storage account is connected.

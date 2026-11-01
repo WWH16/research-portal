@@ -239,6 +239,8 @@ new #[Title('Announcements')] class extends Component {
         $this->resetValidation();
         unset($this->editing);
 
+        // On a slow server a member can press Delete before this answers; the dialog opened last is the only one open.
+        Flux::modal('announcement-delete')->close();
         Flux::modal('announcement-form')->show();
     }
 
@@ -312,6 +314,7 @@ new #[Title('Announcements')] class extends Component {
         $this->deletingId = $id;
         unset($this->deleting);
 
+        Flux::modal('announcement-form')->close();
         Flux::modal('announcement-delete')->show();
     }
 

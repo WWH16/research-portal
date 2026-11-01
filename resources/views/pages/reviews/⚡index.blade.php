@@ -82,10 +82,9 @@ new #[Title('Concept Reviews')] class extends Component {
 
     @island(name: 'list', always: true)
     @if ($this->queue->isEmpty())
-        <flux:text class="mt-8" data-test="reviews-empty">
-            {{ __('No concept proposals are waiting for review. New and corrected ones appear here as proponents upload them.') }}
-            <flux:link :href="route('submissions.index')" wire:navigate class="ms-1">{{ __('See all submissions') }}</flux:link>
-        </flux:text>
+        <x-empty-state icon="clipboard-document-check" :heading="__('No concept proposals are waiting for review.')" :text="__('New and corrected ones appear here as proponents upload them.')" class="mt-8" data-test="reviews-empty">
+            <flux:button :href="route('submissions.index')" wire:navigate class="max-sm:h-11">{{ __('See all submissions') }}</flux:button>
+        </x-empty-state>
     @else
         {{-- The pager shows only once there is a second page, as on Submissions. relative keeps the cells' screen-reader-only
              text inside the table's scroll area, so on phones it can't widen the whole page --}}

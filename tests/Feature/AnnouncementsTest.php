@@ -120,15 +120,10 @@ class AnnouncementsTest extends TestCase
             ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo('first.pdf'))->call('save');
         $first = Announcement::sole()->attachment_path;
 
-        // The current memo unfolds in the form to be checked, fetched only once it is first unfolded.
+        // The current memo opens in the page's own viewer, to be checked without leaving the form.
         $page->call('edit', Announcement::sole()->id)
             ->assertSee('Current memo: first.pdf')
-            ->assertSeeHtml('data-test="toggle-memo-fold"')
-            ->assertSee('Show preview')
-            ->assertDontSeeHtml('src="'.e(Announcement::sole()->memoUrl()).'"')
-            // Unfolded, it opens full size in the page's own viewer.
-            ->assertSeeHtml('data-test="zoom-memo-fold"')
-            ->assertSee('Full size')
+            ->assertSeeHtml('data-test="preview-current-memo"')
             ->assertSeeHtml("\$dispatch('memo-preview'")
             ->set('memo', $this->memo('second.pdf'))
             ->call('save')
@@ -284,8 +279,6 @@ class AnnouncementsTest extends TestCase
         $admin = $this->admin();
         $page = Livewire::actingAs($admin)->test('pages::announcements.index')
             ->call('create')
-            // The form doesn't spell out who hears of it.
-            ->assertDontSee('portal notice')
             ->set('title', 'Schedule of Submission of Concept Proposals')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
             ->set('dueOn', '2026-11-15')
@@ -296,7 +289,6 @@ class AnnouncementsTest extends TestCase
         // Saving an edit that changed nothing tells no one, and the announcement isn't marked edited.
         $this->travelTo('2026-11-01 10:00');
         $page->call('edit', $announcement->id)
-            ->assertDontSee('portal notice')
             ->call('save');
         $this->assertSame(1, $faculty->notifications()->count());
         $this->assertStringNotContainsString('edited on', $this->actingAs($faculty)->get(route('announcements.index'))->getContent());

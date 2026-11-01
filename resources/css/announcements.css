@@ -1,14 +1,19 @@
 /* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full
  * paper: oklch(98.5% 0.003 160) · accent: isu-green-700 #0b5e36 · display: Instrument Sans · body: Instrument Sans
- * nav: kept, the portal sidebar · signature: the deadline agenda, a date tile leading every row · states: empty, memo loading, memo failed
- * axes: light/grotesk-sans/chromatic-green · posture: restrained · contrast: pass · v2.0.0 */
-/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V3 · weakest: V, an agenda is a familiar calendar pattern; kept it because faculty read deadlines by date and a novel layout would cost them that */
-/* Hallmark · finish-review: subagent · 8 findings · 6 resolved 2 partial · gap: iOS Safari shows one PDF page in the frame; the Word viewer's refit on resize is in place but untested */
-
+ * nav: kept, the portal sidebar · signature: the Classroom stream, a post card with its memo as an attachment strip · rail: Due soon, wide screens only · states: empty, memo loading, memo failed
+ * axes: light/grotesk-sans/chromatic-green · posture: restrained · contrast: pass · principle: Jakob's law, reference Google Classroom · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: R, the stream borrows Classroom's layout on purpose; faculty already know where a post's author, actions and attachment sit */
+/* Hallmark · waive 25 · announcement text spans the post card at about 87 characters a line · the Research Office asked for the text to use the card's full width */
 /* The Announcements page. Its layout is in the page's own classes; these are the parts a class can't reach. */
 
 :root {
     --shadow-memo-page: 0 1px 2px oklch(20% 0.01 160 / 0.08), 0 0 0 1px oklch(30% 0.01 160 / 0.06);
+}
+
+/* The poster's initials, trimmed to their capitals, so flex centres the letters themselves rather than a line box whose
+   space above and below the capitals isn't even. */
+[data-test="announcement"] [data-flux-avatar] > span {
+    text-box: trim-both cap alphabetic;
 }
 
 /* docx-preview draws Word pages on its own grey backdrop with a heavy halo; sit them on the viewer's pale ground instead. */

@@ -20,9 +20,15 @@
 
 {{-- Keyed by the memo's link, so a replaced memo starts folded and is fetched afresh --}}
 <div wire:key="{{ $announcement->memoUrl() }}" x-data="memoFold(@js($kind === 'image' ? $announcement->memoPreviewUrl() : $announcement->memoUrl()), @js($kind), @js(__('Page :number of :total')))" {{ $attributes }} data-test="memo">
-    <div class="flex max-w-xl flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2">
-        <flux:icon :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', default => 'document' }" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
-        <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$name">{{ $label ?? $name }}</flux:text>
+    {{-- As Classroom shows an attachment: a tile for the kind of file, its name, and what it is under the name --}}
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-zinc-100" aria-hidden="true">
+            <flux:icon :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', default => 'document' }" variant="mini" class="text-zinc-500" />
+        </span>
+        <div class="min-w-0 grow basis-40">
+            <flux:text class="truncate font-medium text-zinc-800" :title="$name">{{ $label ?? $name }}</flux:text>
+            <flux:text size="sm">{{ match ($kind) { 'image' => __('Image'), 'pdf' => __('PDF'), default => __('Word document') } }}</flux:text>
+        </div>
         <div class="flex flex-wrap gap-2">
             @if ($kind)
                 @if ($fold)
@@ -30,9 +36,10 @@
                         <span x-text="open ? @js($hide) : @js($show)">{{ $show }}</span>
                     </flux:button>
                 @endif
-                <flux:button size="sm" icon="eye" class="max-sm:h-11" x-on:click="$dispatch('memo-opened'); $dispatch('memo-viewer', {{ $viewer }})" :aria-label="__('Preview memo: :name', ['name' => $name])" data-test="preview-memo">
-                    {{ __('Preview memo') }}
-                </flux:button>
+                {{-- An icon alone, as a file viewer's open-full-screen control; the tooltip and the label say what it does --}}
+                <flux:tooltip :content="__('Preview memo')">
+                    <flux:button size="sm" icon="arrows-pointing-out" class="max-sm:size-11" x-on:click="$dispatch('memo-opened'); $dispatch('memo-viewer', {{ $viewer }})" :aria-label="__('Preview memo: :name', ['name' => $name])" data-test="preview-memo" />
+                </flux:tooltip>
             @else
                 <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="$dispatch('memo-opened')" :aria-label="__('Download memo: :name', ['name' => $name])" data-test="download-memo">
                     {{ __('Download memo') }}
@@ -58,7 +65,7 @@
                 {{-- As tall as the picture would be; the pages sit on a pale ground and scroll inside. A keyboard scrolls
                      them here and opens them with Preview memo. wire:ignore keeps a Livewire refresh of the page from
                      clearing pages already drawn. --}}
-                <div x-show="! loading && ! failed" x-on:click="$dispatch('memo-viewer', {{ $viewer }})" x-on:resize.window.debounce="fit()" tabindex="0" role="region" aria-label="{{ $name }}" class="max-h-96 max-w-xl cursor-zoom-in overflow-auto rounded-lg border border-line bg-zinc-100 [scrollbar-width:thin] hover:border-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                <div x-show="! loading && ! failed" x-on:click="$dispatch('memo-viewer', {{ $viewer }})" x-on:resize.window.debounce="fit()" tabindex="0" role="region" aria-label="{{ $name }}" class="max-h-96 cursor-zoom-in overflow-auto rounded-lg border border-line bg-zinc-100 [scrollbar-width:thin] hover:border-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                     <div x-ref="pages" wire:ignore data-memo-pages></div>
                 </div>
             @endif

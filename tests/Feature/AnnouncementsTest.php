@@ -209,10 +209,10 @@ class AnnouncementsTest extends TestCase
         $later->delete();
         $this->get(route('announcements.index'))->assertDontSee('Upcoming deadlines')->assertSeeInOrder(['General announcements', $memo->title, 'Past deadlines', $closed->title]);
 
-        // With only notices left, only their list shows.
+        // With only notices left, only their list shows, with no jumps to other sections.
         $closed->delete();
         $closedFirst->delete();
-        $this->get(route('announcements.index'))->assertSee('General announcements')->assertDontSee('Past deadlines');
+        $this->get(route('announcements.index'))->assertSee('General announcements')->assertDontSee('Past deadlines')->assertDontSee('data-test="section-jumps"', false);
     }
 
     public function test_members_open_a_memo_under_its_own_name(): void
@@ -328,11 +328,8 @@ class AnnouncementsTest extends TestCase
         // Opening the page reads nothing by itself: both are New, and the bell still counts all three notices.
         $html = $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('3 unread notifications')->getContent();
         $this->assertSame(2, substr_count($html, 'data-test="new-badge"'));
-        // Each turns to Read the moment it is read, which says so on the page; the header says what reads it, so a phone
-        // or a screen reader gets it too.
-        $this->assertSame(2, substr_count($html, 'data-test="read-badge"'));
-        $this->assertSame(1, substr_count($html, 'data-test="new-explained"'));
-        $this->assertStringContainsString('Each is marked read once it has been on your screen for a moment, or, when it has a memo, once you open the memo.', $html);
+        // The mark says, under the pointer, what clears it.
+        $this->assertStringContainsString('This announcement is marked read once it has been on your screen for a moment, or once you open its memo.', $html);
 
         // One that has been on screen is read on its own, and the bell is told to count again.
         Livewire::test('pages::announcements.index')->call('seen', $first->id)->assertDispatched('open-work-stale');
@@ -454,26 +451,31 @@ class AnnouncementsTest extends TestCase
             ->assertDontSee('target="_blank" rel="noopener" class="block overflow-hidden', false);
     }
 
-    public function test_the_date_tile_shows_the_deadline_or_for_a_notice_the_posted_day(): void
+    public function test_posts_read_like_a_classroom_stream(): void
     {
         $this->travelTo('2026-10-29 09:00');
-        Announcement::factory()->dueIn(3)->create(['title' => 'Open schedule', 'created_at' => '2026-10-01']);
+        $open = Announcement::factory()->dueIn(3)->create(['title' => 'Open schedule', 'created_at' => '2026-10-01']);
         Announcement::factory()->create(['title' => 'Plain notice', 'created_at' => '2026-10-02']);
         Announcement::factory()->dueIn(-5)->create(['title' => 'Closed schedule', 'created_at' => '2026-10-03']);
 
-        // Open: the deadline, November 1. A notice: the day it was posted, October 2, labelled Posted so it isn't taken
-        // for the date of an event. Closed: the day it closed, October 24, labelled Closed. Each follows its list's order.
-        $html = $this->actingAs(User::factory()->create())->get(route('announcements.index'))
+        // Under the header, a jump to each section says what the page holds. Due soon lists the open deadline and jumps
+        // to its post. Each post leads with who posted it and when, then its title; no post carries a date tile.
+        $this->actingAs(User::factory()->create())->get(route('announcements.index'))
             ->assertSeeInOrder([
-                'data-test="date-tile"', '>1<', '>Nov<', 'Open schedule',
-                'data-test="date-tile"', 'Posted', '>2<', '>Oct<', 'Plain notice',
-                'data-test="date-tile"', 'Closed', '>24<', '>Oct<', 'Closed schedule',
+                'data-test="section-jumps"',
+                'href="#announcements-upcoming"', 'Upcoming deadlines',
+                'href="#announcements-other"', 'General announcements',
+                'href="#announcements-closed"', 'Past deadlines',
+                'data-test="due-soon"', 'href="#announcement-'.$open->id.'"', 'Open schedule', 'in 3 days',
+                'on October 1, 2026', 'Open schedule',
+                'on October 2, 2026', 'Plain notice',
+                'on October 3, 2026', 'Closed schedule',
             ], false)
-            ->getContent();
-        $this->assertSame(1, substr_count($html, '>Posted<'));
-        $this->assertSame(1, substr_count($html, '>Closed<'));
-        // A member with nothing unread isn't told what New means.
-        $this->assertStringNotContainsString('data-test="new-explained"', $html);
+            ->assertDontSee('data-test="date-tile"', false);
+
+        // With nothing due, there is no Due soon list.
+        $open->delete();
+        $this->get(route('announcements.index'))->assertDontSee('data-test="due-soon"', false);
     }
 
     public function test_an_image_memo_is_read_out_by_its_description_or_its_name(): void

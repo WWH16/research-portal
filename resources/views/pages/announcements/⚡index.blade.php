@@ -340,17 +340,14 @@ new #[Title('Announcements')] class extends Component {
     }
 }; ?>
 
-<section class="mx-auto w-full max-w-4xl">
+<section class="mx-auto w-full max-w-5xl">
     <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        {{-- At least 14rem wide, so on a phone the button wraps below instead of squeezing the description --}}
-        <div class="min-w-0 flex-1 basis-56">
+        {{-- At least 12rem wide, so on a phone the button wraps below instead of squeezing the description, while the
+             title still fits beside the seal on the narrowest phone --}}
+        <div class="min-w-0 flex-1 basis-48">
             <flux:heading size="xl" level="1">{{ __('Announcements') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Schedules of submissions and memos from the Research Office.') }}</flux:text>
-            {{-- What the New marks mean, said where a phone or a screen reader gets it too, not in a hover --}}
-            @if ($fresh)
-                <flux:text class="mt-2" data-test="new-explained">{{ __('New marks the announcements you haven’t read yet. Each is marked read once it has been on your screen for a moment, or, when it has a memo, once you open the memo.') }}</flux:text>
-            @endif
         </div>
 
         @can('create', App\Models\Announcement::class)
@@ -362,63 +359,109 @@ new #[Title('Announcements')] class extends Component {
         <flux:callout variant="secondary" icon="information-circle" class="mt-6" :text="__('The announcement you followed is no longer on the portal. The Research Office has removed it.')" data-test="announcement-gone" />
     @endif
 
-    {{-- Open schedules first, as their own section, so a deadline is never buried under newer memos; closed ones last, as
-         a record, so they don't crowd the notices. Each shows only when it has any. With no announcements at all, the
-         one list still shows, saying so, so the page keeps its shape --}}
-    @foreach (['upcoming' => $this->upcoming, 'other' => $this->announcements, 'closed' => $this->closed] as $section => $list)
-        @continue($list->isEmpty() && ! ($section === 'other' && $this->upcoming->isEmpty() && $this->closed->isEmpty()))
+    {{-- What the page holds and how much, each a jump to its section, so a phone that opens on the deadlines still tells
+         the member the general announcements are further down. Nothing is hidden, unlike tabs. Only when there is more
+         than one section to jump between. --}}
+    @php($labels = ['upcoming' => __('Upcoming deadlines'), 'other' => __('General announcements'), 'closed' => __('Past deadlines')])
+    @php($jumps = array_filter(['upcoming' => $this->upcoming->count(), 'other' => $this->announcements->total(), 'closed' => $this->closed->total()]))
+    @if (count($jumps) > 1)
+        {{-- On a phone the jumps wrap rather than scroll, so none sits out of sight --}}
+        <flux:navbar class="-mx-3 mt-2 flex-wrap" :aria-label="__('Sections')" data-test="section-jumps">
+            @foreach ($jumps as $section => $count)
+                <flux:navbar.item href="#announcements-{{ $section }}" :badge="$count" class="shrink-0 max-sm:h-11">{{ $labels[$section] }}</flux:navbar.item>
+            @endforeach
+        </flux:navbar>
+    @endif
 
-        <section wire:key="section-{{ $section }}" class="mt-8" aria-labelledby="announcements-{{ $section }}" data-test="{{ $section }}-announcements">
-            {{-- A step above the announcement titles and under the page title, with a rule under it --}}
-            <flux:heading size="lg" level="2" id="announcements-{{ $section }}" class="border-b border-line pb-2 text-xl!">
-                {{ match ($section) {
-                    'upcoming' => __('Upcoming deadlines'),
-                    'closed' => __('Past deadlines'),
-                    default => __('General announcements'),
-                } }}
-            </flux:heading>
+    {{-- A stream, as in Google Classroom, which faculty already use: on a wide screen the open deadlines are listed beside
+         it under Due soon, each a jump to its post; on a phone, and with nothing due, the stream has the width alone.
+         Open schedules come first, as their own section, so a deadline is never buried under newer memos; closed ones
+         last, as a record, so they don't crowd the notices. Each section shows only when it has any. With no
+         announcements at all, the one list still shows, saying so, so the page keeps its shape. --}}
+    <div @class(['mt-6', 'lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-6' => $this->upcoming->isNotEmpty()])>
+        @if ($this->upcoming->isNotEmpty())
+            {{-- Pinned while the stream scrolls, and never taller than the screen, so a long list scrolls on its own
+                 rather than hiding its last deadlines --}}
+            <aside class="hidden rounded-xl border border-line p-4 lg:sticky lg:top-6 lg:block lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:[scrollbar-width:thin]" aria-labelledby="due-soon-heading" data-test="due-soon">
+                <flux:heading level="2" id="due-soon-heading" class="text-base!">{{ __('Due soon') }}</flux:heading>
+                <ul class="mt-3 flex flex-col gap-3">
+                    @foreach ($this->upcoming as $announcement)
+                        <li>
+                            <flux:link href="#announcement-{{ $announcement->id }}" variant="ghost" x-on:click="$dispatch('light-announcement', {{ $announcement->id }})" class="text-sm font-medium wrap-anywhere text-zinc-900!">{{ $announcement->title }}</flux:link>
+                            <flux:text size="sm" @class(['mt-0.5', 'text-red-700!' => $announcement->due_on->lte(today()->addDay())])>{{ $announcement->deadline() }}</flux:text>
+                        </li>
+                    @endforeach
+                </ul>
+            </aside>
+        @endif
 
-            <ul class="mt-3 divide-y divide-line">
-                @forelse ($list as $announcement)
-                    @php($urgent = $section === 'upcoming' && $announcement->due_on->lte(today()->addDay()))
-                    {{-- An agenda: a date leads each row, so the list reads by date at a glance. An open schedule shows its
-                         deadline on a tile as pale as the canvas grey, tinted green while open and red when due today or
-                         tomorrow, with a hairline ring of the same hue so it doesn't melt into the white page. A closed
-                         schedule shows the day it closed, labelled Closed, and a notice the day it was posted, labelled
-                         Posted so it isn't read as the date of an event; both sit quietly on the canvas grey without the
-                         ring, and the dates run in the list's own order. The sentences below carry the same dates for
-                         screen readers, so the tile is hidden from them. A notification links here by id;
-                         the gold wash, spread past the edges by an outline of the same colour, shows which announcement it meant.
-                         A new one is read once the member has taken it in: with a memo, when they open the memo, since that is
-                         the notice itself; without one, when its title has been on screen for a moment. read() asks the server
-                         once, and only for a new one. --}}
-                    @php($isNew = in_array($announcement->id, $fresh))
-                    <li wire:key="announcement-{{ $announcement->id }}" id="announcement-{{ $announcement->id }}" x-data="{ unread: @js($isNew), read() { if (this.unread) { this.unread = false; this.$wire.seen({{ $announcement->id }}) } } }" class="grid scroll-mt-6 grid-cols-[auto_minmax(0,1fr)] gap-x-4 py-6 target:rounded-sm target:bg-highlight-soft target:outline-8 target:outline-highlight-soft sm:gap-x-6" data-test="announcement">
-                        @php($day = $section === 'other' ? $announcement->created_at : $announcement->due_on)
-                        <div aria-hidden="true" @class([
-                            'flex min-w-12 flex-col items-center self-start rounded-md px-1 py-2 tabular-nums leading-none sm:min-w-16',
-                            'bg-isu-green-50/50 text-isu-green-800 ring-1 ring-isu-green-100 ring-inset' => $section === 'upcoming' && ! $urgent,
-                            'bg-red-50/50 text-red-700 ring-1 ring-red-100 ring-inset' => $urgent,
-                            'bg-canvas text-zinc-600' => $section !== 'upcoming',
-                        ]) data-test="date-tile">
-                            @if ($section !== 'upcoming')
-                                <span class="mb-1 text-xs">{{ $section === 'closed' ? __('Closed') : __('Posted') }}</span>
-                            @endif
-                            <span @class(['font-semibold', 'text-xl sm:text-2xl' => $section === 'upcoming', 'text-lg' => $section !== 'upcoming'])>{{ $day->format('j') }}</span>
-                            <span class="mt-1 text-xs font-medium">{{ $day->format('M') }}</span>
-                        </div>
+        <div class="flex min-w-0 flex-col gap-8">
+            @foreach (['upcoming' => $this->upcoming, 'other' => $this->announcements, 'closed' => $this->closed] as $section => $list)
+                @continue($list->isEmpty() && ! ($section === 'other' && $this->upcoming->isEmpty() && $this->closed->isEmpty()))
 
-                        <div class="min-w-0">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="min-w-0" @if ($isNew && ! $announcement->attachment_path) x-data="{ timer: null }" x-intersect:enter="timer = setTimeout(() => document.hidden || read(), 1500)" x-intersect:leave="clearTimeout(timer)" @endif>
-                                    {{-- After the title, so a screen reader hears it first; the header says what reads it, and Read
-                                         shows for the rest of the visit. The title is in ink, not the portal's green heading
-                                         colour, so the green on a row is left to mark an open deadline. --}}
-                                    <flux:heading size="lg" level="3" class="text-lg! text-balance wrap-anywhere text-zinc-900!">
+                <section wire:key="section-{{ $section }}" aria-labelledby="announcements-{{ $section }}" data-test="{{ $section }}-announcements">
+                    <flux:heading size="lg" level="2" id="announcements-{{ $section }}" class="scroll-mt-6 text-xl!">{{ $labels[$section] }}</flux:heading>
+
+                    <ul class="mt-4 flex flex-col gap-4">
+                        @forelse ($list as $announcement)
+                            @php($urgent = $section === 'upcoming' && $announcement->due_on->lte(today()->addDay()))
+                            {{-- A post, as in Classroom: who posted it and when, with its actions at the corner; then the title,
+                                 its deadline, the text, and the memo at the foot. A closed schedule's card sits on the canvas
+                                 grey, as Classroom quiets work that is done. A notification or a Due soon entry links here
+                                 by id; the gold wash, spread past the edges by an outline of the same colour, shows which
+                                 announcement it meant, and fades once the member clicks anywhere but this card. A click in Due
+                                 soon leaves it to that list, which lights the post it jumps to. A new one is read once the
+                                 member has taken it in: with a memo, when they open the memo, since that is the notice itself;
+                                 without one, when its title has been on screen for a moment. read() asks the server once, and
+                                 only for a new one. --}}
+                            @php($isNew = in_array($announcement->id, $fresh))
+                            <li
+                                wire:key="announcement-{{ $announcement->id }}"
+                                id="announcement-{{ $announcement->id }}"
+                                x-data="{ unread: @js($isNew), lit: location.hash === '#announcement-{{ $announcement->id }}', read() { if (this.unread) { this.unread = false; this.$wire.seen({{ $announcement->id }}) } } }"
+                                x-on:click.outside="$event.target.closest('[data-test=due-soon]') || (lit = false)"
+                                x-on:light-announcement.window="lit = $event.detail === {{ $announcement->id }}"
+                                x-bind:class="lit && 'bg-highlight-soft! outline-4 outline-highlight-soft'"
+                                @class(['scroll-mt-6 rounded-xl border border-line p-4 transition-colors motion-reduce:transition-none sm:p-5', 'bg-canvas' => $section === 'closed'])
+                                data-test="announcement"
+                            >
+                                {{-- Who posted it over when, as in Classroom. An edit is said beside the post, with its own date,
+                                     so a changed deadline or memo is never taken for the original. The picture repeats the
+                                     name beside it, so it is hidden from screen readers. --}}
+                                <div class="flex items-center gap-3">
+                                    <flux:avatar size="sm" circle :src="$announcement->poster->profileImageUrl()" :name="$announcement->poster->displayName()" class="shrink-0" aria-hidden="true" />
+                                    <div class="min-w-0 flex-1">
+                                        <flux:text class="truncate font-medium text-zinc-800!">{{ $announcement->poster->displayName() }}</flux:text>
+                                        <flux:text size="sm">
+                                            {{ $announcement->updated_at->gt($announcement->created_at)
+                                                ? __('Posted on :date, and edited on :edited', ['date' => $announcement->created_at->format('F j, Y'), 'edited' => $announcement->updated_at->format('F j, Y')])
+                                                : __('Posted on :date', ['date' => $announcement->created_at->format('F j, Y')]) }}
+                                        </flux:text>
+                                    </div>
+
+                                    @can('update', $announcement)
+                                        <flux:dropdown position="bottom" align="end">
+                                            {{-- 44px on a phone, a comfortable thumb target --}}
+                                            <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" class="-me-2 max-sm:size-11" :aria-label="__('Actions for :title', ['title' => $announcement->title])" />
+                                            <flux:menu>
+                                                <flux:menu.item icon="pencil-square" wire:click="edit({{ $announcement->id }})">{{ __('Edit') }}</flux:menu.item>
+                                                <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $announcement->id }})">{{ __('Delete') }}</flux:menu.item>
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    @endcan
+                                </div>
+
+                                <div class="mt-4 min-w-0" @if ($isNew && ! $announcement->attachment_path) x-data="{ timer: null }" x-intersect:enter="timer = setTimeout(() => document.hidden || read(), 1500)" x-intersect:leave="clearTimeout(timer)" @endif>
+                                    {{-- After the title, so a screen reader hears it first; the mark goes once it is read. The title
+                                         is in ink and a step bolder than the text, not the portal's green heading colour, so the
+                                         green on a post is left to mark an open deadline. --}}
+                                    <flux:heading size="lg" level="3" class="text-lg! font-semibold! text-balance wrap-anywhere text-zinc-900!">
                                         {{ $announcement->title }}
+                                        {{-- Under the pointer, the mark says what clears it --}}
                                         @if ($isNew)
-                                            <flux:badge size="sm" x-show="unread" class="ms-1 bg-isu-gold-100! align-middle text-isu-gold-800!" data-test="new-badge">{{ __('New') }}</flux:badge>
-                                            <flux:badge size="sm" icon="check" x-show="! unread" x-cloak class="ms-1 align-middle" data-test="read-badge">{{ __('Read') }}</flux:badge>
+                                            <flux:tooltip x-show="unread" :content="__('This announcement is marked read once it has been on your screen for a moment, or once you open its memo.')">
+                                                <flux:badge size="sm" class="ms-1 bg-isu-gold-100! align-middle text-isu-gold-800!" data-test="new-badge">{{ __('New') }}</flux:badge>
+                                            </flux:tooltip>
                                         @endif
                                     </flux:heading>
 
@@ -436,55 +479,36 @@ new #[Title('Announcements')] class extends Component {
                                     @endif
                                 </div>
 
-                                @can('update', $announcement)
-                                    <flux:dropdown position="bottom" align="end">
-                                        {{-- 44px on a phone, a comfortable thumb target --}}
-                                        <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" class="max-sm:size-11" :aria-label="__('Actions for :title', ['title' => $announcement->title])" />
-                                        <flux:menu>
-                                            <flux:menu.item icon="pencil-square" wire:click="edit({{ $announcement->id }})">{{ __('Edit') }}</flux:menu.item>
-                                            <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $announcement->id }})">{{ __('Delete') }}</flux:menu.item>
-                                        </flux:menu>
-                                    </flux:dropdown>
-                                @endcan
-                            </div>
+                                {{-- The text takes the card's full width. A long announcement shows its first six lines with
+                                     Show more for the rest, so one long post doesn't push the others screens away; the button
+                                     shows only when the text runs past them. That is measured once, on load, so a window resized
+                                     later keeps its first answer. --}}
+                                <div x-data="{ more: false, long: false }">
+                                    <flux:text size="lg" x-init="long = $el.scrollHeight > $el.clientHeight" x-bind:class="{ 'line-clamp-6': ! more }" class="mt-2 line-clamp-6 whitespace-pre-line wrap-anywhere text-zinc-800">{{ $announcement->description }}</flux:text>
+                                    <flux:button x-show="long" x-cloak size="sm" variant="ghost" inset="left" icon:trailing="chevron-down" icon-trailing:class="in-aria-expanded:rotate-180" class="mt-1" x-on:click="more = ! more" x-bind:aria-expanded="more" aria-expanded="false">
+                                        <span x-text="more ? @js(__('Show less')) : @js(__('Show more'))">{{ __('Show more') }}</span>
+                                    </flux:button>
+                                </div>
 
-                            {{-- At body size, about 70 characters a line. A long announcement shows its first six lines with
-                                 Show more for the rest, so one long post doesn't push the others screens away; the button
-                                 shows only when the text runs past them. That is measured once, on load, so a window resized
-                                 later keeps its first answer. --}}
-                            <div x-data="{ more: false, long: false }">
-                                <flux:text size="lg" x-init="long = $el.scrollHeight > $el.clientHeight" x-bind:class="{ 'line-clamp-6': ! more }" class="mt-3 line-clamp-6 max-w-xl whitespace-pre-line wrap-anywhere text-zinc-800">{{ $announcement->description }}</flux:text>
-                                <flux:button x-show="long" x-cloak size="sm" variant="ghost" inset="left" icon:trailing="chevron-down" icon-trailing:class="in-aria-expanded:rotate-180" class="mt-1" x-on:click="more = ! more" x-bind:aria-expanded="more" aria-expanded="false">
-                                    <span x-text="more ? @js(__('Show less')) : @js(__('Show more'))">{{ __('Show more') }}</span>
-                                </flux:button>
-                            </div>
+                                {{-- The memo at the foot of the post, set off by a rule, as Classroom shows an attachment --}}
+                                @if ($announcement->attachment_path)
+                                    <x-memo :announcement="$announcement" class="mt-4 border-t border-line pt-4" x-on:memo-opened="read()" />
+                                @endif
+                            </li>
+                        @empty
+                            <li class="rounded-xl border border-line p-5" data-test="no-announcements">
+                                <flux:text>{{ __('No announcements yet.') }}</flux:text>
+                            </li>
+                        @endforelse
+                    </ul>
 
-                            @if ($announcement->attachment_path)
-                                <x-memo :announcement="$announcement" class="mt-4" x-on:memo-opened="read()" />
-                            @endif
-
-                            {{-- An edit is said beside the post, with its own date, so a changed deadline or memo is never
-                                 taken for the original --}}
-                            <flux:text size="sm" class="mt-4">
-                                @php($posted = ['name' => $announcement->poster->displayName(), 'date' => $announcement->created_at->format('F j, Y')])
-                                {{ $announcement->updated_at->gt($announcement->created_at)
-                                    ? __('Posted by :name on :date, and edited on :edited', [...$posted, 'edited' => $announcement->updated_at->format('F j, Y')])
-                                    : __('Posted by :name on :date', $posted) }}
-                            </flux:text>
-                        </div>
-                    </li>
-                @empty
-                    <li class="py-6" data-test="no-announcements">
-                        <flux:text>{{ __('No announcements yet.') }}</flux:text>
-                    </li>
-                @endforelse
-            </ul>
-
-            @if ($section !== 'upcoming' && $list->hasPages())
-                <flux:pagination :paginator="$list" class="mt-4" />
-            @endif
-        </section>
-    @endforeach
+                    @if ($section !== 'upcoming' && $list->hasPages())
+                        <flux:pagination :paginator="$list" class="mt-4" />
+                    @endif
+                </section>
+            @endforeach
+        </div>
+    </div>
 
     {{-- A memo opens on its own: the memo alone on a dark ground, as large as the screen allows, with nothing beside it.
          Its file actions float at the top edge, Close at the corner, and the zoom controls at the bottom edge. A click

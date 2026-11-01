@@ -73,6 +73,20 @@ class DashboardTest extends TestCase
             ->assertSee(route('reviews.index'), escape: false);
     }
 
+    public function test_the_dashboard_redraws_when_the_sidebar_finds_work_that_moves_it(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $page = Livewire::test('pages::dashboard')->assertSee('No concept proposals are waiting for review.');
+
+        $this->submit($maria, 'Arrived While Open');
+
+        // A count the dashboard doesn't show leaves it as it was; a new proposal to review redraws it
+        $page->dispatch('open-work-changed', changed: ['unread'])->assertSee('No concept proposals are waiting for review.');
+        $page->dispatch('open-work-changed', changed: ['toReview'])->assertSee('One concept proposal is waiting for review.');
+    }
+
     public function test_yearly_summary_counts_each_faculty_member_once_per_group(): void
     {
         $navarro = $this->facultyInDepartment('Navarro');

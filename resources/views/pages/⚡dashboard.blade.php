@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -54,6 +55,19 @@ new #[Title('Dashboard')] class extends Component {
     public function updated(): void
     {
         $this->resetPage();
+    }
+
+    /**
+     * Redraw only when the sidebar finds work this dashboard shows, so it stays live without recounting every minute.
+     *
+     * @param  list<string>  $changed
+     */
+    #[On('open-work-changed')]
+    public function openWorkChanged(array $changed): void
+    {
+        if (! array_intersect($changed, $this->isAdmin ? ['toReview', 'toApprove'] : ['toRevise', 'unread'])) {
+            $this->skipRender();
+        }
     }
 
     /**

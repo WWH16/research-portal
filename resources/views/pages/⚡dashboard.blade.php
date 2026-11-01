@@ -510,12 +510,18 @@ new #[Title('Dashboard')] class extends Component {
                         </div>
                     </div>
 
+                    {{-- An empty panel inside a card is one line with an icon, like Nothing needs your attention: a check
+                         when empty is good news, a plain mark when it is only empty --}}
                     @if ($faculty->isEmpty())
-                        <flux:text class="mt-4">
-                            {{ $group === 'pending'
-                                ? __('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel])
-                                : __('No faculty in this group for :range.', ['range' => $this->rangeLabel]) }}
-                        </flux:text>
+                        <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
+                            @if ($group === 'pending')
+                                <flux:icon.check-circle variant="mini" class="mt-0.5 shrink-0 text-isu-green-700" aria-hidden="true" />
+                                {{ __('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel]) }}
+                            @else
+                                <flux:icon.users variant="mini" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
+                                {{ __('No faculty in this group for :range.', ['range' => $this->rangeLabel]) }}
+                            @endif
+                        </p>
                     @else
                         {{-- One compact line per person; their project titles open under the name on demand --}}
                         <ul class="mt-4 divide-y divide-line border-t border-line text-sm transition-opacity" wire:loading.delay.class="opacity-60">
@@ -605,7 +611,10 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:heading level="2">{{ $heading }}</flux:heading>
 
                     @if ($rows->isEmpty())
-                        <flux:text class="mt-4">{{ __('No projects for :range.', ['range' => $this->rangeLabel]) }}</flux:text>
+                        <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
+                            <flux:icon.chart-bar variant="mini" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
+                            {{ __('No projects for :range.', ['range' => $this->rangeLabel]) }}
+                        </p>
                     @else
                         @php
                             $most = $rows->max('count');
@@ -635,7 +644,10 @@ new #[Title('Dashboard')] class extends Component {
                 </div>
 
                 @if ($this->waiting->isEmpty())
-                    <flux:text class="mt-4">{{ __('No concept proposals are waiting for review.') }}</flux:text>
+                    <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
+                        <flux:icon.check-circle variant="mini" class="mt-0.5 shrink-0 text-isu-green-700" aria-hidden="true" />
+                        {{ __('No concept proposals are waiting for review.') }}
+                    </p>
                 @else
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->waiting as $submission)
@@ -745,7 +757,10 @@ new #[Title('Dashboard')] class extends Component {
                 </div>
 
                 @if ($total === 0)
-                    <flux:text class="mt-4">{{ __('You haven’t submitted a proposal yet.') }}</flux:text>
+                    <p class="mt-4 flex items-start gap-2 text-sm text-zinc-600">
+                        <flux:icon.document-plus variant="mini" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
+                        {{ __('You haven’t submitted a proposal yet.') }}
+                    </p>
                 @else
                     <ul class="mt-4 divide-y divide-line">
                         @foreach ($this->myProjects->take(5) as $submission)

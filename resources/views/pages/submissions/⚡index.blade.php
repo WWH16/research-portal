@@ -326,16 +326,20 @@ new #[Title('Submissions')] class extends Component {
     </div>
 
     @if ($this->submissions->isEmpty())
-        <flux:text class="mt-8">
-            @if ($statusFilter !== '' || $yearFilter !== '' || $department !== '' || $search !== '')
-                {{ __('No projects match these filters.') }}
-                <flux:link as="button" wire:click="clearFilters" class="ms-1" data-test="clear-filters-button">{{ __('Clear filters') }}</flux:link>
-            @elseif ($this->monitoring)
-                {{ __('No projects have been filed yet. They appear here as faculty submit proposals.') }}
-            @else
-                {{ __('You’re not on any projects yet. Submit a proposal, or ask a colleague to list you as a proponent on theirs.') }}
-            @endif
-        </flux:text>
+        {{-- Filters that find nothing say so and undo themselves; an empty portal and an empty account each say what fills them --}}
+        @if ($statusFilter !== '' || $yearFilter !== '' || $department !== '' || $search !== '')
+            <x-empty-state icon="magnifying-glass" :heading="__('No projects match these filters.')" :text="__('Try another status, year, college or search.')" class="mt-8">
+                <flux:button wire:click="clearFilters" class="max-sm:h-11" data-test="clear-filters-button">{{ __('Clear filters') }}</flux:button>
+            </x-empty-state>
+        @elseif ($this->monitoring)
+            <x-empty-state icon="folder-open" :heading="__('No projects have been filed yet.')" :text="__('They appear here as faculty submit proposals.')" class="mt-8" />
+        @else
+            <x-empty-state icon="document-plus" :heading="__('You’re not on any projects yet.')" :text="__('Submit a proposal, or ask a colleague to list you as a proponent on theirs.')" class="mt-8">
+                @if (auth()->user()->department_id)
+                    <flux:button :href="route('submissions.create')" icon="plus" wire:navigate class="max-sm:h-11">{{ __('New proposal') }}</flux:button>
+                @endif
+            </x-empty-state>
+        @endif
     @else
         {{-- Every cell starts at the top, so each row reads across one line from the title. relative anchors the cells'
              screen-reader-only text to the table, inside its scroll area, so on phones it can't widen the whole page. Columns sit

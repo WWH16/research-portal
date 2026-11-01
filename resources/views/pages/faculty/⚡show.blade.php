@@ -127,13 +127,11 @@ new class extends Component {
     <div @class(['mt-6 grid gap-8', 'xl:grid-cols-[minmax(0,1fr)_20rem]' => $first])>
         <section aria-label="{{ __('Publications') }}">
             @if ($this->publications->isEmpty())
-                <div class="rounded-xl border border-dashed border-line px-6 py-12 text-center" data-test="no-publications">
-                    <flux:heading>{{ __('No publications yet') }}</flux:heading>
+                <x-empty-state icon="book-open" :heading="__('No publications yet')" :text="$mine ? __('Add each paper you’ve published, then the papers that cite it.') : __('The publications this faculty member records will appear here.')" data-test="no-publications">
                     @if ($mine)
-                        <flux:text class="mt-2">{{ __('Add each paper you’ve published, then the papers that cite it.') }}</flux:text>
-                        <flux:button :href="route('publications.create')" variant="primary" icon="plus" class="mt-4 max-sm:h-11" wire:navigate>{{ __('Add publication') }}</flux:button>
+                        <flux:button :href="route('publications.create')" variant="primary" icon="plus" class="max-sm:h-11" wire:navigate>{{ __('Add publication') }}</flux:button>
                     @endif
-                </div>
+                </x-empty-state>
             @else
                 {{-- The table bleeds to the panel's edges, so a hovered row lights up its full width --}}
                 <div class="h-full rounded-xl border border-line bg-surface px-(--flux-bleed) pt-3 pb-2 [--flux-bleed:--spacing(4)] sm:[--flux-bleed:--spacing(6)]">

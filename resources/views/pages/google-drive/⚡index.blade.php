@@ -355,9 +355,17 @@ new #[Title('Google Drive')] class extends Component {
         {{-- The one boxed card: the account new documents go to, and what to do about it --}}
         <div class="mt-6 rounded-xl border border-line p-5">
             @if (! $this->connection)
-                {{-- Step one: the address every admin's Connect must match --}}
-                <flux:heading size="lg" level="2">{{ __('No storage account yet') }}</flux:heading>
-                <flux:text class="mt-1">{{ __('Enter the Google account that will store project documents, such as the Research Office’s portal account. Any admin can then connect it; no other account can.') }}</flux:text>
+                {{-- Step one: the address every admin's Connect must match. The same icon tile as the portal's other empty
+                     states, so an empty setup reads as one --}}
+                <div class="flex items-start gap-4" data-test="no-storage-account">
+                    <span class="grid size-12 shrink-0 place-items-center rounded-full bg-zinc-100" aria-hidden="true">
+                        <flux:icon icon="cloud" class="text-zinc-500" />
+                    </span>
+                    <div class="min-w-0">
+                        <flux:heading size="lg" level="2">{{ __('No storage account yet') }}</flux:heading>
+                        <flux:text class="mt-1">{{ __('Enter the Google account that will store project documents, such as the Research Office’s portal account. Any admin can then connect it; no other account can.') }}</flux:text>
+                    </div>
+                </div>
 
                 <form wire:submit="saveAccount" class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start">
                     <div class="sm:flex-1">

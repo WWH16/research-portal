@@ -687,12 +687,56 @@ new #[Title('Announcements')] class extends Component {
 
                     @if ($this->editing?->attachment_name)
                         <div class="mt-3 flex flex-col gap-2">
-                            <flux:text size="sm" class="wrap-anywhere">
-                                {{ $memo ? __('Replaces :name.', ['name' => $this->editing->attachment_name]) : __('Current memo: :name', ['name' => $this->editing->attachment_name]) }}
-                            </flux:text>
-                            @unless ($memo)
+                            @if ($memo)
+                                <flux:text size="sm" class="wrap-anywhere">{{ __('Replaces :name.', ['name' => $this->editing->attachment_name]) }}</flux:text>
+                            @else
+                                {{-- The current memo, as a file row like the page's. Show preview unfolds it here in a frame that
+                                     scrolls, so the admin checks it without leaving the form; an old .doc has no preview. Keyed
+                                     by announcement, so editing another starts folded. A click on the preview, or Full size,
+                                     opens the page's own viewer above the form, with its zoom. --}}
+                                @php($kind = $this->editing->memoPreview())
+                                {{-- Inline @php only: a @php block here would pair with the file's inline ones and break the view --}}
+                                @php($viewer = [$kind === 'image' ? 'memo-image' : 'memo-preview', ['name' => $this->editing->attachment_name, 'url' => $this->editing->memoUrl()] + ($kind === 'image'
+                                    ? ['alt' => $this->editing->attachment_alt ?: __('Memo: :name', ['name' => $this->editing->attachment_name]), 'link' => route('announcements.index', ['show' => $this->editing->id]).'#announcement-'.$this->editing->id]
+                                    : ['kind' => $kind])])
+                                <div wire:key="memo-fold-{{ $this->editing->id }}" x-data="memoFold(@js(['url' => $kind === 'image' ? $this->editing->memoPreviewUrl() : $this->editing->memoUrl(), 'kind' => $kind]))" data-test="memo-fold">
+                                    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line py-2 ps-3 pe-2">
+                                        <flux:icon :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', default => 'document' }" variant="mini" class="shrink-0 text-zinc-500" aria-hidden="true" />
+                                        <flux:text class="min-w-0 grow basis-40 truncate text-zinc-800" :title="$this->editing->attachment_name">{{ __('Current memo: :name', ['name' => $this->editing->attachment_name]) }}</flux:text>
+                                        @if ($kind)
+                                            <flux:button size="sm" variant="ghost" icon:trailing="chevron-down" icon-trailing:class="in-aria-expanded:rotate-180" class="max-sm:h-11" x-on:click="toggle()" x-bind:aria-expanded="open" aria-expanded="false" aria-controls="memo-fold-frame" data-test="toggle-memo-fold">
+                                                <span x-text="open ? @js(__('Hide preview')) : @js(__('Show preview'))">{{ __('Show preview') }}</span>
+                                            </flux:button>
+                                        @endif
+                                    </div>
+
+                                    @if ($kind)
+                                        <div id="memo-fold-frame" x-show="open" x-collapse x-cloak class="relative pt-2">
+                                            <div class="relative h-80 overflow-auto rounded-md border border-line bg-zinc-100 [scrollbar-width:thin]">
+                                                <flux:text x-show="loading && ! failed" role="status" class="pointer-events-none absolute inset-0 m-auto size-fit">{{ __('Loading the memo…') }}</flux:text>
+                                                <flux:text x-show="failed" x-cloak role="alert" class="absolute inset-0 m-auto size-fit px-6 text-center">{{ __('The memo could not be loaded here. Try again later.') }}</flux:text>
+                                                @if ($kind === 'image')
+                                                    <button type="button" x-show="! loading && ! failed" x-on:click="$dispatch(@js($viewer[0]), @js($viewer[1]))" class="block w-full cursor-zoom-in focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent" data-test="zoom-memo-fold">
+                                                        <img x-bind:src="src" x-on:load="loading = false" x-on:error="failed = true" alt="{{ __(':description (opens the memo viewer)', ['description' => $viewer[1]['alt']]) }}" class="mx-auto max-w-full" />
+                                                    </button>
+                                                @elseif ($kind === 'pdf')
+                                                    <iframe x-bind:src="src" x-on:load="src && (loading = false)" title="{{ $this->editing->attachment_name }}" class="size-full"></iframe>
+                                                @else
+                                                    <div x-ref="pages" x-on:click="$dispatch(@js($viewer[0]), @js($viewer[1]))" class="cursor-zoom-in" data-memo-pages></div>
+                                                @endif
+                                            </div>
+
+                                            {{-- A PDF's frame takes its own clicks, and a keyboard can't click Word pages, so both get a
+                                                 button; an image is a button itself. Outside the scrolling frame, so it stays put. --}}
+                                            @if ($kind !== 'image')
+                                                <flux:button size="sm" icon="arrows-pointing-out" x-show="! loading && ! failed" x-on:click="$dispatch(@js($viewer[0]), @js($viewer[1]))" class="absolute! end-4 top-4 max-sm:h-11" data-test="zoom-memo-fold">{{ __('Full size') }}</flux:button>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+
                                 <flux:checkbox wire:model.live="removeMemo" :label="__('Remove the memo')" />
-                            @endunless
+                            @endif
                         </div>
                     @endif
 

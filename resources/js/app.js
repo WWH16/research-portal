@@ -188,8 +188,36 @@ const memoImage = () => ({
     },
 });
 
+// On a phone or tablet a frame shows a PDF poorly or not at all (Chrome on Android draws nothing, Safari on an iPhone
+// shows only the first page), so there a memo opens in a new tab in the device's own viewer instead.
+const framesPdf = () => navigator.pdfViewerEnabled && !window.matchMedia('(pointer: coarse)').matches;
+
+// Fetches a Word memo, and docx-preview, which loads on first use, so pages without one never fetch it. Returns what
+// draws the memo's pages into an element.
+const loadDocx = async (url) => {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`The memo could not be loaded (${response.status}).`);
+    }
+
+    const [{ renderAsync }, file] = await Promise.all([import('docx-preview'), response.blob()]);
+
+    return (pages) => renderAsync(file, pages);
+};
+
+// Word pages keep their paper width; in a narrower frame the whole stack is scaled down to fit, so a page reads without
+// scrolling sideways.
+const fitDocx = (pages) => {
+    const page = pages.querySelector('section.docx');
+
+    if (page && pages.clientWidth) {
+        pages.style.zoom = String(Math.min(1, pages.clientWidth / (page.offsetWidth + 48)));
+    }
+};
+
 // The PDF and Word memo viewer on Announcements. A PDF shows in the browser's own viewer; a Word memo is drawn as pages
-// by docx-preview, which loads on first use, so pages without one never fetch it.
+// by docx-preview.
 const memoPreview = () => ({
     name: '',
     url: '',
@@ -198,10 +226,8 @@ const memoPreview = () => ({
     failed: false,
 
     async show({ name, url, kind }) {
-        // On a phone or tablet the frame shows a PDF poorly or not at all (Chrome on Android draws nothing, Safari on an
-        // iPhone shows only the first page), so the memo opens in a new tab in the device's own viewer. This runs inside
-        // the click, so it isn't blocked as a popup.
-        if (kind === 'pdf' && (!navigator.pdfViewerEnabled || window.matchMedia('(pointer: coarse)').matches)) {
+        // This runs inside the click, so the new tab isn't blocked as a popup.
+        if (kind === 'pdf' && !framesPdf()) {
             window.open(url, '_blank', 'noopener');
 
             return;
@@ -220,17 +246,11 @@ const memoPreview = () => ({
         this.loading = true;
 
         try {
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error(`The memo could not be loaded (${response.status}).`);
-            }
-
-            const [{ renderAsync }, file] = await Promise.all([import('docx-preview'), response.blob()]);
+            const render = await loadDocx(url);
 
             if (current()) {
                 this.$refs.pages.style.zoom = '';
-                await renderAsync(file, this.$refs.pages);
+                await render(this.$refs.pages);
                 this.fitPages();
             }
         } catch {
@@ -244,14 +264,50 @@ const memoPreview = () => ({
         }
     },
 
-    // Word pages keep their paper width; on a narrow screen the whole stack is scaled down to fit, so a page reads
-    // without scrolling sideways. The viewer calls it again when the window turns or resizes.
+    // The viewer calls it again when the window turns or resizes.
     fitPages() {
-        const page = this.$refs.pages.querySelector('section.docx');
-        const room = this.$refs.pages.clientWidth;
+        if (this.kind === 'docx') {
+            fitDocx(this.$refs.pages);
+        }
+    },
+});
 
-        if (this.kind === 'docx' && page && room) {
-            this.$refs.pages.style.zoom = String(Math.min(1, room / (page.offsetWidth + 48)));
+// The current memo folded under its row in the announcement form, unfolded to check it without leaving the form. It is
+// fetched only when first unfolded, so a form opened just to fix the title loads nothing from Google Drive. An image or
+// PDF ends `loading` from its own load event.
+const memoFold = ({ url, kind }) => ({
+    open: false,
+    src: null,
+    loading: false,
+    failed: false,
+
+    async toggle() {
+        if (kind === 'pdf' && !framesPdf()) {
+            window.open(url, '_blank', 'noopener');
+
+            return;
+        }
+
+        this.open = !this.open;
+
+        if (!this.open || this.src) {
+            return;
+        }
+
+        this.loading = true;
+        this.src = url;
+
+        if (kind !== 'docx') {
+            return;
+        }
+
+        try {
+            await (await loadDocx(url))(this.$refs.pages);
+            fitDocx(this.$refs.pages);
+        } catch {
+            this.failed = true;
+        } finally {
+            this.loading = false;
         }
     },
 });
@@ -259,5 +315,6 @@ const memoPreview = () => ({
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('memoImage', memoImage);
     window.Alpine.data('memoPreview', memoPreview);
+    window.Alpine.data('memoFold', memoFold);
     window.Alpine.data('avatarCropper', avatarCropper);
 });

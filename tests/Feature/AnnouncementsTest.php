@@ -120,8 +120,16 @@ class AnnouncementsTest extends TestCase
             ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo('first.pdf'))->call('save');
         $first = Announcement::sole()->attachment_path;
 
+        // The current memo unfolds in the form to be checked, fetched only once it is first unfolded.
         $page->call('edit', Announcement::sole()->id)
             ->assertSee('Current memo: first.pdf')
+            ->assertSeeHtml('data-test="toggle-memo-fold"')
+            ->assertSee('Show preview')
+            ->assertDontSeeHtml('src="'.e(Announcement::sole()->memoUrl()).'"')
+            // Unfolded, it opens full size in the page's own viewer.
+            ->assertSeeHtml('data-test="zoom-memo-fold"')
+            ->assertSee('Full size')
+            ->assertSeeHtml("\$dispatch('memo-preview'")
             ->set('memo', $this->memo('second.pdf'))
             ->call('save')
             ->assertHasNoErrors();

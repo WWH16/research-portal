@@ -349,12 +349,13 @@ new #[Title('Announcements')] class extends Component {
                 @forelse ($list as $announcement)
                     @php($urgent = $section === 'upcoming' && $announcement->due_on->lte(today()->addDay()))
                     {{-- An agenda: a date leads each row, so the list reads by date at a glance. An open schedule shows its
-                         deadline on a tile, green while open and red when due today or tomorrow. Everything else, a closed
-                         schedule included, shows the day it was posted, quietly and labelled Posted, so it isn't read as the
-                         date of an event, and the dates run in the list's own order; the "Closed on" sentence keeps the old
-                         deadline. The sentences below carry the same dates for screen
-                         readers, so the tile is hidden from them. A notification links here by id; the gold wash, spread past
-                         the edges by an outline of the same colour, shows which announcement it meant.
+                         deadline on a tile as pale as the canvas grey, tinted green while open and red when due today or
+                         tomorrow, with a hairline ring of the same hue so it doesn't melt into the white page. Everything
+                         else, a closed schedule included, shows the day it was posted, quietly on the canvas grey without
+                         the ring and labelled Posted, so it isn't read as the date of an event, and the dates run in the
+                         list's own order; the "Closed on" sentence keeps the old deadline. The sentences below carry the
+                         same dates for screen readers, so the tile is hidden from them. A notification links here by id;
+                         the gold wash, spread past the edges by an outline of the same colour, shows which announcement it meant.
                          A new one is read once the member has taken it in: with a memo, when they open the memo, since that is
                          the notice itself; without one, when its title has been on screen for a moment. read() asks the server
                          once, and only for a new one. --}}
@@ -363,9 +364,9 @@ new #[Title('Announcements')] class extends Component {
                         @php($day = $section === 'upcoming' ? $announcement->due_on : $announcement->created_at)
                         <div aria-hidden="true" @class([
                             'flex min-w-12 flex-col items-center self-start rounded-md px-1 py-2 tabular-nums leading-none sm:min-w-16',
-                            'bg-isu-green-50 text-isu-green-800' => $section === 'upcoming' && ! $urgent,
-                            'bg-red-50 text-red-700' => $urgent,
-                            'text-zinc-500' => $section !== 'upcoming',
+                            'bg-isu-green-50/50 text-isu-green-800 ring-1 ring-isu-green-100 ring-inset' => $section === 'upcoming' && ! $urgent,
+                            'bg-red-50/50 text-red-700 ring-1 ring-red-100 ring-inset' => $urgent,
+                            'bg-canvas text-zinc-600' => $section !== 'upcoming',
                         ]) data-test="date-tile">
                             @if ($section !== 'upcoming')
                                 <span class="mb-1 text-xs">{{ __('Posted') }}</span>

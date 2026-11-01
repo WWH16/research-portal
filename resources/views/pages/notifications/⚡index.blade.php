@@ -204,16 +204,18 @@ new #[Title('Notifications')] class extends Component {
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ __('Notifications') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Reviews, concept proposals and target dates that need your attention.') }}</flux:text>
+            {{-- Phones skip the line so the first notice shows sooner --}}
+            <flux:text class="mt-1 max-sm:hidden">{{ __('Reviews, concept proposals and target dates that need your attention.') }}</flux:text>
         </div>
 
-        <div class="flex flex-wrap gap-2">
+        {{-- On phones the buttons take a row of their own, so the title never squeezes beside one --}}
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto">
             @if (auth()->user()->unreadNotifications()->exists())
-                <flux:button wire:click="markAllRead" data-test="mark-all-read">{{ __('Mark all read') }}</flux:button>
+                <flux:button wire:click="markAllRead" data-test="mark-all-read" class="max-sm:h-11">{{ __('Mark all read') }}</flux:button>
             @endif
             @if ($this->readCount)
                 <flux:modal.trigger name="delete-read">
-                    <flux:button icon="trash" data-test="delete-read">{{ __('Delete all read') }}</flux:button>
+                    <flux:button icon="trash" data-test="delete-read" class="max-sm:h-11">{{ __('Delete all read') }}</flux:button>
                 </flux:modal.trigger>
             @endif
         </div>
@@ -254,7 +256,8 @@ new #[Title('Notifications')] class extends Component {
             <h2 @class(['text-sm font-medium text-zinc-600', 'mt-6' => $loop->first, 'mt-8' => ! $loop->first])>{{ $label }}</h2>
 
             {{-- Inbox row: the kind as subject, the message under it; unread in pastel with the gold dot ("Unread:" for
-                 screen readers). The whole row opens the notice; its menu sits above --}}
+                 screen readers). The whole row opens the notice; its menu sits above, beside the subject only, so the
+                 message runs the full width --}}
             <ul class="mt-2 divide-y divide-line rounded-xl border border-line bg-surface">
                 @foreach ($notices as $notification)
                     @php([$kind, , $icon] = $this->kind($notification))
@@ -266,23 +269,23 @@ new #[Title('Notifications')] class extends Component {
                                 @unless ($notification->read_at)
                                     <span class="sr-only">{{ __('Unread:') }}</span>
                                 @endunless
-                                <span @class(['block text-sm', 'font-medium text-zinc-800' => $notification->read_at, 'font-semibold text-zinc-900' => ! $notification->read_at])>{{ __($kind) }}</span>
+                                <span @class(['block pe-16 text-sm', 'font-medium text-zinc-800' => $notification->read_at, 'font-semibold text-zinc-900' => ! $notification->read_at])>{{ __($kind) }}</span>
                                 <span class="mt-0.5 block text-sm text-zinc-600 wrap-anywhere">{{ $notification->data['message'] }}</span>
                             </flux:link>
                             <p class="mt-1 text-xs text-zinc-600">{{ $notification->created_at->diffForHumans() }}</p>
                         </div>
 
-                        <div class="relative z-10 flex shrink-0 items-center gap-2">
+                        <div class="absolute end-2 top-2 z-10 flex items-center gap-2">
                             @unless ($notification->read_at)
                                 <span class="size-2 rounded-full bg-isu-gold-700" data-test="unread-dot" aria-hidden="true"></span>
                             @endunless
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" />
+                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" class="max-sm:size-11" />
                                 <flux:menu>
-                                    <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')">
+                                    <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')" class="max-sm:min-h-11">
                                         {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}
                                     </flux:menu.item>
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="delete('{{ $notification->id }}')">{{ __('Delete') }}</flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="delete('{{ $notification->id }}')" class="max-sm:min-h-11">{{ __('Delete') }}</flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>
                         </div>
@@ -305,10 +308,10 @@ new #[Title('Notifications')] class extends Component {
             <flux:text class="mt-4 whitespace-pre-line wrap-anywhere text-zinc-800">{{ $notice->data['message'] }}</flux:text>
 
             <div class="mt-6 flex flex-wrap items-center gap-2">
-                <flux:button variant="ghost" size="sm" icon="envelope" wire:click="toggleRead('{{ $notice->id }}')" x-on:click="$flux.modal('notice').close()">{{ __('Mark as unread') }}</flux:button>
-                <flux:button variant="ghost" size="sm" icon="trash" wire:click="delete('{{ $notice->id }}')">{{ __('Delete') }}</flux:button>
+                <flux:button variant="ghost" size="sm" icon="envelope" wire:click="toggleRead('{{ $notice->id }}')" x-on:click="$flux.modal('notice').close()" class="max-sm:h-11">{{ __('Mark as unread') }}</flux:button>
+                <flux:button variant="ghost" size="sm" icon="trash" wire:click="delete('{{ $notice->id }}')" class="max-sm:h-11">{{ __('Delete') }}</flux:button>
                 <flux:spacer />
-                <flux:button variant="primary" wire:click="open('{{ $notice->id }}')">{{ __($action) }}</flux:button>
+                <flux:button variant="primary" wire:click="open('{{ $notice->id }}')" class="max-sm:h-11">{{ __($action) }}</flux:button>
             </div>
         @endif
     </flux:modal>

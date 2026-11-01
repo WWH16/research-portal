@@ -109,7 +109,12 @@ new #[Title('Research Drive')] class extends Component {
         </flux:select>
     </div>
 
-    @if ($browsingFolders)
+    @if ($browsingFolders && $this->folders->isEmpty())
+        {{-- Each college is a folder, so with none there is nothing to open yet --}}
+        <x-empty-state icon="folder" :heading="__('No college folders yet')" :text="__('Each college added on the Colleges page gets a folder here.')" class="mt-6" data-test="no-college-folders">
+            <flux:button :href="route('departments.index')" wire:navigate class="max-sm:h-11">{{ __('Go to Colleges') }}</flux:button>
+        </x-empty-state>
+    @elseif ($browsingFolders)
         <flux:table class="mt-4" data-test="college-folders">
             <flux:table.columns>
                 <flux:table.column>{{ __('College') }}</flux:table.column>
@@ -128,7 +133,7 @@ new #[Title('Research Drive')] class extends Component {
                             @if ($department->submissions_count)
                                 {{ trans_choice('{1} 1 project|[2,*] :count projects', $department->submissions_count) }}
                             @else
-                                <span class="text-zinc-400">{{ __('No projects yet') }}</span>
+                                <span class="text-zinc-500">{{ __('No projects yet') }}</span>
                             @endif
                         </flux:table.cell>
                     </flux:table.row>
@@ -137,18 +142,15 @@ new #[Title('Research Drive')] class extends Component {
         </flux:table>
     @else
         @if ($this->projects->isEmpty())
-            <div class="mt-10 text-center">
-                @if (trim($search) !== '')
-                    <flux:text>{{ __('No projects match “:term”.', ['term' => trim($search)]) }}</flux:text>
-                @elseif ($this->folder)
-                    <flux:heading>{{ __('No projects yet') }}</flux:heading>
-                    <flux:text class="mt-1">{{ $year !== '' ? __(':college has no projects filed for :year.', ['college' => $this->folder->code, 'year' => $year]) : __(':college has no projects filed yet.', ['college' => $this->folder->code]) }}</flux:text>
-                @else
-                    <flux:heading>{{ __('You’re not on any projects yet') }}</flux:heading>
-                    <flux:text class="mt-1">{{ __('Projects appear here once you submit one or a colleague lists you as a proponent.') }}</flux:text>
-                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="mt-4 max-sm:h-11" wire:navigate>{{ __('New proposal') }}</flux:button>
-                @endif
-            </div>
+            @if (trim($search) !== '')
+                <x-empty-state icon="magnifying-glass" :heading="__('No projects match “:term”.', ['term' => trim($search)])" :text="__('Try fewer words, or another year.')" class="mt-6" />
+            @elseif ($this->folder)
+                <x-empty-state icon="folder-open" :heading="__('No projects yet')" :text="$year !== '' ? __(':college has no projects filed for :year.', ['college' => $this->folder->code, 'year' => $year]) : __(':college has no projects filed yet.', ['college' => $this->folder->code])" class="mt-6" />
+            @else
+                <x-empty-state icon="document-plus" :heading="__('You’re not on any projects yet')" :text="__('Projects appear here once you submit one or a colleague lists you as a proponent.')" class="mt-6">
+                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="max-sm:h-11" wire:navigate>{{ __('New proposal') }}</flux:button>
+                </x-empty-state>
+            @endif
         @else
             <flux:table class="mt-4">
                 <flux:table.columns>

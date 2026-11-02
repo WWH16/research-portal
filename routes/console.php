@@ -16,6 +16,9 @@ Artisan::command('inspire', function () {
 // Deletes activity log entries past ActivityLog::KEEP_MONTHS, except each project's history.
 Schedule::command('model:prune')->daily();
 
+// Deletes password reset tokens past their expiry, which would otherwise stay in the table for good.
+Schedule::command('auth:clear-resets')->daily();
+
 // Reminds each open project's people 30 and 7 days before its target date, then the day after it passes and weekly until the terminal report is in.
 Artisan::command('projects:remind', function () {
     // ponytail: stateless, so a day the scheduler misses is a reminder skipped; record sent milestones if that ever matters.

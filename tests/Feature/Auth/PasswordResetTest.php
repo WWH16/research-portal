@@ -50,6 +50,17 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, QueuedResetPassword::class);
     }
 
+    public function test_expired_reset_tokens_are_cleared_every_day(): void
+    {
+        $this->artisan('schedule:list')->expectsOutputToContain('auth:clear-resets')->assertSuccessful();
+
+        Password::createToken(User::factory()->create());
+        $this->travel(2)->days();
+
+        $this->artisan('auth:clear-resets')->assertSuccessful();
+        $this->assertDatabaseCount('password_reset_tokens', 0);
+    }
+
     public function test_reset_and_verification_emails_go_through_the_queue(): void
     {
         Queue::fake();

@@ -8,6 +8,7 @@ use App\Services\DocumentStorage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -83,8 +84,13 @@ new #[Title('My Profile')] class extends Component {
 
         if ($user->wasChanged('email')) {
             ActivityLog::record('auth.email_changed', properties: ['from' => $user->getPrevious()['email'], 'to' => $user->email]);
-            // As Fortify's own profile update does: the new address gets its link now, without pressing Resend.
-            $user->sendEmailVerificationNotification();
+        }
+
+        // As Fortify's own profile update does: the new address gets its link now, without pressing Resend.
+        if ($user->wasChanged('email') && ! $this->sendVerificationLink($user)) {
+            Flux::toast(variant: 'warning', text: __('Your profile was updated, but too many verification emails were sent in the last minute. Please re-send the verification email in a minute.'));
+
+            return;
         }
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));
@@ -148,9 +154,22 @@ new #[Title('My Profile')] class extends Component {
             return;
         }
 
-        $user->sendEmailVerificationNotification();
+        if (! $this->sendVerificationLink($user)) {
+            Flux::toast(variant: 'danger', text: __('Too many verification emails were sent in the last minute. Please wait a minute and try again.'));
+
+            return;
+        }
 
         Session::flash('status', 'verification-link-sent');
+    }
+
+    /**
+     * Send the verification link, at most 6 a minute per member as Fortify's own Resend allows, so repeated clicks
+     * can't use up the portal's daily sending limit. False once the limit is reached.
+     */
+    private function sendVerificationLink(User $user): bool
+    {
+        return RateLimiter::attempt('verification-email:'.$user->id, 6, fn () => $user->sendEmailVerificationNotification()) !== false;
     }
 
     #[Computed]

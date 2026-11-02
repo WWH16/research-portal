@@ -84,6 +84,28 @@ class ProfileUpdateTest extends TestCase
         Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 1);
     }
 
+    public function test_verification_emails_are_limited_to_six_a_minute(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->create();
+        $this->actingAs($user);
+
+        $profile = Livewire::test('pages::settings.profile');
+        foreach (range(1, 7) as $click) {
+            $profile->call('resendVerificationNotification');
+        }
+        Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 6);
+
+        // A new address still saves at the limit; its link waits for a re-send.
+        $profile->set('email', 'new.address@isu.edu.ph')->call('updateProfileInformation')->assertHasNoErrors();
+        $this->assertSame('new.address@isu.edu.ph', $user->refresh()->email);
+        Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 6);
+
+        $this->travel(61)->seconds();
+        $profile->call('resendVerificationNotification');
+        Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 7);
+    }
+
     public function test_members_cannot_delete_their_own_account_from_the_profile(): void
     {
         $this->actingAs(User::factory()->create());

@@ -84,13 +84,13 @@ new #[Title('My Profile')] class extends Component {
 
         if ($user->wasChanged('email')) {
             ActivityLog::record('auth.email_changed', properties: ['from' => $user->getPrevious()['email'], 'to' => $user->email]);
-        }
 
-        // As Fortify's own profile update does: the new address gets its link now, without pressing Resend.
-        if ($user->wasChanged('email') && ! $this->sendVerificationLink($user)) {
-            Flux::toast(variant: 'warning', text: __('Your profile was updated, but too many verification emails were sent in the last minute. Please re-send the verification email in a minute.'));
+            // As Fortify's own profile update does: the new address gets its link now, without pressing Resend.
+            if (! $this->sendVerificationLink($user)) {
+                Flux::toast(variant: 'warning', text: __('Your profile was updated, but too many verification emails were sent in the last minute. Please re-send the verification email in a minute.'));
 
-            return;
+                return;
+            }
         }
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));

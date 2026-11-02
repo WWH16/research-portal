@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Notifications\PasswordChanged;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\QueuedResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -76,7 +76,7 @@ class PasswordChangedTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         Notification::assertSentTo($maria, PasswordChanged::class, fn (PasswordChanged $notice) => ! $notice->byResearchOffice);
-        Notification::assertNotSentTo($maria, ResetPassword::class);
+        Notification::assertNotSentTo($maria, QueuedResetPassword::class);
     }
 
     public function test_the_email_names_the_account_and_the_time_and_how_to_recover(): void

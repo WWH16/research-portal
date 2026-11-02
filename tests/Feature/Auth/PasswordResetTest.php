@@ -3,10 +3,14 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Notifications\QueuedResetPassword;
+use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -43,7 +47,20 @@ class PasswordResetTest extends TestCase
 
         $this->post(route('password.request'), ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertSentTo($user, QueuedResetPassword::class);
+    }
+
+    public function test_reset_and_verification_emails_go_through_the_queue(): void
+    {
+        Queue::fake();
+        $user = User::factory()->unverified()->create();
+
+        // Forgot password and Resend only add a job, so neither page waits on the mail server.
+        $this->post(route('password.request'), ['email' => $user->email]);
+        $user->sendEmailVerificationNotification();
+
+        Queue::assertPushed(SendQueuedNotifications::class, fn (SendQueuedNotifications $job) => $job->notification instanceof QueuedResetPassword);
+        Queue::assertPushed(SendQueuedNotifications::class, fn (SendQueuedNotifications $job) => $job->notification instanceof QueuedVerifyEmail);
     }
 
     public function test_reset_email_is_worded_and_branded_for_the_portal(): void
@@ -69,7 +86,7 @@ class PasswordResetTest extends TestCase
 
         $this->post(route('password.request'), ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
+        Notification::assertSentTo($user, QueuedResetPassword::class, function ($notification) {
             $response = $this->get(route('password.reset', $notification->token));
 
             $response->assertOk();
@@ -86,7 +103,7 @@ class PasswordResetTest extends TestCase
 
         $this->post(route('password.request'), ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+        Notification::assertSentTo($user, QueuedResetPassword::class, function ($notification) use ($user) {
             $response = $this->post(route('password.update'), [
                 'token' => $notification->token,
                 'email' => $user->email,

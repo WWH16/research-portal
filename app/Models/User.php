@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Notifications\QueuedResetPassword;
+use App\Notifications\QueuedVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -175,6 +177,24 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         $next = $last === null ? 1 : (int) substr($last, strlen($prefix)) + 1;
 
         return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Send the verification email through the queue, so the page that asked for it never waits on Gmail.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new QueuedVerifyEmail);
+    }
+
+    /**
+     * Send the password reset email through the queue, so Forgot password never waits on Gmail.
+     *
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new QueuedResetPassword($token));
     }
 
     /**

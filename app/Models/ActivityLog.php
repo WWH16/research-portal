@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * The page shows each entry in parts, so a long project title never buries what happened: the actor,
  * a short summary(), then the subject() with its change() and note() in their own column.
  *
- * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, replaced?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, decision?: 'passed'|'returned', remarks?: string, presented?: bool, kind?: string, from?: string, to?: string}|null $properties
+ * @property array{status?: array{string, string}, role?: string|array{string, string}, password?: true, documents?: list<string>, replaced?: list<string>, changed?: list<string>, values?: array<string, array{string|null, string|null}>, proponents?: array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}, decision?: 'passed'|'returned', remarks?: string, presented?: bool, kind?: string, from?: string, to?: string, link?: string, year?: int, citations?: int}|null $properties
  */
 #[Fillable(['user_id', 'actor_name', 'action', 'subject_id', 'subject_label', 'properties'])]
 class ActivityLog extends Model
@@ -185,19 +185,19 @@ class ActivityLog extends Model
             'auth.logout' => __('signed out'),
             'auth.registered' => __('created an account'),
             'auth.verified' => __('verified their email'),
-            'auth.password_reset' => __('reset their password by email link'),
+            'auth.password_reset' => __('reset their password from an email link'),
             'auth.password_changed' => __('changed their password'),
-            'auth.email_changed' => __('changed their email'),
+            'auth.email_changed' => __('changed their email address'),
             'auth.two_factor_enabled' => __('enabled two-factor authentication'),
             'auth.two_factor_disabled' => __('disabled two-factor authentication'),
-            'auth.recovery_codes' => __('regenerated their recovery codes'),
+            'auth.recovery_codes' => __('made new two-factor recovery codes'),
 
             'submission.created' => __('submitted a proposal'),
             'submission.updated' => __('updated a project'),
             'submission.dates_changed' => __('changed a project’s dates'),
             'submission.presented' => ($p['presented'] ?? true)
-                ? __('marked a project as presented at the in-house review')
-                : __('marked a project as not presented at the in-house review'),
+                ? __('marked a project as “Presented in-house”')
+                : __('marked a project as “Not presented in-house”'),
             'submission.reviewed' => match ($p['decision'] ?? null) {
                 'passed' => __('passed a concept proposal'),
                 'returned' => __('returned a concept proposal for revision'),
@@ -328,8 +328,8 @@ class ActivityLog extends Model
             $this->action === 'submission.updated' => __('Updated the project'),
             $this->action === 'submission.dates_changed' => __('Changed the dates'),
             $this->action === 'submission.presented' => ($this->properties['presented'] ?? true)
-                ? __('Marked as presented at the in-house review')
-                : __('Marked as not presented at the in-house review'),
+                ? __('Marked as “Presented in-house”')
+                : __('Marked as “Not presented in-house”'),
             ($this->properties['decision'] ?? null) === 'passed' => __('Passed the concept proposal'),
             ($this->properties['decision'] ?? null) === 'returned' => __('Returned the concept proposal for revision'),
             isset($this->properties['status']) => __('Reviewed the project'),
@@ -347,7 +347,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * What moved from one value to another: a role, email or name.
+     * What moved from one value to another: a role, email address or name.
      *
      * @return array{0: string, 1: string}|null
      */
@@ -357,7 +357,7 @@ class ActivityLog extends Model
 
         return match (true) {
             $this->action === 'user.updated' && is_array($p['role'] ?? null) => [Str::ucfirst($p['role'][0]), Str::ucfirst($p['role'][1])],
-            $this->action === 'auth.email_changed' => [$p['from'] ?? '', $p['to'] ?? ''],
+            in_array($this->action, ['auth.email_changed', 'drive.account_changed'], true) => [$p['from'] ?? '', $p['to'] ?? ''],
             $this->action === 'filing.updated' && isset($p['from']) => [$p['from'], $this->subject_label ?? ''],
             default => null,
         };
@@ -373,9 +373,11 @@ class ActivityLog extends Model
         return match (true) {
             in_array($this->action, ['submission.created', 'submission.updated', 'submission.dates_changed'], true) => $this->projectEditNote($p['values'] ?? [], $p['changed'] ?? [], $p['proponents'] ?? [], $p['documents'] ?? [], $p['replaced'] ?? []),
             $this->action === 'user.created' && is_string($p['role'] ?? null) => __(':role role', ['role' => Str::ucfirst($p['role'])]),
-            $this->action === 'user.updated' && isset($p['password']) => __('New password set'),
+            $this->action === 'user.updated' && isset($p['password']) => __('Set a new password'),
             // Only a college has more than its name: an edit that kept the code changed the full name.
-            $this->action === 'filing.updated' && ! isset($p['from']) => __('Full name changed'),
+            $this->action === 'filing.updated' && ! isset($p['from']) => __('Changed the full name'),
+            in_array($this->action, ['publication.citation_added', 'publication.citation_removed'], true) && isset($p['link']) => __('Citing paper from :year: :link', ['year' => $p['year'] ?? '', 'link' => $p['link']]),
+            $this->action === 'publication.deleted' && ($p['citations'] ?? 0) > 0 => trans_choice('{1} Its :count citing paper was deleted with it|[2,*] Its :count citing papers were deleted with it', $p['citations']),
             default => '',
         };
     }

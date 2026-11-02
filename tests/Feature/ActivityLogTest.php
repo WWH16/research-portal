@@ -499,6 +499,16 @@ class ActivityLogTest extends TestCase
         $this->get(route('users.index'))->assertSee(route('activity-log.index', ['user' => $maria->id]), escape: false);
     }
 
+    public function test_details_name_what_storage_account_and_publication_entries_changed(): void
+    {
+        $entry = fn (string $action, array $properties) => ActivityLog::create(['action' => $action, 'properties' => $properties]);
+
+        $this->assertSame(['old@isu.edu.ph', 'new@isu.edu.ph'], $entry('drive.account_changed', ['from' => 'old@isu.edu.ph', 'to' => 'new@isu.edu.ph'])->change());
+        $this->assertSame('Citing paper from 2024: https://doi.org/10.1/x', $entry('publication.citation_added', ['link' => 'https://doi.org/10.1/x', 'year' => 2024])->note());
+        $this->assertSame('Its 3 citing papers were deleted with it', $entry('publication.deleted', ['citations' => 3])->note());
+        $this->assertSame('', $entry('publication.deleted', ['citations' => 0])->note());
+    }
+
     private function project(string $title): Submission
     {
         $maria = User::factory()->create(['department_id' => Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies'])->id]);

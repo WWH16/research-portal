@@ -207,7 +207,7 @@ new #[Title('Activity Log')] class extends Component {
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
-            :placeholder="__('Search names or project titles')"
+            :placeholder="__('Search names, titles or email addresses')"
             :aria-label="__('Search activity')"
             clearable
             class="lg:flex-1"
@@ -252,7 +252,7 @@ new #[Title('Activity Log')] class extends Component {
     @if ($this->hasNew)
         <div class="mt-3 flex items-center gap-3 text-sm text-zinc-600" data-test="new-activity">
             {{ __('New activity since you opened the log.') }}
-            <flux:button size="sm" wire:click="showNew">{{ __('Show it') }}</flux:button>
+            <flux:button size="sm" wire:click="showNew">{{ __('Show new activity') }}</flux:button>
         </div>
     @endif
 
@@ -263,11 +263,11 @@ new #[Title('Activity Log')] class extends Component {
                 <flux:button variant="ghost" size="sm" class="mt-4" wire:click="resetPage">{{ __('Go to the first page') }}</flux:button>
             @elseif (trim($search) !== '' || $group || $from || $to || $user)
                 <flux:heading>{{ __('No activity matches these filters') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Try another name or a wider date range.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('Try a different search or type of activity, or widen the date range.') }}</flux:text>
                 <flux:button variant="ghost" size="sm" class="mt-4" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
             @else
                 <flux:heading>{{ __('No activity recorded yet') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Entries appear here as members sign in, submit projects or review concept proposals, and change accounts or filing options.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('Entries appear here as members sign in and make changes in the portal.') }}</flux:text>
             @endif
         </div>
     @else

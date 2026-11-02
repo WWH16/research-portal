@@ -2,6 +2,7 @@
 
 use App\Concerns\PasswordValidationRules;
 use App\Models\ActivityLog;
+use App\Notifications\PasswordChanged;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -86,6 +87,7 @@ new #[Title('Security settings')] class extends Component {
         ]);
 
         ActivityLog::record('auth.password_changed');
+        Auth::user()->notify(new PasswordChanged);
 
         $this->reset('current_password', 'password', 'password_confirmation');
 

@@ -55,7 +55,7 @@ new #[Title('Faculty Publications')] class extends Component {
     {
         $search = trim($this->search);
 
-        return User::where('role', 'faculty')
+        return User::faculty()
             ->with('department:id,code')
             ->withCount('publications')
             ->addSelect(['citations_count' => Citation::selectRaw('count(*)')

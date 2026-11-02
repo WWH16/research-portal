@@ -370,7 +370,7 @@ new #[Title('Research Project')] class extends Component {
     public function faculty(): Collection
     {
         // ponytail: one plain select of every verified faculty member; switch to a searchable picker past a few hundred.
-        return User::where('role', 'faculty')
+        return User::faculty()
             ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))
             ->orderBy('name')->get(['id', 'name']);
     }

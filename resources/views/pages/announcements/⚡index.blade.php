@@ -295,7 +295,7 @@ new #[Title('Announcements')] class extends Component {
         // that changed nothing tells no one.
         if ($announcement->wasRecentlyCreated || $announcement->wasChanged()) {
             Notification::send(
-                User::where('role', 'faculty')->whereNotNull('approved_at')->get(),
+                User::faculty()->whereNotNull('approved_at')->get(),
                 $announcement->wasRecentlyCreated ? new AnnouncementPosted($announcement) : new AnnouncementUpdated($announcement),
             );
         }

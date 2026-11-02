@@ -225,6 +225,14 @@ class ManageUsersTest extends TestCase
         $this->assertTrue(Hash::check('brand-new-password', $user->fresh()->password));
     }
 
+    public function test_the_faculty_and_admins_scopes_split_accounts_by_role(): void
+    {
+        $faculty = User::factory()->count(2)->create(['role' => 'faculty']);
+
+        $this->assertEqualsCanonicalizing($faculty->modelKeys(), User::faculty()->pluck('id')->all());
+        $this->assertSame([$this->admin->id], User::admins()->pluck('id')->all());
+    }
+
     public function test_admin_cannot_change_their_own_role(): void
     {
         $this->actingAs($this->admin);

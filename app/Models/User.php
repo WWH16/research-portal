@@ -251,6 +251,16 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * Faculty accounts, the proponents and authors.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeFaculty(Builder $query): void
+    {
+        $query->where('role', 'faculty');
+    }
+
+    /**
      * @return BelongsTo<Department, $this>
      */
     public function department(): BelongsTo

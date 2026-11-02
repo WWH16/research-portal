@@ -202,7 +202,6 @@ new #[Title('Notifications')] class extends Component {
 <section class="mx-auto w-full max-w-4xl">
     <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        {{-- No line under the title: "Notifications" says what the page is, and the empty state says what arrives here --}}
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ __('Notifications') }}</flux:heading>
         </div>
@@ -279,7 +278,7 @@ new #[Title('Notifications')] class extends Component {
                                 <span class="size-2 rounded-full bg-isu-gold-700" data-test="unread-dot" aria-hidden="true"></span>
                             @endunless
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('Actions for: :message',['message' => $notification->data['message']])" class="max-sm:size-11" />
+                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('Actions for: :message', ['message' => $notification->data['message']])" class="max-sm:size-11" />
                                 <flux:menu>
                                     <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')" class="max-sm:min-h-11">
                                         {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}

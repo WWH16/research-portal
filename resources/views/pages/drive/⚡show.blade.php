@@ -16,6 +16,8 @@ new #[Title('Research Drive')] class extends Component {
 
     public Submission $submission;
 
+    public bool $historyOpen = false;
+
     public function mount(Submission $submission): void
     {
         // Edits opened from here, and saved concept reviews, come back with a confirmation.
@@ -46,7 +48,7 @@ new #[Title('Research Drive')] class extends Component {
     $project = $submission;
     $admin = auth()->user()->isAdmin();
     $onTime = $project->completedOnTime();
-    $history = $project->history();
+    $history = $historyOpen ? $project->history() : null;
 @endphp
 
 <section class="mx-auto w-full max-w-4xl">
@@ -124,9 +126,9 @@ new #[Title('Research Drive')] class extends Component {
 
     <section class="mt-10" aria-labelledby="documents-heading">
         <flux:heading size="lg" level="2" id="documents-heading">{{ __('Documents') }}</flux:heading>
+        <flux:text class="mt-1 text-sm">{{ __('Open a document to view it in a new tab. Each one can be opened once it is uploaded.') }}</flux:text>
         <ul class="mt-3 divide-y divide-line border-y border-line" data-test="drive-documents">
             @foreach (Submission::DOCUMENTS as $stage => $label)
-        <flux:text class="mt-1 text-sm">{{ __('Open a document to view it in a new tab. Each one can be opened once it is uploaded.') }}</flux:text>
                 @php($path = $project->{$stage.'_path'})
                 <li class="flex items-center gap-4 py-3">
                     <flux:icon.document-text variant="mini" class="shrink-0 {{ $path ? 'text-isu-green-700' : 'text-zinc-300' }}" />
@@ -172,10 +174,17 @@ new #[Title('Research Drive')] class extends Component {
     </section>
 
     <section class="mt-10" aria-labelledby="history-heading">
-        <flux:heading size="lg" level="2" id="history-heading">{{ __('History') }}</flux:heading>
-        @if ($history->isEmpty())
+        {{-- Closed at first: the entries are read and drawn only when opened, so the rest of the page comes up sooner --}}
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:heading size="lg" level="2" id="history-heading">{{ __('History') }}</flux:heading>
+            <flux:button size="sm" variant="ghost" icon:trailing="chevron-down" icon-trailing:class="in-aria-expanded:rotate-180" wire:click="$toggle('historyOpen')" :aria-expanded="$historyOpen ? 'true' : 'false'" aria-controls="history-body" class="max-sm:h-11" data-test="drive-history-open">
+                {{ $historyOpen ? __('Hide history') : __('Show history') }}
+            </flux:button>
+        </div>
+        <div id="history-body">
+        @if ($history?->isEmpty())
             <flux:text class="mt-3 text-sm">{{ __('Nothing recorded yet.') }}</flux:text>
-        @else
+        @elseif ($history)
             {{-- The latest five show; older entries open in place, so a long history does not stretch the page --}}
             <div x-data="{ all: false }">
                 <ol id="history-entries" class="mt-3 divide-y divide-line border-y border-line" data-test="drive-history">
@@ -204,6 +213,7 @@ new #[Title('Research Drive')] class extends Component {
                 @endif
             </div>
         @endif
+        </div>
     </section>
 
     @if ($admin)

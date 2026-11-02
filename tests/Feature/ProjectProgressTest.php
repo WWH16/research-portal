@@ -221,8 +221,10 @@ class ProjectProgressTest extends TestCase
         ActivityLog::record('submission.updated', $project, ['documents' => ['concept'], 'replaced' => ['concept']], $this->maria);
         ActivityLog::record('submission.reviewed', $project, [], $this->admin);
 
-        $this->actingAs($this->maria)
-            ->get(route('drive.show', $project))
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::drive.show', ['submission' => $project])
+            ->set('historyOpen', true)
             ->assertSee('data-test="drive-history"', false)
             ->assertSeeInOrder([
                 'Research Office', 'Reviewed the concept proposal',
@@ -244,12 +246,13 @@ class ProjectProgressTest extends TestCase
             ActivityLog::record('submission.updated', $project, [], $this->maria);
         }
 
-        $response = $this->actingAs($this->maria)->get(route('drive.show', $project));
+        $this->actingAs($this->maria);
+        $page = Livewire::test('pages::drive.show', ['submission' => $project])->set('historyOpen', true);
 
-        $response->assertSee('Show 2 earlier entries');
+        $page->assertSee('Show 2 earlier entries');
         // All seven render; only the two oldest start hidden.
-        $this->assertSame(7, substr_count($response->getContent(), '<li class="py-3"'));
-        $this->assertSame(2, preg_match_all('/<li class="py-3"\s+x-show="all"/', $response->getContent()));
+        $this->assertSame(7, substr_count($page->html(), '<li class="py-3"'));
+        $this->assertSame(2, preg_match_all('/<li class="py-3"\s+x-show="all"/', $page->html()));
     }
 
     public function test_history_holds_only_this_projects_entries(): void
@@ -274,8 +277,10 @@ class ProjectProgressTest extends TestCase
         $project = $this->project(['awaiting_review' => false]);
         ActivityLog::record('submission.reviewed', $project, ['remarks' => '<b>Fix this</b>'], $this->admin);
 
-        $this->actingAs($this->maria)
-            ->get(route('drive.show', $project))
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::drive.show', ['submission' => $project])
+            ->set('historyOpen', true)
             ->assertSee('Remarks: <b>Fix this</b>')
             ->assertDontSee('<b>Fix this</b>', false);
     }
@@ -284,10 +289,30 @@ class ProjectProgressTest extends TestCase
     {
         $project = $this->project(['awaiting_review' => false]);
 
-        $this->actingAs($this->maria)
-            ->get(route('drive.show', $project))
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::drive.show', ['submission' => $project])
+            ->set('historyOpen', true)
             ->assertSee('Nothing recorded yet.')
             ->assertDontSee('data-test="drive-history"', false);
+    }
+
+    public function test_history_starts_closed_and_is_read_only_once_opened(): void
+    {
+        $project = $this->project(['awaiting_review' => false]);
+        ActivityLog::record('submission.created', $project, ['documents' => ['concept']], $this->maria);
+
+        $this->actingAs($this->maria)
+            ->get(route('drive.show', $project))
+            ->assertSee('Show history')
+            ->assertSee('aria-expanded="false"', false)
+            ->assertDontSee('data-test="drive-history"', false)
+            ->assertDontSee('Submitted the proposal');
+
+        Livewire::test('pages::drive.show', ['submission' => $project])
+            ->toggle('historyOpen')
+            ->assertSee('Hide history')
+            ->assertSee('Submitted the proposal');
     }
 
     private function project(array $attributes = []): Submission

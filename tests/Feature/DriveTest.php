@@ -210,7 +210,7 @@ class DriveTest extends TestCase
 
         // Faculty see the tick in the history, under the office's name, but can't set it.
         $this->actingAs($this->navarro);
-        $this->get(route('drive.show', $this->smart))->assertSeeInOrder(['Research Office', 'Marked as presented at the in-house review']);
+        Livewire::test('pages::drive.show', ['submission' => $this->smart])->set('historyOpen', true)->assertSeeInOrder(['Research Office', 'Marked as presented at the in-house review']);
         Livewire::test('pages::submissions.index')
             ->assertDontSee('data-test="presented-checkbox"', escape: false)
             ->call('setPresented', $this->smart->id, false)

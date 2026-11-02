@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // A changed password signs out every other session and "Remember me" cookie on their next request.
+        $middleware->authenticateSessions();
+
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'approved' => EnsureUserIsApproved::class,

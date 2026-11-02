@@ -249,9 +249,17 @@ new #[Title('Manage Users')] class extends Component {
                 return $user;
             });
 
-            // Told once the change has saved, and never shown the new password.
+            // Told once the change has saved, and never shown the new password. Their other sessions end on their next
+            // request; an admin changing their own password here keeps this one, as on the Security page.
             if ($user->wasChanged('password')) {
-                $user->notify(new PasswordChanged(byResearchOffice: ! $user->is(Auth::user())));
+                $self = $user->is(Auth::user());
+
+                if ($self) {
+                    Auth::setUser($user);
+                    Auth::logoutOtherDevices($validated['password']);
+                }
+
+                $user->notify(new PasswordChanged(byResearchOffice: ! $self));
             }
 
             Flux::toast(variant: 'success', text: __('User updated.'));

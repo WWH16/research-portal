@@ -86,6 +86,9 @@ new #[Title('Security settings')] class extends Component {
             'password' => $validated['password'],
         ]);
 
+        // Every other session ends on its next request; this one, and its "Remember me" cookie, carry on.
+        Auth::logoutOtherDevices($validated['password']);
+
         ActivityLog::record('auth.password_changed');
         Auth::user()->notify(new PasswordChanged);
 

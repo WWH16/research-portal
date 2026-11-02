@@ -71,11 +71,12 @@ new #[Title('Security settings')] class extends Component {
     public function updatePassword(): void
     {
         try {
+            // The same password again would change nothing but still end the other sessions and send the email.
             $validated = $this->validate([
                 'current_password' => $this->currentPasswordRules(),
-                'password' => $this->passwordRules(),
+                'password' => [...$this->passwordRules(), 'different:current_password'],
                 'password_confirmation' => $this->passwordConfirmationRules(),
-            ]);
+            ], ['password.different' => __('Your new password must be different from your current password.')]);
         } catch (ValidationException $e) {
             $this->reset('current_password', 'password', 'password_confirmation');
 

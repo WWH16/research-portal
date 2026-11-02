@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Notifications\PasswordChanged;
 use App\Notifications\QueuedResetPassword;
@@ -40,6 +41,39 @@ class PasswordChangedTest extends TestCase
             ->assertHasNoErrors();
 
         Notification::assertSentTo($maria, PasswordChanged::class, fn (PasswordChanged $notice) => ! $notice->byResearchOffice);
+    }
+
+    public function test_the_same_password_again_is_refused_and_changes_nothing(): void
+    {
+        $maria = User::factory()->create(['password' => Hash::make('password')]);
+        $before = $maria->password;
+
+        $this->actingAs($maria);
+        Livewire::test('pages::settings.security')
+            ->set('current_password', 'password')
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password')
+            ->call('updatePassword')
+            ->assertHasErrors(['password' => 'different']);
+
+        $this->assertSame($before, $maria->fresh()->password);
+        $this->assertSame(0, ActivityLog::count());
+        Notification::assertNothingSent();
+    }
+
+    public function test_a_reset_link_refuses_the_current_password_and_stays_usable(): void
+    {
+        $maria = User::factory()->create(['password' => Hash::make('old-password')]);
+        $token = Password::createToken($maria);
+        $reset = fn (string $password) => $this->post(route('password.update'), [
+            'token' => $token, 'email' => $maria->email, 'password' => $password, 'password_confirmation' => $password,
+        ]);
+
+        $reset('old-password')->assertSessionHasErrors(['password' => 'Your new password must be different from your current password.']);
+        Notification::assertNothingSent();
+
+        $reset('brand-new-password')->assertSessionHasNoErrors();
+        $this->assertTrue(Hash::check('brand-new-password', $maria->fresh()->password));
     }
 
     public function test_a_password_the_research_office_sets_says_so(): void

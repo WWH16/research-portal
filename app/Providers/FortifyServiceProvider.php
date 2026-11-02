@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
+use App\Notifications\PasswordChanged;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
@@ -70,7 +71,11 @@ class FortifyServiceProvider extends ServiceProvider
         Event::listen(Logout::class, fn (Logout $event) => $log('auth.logout', $event->user));
         Event::listen(Registered::class, fn (Registered $event) => $log('auth.registered', $event->user));
         Event::listen(Verified::class, fn (Verified $event) => $log('auth.verified', $event->user));
-        Event::listen(PasswordReset::class, fn (PasswordReset $event) => $log('auth.password_reset', $event->user));
+        Event::listen(PasswordReset::class, function (PasswordReset $event) use ($log) {
+            $log('auth.password_reset', $event->user);
+            // Fortify fires this once the new password is saved, so the member hears of a reset they didn't ask for.
+            $event->user instanceof User && $event->user->notify(new PasswordChanged);
+        });
         Event::listen(TwoFactorAuthenticationConfirmed::class, fn ($event) => $log('auth.two_factor_enabled', $event->user));
         Event::listen(TwoFactorAuthenticationDisabled::class, fn ($event) => $log('auth.two_factor_disabled', $event->user));
         Event::listen(RecoveryCodesGenerated::class, fn ($event) => $log('auth.recovery_codes', $event->user));

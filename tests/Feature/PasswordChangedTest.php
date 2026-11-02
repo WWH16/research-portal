@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Notifications\PasswordChanged;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -38,6 +40,21 @@ class PasswordChangedTest extends TestCase
             ->assertHasNoErrors();
 
         Notification::assertSentTo($maria, PasswordChanged::class, fn (PasswordChanged $notice) => ! $notice->byResearchOffice);
+    }
+
+    public function test_resetting_a_password_by_email_link_emails_you(): void
+    {
+        $maria = User::factory()->create();
+
+        $this->post(route('password.update'), [
+            'token' => Password::createToken($maria),
+            'email' => $maria->email,
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ])->assertSessionHasNoErrors();
+
+        Notification::assertSentTo($maria, PasswordChanged::class, fn (PasswordChanged $notice) => ! $notice->byResearchOffice);
+        Notification::assertNotSentTo($maria, ResetPassword::class);
     }
 
     public function test_the_email_names_the_account_and_the_time_and_how_to_recover(): void

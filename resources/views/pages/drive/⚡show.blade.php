@@ -126,6 +126,7 @@ new #[Title('Research Drive')] class extends Component {
         <flux:heading size="lg" level="2" id="documents-heading">{{ __('Documents') }}</flux:heading>
         <ul class="mt-3 divide-y divide-line border-y border-line" data-test="drive-documents">
             @foreach (Submission::DOCUMENTS as $stage => $label)
+        <flux:text class="mt-1 text-sm">{{ __('Open a document to view it in a new tab. Each one can be opened once it is uploaded.') }}</flux:text>
                 @php($path = $project->{$stage.'_path'})
                 <li class="flex items-center gap-4 py-3">
                     <flux:icon.document-text variant="mini" class="shrink-0 {{ $path ? 'text-isu-green-700' : 'text-zinc-300' }}" />

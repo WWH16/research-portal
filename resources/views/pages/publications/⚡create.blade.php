@@ -10,14 +10,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /*
  * One form for a new publication and for editing one. Portal co-authors are tagged on the same record,
  * so a shared paper and its citing papers are entered once and show on every author's profile.
  */
-new #[Title('Publications')] class extends Component {
+new class extends Component {
     public ?Publication $publication = null;
 
     public string $title = '';
@@ -221,6 +220,12 @@ new #[Title('Publications')] class extends Component {
     private function listedIds(): array
     {
         return $this->publication?->faculty()->pluck('users.id')->all() ?? [];
+    }
+
+    // The tab says what the form does, like its heading.
+    public function render()
+    {
+        return $this->view()->title($this->publication ? __('Edit Publication') : __('Add Publication'));
     }
 }; ?>
 

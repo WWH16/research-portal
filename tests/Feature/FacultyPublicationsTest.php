@@ -125,6 +125,75 @@ class FacultyPublicationsTest extends TestCase
         $this->actingAs($this->rivera)->get(route('faculty.index'))->assertForbidden();
     }
 
+    public function test_the_research_office_sorts_faculty_by_name_publications_or_citations(): void
+    {
+        $this->publication('Shared paper', '2025-01-01', [2025], $this->rivera, $this->soriano);
+        $this->publication('Solo paper', '2025-01-01', [], $this->rivera);
+        User::factory()->create(['name' => 'Torres']);
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::faculty.index')
+            ->assertSeeInOrder(['Rivera', 'Soriano', 'Torres'])
+            ->assertSeeHtml('aria-sort="ascending"')
+            // A number column opens with the most; a second click flips it.
+            ->call('sort', 'publications')
+            ->assertSet('sortDirection', 'desc')
+            ->assertSeeInOrder(['Rivera', 'Soriano', 'Torres'])
+            ->call('sort', 'publications')
+            ->assertSeeInOrder(['Torres', 'Soriano', 'Rivera'])
+            ->call('sort', 'name')
+            ->assertSet('sortDirection', 'asc')
+            ->call('sort', 'name')
+            ->assertSeeInOrder(['Torres', 'Soriano', 'Rivera']);
+
+        // Anything else typed into the address sorts by name rather than by that column.
+        Livewire::withQueryParams(['sort' => 'email'])->test('pages::faculty.index')
+            ->assertSeeInOrder(['Rivera', 'Soriano', 'Torres']);
+    }
+
+    public function test_a_member_without_a_college_says_so_in_words(): void
+    {
+        User::factory()->create(['name' => 'Torres']);
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::faculty.index')->assertSeeInOrder(['Torres', 'No college'])->assertDontSee('—');
+    }
+
+    public function test_the_profile_sorts_papers_by_year_as_well_as_by_citations(): void
+    {
+        $this->publication('Older paper', '2023-03-01', [2024, 2025], $this->rivera);
+        $this->publication('Newer paper', '2025-08-01', [2026], $this->rivera);
+        $this->publication('Middle paper', '2024-05-01', [], $this->rivera);
+        $this->actingAs($this->rivera);
+
+        Livewire::test('pages::faculty.show', ['user' => $this->rivera])
+            ->assertSeeInOrder(['Older paper', 'Newer paper', 'Middle paper'])
+            ->call('sort', 'year')
+            ->assertSeeInOrder(['Newer paper', 'Middle paper', 'Older paper'])
+            ->call('sort', 'year')
+            ->assertSeeInOrder(['Older paper', 'Middle paper', 'Newer paper'])
+            ->call('sort', 'cited')
+            ->assertSeeInOrder(['Older paper', 'Newer paper', 'Middle paper']);
+    }
+
+    public function test_a_profile_whose_papers_nobody_has_cited_shows_the_totals_without_an_empty_chart(): void
+    {
+        $this->publication('Uncited paper', '2025-01-01', [], $this->rivera);
+        $this->actingAs($this->rivera);
+
+        Livewire::test('pages::faculty.show', ['user' => $this->rivera])
+            ->assertSeeHtml('data-test="citation-total">0<')
+            ->assertDontSeeHtml('data-test="year-chart"');
+    }
+
+    public function test_an_empty_profile_offers_one_add_button_not_two(): void
+    {
+        $this->actingAs($this->rivera);
+        $html = Livewire::test('pages::faculty.show', ['user' => $this->rivera])->html();
+
+        $this->assertSame(1, substr_count($html, route('publications.create')));
+    }
+
     public function test_the_sidebar_names_the_page_for_each_role(): void
     {
         $this->actingAs($this->rivera)->get(route('dashboard'))

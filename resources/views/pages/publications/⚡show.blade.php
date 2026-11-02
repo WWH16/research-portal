@@ -121,13 +121,14 @@ new class extends Component {
     {{-- A record view: each label sits in a column as wide as the longest label, with its value beside it. Every row
          spans both columns through a subgrid, so the values line up. Labels align right, against their values, and
          the longest one starts on the page's left edge. The citations total shares the grid: its label and number
-         stack in the label column, and its chart fills the value column. --}}
+         stack in the label column, and its chart fills the value column. On phones each label sits above its value
+         instead, so the values get the full width. --}}
     @php
-        $row = 'col-span-2 grid grid-cols-subgrid';
-        $label = 'text-end text-zinc-600 text-balance';
+        $row = 'grid sm:col-span-2 sm:grid-cols-subgrid';
+        $label = 'text-zinc-600 text-balance sm:text-end';
         $value = 'text-zinc-900 wrap-anywhere';
     @endphp
-    <div class="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 text-sm sm:gap-x-8">
+    <div class="mt-6 grid text-sm sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-x-8">
         <dl class="{{ $row }} gap-y-3" data-test="publication-details">
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Authors') }}</dt>
@@ -181,8 +182,8 @@ new class extends Component {
         </dl>
 
         {{-- A rule sets the total and its chart apart from the details above --}}
-        <section class="{{ $row }} mt-6 items-start border-t border-line pt-6" aria-labelledby="cited-heading">
-            <div class="text-end">
+        <section class="{{ $row }} mt-6 items-start gap-y-3 border-t border-line pt-6" aria-labelledby="cited-heading">
+            <div class="sm:text-end">
                 <h2 id="cited-heading" class="text-zinc-600 text-balance">{{ __('Total citations') }}</h2>
                 <p class="mt-1 text-2xl font-semibold tabular-nums text-zinc-900" data-test="cited-by">{{ number_format($total) }}</p>
             </div>
@@ -198,7 +199,7 @@ new class extends Component {
     @if ($canEdit || $total)
         <section class="mt-10" aria-labelledby="citing-heading">
             {{-- Focusable from script only: focus lands here after a citing paper is removed --}}
-            <flux:heading level="2" id="citing-heading" tabindex="-1" class="outline-none">{{ __('Citing papers') }}</flux:heading>
+            <flux:heading size="lg" level="2" id="citing-heading" tabindex="-1" class="outline-none">{{ __('Citing papers') }}</flux:heading>
 
             @if ($canEdit)
                 {{-- The link gets the room: the year and button share the next row until the screen is wide enough for one row --}}

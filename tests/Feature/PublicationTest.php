@@ -245,6 +245,15 @@ class PublicationTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']))->get(route('publications.edit', $paper))->assertForbidden();
     }
 
+    public function test_the_tab_title_says_whether_the_form_adds_or_edits(): void
+    {
+        $paper = $this->publication([$this->rivera]);
+        $this->actingAs($this->rivera);
+
+        $this->get(route('publications.create'))->assertSee('Add Publication - ', false);
+        $this->get(route('publications.edit', $paper))->assertSee('Edit Publication - ', false);
+    }
+
     public function test_the_date_cannot_move_past_the_year_of_a_citing_paper(): void
     {
         $paper = $this->publication([$this->rivera], ['published_on' => '2024-05-01']);

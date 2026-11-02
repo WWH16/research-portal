@@ -22,6 +22,12 @@ new #[Title('Faculty Publications')] class extends Component {
     #[Url(as: 'college', except: '')]
     public string $college = '';
 
+    #[Url(as: 'sort', except: 'name')]
+    public string $sortBy = 'name';
+
+    #[Url(as: 'direction', except: 'asc')]
+    public string $sortDirection = 'asc';
+
     /**
      * Any filter change starts again from the first page.
      */
@@ -30,6 +36,18 @@ new #[Title('Faculty Publications')] class extends Component {
         if (in_array($property, ['search', 'college'], true)) {
             $this->resetPage();
         }
+    }
+
+    /**
+     * A number column opens with the most and the name column from A; a second click on the same column flips it.
+     */
+    public function sort(string $column): void
+    {
+        $this->sortDirection = $this->sortBy === $column
+            ? ($this->sortDirection === 'asc' ? 'desc' : 'asc')
+            : ($column === 'name' ? 'asc' : 'desc');
+        $this->sortBy = $column;
+        $this->resetPage();
     }
 
     #[Computed]
@@ -48,6 +66,8 @@ new #[Title('Faculty Publications')] class extends Component {
                 ->orWhere('researcher_id', 'like', '%'.$search.'%')))
             ->when($this->college === 'none', fn ($query) => $query->whereNull('department_id'))
             ->when(! in_array($this->college, ['', 'none'], true), fn ($query) => $query->whereRelation('department', 'code', $this->college))
+            // Only a listed column, so the address can't order by anything else; ties go by name.
+            ->orderBy(match ($this->sortBy) { 'publications' => 'publications_count', 'citations' => 'citations_count', default => 'name' }, $this->sortDirection === 'desc' ? 'desc' : 'asc')
             ->orderBy('name')
             ->paginate(25);
     }
@@ -68,14 +88,21 @@ new #[Title('Faculty Publications')] class extends Component {
         </div>
     </header>
 
-    <flux:input
-        wire:model.live.debounce.300ms="search"
-        icon="magnifying-glass"
-        :placeholder="__('Search name or researcher ID')"
-        :aria-label="__('Search faculty')"
-        clearable
-        class="mt-6"
-    />
+    <div class="mt-6 flex items-center gap-3">
+        <flux:input
+            wire:model.live.debounce.300ms="search"
+            icon="magnifying-glass"
+            :placeholder="__('Search name or researcher ID')"
+            :aria-label="__('Search faculty')"
+            clearable
+            class="flex-1"
+        />
+
+        {{-- Phones drop the College column, so its filter comes up here beside the search --}}
+        <div class="sm:hidden" data-test="phone-college-filter">
+            <x-college-filter model="college" :value="$college" with-none />
+        </div>
+    </div>
 
     @if ($this->faculty->isEmpty())
         @if (trim($search) !== '' || $college !== '')
@@ -86,26 +113,30 @@ new #[Title('Faculty Publications')] class extends Component {
             <x-empty-state icon="users" :heading="__('No faculty yet')" :text="__('Faculty members appear here once their accounts are approved, with the publications each one records.')" class="mt-6" />
         @endif
     @else
+        {{-- Each sortable header says which way it sorts, for screen readers as well as by its arrow --}}
+        @php($ariaSort = fn (string $column) => $sortBy === $column ? ($sortDirection === 'desc' ? 'descending' : 'ascending') : 'none')
         <flux:table class="mt-4" :paginate="$this->faculty" data-test="faculty-table">
             <flux:table.columns>
-                <flux:table.column>{{ __('Name') }}</flux:table.column>
-                <flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" :aria-sort="$ariaSort('name')" wire:click="sort('name')">{{ __('Name') }}</flux:table.column>
+                <flux:table.column class="max-sm:hidden">
                     <x-college-filter model="college" :value="$college" with-none />
                 </flux:table.column>
-                <flux:table.column align="end">{{ __('Publications') }}</flux:table.column>
-                <flux:table.column align="end">{{ __('Citations') }}</flux:table.column>
+                <flux:table.column align="end" sortable :sorted="$sortBy === 'publications'" :direction="$sortDirection" :aria-sort="$ariaSort('publications')" wire:click="sort('publications')">{{ __('Publications') }}</flux:table.column>
+                <flux:table.column align="end" sortable :sorted="$sortBy === 'citations'" :direction="$sortDirection" :aria-sort="$ariaSort('citations')" wire:click="sort('citations')">{{ __('Citations') }}</flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
                 @foreach ($this->faculty as $member)
-                    <flux:table.row :key="$member->id">
+                    {{-- The name link stretches over the whole row, as on the profile's list. Keyboard focus shades the row the same as hover. --}}
+                    <flux:table.row :key="$member->id" class="relative hover:bg-canvas has-[a:focus-visible]:bg-canvas">
                         <flux:table.cell>
-                            <a href="{{ route('faculty.show', $member) }}" wire:navigate class="flex min-w-0 items-center gap-3 hover:underline">
-                                <flux:avatar size="sm" :src="$member->profileImageUrl()" :name="$member->name" :initials="$member->initials()" />
+                            <a href="{{ route('faculty.show', $member) }}" wire:navigate class="flex min-w-0 items-center gap-3 after:absolute after:inset-0 hover:underline">
+                                {{-- Hidden from screen readers, so the link reads as the name alone --}}
+                                <flux:avatar size="sm" aria-hidden="true" :src="$member->profileImageUrl()" :name="$member->name" :initials="$member->initials()" />
                                 <span class="truncate font-medium text-zinc-800">{{ $member->name }}</span>
                             </a>
                         </flux:table.cell>
-                        <flux:table.cell>{{ $member->department?->code ?? '—' }}</flux:table.cell>
+                        <flux:table.cell class="max-sm:hidden">{{ $member->department?->code ?? __('No college') }}</flux:table.cell>
                         <flux:table.cell align="end" class="tabular-nums">{{ number_format($member->publications_count) }}</flux:table.cell>
                         <flux:table.cell align="end" variant="strong" class="tabular-nums">{{ number_format($member->citations_count) }}</flux:table.cell>
                     </flux:table.row>

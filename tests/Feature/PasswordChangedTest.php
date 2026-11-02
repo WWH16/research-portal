@@ -42,6 +42,28 @@ class PasswordChangedTest extends TestCase
         Notification::assertSentTo($maria, PasswordChanged::class, fn (PasswordChanged $notice) => ! $notice->byResearchOffice);
     }
 
+    public function test_a_password_the_research_office_sets_says_so(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $maria = User::factory()->create();
+
+        $this->actingAs($admin);
+        Livewire::test('pages::users.index')->call('edit', $maria->id)->set('password', 'brand-new-password')->call('save')->assertHasNoErrors();
+
+        Notification::assertSentTo($maria, PasswordChanged::class, fn (PasswordChanged $notice) => $notice->byResearchOffice);
+    }
+
+    public function test_an_account_edit_that_keeps_the_password_sends_nothing(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $maria = User::factory()->create();
+
+        $this->actingAs($admin);
+        Livewire::test('pages::users.index')->call('edit', $maria->id)->set('name', 'Maria S. Santos')->call('save')->assertHasNoErrors();
+
+        Notification::assertNotSentTo($maria, PasswordChanged::class);
+    }
+
     public function test_resetting_a_password_by_email_link_emails_you(): void
     {
         $maria = User::factory()->create();

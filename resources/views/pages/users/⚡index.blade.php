@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\User;
 use App\Notifications\AccountApproved;
 use App\Notifications\AccountRejected;
+use App\Notifications\PasswordChanged;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -234,7 +235,7 @@ new #[Title('Manage Users')] class extends Component {
 
         // Each change and its log entry save together, so a failed log write never leaves a change the log missed.
         if ($this->editingId) {
-            DB::transaction(function () use ($validated) {
+            $user = DB::transaction(function () use ($validated) {
                 $user = User::findOrFail($this->editingId);
                 $user->update($validated);
 
@@ -244,7 +245,14 @@ new #[Title('Manage Users')] class extends Component {
                         'password' => $user->wasChanged('password'),
                     ]));
                 }
+
+                return $user;
             });
+
+            // Told once the change has saved, and never shown the new password.
+            if ($user->wasChanged('password')) {
+                $user->notify(new PasswordChanged(byResearchOffice: ! $user->is(Auth::user())));
+            }
 
             Flux::toast(variant: 'success', text: __('User updated.'));
         } else {

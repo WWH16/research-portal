@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\Role;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -79,7 +80,7 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
 
         $user = User::where('email', 'test.user@isu.edu.ph')->sole();
-        $this->assertSame('faculty', $user->role);
+        $this->assertSame(Role::Faculty, $user->role);
         $this->assertSame($department->id, $user->department_id);
         $this->assertNull($user->email_verified_at);
     }

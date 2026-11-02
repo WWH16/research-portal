@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Enums\Role;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
@@ -39,7 +40,7 @@ new #[Title('Manage Users')] class extends Component {
     public string $email = '';
     public string $mobile = '';
     public ?int $department_id = null;
-    public string $role = 'faculty';
+    public string $role = Role::Faculty->value;
     public string $password = '';
 
     /** "pending", "approved" or "rejected"; the sidebar's sign-up count links here with ?status=pending. */
@@ -75,7 +76,7 @@ new #[Title('Manage Users')] class extends Component {
                     ->orWhere('email', 'like', $term)
                     ->orWhere('researcher_id', 'like', $term));
             })
-            ->when(in_array($this->roleFilter, ['admin', 'faculty'], true), fn ($query) => $query->where('role', $this->roleFilter))
+            ->when(Role::tryFrom($this->roleFilter), fn ($query, Role $role) => $query->where('role', $role))
             ->when($this->statusFilter === 'pending', fn ($query) => $query->pendingApproval())
             ->when($this->statusFilter === 'approved', fn ($query) => $query->whereNotNull('approved_at'))
             ->when($this->statusFilter === 'rejected', fn ($query) => $query->whereNotNull('rejected_at'))
@@ -197,7 +198,7 @@ new #[Title('Manage Users')] class extends Component {
         $this->email = $user->email;
         $this->mobile = (string) $user->mobile;
         $this->department_id = $user->department_id;
-        $this->role = $user->role;
+        $this->role = $user->role->value;
 
         Flux::modal('user-form')->show();
     }
@@ -213,7 +214,7 @@ new #[Title('Manage Users')] class extends Component {
 
         // Admins can't change their own role, so the portal always keeps at least one admin.
         if ($this->editingSelf) {
-            $this->role = Auth::user()->role;
+            $this->role = Auth::user()->role->value;
         }
 
         $validated = $this->validate([
@@ -221,7 +222,7 @@ new #[Title('Manage Users')] class extends Component {
             'email' => $this->emailRules($this->editingId),
             'mobile' => ['nullable', 'string', 'max:20'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
-            'role' => ['required', Rule::in(['admin', 'faculty'])],
+            'role' => ['required', Rule::enum(Role::class)],
             'password' => [$this->editingId ? 'nullable' : 'required', 'string', Password::default()],
         ], attributes: [
             'department_id' => __('college'),
@@ -241,7 +242,7 @@ new #[Title('Manage Users')] class extends Component {
 
                 if ($user->wasChanged()) {
                     ActivityLog::record('user.updated', $user, array_filter([
-                        'role' => $user->wasChanged('role') ? [$user->getPrevious()['role'], $user->role] : null,
+                        'role' => $user->wasChanged('role') ? [$user->getPrevious()['role'], $user->role->value] : null,
                         'password' => $user->wasChanged('password'),
                     ]));
                 }
@@ -269,7 +270,7 @@ new #[Title('Manage Users')] class extends Component {
                 $user = User::create($validated);
                 $user->forceFill(['approved_at' => now()]);
                 $user->markEmailAsVerified();
-                ActivityLog::record('user.created', $user, ['role' => $user->role]);
+                ActivityLog::record('user.created', $user, ['role' => $user->role->value]);
 
                 return $user;
             });
@@ -424,8 +425,8 @@ new #[Title('Manage Users')] class extends Component {
 
         <flux:select wire:model.live="roleFilter" :aria-label="__('Filter by role')" class="sm:max-w-44">
             <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
-            <flux:select.option value="admin">{{ __('Admins') }}</flux:select.option>
-            <flux:select.option value="faculty">{{ __('Faculty') }}</flux:select.option>
+            <flux:select.option :value="Role::Admin->value">{{ __('Admins') }}</flux:select.option>
+            <flux:select.option :value="Role::Faculty->value">{{ __('Faculty') }}</flux:select.option>
         </flux:select>
 
         <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="sm:max-w-44">
@@ -541,8 +542,8 @@ new #[Title('Manage Users')] class extends Component {
                 </flux:select>
 
                 <flux:select wire:model="role" :label="__('Role')" :disabled="$this->editingSelf">
-                    <flux:select.option value="faculty">{{ __('Faculty') }}</flux:select.option>
-                    <flux:select.option value="admin">{{ __('Admin') }}</flux:select.option>
+                    <flux:select.option :value="Role::Faculty->value">{{ __('Faculty') }}</flux:select.option>
+                    <flux:select.option :value="Role::Admin->value">{{ __('Admin') }}</flux:select.option>
                 </flux:select>
 
                 {{-- Its own grid row under the Role column, so College and Role stay level above it. --}}

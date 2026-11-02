@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\GoogleDriveConnection;
@@ -604,7 +605,7 @@ class NotificationsTest extends TestCase
         // Only known kinds are saved; anything else typed into the request is dropped.
         Livewire::test('pages::settings.profile')->set('emailMe.role', false);
         $this->assertArrayNotHasKey('role', $this->maria->fresh()->email_preferences);
-        $this->assertSame('faculty', $this->maria->fresh()->role);
+        $this->assertSame(Role::Faculty, $this->maria->fresh()->role);
     }
 
     public function test_the_list_shows_a_new_notice_when_the_live_count_finds_it(): void

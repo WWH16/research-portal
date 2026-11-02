@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
@@ -231,6 +232,18 @@ class ManageUsersTest extends TestCase
 
         $this->assertEqualsCanonicalizing($faculty->modelKeys(), User::faculty()->pluck('id')->all());
         $this->assertSame([$this->admin->id], User::admins()->pluck('id')->all());
+    }
+
+    public function test_only_known_roles_are_saved_or_filtered(): void
+    {
+        $maria = User::factory()->create(['name' => 'Maria Santos', 'role' => 'faculty']);
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')->call('edit', $maria->id)->set('role', 'superuser')->call('save')->assertHasErrors(['role']);
+        $this->assertSame(Role::Faculty, $maria->fresh()->role);
+
+        // A hand-edited ?role= in the address shows everyone instead of no one.
+        Livewire::test('pages::users.index')->set('roleFilter', 'superuser')->assertSee('Maria Santos')->assertSee('Research Office');
     }
 
     public function test_admin_cannot_change_their_own_role(): void

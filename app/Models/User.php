@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use App\Notifications\QueuedResetPassword;
 use App\Notifications\QueuedVerifyEmail;
 use Database\Factories\UserFactory;
@@ -32,7 +33,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $researcher_id
  * @property string|null $mobile
  * @property int|null $department_id
- * @property string $role
+ * @property Role $role
  * @property string|null $profile_image
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -71,6 +72,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'rejected_at' => 'datetime',
             'password' => 'hashed',
             'email_preferences' => 'array',
+            'role' => Role::class,
         ];
     }
 
@@ -211,7 +213,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
      */
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === Role::Admin;
     }
 
     /**
@@ -247,7 +249,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
      */
     public function scopeAdmins(Builder $query): void
     {
-        $query->where('role', 'admin');
+        $query->where('role', Role::Admin);
     }
 
     /**
@@ -257,7 +259,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
      */
     public function scopeFaculty(Builder $query): void
     {
-        $query->where('role', 'faculty');
+        $query->where('role', Role::Faculty);
     }
 
     /**

@@ -1,11 +1,13 @@
 <?php
 
 use App\Models\ActivityLog;
+use App\Models\Department;
 use App\Models\Submission;
 use App\Notifications\ProjectDatesChanged;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
@@ -58,6 +60,17 @@ new #[Title('Submissions')] class extends Component {
     public function monitoring(): bool
     {
         return Auth::user()->isAdmin();
+    }
+
+    /**
+     * The college codes for the College filter, read once for the column header and the phone filter that stands in for it.
+     *
+     * @return Collection<int, string>
+     */
+    #[Computed]
+    public function collegeCodes(): Collection
+    {
+        return Department::orderBy('code')->pluck('code');
     }
 
     /**
@@ -319,6 +332,11 @@ new #[Title('Submissions')] class extends Component {
         @endif
 
         @if ($this->monitoring)
+            {{-- Phones drop the College column, so its filter comes up here beside the count --}}
+            <div class="sm:hidden" data-test="phone-college-filter">
+                <x-college-filter model="department" :value="$department" :codes="$this->collegeCodes" />
+            </div>
+
             <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:ms-auto max-sm:h-11">
                 {{ __('Export CSV') }}
             </flux:button>
@@ -348,11 +366,11 @@ new #[Title('Submissions')] class extends Component {
             <flux:table.columns>
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
                 @if ($this->monitoring)
-                    <flux:table.column data-test="department-column">
-                        <x-college-filter model="department" :value="$department" />
+                    <flux:table.column class="max-sm:hidden" data-test="department-column">
+                        <x-college-filter model="department" :value="$department" :codes="$this->collegeCodes" />
                     </flux:table.column>
                 @endif
-                {{-- Phones keep the project and its actions; the project cell repeats status and due date in short --}}
+                {{-- Phones keep the project and its actions; the project cell repeats status, college and due date in short --}}
                 <flux:table.column class="max-sm:hidden">{{ __('Year') }}</flux:table.column>
                 <flux:table.column class="max-sm:hidden">{{ __('Status') }}</flux:table.column>
                 @if ($this->monitoring)
@@ -388,25 +406,31 @@ new #[Title('Submissions')] class extends Component {
                             <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline">{{ $title }}</a>
                             <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->pluck('user')->unique('id')->map->shortName()->join(', ') }}</p>
                             {{-- All four documents in stage order: a filled pill opens one on file, a dashed one is still to come, so
-                                 every row shows the same sequence, on one line from tablet width up; no check icon, so four filled pills
-                                 still fit there. Screen readers hear the full document name and which project it is for --}}
-                            <ul class="mt-2 flex flex-wrap gap-1 sm:flex-nowrap" aria-label="{{ __('Documents') }}">
+                                 every row shows the same sequence, on one line from tablet width up. Phones set them two by two at
+                                 equal widths, 36px tall, so the pairs line up and each is easy to tap. A filled pill carries a small
+                                 open-in-new-tab icon, the one the portal's other document links use, so it reads as something to open.
+                                 Screen readers hear the full document name and which project it is for --}}
+                            <ul class="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:gap-1" aria-label="{{ __('Documents') }}">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
                                     <li>
                                         @if ($submission->{$stage.'_path'})
                                             <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
-                                                <flux:badge size="sm" class="bg-isu-green-50! px-1.5! text-isu-green-800!">{{ Str::before(__($label), ' ') }}</flux:badge>
+                                                <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-9 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon.arrow-top-right-on-square variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
                                             </a>
                                         @else
-                                            <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500">
+                                            <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500 max-sm:h-9 max-sm:w-full max-sm:justify-center">
                                                 {{ Str::before(__($label), ' ') }}<span class="sr-only">{{ __(': not uploaded yet') }}</span>
                                             </span>
                                         @endif
                                     </li>
                                 @endforeach
                             </ul>
-                            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden" data-test="phone-summary">
+                            {{-- Set further below the pills than they sit from each other, so a status badge reads apart from them --}}
+                            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden" data-test="phone-summary">
                                 @include('partials.project-status', ['delay' => false, 'stageAfterReview' => true])
+                                @if ($this->monitoring)
+                                    <p class="text-xs text-zinc-600">{{ $submission->department->code }}</p>
+                                @endif
                                 {{-- Two items, so the row wraps between them rather than joining them with a dot --}}
                                 <p class="text-xs tabular-nums text-zinc-600">{{ $due }}</p>
                                 <p class="text-xs tabular-nums {{ $standingClass }}">{{ $standing }}</p>
@@ -416,7 +440,7 @@ new #[Title('Submissions')] class extends Component {
                             @endif
                         </flux:table.cell>
                         @if ($this->monitoring)
-                            <flux:table.cell>
+                            <flux:table.cell class="max-sm:hidden">
                                 {{ $submission->department->code }}
                             </flux:table.cell>
                         @endif

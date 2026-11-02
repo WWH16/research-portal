@@ -12,6 +12,7 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use League\Flysystem\FileAttributes;
@@ -262,7 +263,14 @@ class DocumentStorage
         $account->update($forget);
 
         if ($wasConnected) {
-            Notification::send(User::admins()->get(), new DriveDisconnected($account));
+            // An upload's save rolls back when Google refuses it, taking the mark and the notice with it; so a
+            // rollback marks the account again, and the notice waits for the save to end either way.
+            $notify = fn () => Notification::send(User::admins()->get(), new DriveDisconnected($account));
+            DB::afterCommit($notify);
+            DB::afterRollBack(function () use ($account, $forget, $notify) {
+                GoogleDriveConnection::whereKey($account->id)->update($forget);
+                $notify();
+            });
         }
     }
 

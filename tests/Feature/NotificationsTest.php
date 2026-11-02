@@ -542,6 +542,24 @@ class NotificationsTest extends TestCase
         Notification::assertNotSentTo($this->maria, DriveDisconnected::class);
     }
 
+    public function test_a_disconnect_found_by_a_failed_save_is_kept_and_told_once(): void
+    {
+        $admin = $this->admin();
+        $account = GoogleDriveConnection::factory()->create();
+        $revoked = new RuntimeException('Client error: 400 Bad Request {"error": "invalid_grant"}');
+        // An upload saves inside a transaction, which rolls back when Google refuses the portal's access.
+        $failedUpload = fn () => rescue(fn () => DB::transaction(function () use ($account, $revoked) {
+            app(DocumentStorage::class)->markIfUnreachable($account->fresh(), $revoked);
+            throw $revoked;
+        }), report: false);
+
+        $failedUpload();
+        $failedUpload();
+
+        $this->assertFalse($account->fresh()->isConnected());
+        $this->assertSame(1, $admin->notifications()->where('type', DriveDisconnected::class)->count());
+    }
+
     public function test_every_notice_that_emails_has_an_email(): void
     {
         // A notice without its own email gets the portal's plain one, with its lines and the same link.

@@ -13,6 +13,7 @@ use GuzzleHttp\Middleware;
 use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use League\Flysystem\Filesystem;
 use Masbug\Flysystem\GoogleDriveAdapter;
@@ -91,9 +92,12 @@ class GoogleDrive
             }
 
             // Only the first refusal tells the admins; the ones after it, until an upload goes through, stay quiet.
+            // The upload's save rolls back when the file is refused, so the notice waits for it to end either way.
             if ($response->getStatusCode() === 403 && str_contains((string) $response->getBody(), 'storageQuotaExceeded')
                 && Cache::add($account->fullKey(), now())) {
-                Notification::send(User::admins()->get(), new DriveFull($account));
+                $notify = fn () => Notification::send(User::admins()->get(), new DriveFull($account));
+                DB::afterCommit($notify);
+                DB::afterRollBack($notify);
             }
 
             return $response;

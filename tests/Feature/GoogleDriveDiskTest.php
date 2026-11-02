@@ -16,10 +16,12 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class GoogleDriveDiskTest extends TestCase
@@ -236,6 +238,22 @@ class GoogleDriveDiskTest extends TestCase
             'url' => route('google-drive.index'),
         ]);
         Notification::assertNotSentTo($faculty, DriveFull::class);
+    }
+
+    public function test_the_full_notice_survives_the_failed_save_that_found_it(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'folder-123']);
+        $full = new Response(403, ['Content-Type' => 'application/json'], '{"error": {"code": 403, "errors": [{"reason": "storageQuotaExceeded"}]}}');
+        $this->googleAnswers([new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'), $full]);
+
+        // An upload saves inside a transaction, which rolls back when Google refuses the file.
+        rescue(fn () => DB::transaction(function () use ($account) {
+            app(GoogleDrive::class)->disk($account)->put('proposal.pdf', 'pdf');
+            throw new RuntimeException('The document could not be stored.');
+        }), report: false);
+
+        $this->assertSame(1, $admin->notifications()->where('type', DriveFull::class)->count());
     }
 
     public function test_a_school_account_reports_its_own_drive_not_its_organizations_pool(): void

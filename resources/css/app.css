@@ -126,6 +126,13 @@
         overflow-x: clip;
     }
 
+    /* Flux removes a closed toast only when its fade-out reports finishing. A fade cut short, as by moving to another
+       page mid-fade, never reports, leaving an invisible toast over the page that swallowed clicks on Save. A faded
+       toast lets clicks through to what is under it. */
+    ui-toast-group [data-flux-toast-dialog]:has(> [style*='opacity: 0']) {
+        pointer-events: none;
+    }
+
     ::selection {
         background-color: var(--color-isu-gold-200);
         color: var(--color-isu-green-950);

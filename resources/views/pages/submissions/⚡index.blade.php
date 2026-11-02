@@ -407,7 +407,9 @@ new #[Title('Submissions')] class extends Component {
                             </ul>
                             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden" data-test="phone-summary">
                                 @include('partials.project-status', ['delay' => false, 'stageAfterReview' => true])
-                                <p class="text-xs tabular-nums {{ $standingClass }}">{{ $due }} · {{ $standing }}</p>
+                                {{-- Two items, so the row wraps between them rather than joining them with a dot --}}
+                                <p class="text-xs tabular-nums text-zinc-600">{{ $due }}</p>
+                                <p class="text-xs tabular-nums {{ $standingClass }}">{{ $standing }}</p>
                             </div>
                             @if (! $this->monitoring && $submission->conceptReview() === 'returned')
                                 <p class="mt-2 text-sm text-amber-800 wrap-anywhere">{{ __('Research Office remarks: :remarks', ['remarks' => $submission->remarks]) }}</p>
@@ -420,8 +422,8 @@ new #[Title('Submissions')] class extends Component {
                         @endif
                         <flux:table.cell class="tabular-nums max-sm:hidden">{{ $submission->year }}</flux:table.cell>
                         <flux:table.cell class="max-sm:hidden">
-                            {{-- Delayed shows in the schedule as the overdue days, so the status keeps to stage and review; the stage
-                                 waits until the concept passes, since the pills already show the concept on file --}}
+                            {{-- Delayed shows in the schedule as the overdue days, so the status keeps to stage and review; at Concept
+                                 the status says only where the review stands, since the pills already show the concept on file --}}
                             @include('partials.project-status', ['delay' => false, 'stageAfterReview' => true])
                         </flux:table.cell>
                         @if ($this->monitoring)

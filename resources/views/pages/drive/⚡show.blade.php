@@ -52,8 +52,9 @@ new #[Title('Research Drive')] class extends Component {
 <section class="mx-auto w-full max-w-4xl">
     {{-- The buttons share the breadcrumb row, so the title gets the full width. On phones they drop below the title, as before. --}}
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        {{-- Long titles wrap the trail onto a second line instead of running off narrow screens --}}
-        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
+        {{-- Long titles wrap the trail onto a second line instead of running off narrow screens. On phones each link's
+             tap area reaches above and below its text, so the way back is easy to hit --}}
+        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1 [&_a]:relative max-sm:[&_a]:before:absolute max-sm:[&_a]:before:-inset-x-1 max-sm:[&_a]:before:-inset-y-3">
             <flux:breadcrumbs.item :href="route('drive.index')" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
             @if ($admin)
                 <flux:breadcrumbs.item :href="route('drive.index', ['college' => $project->department->code])" wire:navigate>{{ $project->department->code }}</flux:breadcrumbs.item>
@@ -63,7 +64,7 @@ new #[Title('Research Drive')] class extends Component {
 
         <div class="min-w-0 sm:col-span-2 sm:row-start-2">
             {{-- A title pasted without spaces still breaks instead of overflowing --}}
-            <flux:heading size="xl" level="1" class="text-balance wrap-anywhere">{{ $project->title }}</flux:heading>
+            <flux:heading size="xl" level="1" class="text-balance wrap-break-word">{{ $project->title }}</flux:heading>
             <div class="mt-3">@include('partials.project-status', ['submission' => $project])</div>
         </div>
 
@@ -115,14 +116,14 @@ new #[Title('Research Drive')] class extends Component {
     </dl>
 
     <section class="mt-8" aria-labelledby="progress-heading">
-        <flux:heading level="2" id="progress-heading">{{ __('Progress') }}</flux:heading>
+        <flux:heading size="lg" level="2" id="progress-heading">{{ __('Progress') }}</flux:heading>
         <div class="mt-3">@include('partials.project-stages', ['submission' => $project])</div>
     </section>
 
     @include('partials.concept-remarks', ['submission' => $project])
 
     <section class="mt-10" aria-labelledby="documents-heading">
-        <flux:heading level="2" id="documents-heading">{{ __('Documents') }}</flux:heading>
+        <flux:heading size="lg" level="2" id="documents-heading">{{ __('Documents') }}</flux:heading>
         <ul class="mt-3 divide-y divide-line border-y border-line" data-test="drive-documents">
             @foreach (Submission::DOCUMENTS as $stage => $label)
                 @php($path = $project->{$stage.'_path'})
@@ -142,7 +143,7 @@ new #[Title('Research Drive')] class extends Component {
                         </p>
                     </div>
                     @if ($path)
-                        <flux:button size="sm" :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11 max-sm:px-4">{{ __('Open') }}</flux:button>
+                        <flux:button :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11 max-sm:px-4">{{ __('Open') }}</flux:button>
                     @endif
                 </li>
             @endforeach
@@ -150,7 +151,7 @@ new #[Title('Research Drive')] class extends Component {
     </section>
 
     <section class="mt-10" aria-labelledby="studies-heading">
-        <flux:heading level="2" id="studies-heading">{{ __('Studies and proponents') }}</flux:heading>
+        <flux:heading size="lg" level="2" id="studies-heading">{{ __('Studies and proponents') }}</flux:heading>
         <div class="mt-3 grid gap-6" data-test="drive-studies">
             @foreach ($project->proponents->groupBy('study') as $study => $rows)
                 <div>
@@ -170,7 +171,7 @@ new #[Title('Research Drive')] class extends Component {
     </section>
 
     <section class="mt-10" aria-labelledby="history-heading">
-        <flux:heading level="2" id="history-heading">{{ __('History') }}</flux:heading>
+        <flux:heading size="lg" level="2" id="history-heading">{{ __('History') }}</flux:heading>
         @if ($history->isEmpty())
             <flux:text class="mt-3 text-sm">{{ __('Nothing recorded yet.') }}</flux:text>
         @else

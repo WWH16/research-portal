@@ -388,9 +388,10 @@ new #[Title('Research Project')] class extends Component {
 
 {{-- Same width as My Profile, so the form doesn't jump between the two --}}
 <section class="mx-auto w-full max-w-4xl">
-    {{-- A child page, so a breadcrumb back to where it was opened from, like the publication form --}}
+    {{-- A child page, so a breadcrumb back to where it was opened from, like the publication form. On phones each link's
+         tap area reaches above and below its text, as on a Research Drive project --}}
     <header class="grid gap-4 border-b border-line pb-6">
-        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1" data-test="back-to-submissions">
+        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1 [&_a]:relative max-sm:[&_a]:before:absolute max-sm:[&_a]:before:-inset-x-1 max-sm:[&_a]:before:-inset-y-3" data-test="back-to-submissions">
             @if ($this->backUrl === route('submissions.index'))
                 <flux:breadcrumbs.item :href="route('submissions.index')" wire:navigate>{{ __('Submissions') }}</flux:breadcrumbs.item>
             @else
@@ -426,7 +427,8 @@ new #[Title('Research Project')] class extends Component {
         x-on:submit.capture="uploading && ($event.preventDefault(), $event.stopImmediatePropagation())"
         class="mt-8 flex flex-col gap-6"
     >
-        <flux:input wire:model="title" :label="__('Title')" type="text" required autofocus />
+        {{-- The cursor starts in Title only on a new proposal; an edit opens without a field picked --}}
+        <flux:input wire:model="title" :label="__('Title')" type="text" required :autofocus="! $submission" />
 
         <flux:textarea wire:model="abstract" :label="__('Abstract')" rows="6" required />
 
@@ -444,15 +446,16 @@ new #[Title('Research Project')] class extends Component {
 
             <flux:input wire:model="designation" :label="__('Designation')" :badge="__('Optional')" type="text" maxlength="100" field:class="sm:col-span-6" />
 
-            {{-- Full width, so a long college name shows in full rather than cut off in half a row --}}
-            <flux:input
+            {{-- Full width, and a box that grows to fit, so a long college name shows in full on phones too rather than
+                 cut off in a field that can't scroll --}}
+            <flux:textarea
                 :label="__('College')"
-                :value="$this->department ? $this->department->name.' ('.$this->department->code.')' : __('Not assigned')"
+                rows="auto"
+                resize="none"
                 :description:trailing="$submission ? null : __('From your profile.')"
-                type="text"
                 disabled
                 field:class="sm:col-span-12"
-            />
+            >{{ $this->department ? $this->department->name.' ('.$this->department->code.')' : __('Not assigned') }}</flux:textarea>
 
             <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" field:class="sm:col-span-6" />
             <flux:input
@@ -474,22 +477,23 @@ new #[Title('Research Project')] class extends Component {
             <flux:legend>{{ __('Proponents') }}</flux:legend>
             <flux:description>{{ __('List everyone on each study, as in your proposal’s proponents table. Pick co-proponents by name from faculty with a portal account; anyone who registers later can be added then. Keep study no. 1 unless the project has more than one study.') }}</flux:description>
 
-            {{-- Phones keep a fixed four-column row; from sm up the rows join the form's 12-column grid --}}
-            @php($columns = 'grid grid-cols-[4.5rem_minmax(0,1fr)_7.5rem_2.5rem] gap-x-2 sm:grid-cols-12 sm:gap-x-4')
+            {{-- Phones put study no., role and remove on one row and the faculty picker full width under them, so a name
+                 is readable; from sm up the rows join the form's 12-column grid --}}
+            @php($columns = 'grid grid-cols-[4.5rem_minmax(0,1fr)_2.75rem] gap-x-2 gap-y-2 sm:grid-cols-12 sm:gap-x-4')
             <div class="mt-4 grid gap-3">
                 <div class="{{ $columns }} border-b border-line pb-2 text-sm font-medium text-zinc-700" aria-hidden="true">
                     <span class="sm:col-span-2">{{ __('Study no.') }}</span>
-                    <span class="sm:col-span-7">{{ __('Faculty') }}</span>
+                    <span class="max-sm:hidden sm:col-span-7">{{ __('Faculty') }}</span>
                     <span class="sm:col-span-2">{{ __('Role') }}</span>
                 </div>
 
                 @foreach ($proponents as $index => $row)
-                    <div class="{{ $columns }} items-start" wire:key="proponent-{{ $index }}" data-test="proponent-row">
+                    <div class="{{ $columns }} items-start max-sm:border-b max-sm:border-line max-sm:pb-3" wire:key="proponent-{{ $index }}" data-test="proponent-row">
                         <div class="sm:col-span-2">
                             <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" :aria-label="__('Study no.')" />
                         </div>
 
-                        <div class="min-w-0 sm:col-span-7">
+                        <div class="min-w-0 max-sm:order-last max-sm:col-span-3 sm:col-span-7">
                             <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')">
                                 <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
                                 @foreach ($this->faculty as $member)
@@ -507,7 +511,7 @@ new #[Title('Research Project')] class extends Component {
                         </div>
 
                         <div class="justify-self-end sm:col-span-1">
-                            <flux:button variant="ghost" icon="x-mark" wire:click="removeProponent({{ $index }})" :aria-label="__('Remove proponent')" :tooltip="__('Remove proponent')" :disabled="count($proponents) === 1" />
+                            <flux:button variant="ghost" icon="x-mark" wire:click="removeProponent({{ $index }})" :aria-label="__('Remove proponent')" :tooltip="__('Remove proponent')" :disabled="count($proponents) === 1" class="max-sm:size-11" />
                         </div>
                     </div>
                 @endforeach
@@ -515,7 +519,7 @@ new #[Title('Research Project')] class extends Component {
 
             <flux:error name="proponents" class="mt-2" />
 
-            <flux:button size="sm" icon="plus" wire:click="addProponent" class="mt-3" data-test="add-proponent-button">{{ __('Add proponent') }}</flux:button>
+            <flux:button size="sm" icon="plus" wire:click="addProponent" class="mt-3 max-sm:h-11" data-test="add-proponent-button">{{ __('Add proponent') }}</flux:button>
         </flux:fieldset>
 
         <flux:fieldset>
@@ -553,38 +557,52 @@ new #[Title('Research Project')] class extends Component {
                             @endif
                         </span>
 
-                        <div class="min-w-0 flex-1 pt-0.5">
+                        <div class="min-w-0 flex-1 pt-0.5" @if ($open && $onFile) x-data="{ replacing: false }" @endif>
                             <span @class(['text-sm', 'font-semibold text-zinc-900' => $open, 'font-medium text-zinc-700' => ! $open])>{{ __($label) }}</span>
 
-                            @if ($open)
-                                {{-- The file input covers the whole box, transparent, so a click anywhere opens the picker and a
-                                     dropped file lands on it natively. Alpine only swaps the words to name the file. --}}
-                                @php($prompt = $onFile ? __('Drop a new file here to replace it, or click to choose') : __('Drop the file here, or click to choose'))
-                                <label
-                                    x-data="{ name: '', over: false, prompt: @js($prompt) }"
-                                    x-bind:class="over && 'border-isu-green-600! bg-isu-green-50!'"
-                                    class="relative mt-3 flex flex-col items-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center transition-colors hover:border-isu-green-600 hover:bg-isu-green-50 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-isu-green-700"
-                                    data-test="dropzone-{{ $stage }}"
-                                >
-                                    <input
-                                        wire:model="documents.{{ $stage }}"
-                                        type="file"
-                                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                        aria-label="{{ $onFile ? __('Replace the :document', ['document' => Str::lower(__($label))]) : __('Upload the :document', ['document' => Str::lower(__($label))]) }}"
-                                        aria-describedby="documents-{{ $stage }}-hint"
-                                        x-on:change="name = $event.target.files[0]?.name ?? ''"
-                                        x-on:dragenter="over = true"
-                                        x-on:dragleave="over = false"
-                                        x-on:drop="over = false"
-                                        class="absolute inset-0 size-full cursor-pointer opacity-0"
-                                    />
-                                    <flux:icon.arrow-up-tray class="size-5 text-zinc-500" aria-hidden="true" />
-                                    <span class="text-sm font-medium break-all text-zinc-800" wire:loading.remove wire:target="documents.{{ $stage }}" x-text="name || prompt">{{ $prompt }}</span>
-                                    <span class="text-sm font-medium break-all text-zinc-800" wire:loading wire:target="documents.{{ $stage }}" x-text="@js(__('Uploading')) + ' ' + name + '…'"></span>
-                                    <span id="documents-{{ $stage }}-hint" class="text-xs text-zinc-600">{{ __('PDF or Word, up to :size MB', ['size' => \App\Services\DocumentStorage::maxUploadMb()]) }}</span>
-                                </label>
+                            {{-- A step already on file stays one line, so the step to do now leads. Replace opens its drop box and
+                                 stays open, since hiding it again would not take back a file already picked --}}
+                            @if ($onFile)
+                                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                                    <span class="text-zinc-600">{{ __('On file') }}</span>
+                                    <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm">{{ __('Open current file') }}</flux:link>
+                                    @if ($open)
+                                        <flux:button size="sm" variant="ghost" icon="arrow-path" x-show="! replacing" x-on:click="replacing = true" aria-controls="dropzone-wrap-{{ $stage }}" class="max-sm:h-11" data-test="replace-{{ $stage }}">{{ __('Replace') }}</flux:button>
+                                    @endif
+                                </div>
+                            @endif
 
-                                <flux:error name="documents.{{ $stage }}" class="mt-2" />
+                            @if ($open)
+                                <div id="dropzone-wrap-{{ $stage }}" @if ($onFile) x-show="replacing" x-cloak @endif>
+                                    {{-- The file input covers the whole box, transparent, so a click anywhere opens the picker and a
+                                         dropped file lands on it natively. Alpine only swaps the words to name the file. --}}
+                                    @php($prompt = $onFile ? __('Drop a new file here to replace it, or click to choose') : __('Drop the file here, or click to choose'))
+                                    <label
+                                        x-data="{ name: '', over: false, prompt: @js($prompt) }"
+                                        x-bind:class="over && 'border-isu-green-600! bg-isu-green-50!'"
+                                        class="relative mt-3 flex flex-col items-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center transition-colors hover:border-isu-green-600 hover:bg-isu-green-50 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-isu-green-700"
+                                        data-test="dropzone-{{ $stage }}"
+                                    >
+                                        <input
+                                            wire:model="documents.{{ $stage }}"
+                                            type="file"
+                                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                            aria-label="{{ $onFile ? __('Replace the :document', ['document' => Str::lower(__($label))]) : __('Upload the :document', ['document' => Str::lower(__($label))]) }}"
+                                            aria-describedby="documents-{{ $stage }}-hint"
+                                            x-on:change="name = $event.target.files[0]?.name ?? ''"
+                                            x-on:dragenter="over = true"
+                                            x-on:dragleave="over = false"
+                                            x-on:drop="over = false"
+                                            class="absolute inset-0 size-full cursor-pointer opacity-0"
+                                        />
+                                        <flux:icon.arrow-up-tray class="size-5 text-zinc-500" aria-hidden="true" />
+                                        <span class="text-sm font-medium break-all text-zinc-800" wire:loading.remove wire:target="documents.{{ $stage }}" x-text="name || prompt">{{ $prompt }}</span>
+                                        <span class="text-sm font-medium break-all text-zinc-800" wire:loading wire:target="documents.{{ $stage }}" x-text="@js(__('Uploading')) + ' ' + name + '…'"></span>
+                                        <span id="documents-{{ $stage }}-hint" class="text-xs text-zinc-600">{{ __('PDF or Word, up to :size MB', ['size' => \App\Services\DocumentStorage::maxUploadMb()]) }}</span>
+                                    </label>
+
+                                    <flux:error name="documents.{{ $stage }}" class="mt-2" />
+                                </div>
                             @else
                                 <flux:text class="mt-1 text-sm text-zinc-600" data-test="document-locked">
                                     {{ match ($stage) {
@@ -593,10 +611,6 @@ new #[Title('Research Project')] class extends Component {
                                         default => __('Opens after the mid-year progress report is uploaded.'),
                                     } }}
                                 </flux:text>
-                            @endif
-
-                            @if ($onFile)
-                                <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="mt-2 inline-block text-sm">{{ __('Open current file') }}</flux:link>
                             @endif
                         </div>
                     </li>

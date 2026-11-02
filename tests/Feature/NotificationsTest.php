@@ -630,7 +630,7 @@ class NotificationsTest extends TestCase
         $upload();
         Notification::assertSentTo($admin, ProjectCompleted::class, fn (ProjectCompleted $notification) => $notification->via($admin) === ['database']
             && $notification->toArray($admin) === [
-                'message' => '“Solar Dryer Study” is complete: Maria Dela Paz Santos uploaded the terminal report on '.today()->format('F j, Y').', on time. Record whether it was presented in-house under Submissions.',
+                'message' => '“Solar Dryer Study” is complete: Maria Dela Paz Santos uploaded the terminal report on '.today()->format('F j, Y').', on time.',
                 'url' => route('submissions.index', ['status' => 'not-presented']),
             ]);
         Notification::assertNotSentTo($this->maria, ProjectCompleted::class);

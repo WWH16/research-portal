@@ -5,8 +5,8 @@ namespace App\Notifications;
 use App\Models\Submission;
 
 /**
- * Tells the Research Office a project is complete, the first time its terminal report comes in, so it can record
- * whether the project was presented in-house. Portal only: it is a record to act on, not news to chase.
+ * Tells the Research Office a project is complete, the first time its terminal report comes in. Portal only: it is
+ * a record to act on, not news to chase.
  */
 class ProjectCompleted extends PortalNotification
 {
@@ -29,8 +29,8 @@ class ProjectCompleted extends PortalNotification
         ];
 
         return $this->submission->completedOnTime() === false
-            ? trans_choice('{1} “:title” is complete: :name uploaded the terminal report on :date, 1 day after its completion date of :due. Record whether it was presented in-house under Submissions.|[2,*] “:title” is complete: :name uploaded the terminal report on :date, :days days after its completion date of :due. Record whether it was presented in-house under Submissions.', $late, $replace)
-            : __('“:title” is complete: :name uploaded the terminal report on :date, on time. Record whether it was presented in-house under Submissions.', $replace);
+            ? trans_choice('{1} “:title” is complete: :name uploaded the terminal report on :date, 1 day after its completion date of :due.|[2,*] “:title” is complete: :name uploaded the terminal report on :date, :days days after its completion date of :due.', $late, $replace)
+            : __('“:title” is complete: :name uploaded the terminal report on :date, on time.', $replace);
     }
 
     protected function url(): string

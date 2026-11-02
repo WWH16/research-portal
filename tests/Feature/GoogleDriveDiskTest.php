@@ -232,7 +232,7 @@ class GoogleDriveDiskTest extends TestCase
         $this->assertTrue(Cache::has($account->fullKey()));
         Notification::assertSentToTimes($admin, DriveFull::class, 1);
         Notification::assertSentTo($admin, DriveFull::class, fn (DriveFull $notification) => $notification->toArray($admin) === [
-            'message' => 'Google Drive office@isu.edu.ph is full, so documents can’t be uploaded. Free up space in it, or change the storage account.',
+            'message' => 'Google Drive office@isu.edu.ph is full, so documents can’t be uploaded. Free up space in it, or change the storage account on System → Google Drive.',
             'url' => route('google-drive.index'),
         ]);
         Notification::assertNotSentTo($faculty, DriveFull::class);

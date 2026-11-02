@@ -260,7 +260,7 @@ new #[Title('Announcements')] class extends Component {
             'memo' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:'.\App\Services\DocumentStorage::maxUploadMb() * 1024],
         ], [
             'title.required' => __('Enter a title.'),
-            'description.required' => __('Enter what the announcement says.'),
+            'description.required' => __('Enter the message.'),
             'dueOn.date_format' => __('Enter the deadline as a full date.'),
             'dueOn.after_or_equal' => __('The deadline can’t be in the past. Enter today or a later date.'),
             'memo.mimes' => __('The memo must be a PDF, a Word file or an image (JPG, PNG or WebP).'),
@@ -356,7 +356,7 @@ new #[Title('Announcements')] class extends Component {
     </header>
 
     @if ($gone)
-        <flux:callout variant="secondary" icon="information-circle" class="mt-6" :text="__('The announcement you followed is no longer on the portal. The Research Office has removed it.')" data-test="announcement-gone" />
+        <flux:callout variant="secondary" icon="information-circle" class="mt-6" :text="__('The Research Office has removed the announcement you opened.')" data-test="announcement-gone" />
     @endif
 
     {{-- What the page holds and how much, each a jump to its section, so a phone that opens on the deadlines still tells
@@ -459,7 +459,7 @@ new #[Title('Announcements')] class extends Component {
                                         {{ $announcement->title }}
                                         {{-- Under the pointer, the mark says what clears it --}}
                                         @if ($isNew)
-                                            <flux:tooltip x-show="unread" :content="__('This announcement is marked read once it has been on your screen for a moment, or once you open its memo.')">
+                                            <flux:tooltip x-show="unread" :content="__('The New mark clears once the announcement has been on your screen for a moment, or once you open its memo.')">
                                                 <flux:badge size="sm" class="ms-1 bg-isu-gold-100! align-middle text-isu-gold-800!" data-test="new-badge">{{ __('New') }}</flux:badge>
                                             </flux:tooltip>
                                         @endif
@@ -496,9 +496,10 @@ new #[Title('Announcements')] class extends Component {
                                 @endif
                             </li>
                         @empty
-                            {{-- What belongs here, and for an admin the one action that fills it --}}
+                            {{-- The header already says what belongs here, so this says what happens next: for faculty the
+                                 notice they will get, for an admin the one action that fills it --}}
                             <li data-test="no-announcements">
-                                <x-empty-state icon="megaphone" :level="3" :heading="__('No announcements yet.')" :text="__('Schedules of submissions and memos from the Research Office will appear here.')">
+                                <x-empty-state icon="megaphone" :level="3" :heading="__('No announcements yet.')" :text="auth()->user()->can('create', App\Models\Announcement::class) ? __('Faculty get a notification when one is posted.') : __('You will get a notification when the Research Office posts one.')">
                                     @can('create', App\Models\Announcement::class)
                                         <flux:button icon="plus" wire:click="create" class="max-sm:h-11">{{ __('Post the first announcement') }}</flux:button>
                                     @endcan
@@ -623,14 +624,14 @@ new #[Title('Announcements')] class extends Component {
 
                 <flux:input wire:model="title" :label="__('Title')" maxlength="255" required :placeholder="__('Schedule of Submission of Concept Proposals')" />
 
-                <flux:textarea wire:model="description" :label="__('Announcement')" rows="5" maxlength="5000" required />
+                <flux:textarea wire:model="description" :label="__('Message')" rows="5" maxlength="5000" required />
 
                 <flux:input
                     wire:model="dueOn"
                     type="date"
                     :min="$editingId ? null : today()->format('Y-m-d')"
                     :label="__('Submission deadline')"
-                    :description="__('For a schedule of submissions. It shows under Upcoming deadlines until the date passes, then under Past deadlines. Leave it empty for anything else.')"
+                    :description="__('Only for a schedule of submissions. The announcement stays under Upcoming deadlines until this date, then moves to Past deadlines.')"
                 />
 
                 <div>
@@ -639,7 +640,7 @@ new #[Title('Announcements')] class extends Component {
                         type="file"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp"
                         :label="__('Memo')"
-                        :description="__('Optional. A PDF, Word file or image (JPG, PNG or WebP), up to :size MB. An old .doc file can only be downloaded, not previewed.', ['size' => \App\Services\DocumentStorage::maxUploadMb()])"
+                        :description="__('Optional. A PDF, Word file or image (JPG, PNG or WebP), up to :size MB. An older .doc file can be downloaded but not shown in the portal.', ['size' => \App\Services\DocumentStorage::maxUploadMb()])"
                     />
 
                     @if ($this->editing?->attachment_name)
@@ -648,7 +649,7 @@ new #[Title('Announcements')] class extends Component {
                                 <flux:text size="sm" class="wrap-anywhere">{{ __('Replaces :name.', ['name' => $this->editing->attachment_name]) }}</flux:text>
                             @else
                                 {{-- The current memo, as a file row like the page's, so the admin checks it without leaving the
-                                     form: Preview memo opens the page's own viewer above the form, with its zoom --}}
+                                     form: Open full screen opens the page's own viewer above the form, with its zoom --}}
                                 <x-memo :announcement="$this->editing" :label="__('Current memo: :name', ['name' => $this->editing->attachment_name])" :fold="false" />
 
                                 <flux:checkbox wire:model.live="removeMemo" :label="__('Remove the memo')" />
@@ -662,7 +663,7 @@ new #[Title('Announcements')] class extends Component {
                     @endif
 
                     <div x-show="uploading" x-cloak class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" data-test="uploading-status">
-                        <flux:text size="sm" role="status">{{ __('Uploading the memo… Wait until it’s in before you save or close.') }}</flux:text>
+                        <flux:text size="sm" role="status">{{ __('Uploading the memo… Wait for it to finish before you save or close.') }}</flux:text>
                         <flux:button size="xs" variant="ghost" x-on:click="$wire.cancelUpload('memo')">{{ __('Stop upload') }}</flux:button>
                     </div>
                 </div>
@@ -670,7 +671,7 @@ new #[Title('Announcements')] class extends Component {
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     {{-- Says why Cancel has gone quiet, and that the dialog closes by itself --}}
                     <flux:text size="sm" wire:loading wire:target="save" role="status" class="me-auto" data-test="posting-status">
-                        {{ $editingId ? __('Saving… This closes once it’s done.') : __('Posting… This closes once it’s done.') }}
+                        {{ $editingId ? __('Saving… This window closes when it is done.') : __('Posting… This window closes when it is done.') }}
                     </flux:text>
                     <flux:modal.close>
                         <flux:button variant="ghost" wire:loading.attr="disabled" wire:target="save" x-bind:disabled="uploading > 0" x-ref="cancel" data-cancel>{{ __('Cancel') }}</flux:button>

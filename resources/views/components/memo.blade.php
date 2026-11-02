@@ -2,7 +2,7 @@
     An announcement's memo as a file row: what it is, then what to do with it. An image, a PDF and a Word memo all work
     alike. Show unfolds the memo under the row, its arrow turning over when open, and only then is it fetched from Google
     Drive (a second or more each), so a page of memos loads none until a member asks: the picture, or the pages in a
-    frame that scrolls. Preview memo, or a click on what unfolded, opens it full screen in the memo viewer. An old .doc
+    frame that scrolls. Open full screen, or a click on what unfolded, opens it full screen in the memo viewer. An old .doc
     can't be shown in a browser, so it only downloads. Opening, unfolding or downloading sends `memo-opened` up to the
     row. On a phone the buttons wrap under the name rather than running past the row, 44px tall for the thumb.
     Usage: <x-memo :announcement="$announcement" />
@@ -37,8 +37,8 @@
                     </flux:button>
                 @endif
                 {{-- An icon alone, as a file viewer's open-full-screen control; the tooltip and the label say what it does --}}
-                <flux:tooltip :content="__('Preview memo')">
-                    <flux:button size="sm" icon="arrows-pointing-out" class="max-sm:size-11" x-on:click="$dispatch('memo-opened'); $dispatch('memo-viewer', {{ $viewer }})" :aria-label="__('Preview memo: :name', ['name' => $name])" data-test="preview-memo" />
+                <flux:tooltip :content="__('Open full screen')">
+                    <flux:button size="sm" icon="arrows-pointing-out" class="max-sm:size-11" x-on:click="$dispatch('memo-opened'); $dispatch('memo-viewer', {{ $viewer }})" :aria-label="__('Open memo full screen: :name', ['name' => $name])" data-test="preview-memo" />
                 </flux:tooltip>
             @else
                 <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="$dispatch('memo-opened')" :aria-label="__('Download memo: :name', ['name' => $name])" data-test="download-memo">
@@ -54,7 +54,7 @@
                  the pointer the memo's frame darkens, a hint that it opens larger. --}}
             <flux:text x-show="loading && ! failed" role="status" data-test="memo-loading">{{ __('Loading the memo…') }}</flux:text>
             <div x-show="failed" x-cloak role="alert" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-test="memo-failed">
-                <flux:text>{{ __('The memo could not be shown here. Download the memo to see it.') }}</flux:text>
+                <flux:text>{{ __('The memo could not be shown here.') }}</flux:text>
                 <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="$dispatch('memo-opened')">{{ __('Download memo') }}</flux:button>
             </div>
             @if ($kind === 'image')
@@ -63,7 +63,7 @@
                 </button>
             @else
                 {{-- As tall as the picture would be; the pages sit on a pale ground and scroll inside. A keyboard scrolls
-                     them here and opens them with Preview memo. wire:ignore keeps a Livewire refresh of the page from
+                     them here and opens them with Open full screen. wire:ignore keeps a Livewire refresh of the page from
                      clearing pages already drawn. --}}
                 <div x-show="! loading && ! failed" x-on:click="$dispatch('memo-viewer', {{ $viewer }})" x-on:resize.window.debounce="fit()" tabindex="0" role="region" aria-label="{{ $name }}" class="max-h-96 cursor-zoom-in overflow-auto rounded-lg border border-line bg-zinc-100 [scrollbar-width:thin] hover:border-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                     <div x-ref="pages" wire:ignore data-memo-pages></div>

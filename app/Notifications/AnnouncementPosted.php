@@ -16,7 +16,7 @@ class AnnouncementPosted extends PortalNotification
     public function __construct(public readonly Announcement $announcement) {}
 
     /** The notice's first sentence, before translation; AnnouncementUpdated words it for an edit. */
-    protected const string OPENING = 'The Research Office has posted a new announcement: “:title”.';
+    protected const string OPENING = 'The Research Office has posted “:title”.';
 
     protected function message(): string
     {

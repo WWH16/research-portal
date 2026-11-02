@@ -75,7 +75,7 @@ new #[Title('Notifications')] class extends Component {
      */
     public function kind(DatabaseNotification $notice): array
     {
-        return self::KINDS[$notice->type] ?? ['Notice', 'Open', 'bell'];
+        return self::KINDS[$notice->type] ?? ['Notification', 'Open', 'bell'];
     }
 
     /**
@@ -202,16 +202,15 @@ new #[Title('Notifications')] class extends Component {
 <section class="mx-auto w-full max-w-4xl">
     <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
+        {{-- No line under the title: "Notifications" says what the page is, and the empty state says what arrives here --}}
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" level="1">{{ __('Notifications') }}</flux:heading>
-            {{-- Phones skip the line so the first notice shows sooner --}}
-            <flux:text class="mt-1 max-sm:hidden">{{ __('Reviews, concept proposals and target dates that need your attention.') }}</flux:text>
         </div>
 
         {{-- On phones the buttons take a row of their own, so the title never squeezes beside one --}}
         <div class="flex w-full flex-wrap gap-2 sm:w-auto">
             @if (auth()->user()->unreadNotifications()->exists())
-                <flux:button wire:click="markAllRead" data-test="mark-all-read" class="max-sm:h-11">{{ __('Mark all read') }}</flux:button>
+                <flux:button wire:click="markAllRead" data-test="mark-all-read" class="max-sm:h-11">{{ __('Mark all as read') }}</flux:button>
             @endif
             @if ($this->readCount)
                 <flux:modal.trigger name="delete-read">
@@ -223,7 +222,7 @@ new #[Title('Notifications')] class extends Component {
 
     {{-- Offered for 10 seconds; the deleted notices wait a little longer in the cache, so a late click still works --}}
     @if ($undo)
-        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="mt-4" :text="trans_choice('{1} Notice deleted.|[2,*] :count notices deleted.', $deleted)" data-test="undo-delete">
+        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="mt-4" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
             <x-slot name="actions">
                 <flux:button size="sm" wire:click="undoDelete">{{ __('Undo') }}</flux:button>
             </x-slot>
@@ -236,8 +235,8 @@ new #[Title('Notifications')] class extends Component {
             icon="bell"
             :heading="__('No notifications yet.')"
             :text="auth()->user()->isAdmin()
-                ? __('Completed projects and Google Drive storage problems will appear here.')
-                : __('Concept proposal reviews, project deadline reminders and Research Office announcements will appear here.')"
+                ? __('Completed and late projects, and problems with Google Drive, will appear here.')
+                : __('Concept proposal decisions, completion date reminders and Research Office announcements will appear here.')"
             class="mt-8"
             data-test="no-notifications"
         />
@@ -280,7 +279,7 @@ new #[Title('Notifications')] class extends Component {
                                 <span class="size-2 rounded-full bg-isu-gold-700" data-test="unread-dot" aria-hidden="true"></span>
                             @endunless
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('More for: :message', ['message' => $notification->data['message']])" class="max-sm:size-11" />
+                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('Actions for: :message',['message' => $notification->data['message']])" class="max-sm:size-11" />
                                 <flux:menu>
                                     <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')" class="max-sm:min-h-11">
                                         {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}
@@ -317,8 +316,8 @@ new #[Title('Notifications')] class extends Component {
     </flux:modal>
 
     <flux:modal name="delete-read" class="w-full max-w-md">
-        <flux:heading size="lg">{{ trans_choice('{1} Delete 1 read notice?|[2,*] Delete :count read notices?', $this->readCount) }}</flux:heading>
-        <flux:text class="mt-2">{{ __('Unread notices stay. You can undo this for a few seconds after.') }}</flux:text>
+        <flux:heading size="lg">{{ trans_choice('{1} Delete 1 read notification?|[2,*] Delete :count read notifications?', $this->readCount) }}</flux:heading>
+        <flux:text class="mt-2">{{ __('Unread notifications are kept. You can undo this for a few seconds.') }}</flux:text>
         <div class="mt-6 flex justify-end gap-2">
             <flux:modal.close>
                 <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>

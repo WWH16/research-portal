@@ -23,7 +23,7 @@ class AccountApproved extends PortalNotification
 
     protected function message(): string
     {
-        return __('Welcome to the Faculty Research Portal. Your account has been approved by the Research Office. To begin, submit your concept proposal under Submissions; the Research Office will review it, and you will be notified of its decision here. You may also add your mobile number and profile photo under My Profile.');
+        return __('The Research Office has approved your account. To begin, submit your concept proposal; the Research Office will review it and notify you of its decision here. You may also add your mobile number and profile photo under My Profile.');
     }
 
     protected function url(): string

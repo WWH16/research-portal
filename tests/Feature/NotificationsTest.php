@@ -419,7 +419,7 @@ class NotificationsTest extends TestCase
 
         $page = Livewire::test('pages::notifications.index')
             ->call('delete', $before['id'])
-            ->assertSee('Notice deleted.')
+            ->assertSee('Notification deleted.')
             ->assertSee('No notifications yet.');
         $this->assertSame(0, $this->maria->notifications()->count());
 
@@ -437,9 +437,9 @@ class NotificationsTest extends TestCase
         $this->actingAs($this->maria);
 
         $page = Livewire::test('pages::notifications.index')
-            ->assertSee('Delete 2 read notices?')
+            ->assertSee('Delete 2 read notifications?')
             ->call('deleteAllRead')
-            ->assertSee('2 notices deleted.');
+            ->assertSee('2 notifications deleted.');
         $this->assertSame(1, $this->maria->notifications()->count());
         $this->assertSame(1, $this->maria->unreadNotifications()->count());
 
@@ -486,7 +486,7 @@ class NotificationsTest extends TestCase
 
         Notification::assertSentTo($waiting, AccountApproved::class, fn (AccountApproved $notification) => $notification->via($waiting) === ['database', 'mail']
             && $notification->toArray($waiting) === [
-                'message' => 'Welcome to the Faculty Research Portal. Your account has been approved by the Research Office. To begin, submit your concept proposal under Submissions; the Research Office will review it, and you will be notified of its decision here. You may also add your mobile number and profile photo under My Profile.',
+                'message' => 'The Research Office has approved your account. To begin, submit your concept proposal; the Research Office will review it and notify you of its decision here. You may also add your mobile number and profile photo under My Profile.',
                 'url' => route('submissions.create'),
             ]
             && $notification->toMail($waiting)->introLines[1] === 'You may now sign in to submit research proposals, upload the documents for each stage, and follow the progress of your projects.'
@@ -507,7 +507,7 @@ class NotificationsTest extends TestCase
             ->assertHasNoErrors();
 
         Notification::assertSentTo([$this->maria, $this->jose], ProjectDatesChanged::class, fn (ProjectDatesChanged $notification) => $notification->toArray($this->maria) === [
-            'message' => 'The Research Office has changed the dates of “Solar Dryer Study”. The project now starts on '.$project->start_date->format('F j, Y').' and is due on '.$due->format('F j, Y').'.',
+            'message' => 'The Research Office has changed the dates of “Solar Dryer Study”. The project now starts on '.$project->start_date->format('F j, Y').', and its completion date is '.$due->format('F j, Y').'.',
             'url' => route('drive.show', $project),
         ]);
         Notification::assertSentToTimes($this->jose, ProjectDatesChanged::class, 1);

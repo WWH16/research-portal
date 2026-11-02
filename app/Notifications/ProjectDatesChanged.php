@@ -19,7 +19,7 @@ class ProjectDatesChanged extends PortalNotification
 
     protected function message(): string
     {
-        return __('The Research Office has changed the dates of “:title”. The project now starts on :start and is due on :due.', [
+        return __('The Research Office has changed the dates of “:title”. The project now starts on :start, and its completion date is :due.', [
             'title' => $this->submission->displayTitle(),
             'start' => $this->submission->start_date->format('F j, Y'),
             'due' => $this->submission->target_date->format('F j, Y'),

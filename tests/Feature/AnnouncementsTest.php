@@ -77,9 +77,9 @@ class AnnouncementsTest extends TestCase
             ->assertSeeHtml('data-test="uploading-status"')
             ->assertSee('Stop upload')
             ->assertSeeHtml('data-test="posting-status"')
-            ->assertSee('Posting… This closes once it’s done.')
+            ->assertSee('Posting… This window closes when it is done.')
             // The deadline field says where a schedule will show, before and after its date.
-            ->assertSee('It shows under Upcoming deadlines until the date passes, then under Past deadlines.')
+            ->assertSee('The announcement stays under Upcoming deadlines until this date, then moves to Past deadlines.')
             ->call('create')
             ->set('title', '  Schedule of Submission of Concept Proposals  ')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
@@ -123,7 +123,7 @@ class AnnouncementsTest extends TestCase
         // The current memo opens in the page's own viewer, to be checked without leaving the form.
         $page->call('edit', Announcement::sole()->id)
             ->assertSee('Current memo: first.pdf')
-            ->assertSee('Preview memo: first.pdf')
+            ->assertSee('Open memo full screen: first.pdf')
             ->set('memo', $this->memo('second.pdf'))
             ->call('save')
             ->assertHasNoErrors();
@@ -251,7 +251,7 @@ class AnnouncementsTest extends TestCase
             ->call('save');
 
         $this->assertSame(
-            'The Research Office has posted a new announcement: “Schedule of Submission of Concept Proposals”. The deadline is November 15, 2026. A memo is attached.',
+            'The Research Office has posted “Schedule of Submission of Concept Proposals”. The deadline is November 15, 2026. A memo is attached.',
             $faculty->notifications()->sole()->data['message'],
         );
         $link = route('announcements.index', ['show' => Announcement::sole()->id]).'#announcement-'.Announcement::sole()->id;
@@ -297,7 +297,7 @@ class AnnouncementsTest extends TestCase
         $page->call('edit', $announcement->id)->set('dueOn', '2026-11-20')->call('save');
         $notice = $faculty->unreadNotifications()->sole();
         $this->assertSame('App\Notifications\AnnouncementUpdated', $notice->type);
-        $this->assertSame('The Research Office has updated the announcement “Schedule of Submission of Concept Proposals”. The deadline is November 20, 2026.', $notice->data['message']);
+        $this->assertSame('The Research Office has updated “Schedule of Submission of Concept Proposals”. The deadline is November 20, 2026.', $notice->data['message']);
         $this->assertSame(route('announcements.index', ['show' => $announcement->id]).'#announcement-'.$announcement->id, $notice->data['url']);
         $this->assertSame(0, $admin->notifications()->count());
 
@@ -329,7 +329,7 @@ class AnnouncementsTest extends TestCase
         $html = $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('3 unread notifications')->getContent();
         $this->assertSame(2, substr_count($html, 'data-test="new-badge"'));
         // The mark says, under the pointer, what clears it.
-        $this->assertStringContainsString('This announcement is marked read once it has been on your screen for a moment, or once you open its memo.', $html);
+        $this->assertStringContainsString('The New mark clears once the announcement has been on your screen for a moment, or once you open its memo.', $html);
 
         // One that has been on screen is read on its own, and the bell is told to count again.
         Livewire::test('pages::announcements.index')->call('seen', $first->id)->assertDispatched('open-work-stale');
@@ -354,7 +354,7 @@ class AnnouncementsTest extends TestCase
         $page->call('create')->set('title', 'With a PDF')->set('description', 'See the memo.')->set('memo', $this->memo())->call('save');
 
         // Only the one without a memo is read by being on screen; the others wait for their memo to be opened, by Show
-        // image, Show memo, Preview memo, or downloading it.
+        // image, Show memo, Open full screen, or downloading it.
         $html = $this->actingAs($faculty)->get(route('announcements.index'))->getContent();
         $this->assertSame(1, substr_count($html, 'x-intersect:enter'));
         $this->assertSame(2, substr_count($html, 'x-on:memo-opened="read()"'));
@@ -397,7 +397,7 @@ class AnnouncementsTest extends TestCase
         Livewire::actingAs($this->admin())->test('pages::announcements.index')
             ->call('create')->set('title', 'Research Office closed on November 2')->set('description', 'The office reopens on November 3.')->call('save');
 
-        $this->assertSame('The Research Office has posted a new announcement: “Research Office closed on November 2”.', $faculty->notifications()->sole()->data['message']);
+        $this->assertSame('The Research Office has posted “Research Office closed on November 2”.', $faculty->notifications()->sole()->data['message']);
     }
 
     public function test_the_form_says_what_to_fix(): void
@@ -436,10 +436,10 @@ class AnnouncementsTest extends TestCase
             // While Google Drive sends the memo it says so, and if it never comes the memo still downloads.
             ->assertSeeHtml('data-test="memo-loading"')
             ->assertSeeHtml('data-test="memo-failed"')
-            ->assertSee('The memo could not be shown here. Download the memo to see it.')
-            ->assertSee('Preview memo: Schedule.PNG')
-            ->assertSee('Preview memo: Memorandum.pdf')
-            ->assertSee('Preview memo: Guidelines.docx')
+            ->assertSee('The memo could not be shown here.')
+            ->assertSee('Open memo full screen: Schedule.PNG')
+            ->assertSee('Open memo full screen: Memorandum.pdf')
+            ->assertSee('Open memo full screen: Guidelines.docx')
             ->assertSee('Download memo: Old memo.doc')
             ->assertSee("\$dispatch('memo-viewer'", false)
             ->assertSee('data-test="memo-viewer"', false)
@@ -534,7 +534,7 @@ class AnnouncementsTest extends TestCase
 
         // Ten newer ones fill the first page, so the link opens the second.
         Livewire::test('pages::announcements.index')->assertDontSee('Oldest memo');
-        Livewire::withQueryParams(['show' => $oldest->id])->test('pages::announcements.index')->assertSee('Oldest memo')->assertDontSee('no longer on the portal');
+        Livewire::withQueryParams(['show' => $oldest->id])->test('pages::announcements.index')->assertSee('Oldest memo')->assertDontSee('removed the announcement you opened');
 
         // A closed schedule is found on its own list's later page, past ten that closed after it.
         $oldestClosed = Announcement::factory()->dueIn(-30)->create(['title' => 'Oldest closed schedule']);
@@ -544,7 +544,7 @@ class AnnouncementsTest extends TestCase
 
         // One deleted since says so, rather than leaving the member to look for it.
         Livewire::withQueryParams(['show' => $oldest->id + 100])->test('pages::announcements.index')
-            ->assertSee('The announcement you followed is no longer on the portal.');
+            ->assertSee('The Research Office has removed the announcement you opened.');
     }
 
     public function test_a_new_schedule_cannot_open_already_closed_but_an_old_one_can_be_corrected(): void

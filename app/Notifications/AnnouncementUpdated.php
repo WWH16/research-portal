@@ -8,5 +8,5 @@ namespace App\Notifications;
  */
 class AnnouncementUpdated extends AnnouncementPosted
 {
-    protected const string OPENING = 'The Research Office has updated the announcement “:title”.';
+    protected const string OPENING = 'The Research Office has updated “:title”.';
 }

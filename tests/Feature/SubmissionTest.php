@@ -851,6 +851,9 @@ class SubmissionTest extends TestCase
         Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
         $this->get(route('submissions.index'))->assertSee('Finished on time')
             ->assertSee('Terminal report for Jose Proposal, opens in a new tab')
+            // Under the pointer, a pill names the full document and what a click does, or that it is still to come.
+            ->assertSee('Open the terminal report in a new tab')
+            ->assertSee('Mid-year progress report: not uploaded yet')
             ->assertSeeText('Due '.today()->subDays(14)->format('M j, Y'));
 
         $this->actingAs($maria)->get(route('dashboard'))->assertOk()->assertSee('Target date '.today()->subDay()->format('M j, Y').' has passed');

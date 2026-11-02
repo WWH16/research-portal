@@ -409,19 +409,22 @@ new #[Title('Submissions')] class extends Component {
                                  every row shows the same sequence, on one line from tablet width up. Phones set them two by two at
                                  equal widths, 36px tall, so the pairs line up and each is easy to tap. A filled pill carries a small
                                  open-in-new-tab icon, the one the portal's other document links use, so it reads as something to open.
-                                 Screen readers hear the full document name and which project it is for --}}
+                                 Screen readers hear the full document name and which project it is for. A tooltip names the full
+                                 document; on phones it is a block, so the pill keeps its cell width --}}
                             <ul class="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:gap-1" aria-label="{{ __('Documents') }}">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
                                     <li>
-                                        @if ($submission->{$stage.'_path'})
-                                            <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
-                                                <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-9 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon.arrow-top-right-on-square variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
-                                            </a>
-                                        @else
-                                            <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500 max-sm:h-9 max-sm:w-full max-sm:justify-center">
-                                                {{ Str::before(__($label), ' ') }}<span class="sr-only">{{ __(': not uploaded yet') }}</span>
-                                            </span>
-                                        @endif
+                                        <flux:tooltip :content="$submission->{$stage.'_path'} ? __('Open the :document in a new tab', ['document' => Str::lower(__($label))]) : __(':document: not uploaded yet', ['document' => __($label)])" class="max-sm:block">
+                                            @if ($submission->{$stage.'_path'})
+                                                <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
+                                                    <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-9 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon.arrow-top-right-on-square variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
+                                                </a>
+                                            @else
+                                                <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500 max-sm:h-9 max-sm:w-full max-sm:justify-center">
+                                                    {{ Str::before(__($label), ' ') }}<span class="sr-only">{{ __(': not uploaded yet') }}</span>
+                                                </span>
+                                            @endif
+                                        </flux:tooltip>
                                     </li>
                                 @endforeach
                             </ul>

@@ -11,24 +11,14 @@
 
 {{-- Action Button --}}
 @isset($actionText)
-<?php
-    $color = match ($level) {
-        'success', 'error' => $level,
-        default => 'primary',
-    };
-?>
-<x-mail::button :url="$actionUrl" :color="$color">
+<x-mail::button :url="$actionUrl">
 {{ $actionText }}
 </x-mail::button>
 @endisset
 
-{{-- Outro Lines: the fine print under the button (expiry, what to do if it wasn't you) --}}
-@if (count($outroLines) > 0)
-<x-mail::panel>
+{{-- Outro Lines: what follows the link (expiry, what to do if it wasn't you), as plain paragraphs --}}
 @foreach ($outroLines as $line)
 {{ $line }}
 
 @endforeach
-</x-mail::panel>
-@endif
 </x-mail::message>

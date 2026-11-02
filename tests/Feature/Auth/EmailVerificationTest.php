@@ -69,16 +69,17 @@ class EmailVerificationTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<a [^>]*>\s*<img/', $html);
     }
 
-    public function test_sent_verification_email_links_the_seal_instead_of_attaching_it(): void
+    public function test_sent_verification_email_is_a_plain_letter_with_no_images_or_attachments(): void
     {
         config(['mail.default' => 'array']);
         $user = User::factory()->unverified()->create();
 
         $user->sendEmailVerificationNotification();
 
-        // Loaded from the portal's public address, so the email carries no attachment.
+        // Text, bold and links only, so nothing waits on images and the email carries no attachment.
         $email = Mail::mailer('array')->getSymfonyTransport()->messages()->first()->getOriginalMessage();
-        $this->assertStringContainsString('src="'.asset('images/isu_seal-128.png').'"', $email->getHtmlBody());
+        $this->assertStringNotContainsString('<img', $email->getHtmlBody());
+        $this->assertStringContainsString('Thank you,', $email->getHtmlBody());
         $this->assertCount(0, $email->getAttachments());
     }
 

@@ -100,7 +100,7 @@ class FortifyServiceProvider extends ServiceProvider
             ->subject(__('Reset your Faculty Research Portal password'))
             ->greeting(__('Reset your password'))
             ->line(__('A request was received to reset the password of the Faculty Research Portal account for :email.', ['email' => '**'.$md($user->getEmailForPasswordReset()).'**']))
-            ->line(__('Press the button below to choose a new password.'))
+            ->line(__('Use the link below to choose a new password.'))
             ->action(__('Reset password'), url(route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()], false)))
             ->line($expires(config('auth.passwords.'.config('auth.defaults.passwords').'.expire')))
             ->line(__('Didn’t ask for this? You may ignore this email, and your password will stay the same.')));

@@ -50,6 +50,16 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, QueuedResetPassword::class);
     }
 
+    public function test_both_reset_buttons_show_a_loading_state_while_submitting(): void
+    {
+        foreach ([route('password.request'), route('password.reset', 'reset-token')] as $page) {
+            $this->get($page)
+                ->assertSee('x-on:submit="submitting = true"', escape: false)
+                ->assertSee('x-bind:disabled="submitting"', escape: false)
+                ->assertSee('data-flux-loading-indicator', escape: false);
+        }
+    }
+
     public function test_expired_reset_tokens_are_cleared_every_day(): void
     {
         $this->artisan('schedule:list')->expectsOutputToContain('auth:clear-resets')->assertSuccessful();

@@ -5,7 +5,16 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('password.email') }}" class="flex flex-col gap-6">
+        {{-- Same loading pattern as the login form: disabling the submit button makes Flux show its spinner. --}}
+        <form
+            method="POST"
+            action="{{ route('password.email') }}"
+            class="flex flex-col gap-6"
+            x-data="{ submitting: false }"
+            x-on:submit="submitting = true"
+            x-on:pageshow.window="submitting = false"
+            x-bind:aria-busy="submitting"
+        >
             @csrf
 
             <!-- Email Address -->
@@ -18,7 +27,7 @@
                 placeholder="name_cyn@isu.edu.ph"
             />
 
-            <flux:button variant="primary" type="submit" class="w-full" data-test="email-password-reset-link-button">
+            <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="email-password-reset-link-button">
                 {{ __('Email password reset link') }}
             </flux:button>
         </form>

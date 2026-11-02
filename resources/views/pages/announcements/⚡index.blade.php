@@ -596,7 +596,7 @@ new #[Title('Announcements')] class extends Component {
              would still go out and tell every faculty member, and an error such as Google Drive being down would land out
              of sight. Saving a memo to Google Drive can take ten seconds. An upload that stalls can be stopped, so the dialog
              is never stuck. Livewire doesn't mark a wire:submit form while it saves, so the lock reads Cancel instead. --}}
-        <flux:modal name="announcement-form" class="w-full max-w-lg [&:has([data-cancel]:disabled)>div>[data-flux-modal-close]]:opacity-40" aria-labelledby="announcement-form-heading">
+        <flux:modal name="announcement-form" class="w-full max-w-lg [scrollbar-width:thin] [&:has([data-cancel]:disabled)>div>[data-flux-modal-close]]:opacity-40" aria-labelledby="announcement-form-heading">
             <form
                 wire:submit="save"
                 class="flex flex-col gap-6"

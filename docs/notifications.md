@@ -15,6 +15,12 @@ The Research Office hears about:
 - **A project running late**, the day after its completion date passes without a terminal report, in the portal only.
 - **Google Drive full or disconnected**, in the portal and by email.
 
+Every member also gets, by email only:
+
+- **Verify your email**, on sign-up, after changing their email address on My Profile, or when they press Resend.
+- **Reset your password**, from Forgot password.
+- **Password changed**, after they change it on the Security page or through a reset link, or when the Research Office sets a new one on Manage Users. It never shows the new password.
+
 New concept proposals and sign-ups waiting for approval have no notice: the Concept Reviews and Manage Users badges count them live.
 
 Members choose which faculty notices also come by email under My Profile → Email me about. Members with an unconfirmed email address get the notice in the portal only.

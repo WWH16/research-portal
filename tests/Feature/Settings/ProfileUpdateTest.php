@@ -3,7 +3,9 @@
 namespace Tests\Feature\Settings;
 
 use App\Models\User;
+use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -66,6 +68,20 @@ class ProfileUpdateTest extends TestCase
         $response->assertHasNoErrors();
 
         $this->assertNotNull($user->refresh()->email_verified_at);
+    }
+
+    public function test_a_new_email_address_is_sent_its_verification_link_right_away(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test('pages::settings.profile')->set('email', 'new.address@isu.edu.ph')->call('updateProfileInformation')->assertHasNoErrors();
+        Notification::assertSentTo($user, QueuedVerifyEmail::class);
+
+        // Saving again with the same address sends nothing more.
+        Livewire::test('pages::settings.profile')->set('name', 'Test User')->call('updateProfileInformation')->assertHasNoErrors();
+        Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 1);
     }
 
     public function test_members_cannot_delete_their_own_account_from_the_profile(): void

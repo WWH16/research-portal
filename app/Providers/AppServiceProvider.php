@@ -5,9 +5,16 @@ namespace App\Providers;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\EnsureUserIsFaculty;
+use App\Models\User;
+use App\Notifications\EmailFailed;
 use Carbon\CarbonImmutable;
+use Illuminate\Notifications\SendQueuedNotifications;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -35,6 +42,22 @@ class AppServiceProvider extends ServiceProvider
         // Livewire re-runs only these of a page's route middleware on each button click, so a role taken away
         // while the page is open also takes away its actions.
         Livewire::addPersistentMiddleware([EnsureUserIsAdmin::class, EnsureUserIsApproved::class, EnsureUserIsFaculty::class]);
+
+        $this->reportFailedEmails();
+    }
+
+    /**
+     * An email that fails all its tries goes to failed_jobs and the log, where nobody looks, so the admins hear of it
+     * in the portal: at most once an hour, so a mail outage doesn't fill the bell.
+     */
+    private function reportFailedEmails(): void
+    {
+        Queue::failing(function (JobFailed $event): void {
+            if (($event->job->payload()['data']['commandName'] ?? null) === SendQueuedNotifications::class
+                && Cache::add('email-failed-notice', true, now()->addHour())) {
+                Notification::send(User::admins()->get(), new EmailFailed);
+            }
+        });
     }
 
     /**

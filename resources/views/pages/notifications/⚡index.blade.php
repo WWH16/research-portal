@@ -6,6 +6,7 @@ use App\Notifications\AnnouncementUpdated;
 use App\Notifications\ConceptReviewed;
 use App\Notifications\DriveDisconnected;
 use App\Notifications\DriveFull;
+use App\Notifications\EmailFailed;
 use App\Notifications\ProjectCompleted;
 use App\Notifications\ProjectDatesChanged;
 use App\Notifications\ProjectDeadline;
@@ -44,6 +45,7 @@ new #[Title('Notifications')] class extends Component {
         ProjectLate::class => ['Project running late', 'Open Submissions', 'clock'],
         DriveFull::class => ['Google Drive is full', 'Open Google Drive', 'circle-stack'],
         DriveDisconnected::class => ['Google Drive is disconnected', 'Open Google Drive', 'exclamation-triangle'],
+        EmailFailed::class => ['Email not sent', 'Open the dashboard', 'envelope'],
     ];
 
     /** Where the last deleted notices wait in the cache while Undo is offered; null once it's gone. */

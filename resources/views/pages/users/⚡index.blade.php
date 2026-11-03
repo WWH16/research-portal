@@ -10,6 +10,7 @@ use App\Notifications\AccountRejected;
 use App\Notifications\PasswordChanged;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -238,7 +239,7 @@ new #[Title('Manage Users')] class extends Component {
         if ($this->editingId) {
             $user = DB::transaction(function () use ($validated) {
                 $user = User::findOrFail($this->editingId);
-                $user->update($validated);
+                $user->fill(Arr::except($validated, 'role'))->forceFill(['role' => $validated['role']])->save();
 
                 if ($user->wasChanged()) {
                     ActivityLog::record('user.updated', $user, array_filter([
@@ -266,9 +267,10 @@ new #[Title('Manage Users')] class extends Component {
             Flux::toast(variant: 'success', text: __('User updated.'));
         } else {
             $user = DB::transaction(function () use ($validated) {
-                // Accounts an admin creates are trusted, so they skip email verification and approval.
-                $user = User::create($validated);
-                $user->forceFill(['approved_at' => now()]);
+                // Accounts an admin creates are trusted, so they skip email verification and approval;
+                // markEmailAsVerified() saves, which creates the account.
+                $user = new User(Arr::except($validated, 'role'));
+                $user->forceFill(['role' => $validated['role'], 'approved_at' => now()]);
                 $user->markEmailAsVerified();
                 ActivityLog::record('user.created', $user, ['role' => $user->role->value]);
 

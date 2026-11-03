@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Exceptions\PublicPropertyNotFoundException;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use RuntimeException;
 use Tests\TestCase;
@@ -823,8 +824,10 @@ class SubmissionTest extends TestCase
             ->call('review', $project->id)
             ->assertForbidden();
 
+        // The browser can't point the panel at a project, and saving a review is checked on the server either way.
+        $this->assertThrows(fn () => Livewire::test('pages::reviews.index')->set('reviewingId', $project->id), CannotUpdateLockedPropertyException::class);
+
         Livewire::test('pages::reviews.index')
-            ->set('reviewingId', $project->id)
             ->set('remarks', 'Looks fine.')
             ->call('saveReview', 'passed')
             ->assertForbidden();

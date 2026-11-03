@@ -23,6 +23,9 @@ use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
+ * The role isn't mass assignable, so no form's input can make someone an admin: it is set with forceFill() only
+ * where an admin chose it.
+ *
  * @property int $id
  * @property string $name
  * @property string $email
@@ -50,7 +53,6 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
     'researcher_id',
     'mobile',
     'department_id',
-    'role',
     'profile_image',
 ])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]

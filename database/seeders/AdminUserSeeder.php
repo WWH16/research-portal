@@ -17,7 +17,8 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        $admin = User::firstOrCreate(
+        // The role isn't mass assignable, so the seeder lifts that guard for this one trusted account.
+        $admin = User::unguarded(fn () => User::firstOrCreate(
             ['email' => 'admin@isu.edu.ph'],
             [
                 'name' => 'Research Office',
@@ -25,7 +26,7 @@ class AdminUserSeeder extends Seeder
                 'role' => 'admin',
                 'department_id' => null,
             ],
-        );
+        ));
 
         if (! $admin->hasVerifiedEmail()) {
             $admin->markEmailAsVerified();

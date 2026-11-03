@@ -138,6 +138,16 @@ class ManageUsersTest extends TestCase
         $this->assertTrue(Hash::check('secret-password', $user->password));
     }
 
+    public function test_the_role_cannot_be_mass_assigned(): void
+    {
+        $user = User::factory()->create(['role' => 'faculty']);
+
+        $user->update(['role' => 'admin']);
+
+        $this->assertFalse($user->fresh()->isAdmin());
+        $this->assertNull((new User(['role' => 'admin']))->role);
+    }
+
     public function test_create_requires_a_password_and_a_unique_email(): void
     {
         User::factory()->create(['email' => 'taken@isu.edu.ph']);

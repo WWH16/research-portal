@@ -22,6 +22,8 @@ use Livewire\Attributes\Renderless;
  */
 trait ReviewsSubmissions
 {
+    /** Set only by review() and closeReview(), so the browser can't point the panel at another project. */
+    #[Locked]
     public ?int $reviewingId = null;
 
     public string $remarks = '';

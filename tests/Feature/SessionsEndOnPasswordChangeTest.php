@@ -43,6 +43,25 @@ class SessionsEndOnPasswordChangeTest extends TestCase
         $this->get(route('login'))->assertSee('Your password was changed, so you have been signed out on this device.');
     }
 
+    public function test_the_message_survives_a_background_request_and_stays_until_you_sign_in(): void
+    {
+        $maria = User::factory()->create(['password' => Hash::make('password')]);
+
+        $this->actingAs($maria)->get(route('dashboard'))->assertOk();
+        $maria->forceFill(['password' => Hash::make('brand-new-password')])->save();
+
+        // The sidebar's count refresh is the first request to notice, on coming back to the tab.
+        $this->getJson(route('open-work'))->assertUnauthorized();
+        $this->get(route('dashboard'))->assertRedirect(route('login'));
+
+        // A Livewire click follows the redirect itself and then loads the sign-in page again, so it shows on both.
+        $this->get(route('login'))->assertSee('Your password was changed, so you have been signed out on this device.');
+        $this->get(route('login'))->assertSee('Your password was changed, so you have been signed out on this device.');
+
+        $this->post(route('login.store'), ['email' => $maria->email, 'password' => 'brand-new-password'])->assertSessionMissing('signed-out');
+        $this->assertAuthenticatedAs($maria);
+    }
+
     public function test_signing_up_again_after_your_account_was_deleted_keeps_you_signed_in(): void
     {
         $old = User::factory()->create(['email' => 'test.user@isu.edu.ph']);

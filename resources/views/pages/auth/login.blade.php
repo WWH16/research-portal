@@ -3,7 +3,7 @@
         <x-auth-header :title="__('Sign in')" :description="__('Use the email and password from your portal account.')" />
 
         <!-- Session Status -->
-        <x-auth-session-status :status="session('status')" />
+        <x-auth-session-status :status="session('status') ?? session('signed-out')" />
 
         <x-passkey-verify />
 

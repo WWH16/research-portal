@@ -47,16 +47,17 @@ class AppServiceProvider extends ServiceProvider
         Livewire::addPersistentMiddleware([EnsureUserIsAdmin::class, EnsureUserIsApproved::class, EnsureUserIsFaculty::class]);
 
         // A device signed out because the password changed elsewhere says so on the sign-in page, instead of looking
-        // like an expired session.
+        // like an expired session. Kept until the next sign-in rather than flashed: the first request to notice is often
+        // a background one, such as the sidebar's count refresh or a Livewire click, which would use up a flash unseen.
         AuthenticateSession::redirectUsing(function () {
-            session()->flash('status', __('Your password was changed, so you have been signed out on this device. Please sign in with your new password.'));
+            session()->put('signed-out', __('Your password was changed, so you have been signed out on this device. Please sign in with your new password.'));
 
             return route('login');
         });
 
         // A sign-in proves the password, so the session starts a fresh copy of it. One left over from an account deleted
         // while it was signed in would otherwise sign the next account out with the message above.
-        Event::listen(Login::class, fn (Login $event) => session()->forget('password_hash_'.$event->guard));
+        Event::listen(Login::class, fn (Login $event) => session()->forget(['password_hash_'.$event->guard, 'signed-out']));
 
         $this->reportFailedEmails();
     }

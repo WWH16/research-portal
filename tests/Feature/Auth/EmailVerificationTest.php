@@ -36,12 +36,12 @@ class EmailVerificationTest extends TestCase
             ->assertSee('Resend verification link')
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false)
-            ->assertDontSee('New link sent');
+            ->assertDontSee('A new verification link has been sent.');
 
         // A resend adds one short notice, announced to screen readers.
         $this->actingAs($user)->withSession(['status' => 'verification-link-sent'])->get(route('verification.notice'))
             ->assertSee('<p role="status" class="sr-only"', escape: false)
-            ->assertSee('New link sent at');
+            ->assertSee('A new verification link has been sent.');
     }
 
     public function test_verification_email_is_worded_and_branded_for_the_portal(): void

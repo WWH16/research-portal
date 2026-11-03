@@ -25,7 +25,7 @@
 
         {{-- Only after a resend, as a notice rather than a second paragraph; the line above already says what to do --}}
         @if (session('status') == 'verification-link-sent')
-            @php($sent = __('New link sent at :time', ['time' => now()->format('g:i A')]))
+            @php($sent = __('A new verification link has been sent.'))
             {{-- Quiet on purpose: a pale green tint, regular weight, no border. It confirms; the page's job is still the inbox. --}}
             <flux:callout
                 icon="envelope"

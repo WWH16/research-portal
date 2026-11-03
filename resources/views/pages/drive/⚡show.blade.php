@@ -162,9 +162,10 @@ new #[Title('Research Drive')] class extends Component {
                     <ul class="mt-2 divide-y divide-line border-y border-line">
                         @foreach ($rows as $row)
                             <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
-                                <span class="min-w-0 flex-1 font-medium text-zinc-800">{{ $row->user->name }}</span>
+                                <span class="min-w-0 flex-1 font-medium text-zinc-800">{{ $row->user?->name ?? $row->name }}</span>
                                 <span class="w-24 text-sm text-zinc-600">{{ __($row->role) }}</span>
-                                <span class="w-20 text-end text-sm tabular-nums text-zinc-500">{{ $row->user->department?->code ?? __('No college') }}</span>
+                                {{-- Wide enough for "Not in the portal" on staff and outside proponents --}}
+                                <span class="w-32 text-end text-sm tabular-nums text-zinc-500">{{ $row->user ? ($row->user->department?->code ?? __('No college')) : __('Not in the portal') }}</span>
                             </li>
                         @endforeach
                     </ul>

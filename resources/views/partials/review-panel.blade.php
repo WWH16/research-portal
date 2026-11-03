@@ -80,7 +80,7 @@
                     <dt class="text-zinc-500">{{ __('Proponents') }}</dt>
                     <dd class="mt-1 grid gap-1 text-zinc-800">
                         @foreach ($this->reviewing->proponents->sortBy('study')->groupBy('study') as $study => $rows)
-                            <p><span class="font-medium">{{ __('Study :number', ['number' => $study]) }}:</span> {{ $rows->map(fn ($row) => $row->user->displayName().' ('.__($row->role).', '.($row->user->department?->code ?? __('No college')).')')->join(', ') }}</p>
+                            <p><span class="font-medium">{{ __('Study :number', ['number' => $study]) }}:</span> {{ $rows->map(fn ($row) => $row->displayName().' ('.__($row->role).', '.($row->user ? ($row->user->department?->code ?? __('No college')) : __('not in the portal')).')')->join(', ') }}</p>
                         @endforeach
                     </dd>
                 </div>

@@ -74,12 +74,15 @@ new #[Title('Research Project')] class extends Component {
         $this->designation = (string) $submission->designation;
         $this->start_date = (string) $submission->start_date?->toDateString();
         $this->target_date = (string) $submission->target_date?->toDateString();
-        $this->proponents = $submission->proponents()->orderBy('study')->orderBy('id')->get(['study', 'user_id', 'role'])->toArray();
+        $this->proponents = $submission->proponents()->orderBy('study')->orderBy('id')->get(['study', 'user_id', 'name', 'role'])->toArray();
     }
 
-    public function addProponent(): void
+    /**
+     * A faculty row, or a named one for someone without a portal account. A string name is what marks the row as named.
+     */
+    public function addProponent(bool $named = false): void
     {
-        $this->proponents[] = ['study' => end($this->proponents)['study'] ?? 1, 'user_id' => null, 'role' => 'Staff'];
+        $this->proponents[] = ['study' => end($this->proponents)['study'] ?? 1, 'user_id' => null, ...($named ? ['name' => ''] : []), 'role' => 'Staff'];
     }
 
     public function removeProponent(int $index): void
@@ -128,6 +131,15 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
+        $faculty = Rule::exists('users', 'id')->where('role', 'faculty')
+            // New names must be verified faculty, as in the picker; one already listed stays even while re-verifying a changed email.
+            ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()));
+
+        // Each row checks only its own field: the faculty account, or the typed name of someone not in the portal.
+        $people = collect($this->proponents)->mapWithKeys(fn ($row, $index) => $this->isNamed($row)
+            ? ["proponents.$index.name" => ['required', 'string', 'max:150']]
+            : ["proponents.$index.user_id" => ['required', 'integer', $faculty]])->all();
+
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             // A MySQL TEXT column holds 65,535 bytes, so 10,000 characters fit even when each takes four.
@@ -139,9 +151,7 @@ new #[Title('Research Project')] class extends Component {
             'target_date' => [$this->submission ? 'exclude' : 'required', 'date', 'after:start_date'],
             'proponents' => ['required', 'array', 'max:60'],
             'proponents.*.study' => ['required', 'integer', 'between:1,20'],
-            'proponents.*.user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'faculty')
-                // New names must be verified faculty, as in the picker; one already listed stays even while re-verifying a changed email.
-                ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))],
+            ...$people,
             'proponents.*.role' => ['required', Rule::in(Proponent::ROLES)],
             'documents' => [$this->submission ? 'nullable' : 'required', 'array:'.implode(',', array_keys(Submission::DOCUMENTS))],
             'documents.*' => ['file', 'mimes:pdf,doc,docx', 'max:25600'],
@@ -152,14 +162,18 @@ new #[Title('Research Project')] class extends Component {
             'target_date' => __('completion date'),
             'proponents.*.study' => __('study'),
             'proponents.*.user_id' => __('faculty member'),
+            'proponents.*.name' => __('full name'),
             'proponents.*.role' => __('role'),
             'documents.*' => __('document'),
         ]);
 
-        $rows = collect($validated['proponents'])->map(fn ($row) => ['study' => (int) $row['study'], 'user_id' => (int) $row['user_id'], 'role' => $row['role']]);
+        // A named row never keeps an account, so a client can't pair a name with someone else's account.
+        $rows = collect($validated['proponents'])->map(fn ($row) => $this->isNamed($row)
+            ? ['study' => (int) $row['study'], 'user_id' => null, 'name' => Str::squish($row['name']), 'role' => $row['role']]
+            : ['study' => (int) $row['study'], 'user_id' => (int) $row['user_id'], 'name' => null, 'role' => $row['role']]);
 
-        if ($rows->duplicates(fn ($row) => $row['study'].'-'.$row['user_id'])->isNotEmpty()) {
-            $this->addError('proponents', __('A faculty member is listed twice in the same study. Remove one of the rows.'));
+        if ($rows->duplicates(fn ($row) => $row['study'].'-'.(new Proponent($row))->personKey())->isNotEmpty()) {
+            $this->addError('proponents', __('Someone is listed twice in the same study. Remove one of the rows.'));
 
             return;
         }
@@ -201,7 +215,7 @@ new #[Title('Research Project')] class extends Component {
                 $properties = $this->submission ? array_filter([
                     'values' => collect($readers)->only($dirty)->map(fn ($read, string $column) => [$read($submission->getOriginal($column)), $read($submission->{$column})])->all(),
                     'changed' => array_values(array_diff($dirty, array_keys($readers))),
-                    'proponents' => $this->proponentChanges($submission->proponents()->get(['study', 'user_id', 'role'])->toArray(), $rows->all()),
+                    'proponents' => $this->proponentChanges($submission->proponents()->get(['study', 'user_id', 'name', 'role'])->toArray(), $rows->all()),
                 ]) : [];
                 $submission->save();
 
@@ -252,17 +266,17 @@ new #[Title('Research Project')] class extends Component {
      * Who joined, left, or changed role on the proponents list, by name, for the activity log. A study
      * number is added to each name only when the project has more than one study.
      *
-     * @param  list<array{study: int, user_id: int, role: string}>  $before
-     * @param  list<array{study: int, user_id: int, role: string}>  $after
+     * @param  list<array{study: int, user_id: int|null, name: string|null, role: string}>  $before
+     * @param  list<array{study: int, user_id: int|null, name: string|null, role: string}>  $after
      * @return array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}
      */
     private function proponentChanges(array $before, array $after): array
     {
-        $key = fn (array $row) => $row['study'].'-'.$row['user_id'];
+        $key = fn (array $row) => $row['study'].'-'.(new Proponent($row))->personKey();
         [$before, $after] = [collect($before)->keyBy($key), collect($after)->keyBy($key)];
         $names = User::whereIn('id', $before->pluck('user_id')->merge($after->pluck('user_id')))->pluck('name', 'id');
         $studies = $before->merge($after)->pluck('study')->unique()->count();
-        $name = fn (array $row) => $names[$row['user_id']].($studies > 1 ? ' ('.__('study :number', ['number' => $row['study']]).')' : '');
+        $name = fn (array $row) => ($row['name'] ?? $names[$row['user_id']]).($studies > 1 ? ' ('.__('study :number', ['number' => $row['study']]).')' : '');
 
         return array_filter([
             'added' => $after->diffKeys($before)->map(fn (array $row) => [$name($row), $row['role']])->values()->all(),
@@ -363,8 +377,7 @@ new #[Title('Research Project')] class extends Component {
     }
 
     /**
-     * Faculty who can be listed as proponents. Co-proponents who haven't registered yet are
-     * added later, once they have an account.
+     * Faculty who can be listed as proponents. Staff and anyone else without an account are typed in by name instead.
      */
     #[Computed]
     public function faculty(): Collection
@@ -383,6 +396,14 @@ new #[Title('Research Project')] class extends Component {
     private function listedIds(): array
     {
         return $this->submission?->proponents()->pluck('user_id')->all() ?? [];
+    }
+
+    /**
+     * Whether a form row is for someone not in the portal: those rows hold a string name, faculty rows don't.
+     */
+    private function isNamed(mixed $row): bool
+    {
+        return is_array($row) && is_string($row['name'] ?? null);
     }
 }; ?>
 
@@ -475,7 +496,7 @@ new #[Title('Research Project')] class extends Component {
 
         <flux:fieldset>
             <flux:legend>{{ __('Proponents') }}</flux:legend>
-            <flux:description>{{ __('List everyone on each study, as in your proposal’s proponents table. Pick co-proponents by name from faculty with a portal account; anyone who registers later can be added then. Keep study no. 1 unless the project has more than one study.') }}</flux:description>
+            <flux:description>{{ __('Add everyone from your proposal’s proponents table. Pick faculty from the list, and type the full name of anyone without a portal account. Leave the study number at 1 unless the project has more than one study.') }}</flux:description>
 
             {{-- Phones put study no., role and remove on one row and the faculty picker full width under them, so a name
                  is readable; from sm up the rows join the form's 12-column grid --}}
@@ -483,7 +504,7 @@ new #[Title('Research Project')] class extends Component {
             <div class="mt-4 grid gap-3">
                 <div class="{{ $columns }} border-b border-line pb-2 text-sm font-medium text-zinc-700" aria-hidden="true">
                     <span class="sm:col-span-2">{{ __('Study no.') }}</span>
-                    <span class="max-sm:hidden sm:col-span-7">{{ __('Faculty') }}</span>
+                    <span class="max-sm:hidden sm:col-span-7">{{ __('Proponent') }}</span>
                     <span class="sm:col-span-2">{{ __('Role') }}</span>
                 </div>
 
@@ -494,12 +515,18 @@ new #[Title('Research Project')] class extends Component {
                         </div>
 
                         <div class="min-w-0 max-sm:order-last max-sm:col-span-3 sm:col-span-7">
-                            <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')">
-                                <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
-                                @foreach ($this->faculty as $member)
-                                    <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
+                            {{-- A string name marks a row for someone not in the portal, as isNamed() reads it --}}
+                            @if (is_string($row['name'] ?? null))
+                                <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" autocomplete="off" :placeholder="__('Full name, as in the proposal')" :aria-label="__('Full name')" data-test="proponent-name" />
+                                <flux:text size="sm" class="mt-1">{{ __('Not in the portal') }}</flux:text>
+                            @else
+                                <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')">
+                                    <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
+                                    @foreach ($this->faculty as $member)
+                                        <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                            @endif
                         </div>
 
                         <div class="sm:col-span-2">
@@ -519,7 +546,10 @@ new #[Title('Research Project')] class extends Component {
 
             <flux:error name="proponents" class="mt-2" />
 
-            <flux:button size="sm" icon="plus" wire:click="addProponent" class="mt-3 max-sm:h-11" data-test="add-proponent-button">{{ __('Add proponent') }}</flux:button>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <flux:button size="sm" icon="plus" wire:click="addProponent" class="max-sm:h-11" data-test="add-proponent-button">{{ __('Add faculty') }}</flux:button>
+                <flux:button size="sm" icon="user-plus" wire:click="addProponent(true)" class="max-sm:h-11" data-test="add-named-proponent-button">{{ __('Add someone not in the portal') }}</flux:button>
+            </div>
         </flux:fieldset>
 
         <flux:fieldset>

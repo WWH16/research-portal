@@ -10,6 +10,7 @@
     <ul>
         <li><strong>{{ __('Your account:') }}</strong> {{ __('your name, ISU email address, college, researcher ID, and your password, which is stored scrambled so no one can read it. Your mobile number and profile photo are kept only if you add them.') }}</li>
         <li><strong>{{ __('Research records:') }}</strong> {{ __('project titles, abstracts, proponents, dates, the Research Office’s review decisions and remarks, publications, and the documents you upload for each stage.') }}</li>
+        <li><strong>{{ __('Proponents without an account:') }}</strong> {{ __('only the full name a co-proponent types on the project. Staff and people outside the campus are not given an account, and the portal never emails them.') }}</li>
         <li><strong>{{ __('Activity:') }}</strong> {{ __('a log of sign-ins and of changes made in the portal, with the time and the person who made them.') }}</li>
         <li><strong>{{ __('Sign-in cookie:') }}</strong> {{ __('one cookie that keeps you signed in. The portal uses no advertising or tracking cookies and no analytics.') }}</li>
     </ul>

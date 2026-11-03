@@ -103,7 +103,7 @@ new #[Title('Concept Reviews')] class extends Component {
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="max-w-sm max-sm:whitespace-normal">
                             <p class="font-medium text-zinc-800 max-sm:line-clamp-2 sm:truncate" title="{{ $title }}">{{ $title }}</p>
-                            <p class="truncate text-zinc-500">{{ $submission->proponents->pluck('user')->unique('id')->map->shortName()->join(', ') }}</p>
+                            <p class="truncate text-zinc-500">{{ $submission->proponents->unique(fn ($row) => $row->personKey())->map->shortName()->join(', ') }}</p>
                             <p class="text-sm text-zinc-500 sm:hidden">{{ $submission->department->code }} · {{ $submission->updated_at->diffForHumans() }}</p>
                             @if ($submission->concept_path)
                                 {{-- Every row has this link and a Review button, so screen readers also hear which project each one is for --}}

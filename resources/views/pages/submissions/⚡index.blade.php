@@ -124,7 +124,8 @@ new #[Title('Submissions')] class extends Component {
                 $query->where(fn ($query) => $query
                     ->where('title', 'like', $term)
                     ->orWhereHas('user', fn ($query) => $query->where('name', 'like', $term))
-                    ->orWhereHas('proponents.user', fn ($query) => $query->where('name', 'like', $term)));
+                    ->orWhereHas('proponents.user', fn ($query) => $query->where('name', 'like', $term))
+                    ->orWhereHas('proponents', fn ($query) => $query->where('name', 'like', $term)));
             });
     }
 
@@ -148,9 +149,9 @@ new #[Title('Submissions')] class extends Component {
             $yesNo($project->isDelayed()),
             $project->user->name,
             $project->proponents->sortBy([['study', 'asc'], ['id', 'asc']])->groupBy('study')
-                ->map(fn ($rows, $study) => __('Study :number', ['number' => $study]).': '.$rows->map(fn ($row) => $row->user->name.' ('.$row->role.')')->join(', '))
+                ->map(fn ($rows, $study) => __('Study :number', ['number' => $study]).': '.$rows->map(fn ($row) => ($row->user?->name ?? $row->name).' ('.$row->role.')')->join(', '))
                 ->join('; '),
-            $project->proponents->unique('user_id')->count(),
+            $project->proponents->unique(fn ($row) => $row->personKey())->count(),
             $project->category->name,
             $project->start_date?->toDateString(),
             $project->target_date?->toDateString(),
@@ -404,7 +405,7 @@ new #[Title('Submissions')] class extends Component {
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="max-w-sm whitespace-normal sm:min-w-64">
                             <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline">{{ $title }}</a>
-                            <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->pluck('user')->unique('id')->map->shortName()->join(', ') }}</p>
+                            <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->unique(fn ($row) => $row->personKey())->map->shortName()->join(', ') }}</p>
                             {{-- All four documents in stage order: a filled pill opens one on file, a dashed one is still to come, so
                                  every row shows the same sequence, on one line from tablet width up. Phones set them two by two at
                                  equal widths, 36px tall, so the pairs line up and each is easy to tap. A filled pill carries a small

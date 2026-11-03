@@ -72,13 +72,7 @@ new #[Title('Concept Reviews')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
-            <flux:heading size="xl" level="1">{{ __('Concept Reviews') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Concept proposals waiting for a decision, longest waiting first.') }}</flux:text>
-        </div>
-    </header>
+    <x-page-title :subtitle="__('Concept proposals waiting for a decision, longest waiting first.')">{{ __('Concept Reviews') }}</x-page-title>
 
     @island(name: 'list', always: true)
     @if ($this->queue->isEmpty())

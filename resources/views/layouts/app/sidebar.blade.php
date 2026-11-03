@@ -151,12 +151,20 @@
         </flux:sidebar>
 
         <!-- Mobile User Menu -->
+        {{-- Each control in the bar is 44px tall, like the portal's other touch targets on phones --}}
         <flux:header class="lg:hidden">
             {{-- The dot keeps open work in sight while the sidebar is tucked away; the inset moves to the wrapper so the dot lines up with the icon --}}
-            <div class="relative -ms-2.5 lg:hidden">
-                <flux:sidebar.toggle icon="bars-2" />
-                <span x-show="toReview || toRevise || unread || toApprove || driveIssue" @style(['display: none' => ! ($toReview || $toRevise || $unread || $toApprove || $driveIssue)]) aria-hidden="true" class="pointer-events-none absolute end-2 top-2 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" x-bind:class="{ 'bg-rose-600': toRevise, 'bg-isu-gold-700': ! toRevise }" data-test="sidebar-toggle-dot"></span>
+            <div class="relative -ms-3 lg:hidden">
+                <flux:sidebar.toggle icon="bars-2" class="size-11!" />
+                <span x-show="toReview || toRevise || unread || toApprove || driveIssue" @style(['display: none' => ! ($toReview || $toRevise || $unread || $toApprove || $driveIssue)]) aria-hidden="true" class="pointer-events-none absolute end-2.5 top-2.5 size-2 rounded-full ring-2 ring-white {{ $toRevise ? 'bg-rose-600' : 'bg-isu-gold-700' }}" x-bind:class="{ 'bg-rose-600': toRevise, 'bg-isu-gold-700': ! toRevise }" data-test="sidebar-toggle-dot"></span>
             </div>
+
+            {{-- The sidebar's brand is tucked away on phones, so the seal shows here instead, once, and leads home --}}
+            <flux:brand :href="route('dashboard')" wire:navigate :aria-label="__('Dashboard')" class="ms-1 h-11! rounded-md outline-accent focus-visible:outline-2 focus-visible:outline-offset-2" data-test="phone-brand">
+                <x-slot name="logo" class="size-8">
+                    <x-app-logo-icon class="size-8" />
+                </x-slot>
+            </flux:brand>
 
             <flux:spacer />
 
@@ -165,6 +173,7 @@
                     :avatar="auth()->user()->profileImageUrl()"
                     :initials="auth()->user()->initials()"
                     icon-trailing="chevron-down"
+                    class="h-11"
                 />
 
                 <flux:menu>

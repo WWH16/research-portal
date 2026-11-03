@@ -149,24 +149,25 @@ new #[Title('Colleges')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-4xl">
-    <header class="flex items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0">
-            <flux:heading size="xl" level="1">{{ __('Colleges') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Colleges that members and proposals belong to.') }}</flux:text>
-        </div>
-        <flux:spacer />
-        <flux:button variant="primary" icon="plus" wire:click="create" data-test="new-department-button">
-            {{ __('New') }}
-        </flux:button>
-    </header>
+    <x-page-title :subtitle="__('Colleges that members and proposals belong to.')">
+        {{ __('Colleges') }}
+
+        {{-- An empty list offers its own button, so New shows only beside a list --}}
+        <x-slot:actions>
+            @unless ($this->departments->isEmpty())
+                <flux:button variant="primary" icon="plus" wire:click="create" class="max-sm:h-11" data-test="new-department-button">
+                    {{ __('New') }}
+                </flux:button>
+            @endunless
+        </x-slot:actions>
+    </x-page-title>
 
     @if ($this->departments->isEmpty())
         <x-empty-state icon="building-library" :heading="__('No colleges yet')" :text="__('Add one so members and proposals can be assigned to it.')" class="mt-8" data-test="no-colleges">
             <flux:button icon="plus" wire:click="create" class="max-sm:h-11">{{ __('Add the first college') }}</flux:button>
         </x-empty-state>
     @else
-        <flux:table class="mt-6">
+        <flux:table class="mt-4">
             <flux:table.columns>
                 <flux:table.column class="w-28">{{ __('Code') }}</flux:table.column>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>

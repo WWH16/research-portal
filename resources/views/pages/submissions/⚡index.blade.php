@@ -277,21 +277,7 @@ new #[Title('Submissions')] class extends Component {
 
 {{-- Same width as the Research Drive, so moving between the two lists doesn't shift the page --}}
 <section class="mx-auto w-full max-w-5xl">
-    <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
-            <flux:heading size="xl" level="1">{{ __('Submissions') }}</flux:heading>
-            <flux:text class="mt-1">
-                {{ $this->monitoring ? __('Every project filed across the portal.') : __('Projects you filed or are a proponent on.') }}
-            </flux:text>
-        </div>
-
-        @unless ($this->monitoring)
-            <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="shrink-0 max-sm:h-11 max-sm:w-full" wire:navigate>
-                {{ __('New proposal') }}
-            </flux:button>
-        @endunless
-    </header>
+    <x-page-title :subtitle="$this->monitoring ? __('Every project filed across the portal.') : __('Projects you filed or are a proponent on.')">{{ __('Submissions') }}</x-page-title>
 
     {{-- Filters and results redraw together; opening the dates dialog redraws only the dates island below.
          The filters drop Flux's shadow and darker bottom edge so they sit quieter than the table they narrow. --}}
@@ -340,6 +326,11 @@ new #[Title('Submissions')] class extends Component {
 
             <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:ms-auto max-sm:h-11">
                 {{ __('Export CSV') }}
+            </flux:button>
+        @else
+            {{-- Takes the count's place at the end of the row when there is no count --}}
+            <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate @class(['max-sm:h-11 max-sm:w-full', 'sm:ms-auto' => $this->submissions->isEmpty()])>
+                {{ __('New proposal') }}
             </flux:button>
         @endif
     </div>

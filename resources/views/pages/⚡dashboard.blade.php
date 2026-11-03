@@ -399,13 +399,7 @@ new #[Title('Dashboard')] class extends Component {
 @endphp
 
 <section class="mx-auto w-full max-w-6xl">
-    <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
-            <flux:heading size="xl" level="1">{{ __('Dashboard') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Welcome, :name.', ['name' => auth()->user()->shortName()]) }}</flux:text>
-        </div>
-    </header>
+    <x-page-title :subtitle="__('Welcome, :name.', ['name' => auth()->user()->shortName()])">{{ __('Dashboard') }}</x-page-title>
 
     @if ($this->isAdmin)
         @php

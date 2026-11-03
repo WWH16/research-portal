@@ -126,7 +126,6 @@ new #[Title('Research Drive')] class extends Component {
 
     <section class="mt-10" aria-labelledby="documents-heading">
         <flux:heading size="lg" level="2" id="documents-heading">{{ __('Documents') }}</flux:heading>
-        <flux:text class="mt-1 text-sm">{{ __('Open a document to view it in a new tab. Each one can be opened once it is uploaded.') }}</flux:text>
         <ul class="mt-3 divide-y divide-line border-y border-line" data-test="drive-documents">
             @foreach (Submission::DOCUMENTS as $stage => $label)
                 @php($path = $project->{$stage.'_path'})

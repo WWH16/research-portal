@@ -57,6 +57,22 @@ class ReferenceDataTest extends TestCase
         $this->get(route($route))->assertForbidden();
     }
 
+    public function test_new_shows_only_beside_a_list_and_the_title_hides_on_phones(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Category::query()->delete();
+
+        // An empty list offers its own button, so the page has one, not two.
+        $this->get(route('categories.index'))
+            ->assertSeeHtml('data-test="no-categories"')
+            ->assertDontSeeHtml('data-test="new-named-record-button"');
+
+        Category::create(['name' => 'Thesis']);
+
+        $page = $this->get(route('categories.index'))->assertSeeHtml('data-test="new-named-record-button"')->getContent();
+        $this->assertMatchesRegularExpression('/<div class="[^"]*max-lg:sr-only">.*?<h1[^>]*>Categories</s', $page);
+    }
+
     public function test_category_can_be_created_and_renamed(): void
     {
         $this->actingAs(User::factory()->create());

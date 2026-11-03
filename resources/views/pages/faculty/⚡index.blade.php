@@ -79,14 +79,10 @@ new #[Title('Faculty Publications')] class extends Component {
     }
 }; ?>
 
-<section class="mx-auto w-full max-w-5xl">
-    <header class="flex items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
-            <flux:heading size="xl" level="1">{{ __('Faculty Publications') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Publications and citations each faculty member recorded. Open a paper’s DOI or link to check it.') }}</flux:text>
-        </div>
-    </header>
+<section class="mx-auto w-full max-w-5xl [&>h1+*]:mt-0">
+    {{-- For screen readers only: the sidebar already marks the page. Whatever follows drops its top margin, so the
+         content starts at the top --}}
+    <flux:heading level="1" class="sr-only">{{ __('Faculty Publications') }}</flux:heading>
 
     <div class="mt-6 flex items-center gap-3">
         <flux:input

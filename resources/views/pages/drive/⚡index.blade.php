@@ -74,40 +74,33 @@ new #[Title('Research Drive')] class extends Component {
 @endphp
 
 <section class="mx-auto w-full max-w-5xl">
-    <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
-            <flux:heading size="xl" level="1">{{ __('Research Drive') }}</flux:heading>
-            <flux:text class="mt-1">{{ $this->isAdmin ? __('Documents for every project, filed under its college.') : __('Documents for the projects you filed or are a proponent on.') }}</flux:text>
-        </div>
-    </header>
+    {{-- On phones the search takes its own row, with the count and year under it --}}
+    <x-page-title :subtitle="$this->isAdmin ? __('Documents for every project, filed under its college.') : __('Documents for the projects you filed or are a proponent on.')">
+        {{ __('Research Drive') }}
 
-    {{-- Where you are, then what narrows it: the count, search and year sit together, as on Submissions. On phones the
-         search takes its own row, with the count and year under it --}}
-    <div class="mt-6 flex flex-wrap items-center gap-3">
-        @if ($this->folder)
-            <flux:breadcrumbs class="min-w-0 flex-1 max-sm:basis-full">
-                <flux:breadcrumbs.item :href="route('drive.index', array_filter(['year' => $year]))" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
-                <flux:breadcrumbs.item>{{ $this->folder->code }}</flux:breadcrumbs.item>
-            </flux:breadcrumbs>
-        @else
-            <div class="flex-1 max-sm:hidden"></div>
-        @endif
+        <x-slot:actions class="gap-3 max-sm:w-full">
+            @unless ($browsingFolders)
+                @if ($this->projects->isNotEmpty())
+                    <flux:text class="text-sm tabular-nums max-sm:order-2">{{ trans_choice('{1} 1 project|[2,*] :count projects', $this->projects->count()) }}</flux:text>
+                @endif
+                <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search titles')" :aria-label="__('Search titles')" class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none" clearable />
+            @endunless
 
-        @unless ($browsingFolders)
-            @if ($this->projects->isNotEmpty())
-                <flux:text class="text-sm tabular-nums max-sm:order-2">{{ trans_choice('{1} 1 project|[2,*] :count projects', $this->projects->count()) }}</flux:text>
-            @endif
-            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search titles')" :aria-label="__('Search titles')" class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none" clearable />
-        @endunless
+            <flux:select wire:model.live="year" :aria-label="__('Year')" class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
+                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+                @foreach (Submission::years() as $option)
+                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </x-slot:actions>
+    </x-page-title>
 
-        <flux:select wire:model.live="year" :aria-label="__('Year')" class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
-            <flux:select.option value="">{{ __('All years') }}</flux:select.option>
-            @foreach (Submission::years() as $option)
-                <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-            @endforeach
-        </flux:select>
-    </div>
+    @if ($this->folder)
+        <flux:breadcrumbs class="mt-4 min-w-0 flex-wrap gap-y-1">
+            <flux:breadcrumbs.item :href="route('drive.index', array_filter(['year' => $year]))" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>{{ $this->folder->code }}</flux:breadcrumbs.item>
+        </flux:breadcrumbs>
+    @endif
 
     @if ($browsingFolders && $this->folders->isEmpty())
         {{-- Each college is a folder, so with none there is nothing to open yet --}}

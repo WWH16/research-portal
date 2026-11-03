@@ -316,13 +316,7 @@ new #[Title('Google Drive')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <header class="flex items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0">
-            <flux:heading size="xl" level="1">{{ __('Google Drive') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('The one Research Office account that stores every project document.') }}</flux:text>
-        </div>
-    </header>
+    <x-page-title :subtitle="__('The one Research Office account that stores every project document.')">{{ __('Google Drive') }}</x-page-title>
 
     {{-- A failed Connect on a working account: a saved account that isn't connected says why in its own callout.
          Flux draws the danger icon in red-400, under 3:1 on the red fill, so the icon takes red-600. --}}

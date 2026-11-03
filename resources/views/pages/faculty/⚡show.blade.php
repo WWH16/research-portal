@@ -93,10 +93,11 @@ new class extends Component {
 <section class="mx-auto w-full max-w-6xl">
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         @if ($mine)
-            <flux:heading size="xl" level="1" class="sm:row-start-1">{{ __('My Publications') }}</flux:heading>
+            {{-- For screen readers only: the sidebar already marks the page, and the member's name leads it --}}
+            <flux:heading level="1" class="sr-only">{{ __('My Publications') }}</flux:heading>
 
-            {{-- Straight after the title, so on phones it comes before the summary rather than under it. An empty
-                 profile leaves it to the empty list's own button, so the page offers one, not two. --}}
+            {{-- On phones it comes before the summary rather than under it. An empty profile leaves it to the empty
+                 list's own button, so the page offers one, not two. --}}
             @if ($first)
                 <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 sm:col-start-2 sm:row-start-1" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
             @endif
@@ -107,8 +108,9 @@ new class extends Component {
             </flux:breadcrumbs>
         @endif
 
-        {{-- The member and their totals read as one summary row under the title --}}
-        <div class="flex flex-wrap items-center gap-x-8 gap-y-4 sm:col-span-2 sm:row-start-2">
+        {{-- The member and their totals read as one summary row: under the breadcrumb on a colleague's page, beside
+             the Add button on the member's own --}}
+        <div @class(['flex flex-wrap items-center gap-x-8 gap-y-4', 'sm:col-span-2 sm:row-start-2' => ! $mine])>
             <div class="flex min-w-0 items-center gap-5 sm:gap-6">
                 {{-- The page is the member's record of their work, so their portrait leads it. Hidden from
                      screen readers: the name beside it already says whose it is. --}}

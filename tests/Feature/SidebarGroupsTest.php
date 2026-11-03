@@ -33,6 +33,17 @@ class SidebarGroupsTest extends TestCase
         $this->get(route('dashboard'))->assertSee('data-test="overview-nav"', false)->assertSee('data-test="research-nav"', false);
     }
 
+    public function test_the_seal_shows_in_the_phone_bar_and_beside_the_title_on_wide_screens(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $page = $this->get(route('announcements.index'))->assertSee('data-test="phone-brand"', false)->getContent();
+
+        // The sidebar's brand, the phone bar's, and the title's, which phones keep for screen readers only.
+        $this->assertSame(3, substr_count($page, 'isu_seal-128.png'));
+        $this->assertMatchesRegularExpression('/<div class="[^"]*max-lg:sr-only">\s*<img src="[^"]*isu_seal-128\.png"/', $page);
+    }
+
     /** Whether each folding sidebar group renders open on the given page. */
     private function openGroups(string $route): array
     {

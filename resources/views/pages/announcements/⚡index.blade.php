@@ -341,23 +341,15 @@ new #[Title('Announcements')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        {{-- At least 12rem wide, so on a phone the button wraps below instead of squeezing the description, while the
-             title still fits beside the seal on the narrowest phone --}}
-        <div class="min-w-0 flex-1 basis-48">
-            <flux:heading size="xl" level="1">{{ __('Announcements') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Schedules of submissions and memos from the Research Office.') }}</flux:text>
-        </div>
+    <x-page-title :subtitle="__('Schedules of submissions and memos from the Research Office.')">
+        {{ __('Announcements') }}
 
-        @can('create', App\Models\Announcement::class)
-            <flux:button variant="primary" icon="plus" wire:click="create" class="max-sm:h-11" data-test="post-announcement">{{ __('Post announcement') }}</flux:button>
-        @endcan
-    </header>
-
-    @if ($gone)
-        <flux:callout variant="secondary" icon="information-circle" class="mt-6" :text="__('The Research Office has removed the announcement you opened.')" data-test="announcement-gone" />
-    @endif
+        <x-slot:actions>
+            @can('create', App\Models\Announcement::class)
+                <flux:button variant="primary" icon="plus" wire:click="create" class="max-sm:h-11" data-test="post-announcement">{{ __('Post announcement') }}</flux:button>
+            @endcan
+        </x-slot:actions>
+    </x-page-title>
 
     {{-- What the page holds and how much, each a jump to its section, so a phone that opens on the deadlines still tells
          the member the general announcements are further down. Nothing is hidden, unlike tabs. Only when there is more
@@ -371,6 +363,10 @@ new #[Title('Announcements')] class extends Component {
                 <flux:navbar.item href="#announcements-{{ $section }}" :badge="$count" class="shrink-0 max-sm:h-11">{{ $labels[$section] }}</flux:navbar.item>
             @endforeach
         </flux:navbar>
+    @endif
+
+    @if ($gone)
+        <flux:callout variant="secondary" icon="information-circle" class="mt-6" :text="__('The Research Office has removed the announcement you opened.')" data-test="announcement-gone" />
     @endif
 
     {{-- A stream, as in Google Classroom, which faculty already use: on a wide screen the open deadlines are listed beside

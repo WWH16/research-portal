@@ -202,14 +202,10 @@ new #[Title('Notifications')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-4xl">
-    <header class="flex flex-wrap items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
-            <flux:heading size="xl" level="1">{{ __('Notifications') }}</flux:heading>
-        </div>
+    <x-page-title :subtitle="__('Updates on your projects, announcements, and account, newest first.')">
+        {{ __('Notifications') }}
 
-        {{-- On phones the buttons take a row of their own, so the title never squeezes beside one --}}
-        <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+        <x-slot:actions>
             @if (auth()->user()->unreadNotifications()->exists())
                 <flux:button wire:click="markAllRead" data-test="mark-all-read" class="max-sm:h-11">{{ __('Mark all as read') }}</flux:button>
             @endif
@@ -218,8 +214,8 @@ new #[Title('Notifications')] class extends Component {
                     <flux:button icon="trash" data-test="delete-read" class="max-sm:h-11">{{ __('Delete all read') }}</flux:button>
                 </flux:modal.trigger>
             @endif
-        </div>
-    </header>
+        </x-slot:actions>
+    </x-page-title>
 
     {{-- Offered for 10 seconds; the deleted notices wait a little longer in the cache, so a late click still works --}}
     @if ($undo)

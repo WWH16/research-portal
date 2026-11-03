@@ -53,7 +53,6 @@ class SecurityTest extends TestCase
             ->assertOk()
             ->assertSee('Update password')
             ->assertDontSee('Manage your passkeys for passwordless sign-in')
-            ->assertDontSee('Add a passkey to sign in without a password')
             ->assertDontSee('Two-factor authentication');
     }
 

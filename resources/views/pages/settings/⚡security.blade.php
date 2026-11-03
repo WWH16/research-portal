@@ -179,7 +179,7 @@ new #[Title('Security settings')] class extends Component {
 <section class="w-full">
     <x-pages::settings.layout :heading="__('Security')" :subheading="__('Your password and how you sign in.')">
         <form method="POST" wire:submit="updatePassword">
-            <x-pages::settings.section :heading="__('Update password')" :description="__('Ensure your account is using a long, random password to stay secure')">
+            <x-pages::settings.section :heading="__('Update password')">
                 <div class="grid gap-6 sm:grid-cols-2">
                     <flux:input
                         wire:model="current_password"
@@ -211,7 +211,7 @@ new #[Title('Security settings')] class extends Component {
         </form>
 
         @if ($canManageTwoFactor)
-            <x-pages::settings.section :heading="__('Two-factor authentication')" :description="__('Manage your two-factor authentication settings')">
+            <x-pages::settings.section :heading="__('Two-factor authentication')">
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     @if ($twoFactorEnabled)
@@ -295,7 +295,6 @@ new #[Title('Security settings')] class extends Component {
                                     <flux:icon.key class="size-7 text-zinc-400 dark:text-zinc-500" />
                                 </div>
                                 <p class="font-medium">{{ __('No passkeys yet') }}</p>
-                                <flux:text class="mt-1">{{ __('Add a passkey to sign in without a password') }}</flux:text>
                             </div>
                         @endforelse
                     </div>

@@ -162,6 +162,11 @@
     padding-block: 0.5rem;
 }
 
+/* Phones and tablets hide the page title's name, so whatever follows it starts at the top of the page. */
+[data-page-title] + * {
+    @apply max-lg:mt-0;
+}
+
 /* Flux's red-500 errors and zinc-400 placeholders fall short of 4.5:1 on white; one step darker clears it. */
 [data-flux-error] {
     color: var(--color-red-600);

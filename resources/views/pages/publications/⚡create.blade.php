@@ -241,7 +241,8 @@ new class extends Component {
                 <flux:breadcrumbs.item>{{ __('Add publication') }}</flux:breadcrumbs.item>
             @endif
         </flux:breadcrumbs>
-        <flux:heading size="xl" level="1">{{ $publication ? __('Edit Publication') : __('Add Publication') }}</flux:heading>
+        {{-- For screen readers only: the breadcrumb already names the page --}}
+        <flux:heading level="1" class="sr-only">{{ $publication ? __('Edit Publication') : __('Add Publication') }}</flux:heading>
     </header>
 
     {{-- Ordered like a citation: what the paper is, who wrote it, where it came out, then the optional extras.

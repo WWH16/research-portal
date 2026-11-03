@@ -421,7 +421,8 @@ new #[Title('Research Project')] class extends Component {
             @endif
             <flux:breadcrumbs.item>{{ $submission ? __('Edit') : __('New proposal') }}</flux:breadcrumbs.item>
         </flux:breadcrumbs>
-        <flux:heading size="xl" level="1">{{ $submission ? __('Edit Project') : __('Submit Proposal') }}</flux:heading>
+        {{-- For screen readers only: the breadcrumb already names the page --}}
+        <flux:heading level="1" class="sr-only">{{ $submission ? __('Edit Project') : __('Submit Proposal') }}</flux:heading>
     </header>
 
     @unless ($this->department)

@@ -402,16 +402,7 @@ new #[Title('Manage Users')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <header class="flex items-center gap-4 border-b border-line pb-6">
-        <img src="{{ asset('images/isu_seal-128.png') }}" alt="{{ __('Isabela State University') }}" class="size-12 shrink-0 object-contain" />
-        <div class="min-w-0 flex-1">
-            <flux:heading size="xl" level="1">{{ __('Manage Users') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Accounts, roles, and college assignments for portal members.') }}</flux:text>
-        </div>
-        <flux:button variant="primary" icon="plus" wire:click="create" class="shrink-0" data-test="new-user-button">
-            {{ __('New') }}
-        </flux:button>
-    </header>
+    <x-page-title :subtitle="__('Accounts, roles, and college assignments for portal members.')">{{ __('Manage Users') }}</x-page-title>
 
     <div class="mt-6 flex flex-col gap-3 sm:flex-row">
         <flux:input
@@ -435,6 +426,10 @@ new #[Title('Manage Users')] class extends Component {
             <flux:select.option value="approved">{{ __('Approved') }}</flux:select.option>
             <flux:select.option value="rejected">{{ __('Rejected') }}</flux:select.option>
         </flux:select>
+
+        <flux:button variant="primary" icon="plus" wire:click="create" class="shrink-0 max-sm:h-11" data-test="new-user-button">
+            {{ __('New') }}
+        </flux:button>
     </div>
 
     @if ($this->users->isEmpty())

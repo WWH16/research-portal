@@ -50,6 +50,55 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, QueuedResetPassword::class);
     }
 
+    public function test_an_unknown_email_gets_the_same_reply_as_a_registered_one(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+
+        $known = $this->post(route('password.email'), ['email' => $user->email])->assertSessionHasNoErrors();
+        $unknown = $this->post(route('password.email'), ['email' => 'nobody@isu.edu.ph'])->assertSessionHasNoErrors();
+
+        $this->assertSame(__('passwords.sent'), $known->getSession()->get('status'));
+        $this->assertSame(__('passwords.sent'), $unknown->getSession()->get('status'));
+        $this->assertStringNotContainsString('find a user', __('passwords.sent'));
+    }
+
+    public function test_a_second_request_within_a_minute_gets_the_same_reply(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+
+        $this->post(route('password.email'), ['email' => $user->email]);
+
+        // The broker refuses another link for a minute; saying so would show the address has an account.
+        $this->post(route('password.email'), ['email' => $user->email])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', __('passwords.sent'));
+    }
+
+    public function test_one_address_gets_five_requests_an_hour(): void
+    {
+        Notification::fake();
+
+        foreach (range(1, 5) as $request) {
+            $this->post(route('password.email'), ['email' => 'nobody@isu.edu.ph'])->assertRedirect();
+        }
+
+        $this->post(route('password.email'), ['email' => 'NOBODY@isu.edu.ph'])->assertTooManyRequests();
+        $this->post(route('password.email'), ['email' => 'someone_else@isu.edu.ph'])->assertRedirect();
+    }
+
+    public function test_one_network_gets_ten_requests_an_hour(): void
+    {
+        Notification::fake();
+
+        foreach (range(1, 10) as $request) {
+            $this->post(route('password.email'), ['email' => "member{$request}@isu.edu.ph"])->assertRedirect();
+        }
+
+        $this->post(route('password.email'), ['email' => 'member11@isu.edu.ph'])->assertTooManyRequests();
+    }
+
     public function test_both_reset_buttons_show_a_loading_state_while_submitting(): void
     {
         foreach ([route('password.request'), route('password.reset', 'reset-token')] as $page) {

@@ -19,13 +19,16 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Events\RecoveryCodesGenerated;
 use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
 use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Http\Responses\SuccessfulPasswordResetLinkRequestResponse;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -34,7 +37,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // An unknown email gets the same reply as a registered one, so Forgot password can't be used to find out who
+        // has an account.
+        $this->app->bind(FailedPasswordResetLinkRequestResponse::class, fn () => new SuccessfulPasswordResetLinkRequestResponse(Password::RESET_LINK_SENT));
     }
 
     /**
@@ -154,6 +159,13 @@ class FortifyServiceProvider extends ServiceProvider
         // The verify link opens signed out, so guests share a campus network's one address. Keyed by the account in the
         // link as well, so one college verifying together isn't turned away.
         RateLimiter::for('verify-email', fn (Request $request) => Limit::perMinute(6)->by($request->route('id').'|'.$request->ip()));
+
+        // Forgot password emails a member each time, and the portal's Gmail account sends only so many a day. Ten an
+        // hour covers a campus on one network; five an hour for one address is enough for a mistyped password.
+        RateLimiter::for('password-email', fn (Request $request) => [
+            Limit::perHour(10)->by('ip:'.$request->ip()),
+            Limit::perHour(5)->by('email:'.Str::lower((string) $request->input(Fortify::email()))),
+        ]);
 
         RateLimiter::for('passkeys', function (Request $request) {
             $credentialId = $request->input('credential.id');

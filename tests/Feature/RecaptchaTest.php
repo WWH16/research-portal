@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class RecaptchaTest extends TestCase
@@ -38,6 +39,7 @@ class RecaptchaTest extends TestCase
 
         $this->get(route('login'))->assertSee('recaptcha/api.js?render=site-key', false)->assertSee("action: 'login'", false);
         $this->get(route('register'))->assertSee("action: 'register'", false);
+        $this->get(route('password.request'))->assertSee("action: 'forgot_password'", false);
     }
 
     public function test_a_human_score_signs_in(): void
@@ -74,5 +76,17 @@ class RecaptchaTest extends TestCase
         $this->post(route('register.store'), ['name' => 'Bot', 'email' => 'bot_cyn@isu.edu.ph', 'recaptcha_token' => 'token'])
             ->assertSessionHasErrors('email');
         $this->assertDatabaseMissing('users', ['email' => 'bot_cyn@isu.edu.ph']);
+    }
+
+    public function test_a_bot_cannot_request_reset_links(): void
+    {
+        Notification::fake();
+        $this->keys();
+        $this->google(0.1, 'forgot_password');
+        $user = User::factory()->create();
+
+        $this->post(route('password.email'), ['email' => $user->email, 'recaptcha_token' => 'token'])
+            ->assertSessionHasErrors('email');
+        Notification::assertNothingSent();
     }
 }

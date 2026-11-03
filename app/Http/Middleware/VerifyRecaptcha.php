@@ -10,13 +10,13 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Turns away sign-ins and sign-ups that Google's reCAPTCHA v3 scores as a bot. Off until the keys are set, so local
- * work and the tests run without Google.
+ * Turns away sign-ins, sign-ups and reset link requests that Google's reCAPTCHA v3 scores as a bot. Off until the
+ * keys are set, so local work and the tests run without Google.
  */
 class VerifyRecaptcha
 {
     /** The Fortify form posts checked, with the action each form sends its token for. */
-    private const array ACTIONS = ['login.store' => 'login', 'register.store' => 'register'];
+    private const array ACTIONS = ['login.store' => 'login', 'register.store' => 'register', 'password.email' => 'forgot_password'];
 
     public function handle(Request $request, Closure $next): Response
     {

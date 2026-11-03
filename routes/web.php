@@ -3,6 +3,7 @@
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Http\Controllers\GoogleDriveCallbackController;
 use App\Http\Controllers\VerifyEmailController;
+use App\Http\Middleware\VerifyRecaptcha;
 use App\Models\Announcement;
 use App\Models\GoogleDriveConnection;
 use App\Models\Submission;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Http\Controllers\PasswordResetLinkController;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 
@@ -28,6 +30,12 @@ Route::view('terms', 'pages::legal.terms')->name('terms');
 Route::get('email/verify/{id}/{hash}', VerifyEmailController::class)
     ->middleware('throttle:verify-email')
     ->name('verification.verify');
+
+// Takes the place of Fortify's route of the same address and name, which has no limit: each request emails a member,
+// and the portal's Gmail account sends only so many a day.
+Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+    ->middleware(['guest', 'throttle:password-email', VerifyRecaptcha::class])
+    ->name('password.email');
 
 // A verified sign-up waits here until an admin approves it; an approved account goes on to the portal. The page asks
 // for the JSON form while it waits, so it reloads into the decision as soon as one is made.

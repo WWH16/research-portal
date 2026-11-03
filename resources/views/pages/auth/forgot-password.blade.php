@@ -27,9 +27,18 @@
                 placeholder="name_cyn@isu.edu.ph"
             />
 
-            <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="email-password-reset-link-button">
-                {{ __('Email password reset link') }}
-            </flux:button>
+            {{-- The reCAPTCHA notice sits with the button, in the same fine print as on the sign-in form --}}
+            <div class="flex flex-col gap-3">
+                <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="email-password-reset-link-button">
+                    {{ __('Email password reset link') }}
+                </flux:button>
+
+                @if (config('services.recaptcha.site_key'))
+                    <p class="text-center text-xs leading-5 text-pretty text-zinc-600 dark:text-zinc-400">
+                        <x-recaptcha action="forgot_password" />
+                    </p>
+                @endif
+            </div>
         </form>
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-400">

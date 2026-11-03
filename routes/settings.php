@@ -10,8 +10,9 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // No password re-prompt: changing the password already asks for the current one.
-    Route::livewire('settings/security', 'pages::settings.security')->name('security.edit');
+    // Asks for the password at most every three hours (auth.password_timeout): this page turns two-factor off and
+    // shows the recovery codes, which a passer-by at a signed-in computer must not reach.
+    Route::livewire('settings/security', 'pages::settings.security')->middleware('password.confirm')->name('security.edit');
 });
 
 if (Features::canManagePasskeys()) {

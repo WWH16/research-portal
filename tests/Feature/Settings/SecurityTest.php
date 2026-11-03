@@ -25,6 +25,7 @@ class SecurityTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'));
 
         $response->assertOk();
@@ -33,11 +34,19 @@ class SecurityTest extends TestCase
         $response->assertSee('Enable 2FA');
     }
 
-    public function test_security_settings_page_opens_without_confirming_the_password(): void
+    public function test_security_settings_page_asks_for_the_password_first(): void
     {
         $this->actingAs(User::factory()->create())
             ->get(route('security.edit'))
-            ->assertOk();
+            ->assertRedirect(route('password.confirm'));
+    }
+
+    public function test_security_settings_page_asks_again_once_the_confirmation_expires(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->withSession(['auth.password_confirmed_at' => time() - config('auth.password_timeout') - 1])
+            ->get(route('security.edit'))
+            ->assertRedirect(route('password.confirm'));
     }
 
     public function test_security_settings_page_renders_without_two_factor_when_feature_is_disabled(): void
@@ -47,6 +56,7 @@ class SecurityTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'))
             ->assertOk()
             ->assertSee('Update password')

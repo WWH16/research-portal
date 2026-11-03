@@ -15,7 +15,16 @@
             :separator="__('Or confirm with password')"
         />
 
-        <form method="POST" action="{{ route('password.confirm.store') }}" class="flex flex-col gap-6">
+        {{-- Same loading pattern as the login form: disabling the submit button makes Flux show its spinner. --}}
+        <form
+            method="POST"
+            action="{{ route('password.confirm.store') }}"
+            class="flex flex-col gap-6"
+            x-data="{ submitting: false }"
+            x-on:submit="submitting = true"
+            x-on:pageshow.window="submitting = false"
+            x-bind:aria-busy="submitting"
+        >
             @csrf
 
             <flux:input
@@ -28,7 +37,7 @@
                 viewable
             />
 
-            <flux:button variant="primary" type="submit" class="w-full" data-test="confirm-password-button">
+            <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="confirm-password-button">
                 {{ __('Confirm') }}
             </flux:button>
         </form>

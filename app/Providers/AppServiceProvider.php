@@ -8,12 +8,14 @@ use App\Http\Middleware\EnsureUserIsFaculty;
 use App\Models\User;
 use App\Notifications\EmailFailed;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Response;
@@ -51,6 +53,10 @@ class AppServiceProvider extends ServiceProvider
 
             return route('login');
         });
+
+        // A sign-in proves the password, so the session starts a fresh copy of it. One left over from an account deleted
+        // while it was signed in would otherwise sign the next account out with the message above.
+        Event::listen(Login::class, fn (Login $event) => session()->forget('password_hash_'.$event->guard));
 
         $this->reportFailedEmails();
     }

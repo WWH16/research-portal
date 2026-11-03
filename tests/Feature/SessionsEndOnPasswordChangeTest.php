@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Auth\Events\OtherDeviceLogout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,6 +41,29 @@ class SessionsEndOnPasswordChangeTest extends TestCase
 
         // The sign-in page says why, so it doesn't look like an expired session.
         $this->get(route('login'))->assertSee('Your password was changed, so you have been signed out on this device.');
+    }
+
+    public function test_signing_up_again_after_your_account_was_deleted_keeps_you_signed_in(): void
+    {
+        $old = User::factory()->create(['email' => 'test.user@isu.edu.ph']);
+        $this->actingAs($old)->get(route('dashboard'))->assertOk();
+
+        // The Research Office deletes the account while this browser is still signed in to it.
+        $old->delete();
+        $this->app['auth']->forgetGuards();
+
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+        $this->post(route('register.store'), [
+            'name' => 'John Doe',
+            'email' => 'test.user@isu.edu.ph',
+            'department_id' => $department->id,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertSessionHasNoErrors();
+
+        // The new account's first page isn't mistaken for a password changed elsewhere.
+        $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));
+        $this->assertAuthenticatedAs(User::where('email', 'test.user@isu.edu.ph')->sole());
     }
 
     public function test_a_guest_sent_to_sign_in_sees_no_password_message(): void

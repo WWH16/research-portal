@@ -106,6 +106,28 @@ class MyProfileTest extends TestCase
         $drive->assertMissing(Str::after($second, '/'));
     }
 
+    public function test_pending_and_rejected_accounts_cannot_add_a_photo(): void
+    {
+        $drive = $this->fakeDrive();
+
+        foreach ([User::factory()->pending()->create(), User::factory()->rejected()->create()] as $user) {
+            $this->actingAs($user);
+
+            $this->get(route('profile.edit'))
+                ->assertOk()
+                ->assertSee('You can add a photo once the Research Office approves your account.')
+                ->assertDontSee('data-test="upload-photo-button"', false);
+
+            Livewire::test('pages::settings.profile')
+                ->set('photo', $this->png('me.png'))
+                ->assertForbidden();
+
+            $this->assertNull($user->fresh()->profile_image);
+        }
+
+        $this->assertSame([], $drive->allFiles());
+    }
+
     public function test_without_a_storage_account_the_photo_is_refused_and_the_old_one_kept(): void
     {
         $user = User::factory()->create(['profile_image' => 'drive-1/profile-images/old.png']);

@@ -117,6 +117,9 @@ new #[Title('My Profile')] class extends Component {
      */
     public function updatedPhoto(): void
     {
+        // Only accounts the Research Office let in store files on its Drive; a pending or rejected one has no button.
+        abort_unless(Auth::user()->isApproved(), 403);
+
         $this->validate([
             'photo' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], attributes: ['photo' => __('photo')]);
@@ -222,32 +225,37 @@ new #[Title('My Profile')] class extends Component {
                     <flux:heading size="lg" class="truncate">{{ $user->name }}</flux:heading>
                     <flux:text class="truncate">{{ $user->email }}</flux:text>
 
-                    <div class="mt-3 flex flex-wrap items-center gap-2">
-                        <input
-                            type="file"
-                            x-ref="photo"
-                            x-on:change="pick($event)"
-                            accept="image/png,image/jpeg,image/webp"
-                            class="sr-only"
-                            tabindex="-1"
-                            aria-hidden="true"
-                        />
+                    {{-- Photos are stored on the Research Office's Drive, so only an approved account can add one --}}
+                    @if ($user->isApproved())
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <input
+                                type="file"
+                                x-ref="photo"
+                                x-on:change="pick($event)"
+                                accept="image/png,image/jpeg,image/webp"
+                                class="sr-only"
+                                tabindex="-1"
+                                aria-hidden="true"
+                            />
 
-                        <flux:button size="sm" icon="camera" x-on:click="$refs.photo.click()" wire:loading.attr="disabled" wire:target="photo" id="upload-photo-button" data-test="upload-photo-button" class="max-sm:h-11 max-sm:px-4">
-                            {{ $user->profile_image ? __('Change photo') : __('Upload photo') }}
-                        </flux:button>
+                            <flux:button size="sm" icon="camera" x-on:click="$refs.photo.click()" wire:loading.attr="disabled" wire:target="photo" id="upload-photo-button" data-test="upload-photo-button" class="max-sm:h-11 max-sm:px-4">
+                                {{ $user->profile_image ? __('Change photo') : __('Upload photo') }}
+                            </flux:button>
 
-                        @if ($user->profile_image)
-                            <flux:modal.trigger name="remove-photo">
-                                <flux:button size="sm" variant="ghost" wire:target="photo" wire:loading.attr="disabled" data-test="remove-photo-button" class="max-sm:h-11 max-sm:px-4">
-                                    {{ __('Remove') }}
-                                </flux:button>
-                            </flux:modal.trigger>
-                        @endif
+                            @if ($user->profile_image)
+                                <flux:modal.trigger name="remove-photo">
+                                    <flux:button size="sm" variant="ghost" wire:target="photo" wire:loading.attr="disabled" data-test="remove-photo-button" class="max-sm:h-11 max-sm:px-4">
+                                        {{ __('Remove') }}
+                                    </flux:button>
+                                </flux:modal.trigger>
+                            @endif
 
-                        <flux:text class="text-sm" wire:loading.remove wire:target="photo">{{ __('JPG, PNG, or WebP, up to 10 MB.') }}</flux:text>
-                        <flux:text class="text-sm" wire:loading wire:target="photo">{{ __('Uploading…') }}</flux:text>
-                    </div>
+                            <flux:text class="text-sm" wire:loading.remove wire:target="photo">{{ __('JPG, PNG, or WebP, up to 10 MB.') }}</flux:text>
+                            <flux:text class="text-sm" wire:loading wire:target="photo">{{ __('Uploading…') }}</flux:text>
+                        </div>
+                    @else
+                        <flux:text class="mt-3 text-sm" data-test="photo-after-approval">{{ __('You can add a photo once the Research Office approves your account.') }}</flux:text>
+                    @endif
 
                     <flux:error name="photo" class="mt-2" />
                     <p class="mt-2 text-sm font-medium text-red-500" role="alert" x-show="error" x-text="error"></p>

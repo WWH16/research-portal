@@ -21,13 +21,16 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        // Each sign-up that passes validation sends an email, and the portal's Gmail account sends only so many a day.
-        // ponytail: counted per network address, which a campus shares, so 20 an hour; raise it if a college signs up together.
+        // Every try counts, failed ones too, so a script can't keep testing which emails already have an account; one that
+        // passes also sends an email, and the portal's Gmail account sends only so many a day.
+        // ponytail: counted per network address, which a campus shares, so 30 an hour; raise it if a college signs up together.
         $key = 'sign-up:'.request()->ip();
 
-        if (RateLimiter::tooManyAttempts($key, 20)) {
+        if (RateLimiter::tooManyAttempts($key, 30)) {
             throw ValidationException::withMessages(['email' => __('Too many sign-ups have come from your network. Please try again within the hour.')]);
         }
+
+        RateLimiter::hit($key, 3600);
 
         Validator::make($input, [
             ...$this->profileRules(),
@@ -39,8 +42,6 @@ class CreateNewUser implements CreatesNewUsers
             'department_id.required' => __('Choose your college.'),
             'department_id' => __('Choose a college from the list.'),
         ])->validate();
-
-        RateLimiter::hit($key, 3600);
 
         // Role is left out on purpose: sign-ups always get the default faculty role.
         return User::create([

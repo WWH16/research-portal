@@ -90,18 +90,18 @@ class RegistrationTest extends TestCase
         $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
         $form = fn (string $email) => ['name' => 'John Doe', 'email' => $email, 'department_id' => $department->id, 'password' => 'password', 'password_confirmation' => 'password'];
 
-        // A sign-up that fails validation sends no email, so it isn't counted.
+        // A try that fails counts too, so a script can't keep testing which emails already have an account.
         $this->post(route('register.store'), $form('john@gmail.com'))->assertSessionHasErrors('email');
-        $this->assertSame(0, RateLimiter::attempts('sign-up:127.0.0.1'));
+        $this->assertSame(1, RateLimiter::attempts('sign-up:127.0.0.1'));
 
-        foreach (range(1, 20) as $n) {
+        foreach (range(1, 29) as $n) {
             $this->post(route('register.store'), $form("user{$n}@isu.edu.ph"))->assertSessionHasNoErrors();
             auth()->logout();
         }
 
-        $this->post(route('register.store'), $form('user21@isu.edu.ph'))
+        $this->post(route('register.store'), $form('user30@isu.edu.ph'))
             ->assertSessionHasErrors(['email' => 'Too many sign-ups have come from your network. Please try again within the hour.']);
-        $this->assertDatabaseMissing('users', ['email' => 'user21@isu.edu.ph']);
+        $this->assertDatabaseMissing('users', ['email' => 'user30@isu.edu.ph']);
     }
 
     public function test_only_isu_email_addresses_can_sign_up(): void

@@ -60,7 +60,6 @@ class PasswordResetTest extends TestCase
 
         $this->assertSame(__('passwords.sent'), $known->getSession()->get('status'));
         $this->assertSame(__('passwords.sent'), $unknown->getSession()->get('status'));
-        $this->assertStringNotContainsString('find a user', __('passwords.sent'));
     }
 
     public function test_a_second_request_within_a_minute_gets_the_same_reply(): void

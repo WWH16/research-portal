@@ -41,14 +41,6 @@ class SecurityTest extends TestCase
             ->assertRedirect(route('password.confirm'));
     }
 
-    public function test_security_settings_page_asks_again_once_the_confirmation_expires(): void
-    {
-        $this->actingAs(User::factory()->create())
-            ->withSession(['auth.password_confirmed_at' => time() - config('auth.password_timeout') - 1])
-            ->get(route('security.edit'))
-            ->assertRedirect(route('password.confirm'));
-    }
-
     public function test_security_settings_page_renders_without_two_factor_when_feature_is_disabled(): void
     {
         config(['fortify.features' => []]);

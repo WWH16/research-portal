@@ -9,7 +9,6 @@ use App\Notifications\EmailChanged;
 use App\Services\DocumentStorage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -84,7 +83,7 @@ new #[Title('My Profile')] class extends Component {
 
         // Read before the change: only an address the member confirmed is told of it, since an unconfirmed one may not be theirs.
         $confirmed = $user->hasVerifiedEmail();
-        $user->fill(Arr::except($validated, 'current_password'));
+        $user->fill($validated);
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

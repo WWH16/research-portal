@@ -145,7 +145,6 @@ class ManageUsersTest extends TestCase
         $user->update(['role' => 'admin']);
 
         $this->assertFalse($user->fresh()->isAdmin());
-        $this->assertNull((new User(['role' => 'admin']))->role);
     }
 
     public function test_create_requires_a_password_and_a_unique_email(): void

@@ -321,7 +321,7 @@ class NotificationsTest extends TestCase
         $this->actingAs($this->maria)
             ->get(route('notifications.index'))
             ->assertOk()
-            ->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”.')
+            ->assertSee('Your concept proposal for “Solar Dryer Study” has passed the Research Office’s review.')
             ->assertDontSee('returned your concept proposal');
     }
 
@@ -350,7 +350,7 @@ class NotificationsTest extends TestCase
             ->call('read', $notice->id)
             ->assertDispatched('open-work-stale')
             ->assertSee('Concept proposal decision')
-            ->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”. You may now upload the detailed proposal.')
+            ->assertSee('Your concept proposal for “Solar Dryer Study” has passed the Research Office’s review. You may now upload the detailed proposal.')
             ->assertSee($notice->created_at->format('F j, Y, g:i A'))
             ->assertSee('Open the project')
             ->assertNoRedirect();
@@ -424,7 +424,7 @@ class NotificationsTest extends TestCase
             ->assertSee('No notifications yet.');
         $this->assertSame(0, $this->maria->notifications()->count());
 
-        $page->call('undoDelete')->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”.');
+        $page->call('undoDelete')->assertSee('Your concept proposal for “Solar Dryer Study” has passed the Research Office’s review.');
         $this->assertSame($before, $this->maria->notifications()->sole()->getRawOriginal());
     }
 
@@ -615,7 +615,7 @@ class NotificationsTest extends TestCase
 
         $this->maria->notify(new ConceptReviewed($this->project(), 'passed', null));
 
-        $page->dispatch('open-work-changed', changed: ['unread'])->assertSee('The Research Office has passed your concept proposal for “Solar Dryer Study”.');
+        $page->dispatch('open-work-changed', changed: ['unread'])->assertSee('Your concept proposal for “Solar Dryer Study” has passed the Research Office’s review.');
     }
 
     public function test_changing_a_notice_asks_the_sidebar_to_count_again(): void
@@ -733,7 +733,7 @@ class NotificationsTest extends TestCase
 
         $emails = [
             [new ConceptReviewed($project, 'returned', 'Cite your sources.'), 'Concept proposal returned for revision', ['“Solar*Dryer Study”', 'returned it for revision', 'Remarks from the Research Office:', 'revise your concept proposal']],
-            [new ConceptReviewed($project, 'passed', null), 'Concept proposal passed', ['“Solar*Dryer Study”', 'passed', 'upload the detailed proposal']],
+            [new ConceptReviewed($project, 'passed', null), 'Your concept proposal passed review', ['“Solar*Dryer Study”', 'passed', 'upload the detailed proposal']],
             [new ProjectDeadline($project, 7), 'Completion date in 7 days', ['“Solar*Dryer Study”', $due, 'upload the terminal report']],
             [new ProjectDeadline($project, -1), 'Terminal report overdue', ['“Solar*Dryer Study”', $due, 'upload the terminal report']],
             [new ProjectDatesChanged($project), 'Project dates changed', ['“Solar*Dryer Study”', $start, $due]],

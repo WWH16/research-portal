@@ -31,9 +31,9 @@ class ConceptReviewed extends PortalNotification
 
         // Written in full for the faculty who read it: what was decided, on which project, and what to do next.
         return (new MailMessage)
-            ->subject($passed ? __('Concept proposal passed') : __('Concept proposal returned for revision'))
+            ->subject($passed ? __('Your concept proposal passed review') : __('Concept proposal returned for revision'))
             ->line($passed
-                ? __('The Research Office has reviewed your concept proposal for :title and has **passed** it.', $replace)
+                ? __('Your concept proposal for :title has **passed** the Research Office’s review.', $replace)
                 : __('The Research Office has reviewed your concept proposal for :title and has **returned it for revision**.', $replace))
             ->lineIf((bool) $this->remarks, __('**Remarks from the Research Office:** :remarks', ['remarks' => self::plain((string) $this->remarks)]))
             ->line($passed
@@ -46,7 +46,7 @@ class ConceptReviewed extends PortalNotification
     {
         // Written in full for the faculty who read it: what was decided, on which project, and what to do next.
         return $this->decision === 'passed'
-            ? __('The Research Office has passed your concept proposal for “:title”. You may now upload the detailed proposal.', ['title' => $this->submission->displayTitle()])
+            ? __('Your concept proposal for “:title” has passed the Research Office’s review. You may now upload the detailed proposal.', ['title' => $this->submission->displayTitle()])
             : __('The Research Office has returned your concept proposal for “:title” for revision. Please read the remarks on the project page, then upload a revised concept proposal.', ['title' => $this->submission->displayTitle()]);
     }
 

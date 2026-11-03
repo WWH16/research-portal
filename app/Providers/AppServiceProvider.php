@@ -10,6 +10,7 @@ use App\Notifications\EmailFailed;
 use Carbon\CarbonImmutable;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,14 @@ class AppServiceProvider extends ServiceProvider
         // Livewire re-runs only these of a page's route middleware on each button click, so a role taken away
         // while the page is open also takes away its actions.
         Livewire::addPersistentMiddleware([EnsureUserIsAdmin::class, EnsureUserIsApproved::class, EnsureUserIsFaculty::class]);
+
+        // A device signed out because the password changed elsewhere says so on the sign-in page, instead of looking
+        // like an expired session.
+        AuthenticateSession::redirectUsing(function () {
+            session()->flash('status', __('Your password was changed, so you have been signed out on this device. Please sign in with your new password.'));
+
+            return route('login');
+        });
 
         $this->reportFailedEmails();
     }

@@ -37,6 +37,16 @@ class SessionsEndOnPasswordChangeTest extends TestCase
 
         $this->get(route('dashboard'))->assertRedirect(route('login'));
         $this->assertGuest();
+
+        // The sign-in page says why, so it doesn't look like an expired session.
+        $this->get(route('login'))->assertSee('Your password was changed, so you have been signed out on this device.');
+    }
+
+    public function test_a_guest_sent_to_sign_in_sees_no_password_message(): void
+    {
+        $this->get(route('dashboard'))->assertRedirect(route('login'));
+
+        $this->get(route('login'))->assertDontSee('Your password was changed');
     }
 
     public function test_changing_your_own_password_signs_out_your_other_sessions_only(): void

@@ -32,5 +32,9 @@
         </template>
     </div>
 
-    <flux:error name="password_confirmation" />
+    {{-- The server's message hides once the field has text again, where the live note above speaks for it, so retrying
+         a wrong password never shows both. An emptied field shows "Confirm your password." again. --}}
+    <div x-show="! {{ $confirmation }}">
+        <flux:error name="password_confirmation" />
+    </div>
 </flux:field>

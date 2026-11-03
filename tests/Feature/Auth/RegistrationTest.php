@@ -158,6 +158,20 @@ class RegistrationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_the_server_mismatch_gives_way_to_the_live_check_once_the_field_is_edited(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+
+        // Both would say the passwords differ, so the server's message hides once the member types again.
+        $this->from(route('register'))->followingRedirects()->post(route('register.store'), [
+            'name' => 'John Doe',
+            'email' => 'test.user@isu.edu.ph',
+            'department_id' => $department->id,
+            'password' => 'password',
+            'password_confirmation' => 'passwrod',
+        ])->assertSeeInOrder(['x-show="! confirmation"', 'Passwords don’t match.'], escape: false);
+    }
+
     public function test_sign_up_errors_say_what_to_fix(): void
     {
         User::factory()->create(['email' => 'taken@isu.edu.ph']);

@@ -9,14 +9,25 @@
         (() => {
             const form = document.currentScript.closest('form');
 
+            // Google's documented stand-in: a submit before api.js has loaded waits for it instead of throwing, which
+            // would leave the button disabled.
+            window.grecaptcha ??= { ready: (callback) => ((window.___grecaptcha_cfg ??= {}).fns ??= []).push(callback) };
+
             form.addEventListener('submit', (event) => {
                 if (form.recaptcha_token.value) return;
 
                 event.preventDefault();
-                grecaptcha.ready(() => grecaptcha.execute(@js($key), { action: @js($action) }).then((token) => {
-                    form.recaptcha_token.value = token;
+
+                // Google blocked or unreachable: the form goes anyway after 10 seconds, so the server answers and the
+                // button comes back, instead of the form waiting forever.
+                let timer;
+                const send = (token) => {
+                    clearTimeout(timer);
+                    form.recaptcha_token.value = token || 'unavailable';
                     form.requestSubmit();
-                }));
+                };
+                timer = setTimeout(send, 10000);
+                grecaptcha.ready(() => grecaptcha.execute(@js($key), { action: @js($action) }).then(send, () => send()));
             });
         })();
     </script>

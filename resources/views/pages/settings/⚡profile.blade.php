@@ -1,15 +1,20 @@
 <?php
 
+use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Notifications\EmailChanged;
 use App\Services\DocumentStorage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -17,11 +22,12 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 new #[Title('My Profile')] class extends Component {
-    use ProfileValidationRules, WithFileUploads;
+    use PasswordValidationRules, ProfileValidationRules, WithFileUploads;
 
     public string $name = '';
     public string $email = '';
     public string $mobile = '';
+    public string $current_password = '';
 
     /** @var TemporaryUploadedFile|null */
     public $photo = null;
@@ -70,20 +76,30 @@ new #[Title('My Profile')] class extends Component {
         $validated = $this->validate([
             ...$this->profileRules($user->id),
             'mobile' => ['nullable', 'string', 'max:20'],
+            // A new email moves where reset links go, so it needs the password, as a new password does on Security.
+            'current_password' => [Rule::excludeIf($this->email === $user->email), ...$this->currentPasswordRules()],
         ]);
 
         $validated['mobile'] = $validated['mobile'] ?: null;
 
-        $user->fill($validated);
+        // Read before the change: only an address the member confirmed is told of it, since an unconfirmed one may not be theirs.
+        $confirmed = $user->hasVerifiedEmail();
+        $user->fill(Arr::except($validated, 'current_password'));
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
 
         $user->save();
+        $this->reset('current_password');
 
         if ($user->wasChanged('email')) {
-            ActivityLog::record('auth.email_changed', properties: ['from' => $user->getPrevious()['email'], 'to' => $user->email]);
+            $previous = $user->getPrevious()['email'];
+            ActivityLog::record('auth.email_changed', properties: ['from' => $previous, 'to' => $user->email]);
+
+            if ($confirmed) {
+                Notification::route('mail', $previous)->notify(new EmailChanged($previous, $user->email));
+            }
 
             // As Fortify's own profile update does: the new address gets its link now, without pressing Resend.
             if (! $this->sendVerificationLink($user)) {
@@ -349,6 +365,11 @@ new #[Title('My Profile')] class extends Component {
                                 </flux:text>
                             @endif
                         @endif
+
+                        {{-- Only while the address is being changed: a new one moves where reset links go --}}
+                        <div x-show="$wire.email.trim() !== @js($user->email)" x-cloak class="mt-4">
+                            <flux:input wire:model="current_password" :label="__('Current password')" :description:trailing="__('Needed to change your email address.')" type="password" autocomplete="current-password" viewable data-test="email-change-password" />
+                        </div>
                     </div>
 
                     <flux:input wire:model="mobile" :label="__('Mobile')" :badge="__('Optional')" type="tel" maxlength="20" autocomplete="tel" />

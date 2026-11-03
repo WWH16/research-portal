@@ -3,8 +3,10 @@
 namespace Tests\Feature\Settings;
 
 use App\Models\User;
+use App\Notifications\EmailChanged;
 use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -29,6 +31,7 @@ class ProfileUpdateTest extends TestCase
         $response = Livewire::test('pages::settings.profile')
             ->set('name', 'Test User')
             ->set('email', 'test.user@isu.edu.ph')
+            ->set('current_password', 'password')
             ->call('updateProfileInformation');
 
         $response->assertHasNoErrors();
@@ -76,7 +79,7 @@ class ProfileUpdateTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        Livewire::test('pages::settings.profile')->set('email', 'new.address@isu.edu.ph')->call('updateProfileInformation')->assertHasNoErrors();
+        Livewire::test('pages::settings.profile')->set('email', 'new.address@isu.edu.ph')->set('current_password', 'password')->call('updateProfileInformation')->assertHasNoErrors();
         Notification::assertSentTo($user, QueuedVerifyEmail::class);
 
         // Saving again with the same address sends nothing more.
@@ -97,13 +100,74 @@ class ProfileUpdateTest extends TestCase
         Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 6);
 
         // A new address still saves at the limit; its link waits for a re-send.
-        $profile->set('email', 'new.address@isu.edu.ph')->call('updateProfileInformation')->assertHasNoErrors();
+        $profile->set('email', 'new.address@isu.edu.ph')->set('current_password', 'password')->call('updateProfileInformation')->assertHasNoErrors();
         $this->assertSame('new.address@isu.edu.ph', $user->refresh()->email);
         Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 6);
 
         $this->travel(61)->seconds();
         $profile->call('resendVerificationNotification');
         Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 7);
+    }
+
+    public function test_a_new_email_address_needs_the_current_password(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'old@isu.edu.ph']);
+        $this->actingAs($user);
+
+        foreach (['' => 'required', 'wrong-password' => 'current_password'] as $password => $rule) {
+            Livewire::test('pages::settings.profile')
+                ->set('email', 'new.address@isu.edu.ph')
+                ->set('current_password', $password)
+                ->call('updateProfileInformation')
+                ->assertHasErrors(['current_password' => $rule]);
+        }
+
+        $this->assertSame('old@isu.edu.ph', $user->refresh()->email);
+        Notification::assertNothingSent();
+    }
+
+    public function test_the_old_address_is_told_when_the_email_changes(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'old@isu.edu.ph']);
+        $this->actingAs($user);
+
+        Livewire::test('pages::settings.profile')
+            ->set('email', 'new.address@isu.edu.ph')
+            ->set('current_password', 'password')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors()
+            ->assertSet('current_password', '');
+
+        Notification::assertSentOnDemand(EmailChanged::class, function (EmailChanged $notification, array $channels, object $notifiable) {
+            return $notifiable->routes['mail'] === 'old@isu.edu.ph' && $notification->to === 'new.address@isu.edu.ph';
+        });
+    }
+
+    public function test_an_unconfirmed_old_address_is_not_told(): void
+    {
+        Notification::fake();
+        $this->actingAs(User::factory()->unverified()->create(['email' => 'typo@isu.edu.ph']));
+
+        Livewire::test('pages::settings.profile')
+            ->set('email', 'right.address@isu.edu.ph')
+            ->set('current_password', 'password')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        Notification::assertSentOnDemandTimes(EmailChanged::class, 0);
+    }
+
+    public function test_the_email_change_notice_is_worded_for_the_old_address(): void
+    {
+        $mail = (new EmailChanged('first_last@isu.edu.ph', 'new.address@isu.edu.ph'))->toMail(new AnonymousNotifiable);
+        $html = (string) $mail->render();
+
+        $this->assertSame('Your Faculty Research Portal email address was changed', $mail->subject);
+        $this->assertStringContainsString('first_last@isu.edu.ph', $html);
+        $this->assertStringContainsString('new.address@isu.edu.ph', $html);
+        $this->assertStringContainsString('contact the Research Office right away', $html);
     }
 
     public function test_members_cannot_delete_their_own_account_from_the_profile(): void

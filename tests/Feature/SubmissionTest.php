@@ -990,6 +990,38 @@ class SubmissionTest extends TestCase
         $component->set('statusFilter', 'revision')->assertSet('paginators.page', 1);
     }
 
+    public function test_the_list_redraws_for_an_admin_when_the_review_queue_moves(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $page = Livewire::test('pages::submissions.index')->assertDontSee('Arrived While Open');
+
+        $maria->submissions()->sole()->replicate()->fill(['title' => 'Arrived While Open'])->save();
+
+        // A count an admin's list doesn't follow leaves it as it was; a new proposal to review redraws it.
+        $page->dispatch('open-work-changed', changed: ['unread'])->assertDontSee('Arrived While Open');
+        $page->dispatch('open-work-changed', changed: ['toReview'])->assertSee('Arrived While Open');
+    }
+
+    public function test_the_list_redraws_for_faculty_when_a_review_reaches_them(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs($maria);
+
+        $page = Livewire::test('pages::submissions.index')->assertDontSee('Concept passed');
+
+        // Passing leaves nothing to revise, so only the notice it sends moves a count faculty have.
+        $project->update(['awaiting_review' => false, 'concept_passed' => true]);
+        $page->dispatch('open-work-changed', changed: ['toReview'])->assertDontSee('Concept passed');
+        $page->dispatch('open-work-changed', changed: ['unread'])->assertSee('Concept passed');
+
+        // Returning it moves the count of projects to revise.
+        $project->update(['concept_passed' => false]);
+        $page->dispatch('open-work-changed', changed: ['toRevise'])->assertSee('Concept needs revision');
+    }
+
     public function test_the_list_and_the_review_panel_load_only_what_they_show(): void
     {
         [$maria] = $this->twoFacultyWithSubmissions();

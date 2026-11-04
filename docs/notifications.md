@@ -22,7 +22,7 @@ Every member also gets, by email only:
 - **Reset your password**, from Forgot password.
 - **Password changed**, after they change it on the Security page or through a reset link, or when the Research Office sets a new one on Manage Users. It never shows the new password.
 
-New concept proposals and sign-ups waiting for approval have no notice: the Concept Reviews and Manage Users badges count them live.
+New concept proposals and sign-ups waiting for approval have no notice: the Concept Reviews and Manage Users badges count them. The badges check every minute, and pause after 5 minutes without mouse movement so that an unattended tab lets the app sleep on Laravel Cloud. Moving the mouse, opening a link, or returning to the tab checks again at once.
 
 Members choose which faculty notices also come by email under My Profile → Email me about. Members with an unconfirmed email address get the notice in the portal only.
 

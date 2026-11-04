@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -93,6 +94,20 @@ new #[Title('Submissions')] class extends Component {
     public function submissions(): LengthAwarePaginator
     {
         return $this->filtered()->latest()->paginate(15);
+    }
+
+    /**
+     * Redraw only when the sidebar finds a count that means this list moved: a proposal to review for admins, and for
+     * faculty a project to revise or a notice, since passing a concept sends a notice but leaves nothing to revise.
+     *
+     * @param  list<string>  $changed
+     */
+    #[On('open-work-changed')]
+    public function openWorkChanged(array $changed): void
+    {
+        if (! array_intersect($changed, $this->monitoring ? ['toReview'] : ['toRevise', 'unread'])) {
+            $this->skipRender();
+        }
     }
 
     /**

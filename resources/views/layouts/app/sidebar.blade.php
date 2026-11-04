@@ -11,17 +11,28 @@
         // Two digits at most, so the badge never crowds the label; the hover title keeps the exact count.
         $capped = fn (int $count) => $count > 99 ? '99+' : $count;
     @endphp
-    {{-- The counts are asked for again every minute while the tab is in view, and as soon as it comes back into view.
+    {{-- The counts are asked for again every minute while the tab is in view and the mouse has moved in the last 5 minutes,
+         so a forgotten tab lets the app and database sleep on Laravel Cloud and lets its session end. Moving the mouse after
+         that, or coming back to the tab, asks at once; a session that ended meanwhile reloads into the sign-in page.
          Pages showing a count that moved hear of it through the open-work-changed event and redraw. --}}
     <body class="min-h-screen bg-surface"
         x-data="{
             ...@js($work),
             timer: null,
-            init() { this.timer = setInterval(() => document.hidden || this.refresh(), 60000) },
+            lastActive: Date.now(),
+            idle() { return Date.now() - this.lastActive > 300000 },
+            active() {
+                if (this.idle()) this.refresh()
+                this.lastActive = Date.now()
+            },
+            init() { this.timer = setInterval(() => document.hidden || this.idle() || this.refresh(), 60000) },
             destroy() { clearInterval(this.timer) },
             refresh() {
                 fetch(@js(route('open-work')), { headers: { Accept: 'application/json' } })
-                    .then(response => response.ok ? response.json() : null)
+                    .then(response => {
+                        if (response.status === 401) location.reload()
+                        return response.ok ? response.json() : null
+                    })
                     .then(work => {
                         if (! work) return
                         const changed = Object.keys(work).filter(key => work[key] !== this[key])
@@ -30,7 +41,8 @@
                     })
             },
         }"
-        x-on:visibilitychange.document="document.hidden || refresh()"
+        x-on:mousemove.window.throttle.5000ms="active()"
+        x-on:visibilitychange.document="if (! document.hidden) { lastActive = Date.now(); refresh() }"
         x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label"
         x-on:open-work-stale.window="refresh()">
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}

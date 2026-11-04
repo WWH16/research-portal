@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -224,14 +225,16 @@ class GoogleDrivePageTest extends TestCase
             ->assertDispatched('toast-show', fn ($name, $params) => $params['slots']['text'] === 'Storage account changed. New uploads go to email1@gmail.com.');
     }
 
-    public function test_the_change_warning_counts_the_documents_on_the_current_account(): void
+    public function test_the_change_warning_counts_every_file_on_the_current_account(): void
     {
         $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
-        $this->documentsOn($email1, 3);
+        $this->documentsOn($email1, 1);
+        $this->memoOn($email1);
+        $this->photoOn($email1);
 
         $this->actingAs($this->admin)
             ->get(route('google-drive.index'))
-            ->assertSee('The 3 documents on email1@gmail.com stay there');
+            ->assertSee('The 3 files on email1@gmail.com stay there');
     }
 
     public function test_the_page_names_earlier_accounts_that_still_hold_documents(): void
@@ -332,14 +335,15 @@ class GoogleDrivePageTest extends TestCase
         $this->assertTrue($connection->fresh()->isConnected());
     }
 
-    public function test_the_disconnect_warning_counts_the_documents_that_stop_opening(): void
+    public function test_the_disconnect_warning_counts_the_files_that_stop_opening(): void
     {
         $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com']);
-        $this->documentsOn($email1, 2);
+        $this->documentsOn($email1, 1);
+        $this->memoOn($email1);
 
         $this->actingAs($this->admin)
             ->get(route('google-drive.index'))
-            ->assertSee('2 documents on email1@gmail.com can’t be opened until you connect again');
+            ->assertSee('2 files on email1@gmail.com can’t be opened until you connect again');
     }
 
     public function test_the_system_menu_links_to_the_page(): void
@@ -560,5 +564,61 @@ class GoogleDrivePageTest extends TestCase
         // The current account's row comes first, then the earlier one's.
         preg_match_all('/\d+/', strip_tags(Str::before(Str::after($html, 'data-test="drive-accounts"'), '</table>')), $counts);
         $this->assertSame(['0', '0', '2', '2', '1', '0'], $counts[0]);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function filesOutsideProjects(): array
+    {
+        return ['a memo' => ['memoOn'], 'a profile photo' => ['photoOn']];
+    }
+
+    #[DataProvider('filesOutsideProjects')]
+    public function test_changing_the_account_keeps_one_holding_only_a_file_outside_projects(string $fileOn): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'refresh_token' => 'email1-token']);
+        $this->{$fileOn}($email1);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('revoke'));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'email1@gmail.com')
+            ->set('newEmail', 'email2@gmail.com')
+            ->set('newEmail_confirmation', 'email2@gmail.com')
+            ->set('password', 'password')
+            ->call('changeAccount')
+            ->assertHasNoErrors();
+
+        $this->assertNotNull($email1->fresh()?->retired_at);
+        $this->assertSame('email1-token', $email1->fresh()->refresh_token);
+    }
+
+    #[DataProvider('filesOutsideProjects')]
+    public function test_an_earlier_account_holding_only_a_file_outside_projects_is_never_removed(string $fileOn): void
+    {
+        $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        $this->{$fileOn}($email1);
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldNotReceive('revoke'));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->assertDontSeeHtml('data-test="remove-earlier-button"')
+            ->call('removeEarlier', $email1->id);
+
+        $this->assertNotNull($email1->fresh());
+    }
+
+    #[DataProvider('filesOutsideProjects')]
+    public function test_a_disconnected_earlier_account_holding_only_a_file_outside_projects_can_be_reconnected(string $fileOn): void
+    {
+        $email1 = GoogleDriveConnection::factory()->unconnected()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
+        $this->{$fileOn}($email1);
+        GoogleDriveConnection::factory()->create(['email' => 'email2@gmail.com']);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSeeHtml('aria-label="Reconnect email1@gmail.com"');
     }
 }

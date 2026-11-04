@@ -2,7 +2,6 @@
 
 use App\Models\ActivityLog;
 use App\Models\GoogleDriveConnection;
-use App\Models\Submission;
 use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
 use Flux\Flux;
@@ -43,18 +42,18 @@ new #[Title('Google Drive')] class extends Component {
     }
 
     #[Computed]
-    public function currentDocuments(): int
+    public function currentFiles(): int
     {
-        return $this->accounts->first(fn (array $row) => ! $row['account']->retired_at)['documents'] ?? 0;
+        return $this->accounts->first(fn (array $row) => ! $row['account']->retired_at)['files'] ?? 0;
     }
 
     /**
-     * Every storage account that matters, each with how many documents it holds: the current one first, then
-     * earlier ones newest first. Earlier accounts stay connected so their documents keep opening. One whose
-     * documents were all replaced is listed while it is still connected, so it can be removed; one that holds
+     * Every storage account that matters, each with how many files it holds: the current one first, then
+     * earlier ones newest first. Earlier accounts stay connected so their files keep opening. One whose
+     * files were all replaced is listed while it is still connected, so it can be removed; one that holds
      * nothing and isn't connected is left out. Counted in one query per kind of file, since every click on the page asks again.
      *
-     * @return Collection<int, array{account: GoogleDriveConnection, documents: int, memos: int, photos: int}>
+     * @return Collection<int, array{account: GoogleDriveConnection, documents: int, memos: int, photos: int, files: int}>
      */
     #[Computed]
     public function accounts(): Collection
@@ -62,13 +61,12 @@ new #[Title('Google Drive')] class extends Component {
         $files = GoogleDriveConnection::filesPerAccount();
 
         return GoogleDriveConnection::orderByRaw('retired_at is not null')->latest('retired_at')->get()
-            ->map(fn (GoogleDriveConnection $account) => [
-                'account' => $account,
-                'documents' => $files['documents']->get($account->id, 0),
-                'memos' => $files['memos']->get($account->id, 0),
-                'photos' => $files['photos']->get($account->id, 0),
-            ])
-            ->filter(fn (array $row) => ! $row['account']->retired_at || $row['documents'] > 0 || $row['account']->isConnected())
+            ->map(function (GoogleDriveConnection $account) use ($files) {
+                $counts = array_map(fn (Collection $kind) => $kind->get($account->id, 0), $files);
+
+                return ['account' => $account, ...$counts, 'files' => array_sum($counts)];
+            })
+            ->filter(fn (array $row) => ! $row['account']->retired_at || $row['files'] > 0 || $row['account']->isConnected())
             ->values();
     }
 
@@ -162,13 +160,13 @@ new #[Title('Google Drive')] class extends Component {
 
     /**
      * Remove an earlier account that holds nothing any more and give its access back to Google. One that still
-     * holds documents is never removed: they would stop opening.
+     * holds files is never removed: they would stop opening.
      */
     public function removeEarlier(int $id): void
     {
         $account = GoogleDriveConnection::whereNotNull('retired_at')->find($id);
 
-        if (! $account || Submission::documentsPerAccount()->get($account->id, 0) > 0) {
+        if (! $account || $account->holdsFiles()) {
             return;
         }
 
@@ -208,7 +206,7 @@ new #[Title('Google Drive')] class extends Component {
 
     /**
      * Point new uploads at another Google account, for example when the current Drive is full. Nothing moves:
-     * the current account is retired with its access kept, so its documents keep opening. Switching back to an
+     * the current account is retired with its access kept, so its files keep opening. Switching back to an
      * earlier account reuses it, folder and all. Retyping the address and the admin's password make it deliberate.
      */
     public function changeAccount(): void
@@ -231,8 +229,8 @@ new #[Title('Google Drive')] class extends Component {
             return;
         }
 
-        // An account that holds no documents is replaced rather than kept, and its access given back to Google below.
-        $keep = Submission::documentsPerAccount()->get($current->id, 0) > 0;
+        // An account that holds no files is replaced rather than kept, and its access given back to Google below.
+        $keep = $current->holdsFiles();
 
         DB::transaction(function () use ($current, $keep) {
             $keep ? $current->update(['retired_at' => now()]) : $current->delete();
@@ -250,7 +248,7 @@ new #[Title('Google Drive')] class extends Component {
 
         $this->resetConfirmation();
         Flux::modal('drive-change')->close();
-        unset($this->connection, $this->currentDocuments, $this->accounts);
+        unset($this->connection, $this->currentFiles, $this->accounts);
         // Switching back to an earlier account that kept its access leaves nothing to connect.
         Flux::toast(variant: 'success', text: $this->connection->isConnected()
             ? __('Storage account changed. New uploads go to :email.', ['email' => $this->connection->email])
@@ -264,7 +262,7 @@ new #[Title('Google Drive')] class extends Component {
 
     /**
      * Revoke the portal's access to the current account at Google. The account and its folder stay, so its
-     * documents open again once the same account is connected.
+     * files open again once the same account is connected.
      */
     public function disconnect(): void
     {
@@ -465,11 +463,11 @@ new #[Title('Google Drive')] class extends Component {
         @endisland
     @endif
 
-    {{-- Documents stay on the account that saved them, so the accounts an admin moved away from still matter --}}
+    {{-- Files stay on the account that saved them, so the accounts an admin moved away from still matter --}}
     @if ($this->accounts->isNotEmpty())
         <div class="mt-8 border-t border-line pt-6" data-test="drive-accounts">
             <flux:heading size="lg" level="2">{{ __('Storage accounts') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Documents stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
+            <flux:text class="mt-1">{{ __('Files stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
 
             {{-- Emails wrap rather than widen the table; on a phone it scrolls sideways to reach the counts --}}
             <div class="mt-3 overflow-x-auto">
@@ -501,9 +499,9 @@ new #[Title('Google Drive')] class extends Component {
                                         @else
                                             <flux:badge size="sm" color="red">{{ __('Not connected') }}</flux:badge>
                                         @endif
-                                        @if ($row['account']->retired_at && ! $row['documents'])
+                                        @if ($row['account']->retired_at && ! $row['files'])
                                             <flux:button size="sm" variant="danger" wire:click="removeEarlier({{ $row['account']->id }})"
-                                                wire:confirm="{{ __('Remove :email? It holds no documents. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
+                                                wire:confirm="{{ __('Remove :email? It holds no files. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
                                                 :aria-label="__('Remove :email', ['email' => $row['account']->email])"
                                                 data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
                                         @elseif (! $row['account']->isConnected())
@@ -565,9 +563,9 @@ new #[Title('Google Drive')] class extends Component {
                 @if ($step === 1)
                     <div class="flex flex-col gap-3">
                         <flux:text>
-                            {{ $this->currentDocuments
-                                ? trans_choice('{1} New uploads go to the new account. The 1 document on :email stays there and keeps opening, so don’t delete that account.|[2,*] New uploads go to the new account. The :count documents on :email stay there and keep opening, so don’t delete that account.', $this->currentDocuments, ['email' => $this->connection->email])
-                                : __('New uploads go to the new account. :email holds no documents yet.', ['email' => $this->connection->email]) }}
+                            {{ $this->currentFiles
+                                ? trans_choice('{1} New uploads go to the new account. The 1 file on :email stays there and keeps opening, so don’t delete that account.|[2,*] New uploads go to the new account. The :count files on :email stay there and keep opening, so don’t delete that account.', $this->currentFiles, ['email' => $this->connection->email])
+                                : __('New uploads go to the new account. :email holds no files yet.', ['email' => $this->connection->email]) }}
                         </flux:text>
                         <flux:text>{{ __('Until the new account is connected, uploads fail.') }}</flux:text>
                     </div>
@@ -615,7 +613,7 @@ new #[Title('Google Drive')] class extends Component {
                     @if ($step === 1)
                         <div class="flex flex-col gap-3">
                             <flux:text>
-                                {{ trans_choice('{0} Uploads stop until you connect again. No documents are stored on :email yet.|{1} Uploads stop, and 1 document on :email can’t be opened until you connect again.|[2,*] Uploads stop, and :count documents on :email can’t be opened until you connect again.', $this->currentDocuments, ['email' => $this->connection->email]) }}
+                                {{ trans_choice('{0} Uploads stop until you connect again. No files are stored on :email yet.|{1} Uploads stop, and 1 file on :email can’t be opened until you connect again.|[2,*] Uploads stop, and :count files on :email can’t be opened until you connect again.', $this->currentFiles, ['email' => $this->connection->email]) }}
                             </flux:text>
                             <flux:text>{{ __('The files stay on Google Drive. Connect the same account to bring them back.') }}</flux:text>
                         </div>
@@ -629,7 +627,7 @@ new #[Title('Google Drive')] class extends Component {
                     @else
                         <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }"
                             x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
-                            <flux:text>{{ __('Uploads stop, and documents on this account can’t be opened until you connect again.') }}</flux:text>
+                            <flux:text>{{ __('Uploads stop, and files on this account can’t be opened until you connect again.') }}</flux:text>
 
                             <flux:field>
                                 <flux:label>{{ __('Current account') }}</flux:label>

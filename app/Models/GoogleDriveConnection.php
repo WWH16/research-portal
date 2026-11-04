@@ -74,6 +74,14 @@ class GoogleDriveConnection extends Model
     }
 
     /**
+     * Whether any file still depends on this account, so removing it would stop that file opening.
+     */
+    public function holdsFiles(): bool
+    {
+        return collect(self::filesPerAccount())->contains(fn (Collection $kind) => $kind->has($this->id));
+    }
+
+    /**
      * Count saved paths by the account each one names, as "drive-{account id}/...". A path naming no account counts for none.
      *
      * @param  Collection<array-key, string|null>  $paths

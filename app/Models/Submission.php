@@ -14,7 +14,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
@@ -162,20 +161,6 @@ class Submission extends Model
         $query->where(fn ($query) => $query
             ->where('user_id', $user->id)
             ->orWhereHas('proponents', fn ($query) => $query->where('user_id', $user->id)));
-    }
-
-    /**
-     * How many documents each storage account holds, keyed by account id, from one query over every project's
-     * saved paths ("drive-{account id}/...").
-     *
-     * @return Collection<int, int>
-     */
-    public static function documentsPerAccount(): Collection
-    {
-        $columns = array_map(fn (string $stage) => $stage.'_path', array_keys(self::DOCUMENTS));
-
-        return GoogleDriveConnection::countByAccount(static::query()->toBase()->get($columns)
-            ->flatMap(fn (object $row) => array_values((array) $row)));
     }
 
     /**

@@ -470,58 +470,56 @@ new #[Title('Google Drive')] class extends Component {
             <flux:text class="mt-1">{{ __('Files stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
 
             {{-- Emails wrap rather than widen the table; on a phone it scrolls sideways to reach the counts --}}
-            <div class="mt-3 overflow-x-auto">
-                <flux:table class="w-full min-w-[46rem]">
-                    <flux:table.columns>
-                        {{-- Flux tables share columns evenly, so the others are sized to their headings and the emails take the rest --}}
-                        <flux:table.column>{{ __('Google account') }}</flux:table.column>
-                        <flux:table.column class="w-44">{{ __('Status') }}</flux:table.column>
-                        <flux:table.column align="end" class="w-36">{{ __('Project documents') }}</flux:table.column>
-                        <flux:table.column align="end" class="w-20">{{ __('Memos') }}</flux:table.column>
-                        <flux:table.column align="end" class="w-28">{{ __('Profile photos') }}</flux:table.column>
-                    </flux:table.columns>
+            <flux:table class="mt-3 w-full min-w-[46rem]">
+                <flux:table.columns>
+                    {{-- Flux tables share columns evenly, so the others are sized to their headings and the emails take the rest --}}
+                    <flux:table.column>{{ __('Google account') }}</flux:table.column>
+                    <flux:table.column class="w-44">{{ __('Status') }}</flux:table.column>
+                    <flux:table.column align="end" class="w-36">{{ __('Project documents') }}</flux:table.column>
+                    <flux:table.column align="end" class="w-20">{{ __('Memos') }}</flux:table.column>
+                    <flux:table.column align="end" class="w-28">{{ __('Profile photos') }}</flux:table.column>
+                </flux:table.columns>
 
-                    <flux:table.rows>
-                        @foreach ($this->accounts as $row)
-                            <flux:table.row :key="$row['account']->id">
-                                {{-- The whole address, wrapped (Flux tables don't wrap by default) and preferably before the @:
-                                     the admin must sign in to Google as exactly this account --}}
-                                <flux:table.cell variant="strong" class="whitespace-normal wrap-anywhere">
-                                    {{ str($row['account']->email)->before('@') }}<wbr>{{ str($row['account']->email)->after('@')->prepend('@') }}
-                                    <flux:text size="sm" class="font-normal">{{ $row['account']->retired_at ? __('Earlier') : __('Current') }}</flux:text>
-                                </flux:table.cell>
-                                <flux:table.cell>
-                                    {{-- The fix sits beside the status it fixes, on every row that needs one. Each button names its
-                                         account, since a screen reader's list of links shows the label alone. --}}
-                                    <div class="flex flex-wrap items-center gap-1.5">
-                                        @if ($row['account']->isConnected())
-                                            <flux:badge size="sm" color="green">{{ __('Connected') }}</flux:badge>
-                                        @else
-                                            <flux:badge size="sm" color="red">{{ __('Not connected') }}</flux:badge>
-                                        @endif
-                                        @if ($row['account']->retired_at && ! $row['files'])
-                                            <flux:button size="sm" variant="danger" wire:click="removeEarlier({{ $row['account']->id }})"
-                                                wire:confirm="{{ __('Remove :email? It holds no files. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
-                                                :aria-label="__('Remove :email', ['email' => $row['account']->email])"
-                                                data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
-                                        @elseif (! $row['account']->isConnected())
-                                            @php($verb = $row['account']->retired_at ? __('Reconnect') : __('Connect'))
-                                            <flux:button size="sm" :href="route('google-drive.connect', ['account' => $row['account']->id])" :aria-label="$verb.' '.$row['account']->email"
-                                                x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
-                                                <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
-                                                {{ $verb }}
-                                            </flux:button>
-                                        @endif
-                                    </div>
-                                </flux:table.cell>
-                                <flux:table.cell align="end" class="tabular-nums">{{ $row['documents'] }}</flux:table.cell>
-                                <flux:table.cell align="end" class="tabular-nums">{{ $row['memos'] }}</flux:table.cell>
-                                <flux:table.cell align="end" class="tabular-nums">{{ $row['photos'] }}</flux:table.cell>
-                            </flux:table.row>
-                        @endforeach
-                    </flux:table.rows>
-                </flux:table>
-            </div>
+                <flux:table.rows>
+                    @foreach ($this->accounts as $row)
+                        <flux:table.row :key="$row['account']->id">
+                            {{-- The whole address, wrapped (Flux tables don't wrap by default) and preferably before the @:
+                                 the admin must sign in to Google as exactly this account --}}
+                            <flux:table.cell variant="strong" class="whitespace-normal wrap-anywhere">
+                                {{ str($row['account']->email)->before('@') }}<wbr>{{ str($row['account']->email)->after('@')->prepend('@') }}
+                                <flux:text size="sm" class="font-normal">{{ $row['account']->retired_at ? __('Earlier') : __('Current') }}</flux:text>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                {{-- The fix sits beside the status it fixes, on every row that needs one. Each button names its
+                                     account, since a screen reader's list of links shows the label alone. --}}
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    @if ($row['account']->isConnected())
+                                        <flux:badge size="sm" color="green">{{ __('Connected') }}</flux:badge>
+                                    @else
+                                        <flux:badge size="sm" color="red">{{ __('Not connected') }}</flux:badge>
+                                    @endif
+                                    @if ($row['account']->retired_at && ! $row['files'])
+                                        <flux:button size="sm" variant="danger" wire:click="removeEarlier({{ $row['account']->id }})"
+                                            wire:confirm="{{ __('Remove :email? It holds no files. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
+                                            :aria-label="__('Remove :email', ['email' => $row['account']->email])"
+                                            data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
+                                    @elseif (! $row['account']->isConnected())
+                                        @php($verb = $row['account']->retired_at ? __('Reconnect') : __('Connect'))
+                                        <flux:button size="sm" :href="route('google-drive.connect', ['account' => $row['account']->id])" :aria-label="$verb.' '.$row['account']->email"
+                                            x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
+                                            <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
+                                            {{ $verb }}
+                                        </flux:button>
+                                    @endif
+                                </div>
+                            </flux:table.cell>
+                            <flux:table.cell align="end" class="tabular-nums">{{ $row['documents'] }}</flux:table.cell>
+                            <flux:table.cell align="end" class="tabular-nums">{{ $row['memos'] }}</flux:table.cell>
+                            <flux:table.cell align="end" class="tabular-nums">{{ $row['photos'] }}</flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
         </div>
     @endif
 

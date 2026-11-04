@@ -66,8 +66,10 @@ class GoogleDriveConnection extends Model
      */
     public static function filesPerAccount(): array
     {
+        $documentColumns = array_map(fn (string $stage) => $stage.'_path', array_keys(Submission::DOCUMENTS));
+
         return [
-            'documents' => Submission::documentsPerAccount(),
+            'documents' => self::countByAccount(Submission::query()->toBase()->get($documentColumns)->flatMap(fn (object $row) => array_values((array) $row))),
             'memos' => self::countByAccount(Announcement::query()->toBase()->pluck('attachment_path')),
             'photos' => self::countByAccount(User::query()->toBase()->pluck('profile_image')),
         ];
@@ -87,7 +89,7 @@ class GoogleDriveConnection extends Model
      * @param  Collection<array-key, string|null>  $paths
      * @return Collection<int, int>
      */
-    public static function countByAccount(Collection $paths): Collection
+    private static function countByAccount(Collection $paths): Collection
     {
         return $paths
             ->filter(fn (?string $path) => $path !== null && str_starts_with($path, 'drive-'))

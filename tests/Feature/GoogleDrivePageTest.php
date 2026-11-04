@@ -7,7 +7,6 @@ use App\Models\Announcement;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\GoogleDriveConnection;
-use App\Models\Submission;
 use App\Models\User;
 use App\Services\GoogleDrive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -528,7 +527,7 @@ class GoogleDrivePageTest extends TestCase
             ->assertDontSee('Google Drive is almost full');
     }
 
-    public function test_each_section_is_a_real_heading_and_documents_are_counted_in_one_query(): void
+    public function test_each_section_is_a_real_heading_and_files_are_counted_in_one_query_per_kind(): void
     {
         $email1 = GoogleDriveConnection::factory()->create(['email' => 'email1@gmail.com', 'retired_at' => now()]);
         $this->documentsOn($email1, 2);
@@ -541,8 +540,8 @@ class GoogleDrivePageTest extends TestCase
             ->assertSeeHtml('<h2')
             ->assertSeeInOrder(['Storage accounts', 'Recent changes']);
 
-        $this->assertSame([$email1->id => 2, $email2->id => 3], Submission::documentsPerAccount()->sortKeys()->all());
-        $this->assertQueriesAtMost(1, fn () => Submission::documentsPerAccount());
+        $this->assertSame([$email1->id => 2, $email2->id => 3], GoogleDriveConnection::filesPerAccount()['documents']->sortKeys()->all());
+        $this->assertQueriesAtMost(3, fn () => GoogleDriveConnection::filesPerAccount());
     }
 
     public function test_the_account_list_shows_each_kind_of_file_in_its_own_column(): void

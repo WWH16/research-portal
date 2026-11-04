@@ -52,17 +52,22 @@ new #[Title('Google Drive')] class extends Component {
      * Every storage account that matters, each with how many documents it holds: the current one first, then
      * earlier ones newest first. Earlier accounts stay connected so their documents keep opening. One whose
      * documents were all replaced is listed while it is still connected, so it can be removed; one that holds
-     * nothing and isn't connected is left out. Counted in one query, since every click on the page asks again.
+     * nothing and isn't connected is left out. Counted in one query per kind of file, since every click on the page asks again.
      *
-     * @return Collection<int, array{account: GoogleDriveConnection, documents: int}>
+     * @return Collection<int, array{account: GoogleDriveConnection, documents: int, memos: int, photos: int}>
      */
     #[Computed]
     public function accounts(): Collection
     {
-        $documents = Submission::documentsPerAccount();
+        $files = GoogleDriveConnection::filesPerAccount();
 
         return GoogleDriveConnection::orderByRaw('retired_at is not null')->latest('retired_at')->get()
-            ->map(fn (GoogleDriveConnection $account) => ['account' => $account, 'documents' => $documents->get($account->id, 0)])
+            ->map(fn (GoogleDriveConnection $account) => [
+                'account' => $account,
+                'documents' => $files['documents']->get($account->id, 0),
+                'memos' => $files['memos']->get($account->id, 0),
+                'photos' => $files['photos']->get($account->id, 0),
+            ])
             ->filter(fn (array $row) => ! $row['account']->retired_at || $row['documents'] > 0 || $row['account']->isConnected())
             ->values();
     }
@@ -466,14 +471,16 @@ new #[Title('Google Drive')] class extends Component {
             <flux:heading size="lg" level="2">{{ __('Storage accounts') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Documents stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
 
-            {{-- Emails wrap rather than widen the table, so all three columns fit a phone; it scrolls only if they can't --}}
+            {{-- Emails wrap rather than widen the table; on a phone it scrolls sideways to reach the counts --}}
             <div class="mt-3 overflow-x-auto">
-                <flux:table class="w-full">
+                <flux:table class="w-full min-w-[46rem]">
                     <flux:table.columns>
-                        {{-- Half the width for the emails, so they wrap only when a screen is too narrow for them --}}
-                        <flux:table.column class="w-1/2">{{ __('Google account') }}</flux:table.column>
-                        <flux:table.column>{{ __('Status') }}</flux:table.column>
-                        <flux:table.column align="end">{{ __('Documents') }}</flux:table.column>
+                        {{-- Flux tables share columns evenly, so the others are sized to their headings and the emails take the rest --}}
+                        <flux:table.column>{{ __('Google account') }}</flux:table.column>
+                        <flux:table.column class="w-44">{{ __('Status') }}</flux:table.column>
+                        <flux:table.column align="end" class="w-36">{{ __('Project documents') }}</flux:table.column>
+                        <flux:table.column align="end" class="w-20">{{ __('Memos') }}</flux:table.column>
+                        <flux:table.column align="end" class="w-28">{{ __('Profile photos') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
@@ -510,6 +517,8 @@ new #[Title('Google Drive')] class extends Component {
                                     </div>
                                 </flux:table.cell>
                                 <flux:table.cell align="end" class="tabular-nums">{{ $row['documents'] }}</flux:table.cell>
+                                <flux:table.cell align="end" class="tabular-nums">{{ $row['memos'] }}</flux:table.cell>
+                                <flux:table.cell align="end" class="tabular-nums">{{ $row['photos'] }}</flux:table.cell>
                             </flux:table.row>
                         @endforeach
                     </flux:table.rows>

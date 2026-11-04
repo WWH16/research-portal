@@ -15,7 +15,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -175,10 +174,8 @@ class Submission extends Model
     {
         $columns = array_map(fn (string $stage) => $stage.'_path', array_keys(self::DOCUMENTS));
 
-        return static::query()->toBase()->get($columns)
-            ->flatMap(fn (object $row) => array_values((array) $row))
-            ->filter(fn (?string $path) => $path !== null && str_starts_with($path, 'drive-'))
-            ->countBy(fn (string $path) => (int) Str::between($path, 'drive-', '/'));
+        return GoogleDriveConnection::countByAccount(static::query()->toBase()->get($columns)
+            ->flatMap(fn (object $row) => array_values((array) $row)));
     }
 
     /**

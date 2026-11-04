@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
+use App\Models\Announcement;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\GoogleDriveConnection;
@@ -47,6 +48,22 @@ class GoogleDrivePageTest extends TestCase
             'start_date' => now(),
             'target_date' => now()->addYear(),
         ] + array_fill_keys($paths, "drive-{$account->id}/submissions/file.pdf"));
+    }
+
+    /**
+     * An announcement with its memo saved on the given storage account.
+     */
+    private function memoOn(GoogleDriveConnection $account): void
+    {
+        Announcement::factory()->create()->forceFill(['attachment_path' => "drive-{$account->id}/announcements/memo.pdf", 'attachment_name' => 'memo.pdf'])->save();
+    }
+
+    /**
+     * A member with their profile photo saved on the given storage account.
+     */
+    private function photoOn(GoogleDriveConnection $account): void
+    {
+        User::factory()->create(['profile_image' => "drive-{$account->id}/profile-images/photo.jpg"]);
     }
 
     public function test_only_admins_open_the_google_drive_page(): void
@@ -522,5 +539,26 @@ class GoogleDrivePageTest extends TestCase
 
         $this->assertSame([$email1->id => 2, $email2->id => 3], Submission::documentsPerAccount()->sortKeys()->all());
         $this->assertQueriesAtMost(1, fn () => Submission::documentsPerAccount());
+    }
+
+    public function test_the_account_list_shows_each_kind_of_file_in_its_own_column(): void
+    {
+        $earlier = GoogleDriveConnection::factory()->create(['email' => 'earlier@gmail.com', 'retired_at' => now()]);
+        $this->documentsOn($earlier, 2);
+        $this->memoOn($earlier);
+        $current = GoogleDriveConnection::factory()->create(['email' => 'current@gmail.com']);
+        $this->photoOn($current);
+        $this->photoOn($current);
+        // A path that names no storage account counts for none of them.
+        User::factory()->create(['profile_image' => 'profile-images/old.jpg']);
+        $this->actingAs($this->admin);
+
+        $html = Livewire::test('pages::google-drive.index')
+            ->assertSeeInOrder(['Project documents', 'Memos', 'Profile photos'])
+            ->html();
+
+        // The current account's row comes first, then the earlier one's.
+        preg_match_all('/\d+/', strip_tags(Str::before(Str::after($html, 'data-test="drive-accounts"'), '</table>')), $counts);
+        $this->assertSame(['0', '0', '2', '2', '1', '0'], $counts[0]);
     }
 }

@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
  * A Google account whose Drive stores submission documents. The current one, without retired_at, takes new
@@ -54,6 +56,34 @@ class GoogleDriveConnection extends Model
     public static function current(): ?self
     {
         return static::whereNull('retired_at')->first();
+    }
+
+    /**
+     * How many files each account holds, by kind, each count keyed by account id. Every upload lands on the storage
+     * account, so a kind missing here is a file the Google Drive page can't see.
+     *
+     * @return array{documents: Collection<int, int>, memos: Collection<int, int>, photos: Collection<int, int>}
+     */
+    public static function filesPerAccount(): array
+    {
+        return [
+            'documents' => Submission::documentsPerAccount(),
+            'memos' => self::countByAccount(Announcement::query()->toBase()->pluck('attachment_path')),
+            'photos' => self::countByAccount(User::query()->toBase()->pluck('profile_image')),
+        ];
+    }
+
+    /**
+     * Count saved paths by the account each one names, as "drive-{account id}/...". A path naming no account counts for none.
+     *
+     * @param  Collection<array-key, string|null>  $paths
+     * @return Collection<int, int>
+     */
+    public static function countByAccount(Collection $paths): Collection
+    {
+        return $paths
+            ->filter(fn (?string $path) => $path !== null && str_starts_with($path, 'drive-'))
+            ->countBy(fn (string $path) => (int) Str::between($path, 'drive-', '/'));
     }
 
     /**

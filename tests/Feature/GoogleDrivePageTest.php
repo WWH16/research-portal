@@ -557,12 +557,23 @@ class GoogleDrivePageTest extends TestCase
         $this->actingAs($this->admin);
 
         $html = Livewire::test('pages::google-drive.index')
-            ->assertSeeInOrder(['Project documents', 'Memos', 'Profile photos'])
+            ->assertSeeInOrder(['Documents', 'Memos', 'Photos'])
             ->html();
 
-        // The current account's row comes first, then the earlier one's.
+        // The current account's row comes first, then the earlier one's. Each opens with the line phones read in place of the columns.
         preg_match_all('/\d+/', strip_tags(Str::before(Str::after($html, 'data-test="drive-accounts"'), '</table>')), $counts);
-        $this->assertSame(['0', '0', '2', '2', '1', '0'], $counts[0]);
+        $this->assertSame(['0', '0', '2', '0', '0', '2', '2', '1', '0', '2', '1', '0'], $counts[0]);
+        $this->assertStringContainsString('Documents: 2, memos: 1, photos: 0', $html);
+    }
+
+    public function test_the_account_list_is_named_by_its_heading_for_screen_readers(): void
+    {
+        GoogleDriveConnection::factory()->create();
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.index'))
+            ->assertSeeHtml('id="drive-accounts-heading"')
+            ->assertSeeHtml('aria-labelledby="drive-accounts-heading"');
     }
 
     /**

@@ -466,18 +466,19 @@ new #[Title('Google Drive')] class extends Component {
     {{-- Files stay on the account that saved them, so the accounts an admin moved away from still matter --}}
     @if ($this->accounts->isNotEmpty())
         <div class="mt-8 border-t border-line pt-6" data-test="drive-accounts">
-            <flux:heading size="lg" level="2">{{ __('Storage accounts') }}</flux:heading>
+            <flux:heading size="lg" level="2" id="drive-accounts-heading">{{ __('Storage accounts') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Files stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
 
-            {{-- Emails wrap rather than widen the table; on a phone it scrolls sideways to reach the counts --}}
-            <flux:table class="mt-3 w-full min-w-[46rem]">
+            {{-- Emails wrap rather than widen the table. Phones keep the account and its status; the account cell repeats the counts in short --}}
+            <flux:table class="mt-3 w-full" aria-labelledby="drive-accounts-heading">
                 <flux:table.columns>
-                    {{-- Flux tables share columns evenly, so the others are sized to their headings and the emails take the rest --}}
+                    {{-- Flux tables share columns evenly, so the others are sized to their headings and the emails take the rest.
+                         Status widens only where a badge and its button fit side by side without squeezing the emails. --}}
                     <flux:table.column>{{ __('Google account') }}</flux:table.column>
-                    <flux:table.column class="w-44">{{ __('Status') }}</flux:table.column>
-                    <flux:table.column align="end" class="w-36">{{ __('Project documents') }}</flux:table.column>
-                    <flux:table.column align="end" class="w-20">{{ __('Memos') }}</flux:table.column>
-                    <flux:table.column align="end" class="w-28">{{ __('Profile photos') }}</flux:table.column>
+                    <flux:table.column class="w-36 md:w-44 xl:w-60">{{ __('Status') }}</flux:table.column>
+                    <flux:table.column align="end" class="w-24 max-md:hidden">{{ __('Documents') }}</flux:table.column>
+                    <flux:table.column align="end" class="w-20 max-md:hidden">{{ __('Memos') }}</flux:table.column>
+                    <flux:table.column align="end" class="w-20 max-md:hidden">{{ __('Photos') }}</flux:table.column>
                 </flux:table.columns>
 
                 <flux:table.rows>
@@ -488,6 +489,7 @@ new #[Title('Google Drive')] class extends Component {
                             <flux:table.cell variant="strong" class="whitespace-normal wrap-anywhere">
                                 {{ str($row['account']->email)->before('@') }}<wbr>{{ str($row['account']->email)->after('@')->prepend('@') }}
                                 <flux:text size="sm" class="font-normal">{{ $row['account']->retired_at ? __('Earlier') : __('Current') }}</flux:text>
+                                <flux:text size="sm" class="font-normal md:hidden">{{ __('Documents: :documents, memos: :memos, photos: :photos', ['documents' => $row['documents'], 'memos' => $row['memos'], 'photos' => $row['photos']]) }}</flux:text>
                             </flux:table.cell>
                             <flux:table.cell>
                                 {{-- The fix sits beside the status it fixes, on every row that needs one. Each button names its
@@ -499,13 +501,13 @@ new #[Title('Google Drive')] class extends Component {
                                         <flux:badge size="sm" color="red">{{ __('Not connected') }}</flux:badge>
                                     @endif
                                     @if ($row['account']->retired_at && ! $row['files'])
-                                        <flux:button size="sm" variant="danger" wire:click="removeEarlier({{ $row['account']->id }})"
+                                        <flux:button size="sm" variant="danger" class="max-sm:h-11" wire:click="removeEarlier({{ $row['account']->id }})"
                                             wire:confirm="{{ __('Remove :email? It holds no files. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
                                             :aria-label="__('Remove :email', ['email' => $row['account']->email])"
                                             data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
                                     @elseif (! $row['account']->isConnected())
                                         @php($verb = $row['account']->retired_at ? __('Reconnect') : __('Connect'))
-                                        <flux:button size="sm" :href="route('google-drive.connect', ['account' => $row['account']->id])" :aria-label="$verb.' '.$row['account']->email"
+                                        <flux:button size="sm" class="max-sm:h-11" :href="route('google-drive.connect', ['account' => $row['account']->id])" :aria-label="$verb.' '.$row['account']->email"
                                             x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
                                             <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
                                             {{ $verb }}
@@ -513,9 +515,9 @@ new #[Title('Google Drive')] class extends Component {
                                     @endif
                                 </div>
                             </flux:table.cell>
-                            <flux:table.cell align="end" class="tabular-nums">{{ $row['documents'] }}</flux:table.cell>
-                            <flux:table.cell align="end" class="tabular-nums">{{ $row['memos'] }}</flux:table.cell>
-                            <flux:table.cell align="end" class="tabular-nums">{{ $row['photos'] }}</flux:table.cell>
+                            <flux:table.cell align="end" class="tabular-nums max-md:hidden">{{ $row['documents'] }}</flux:table.cell>
+                            <flux:table.cell align="end" class="tabular-nums max-md:hidden">{{ $row['memos'] }}</flux:table.cell>
+                            <flux:table.cell align="end" class="tabular-nums max-md:hidden">{{ $row['photos'] }}</flux:table.cell>
                         </flux:table.row>
                     @endforeach
                 </flux:table.rows>

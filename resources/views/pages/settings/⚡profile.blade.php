@@ -96,6 +96,9 @@ new #[Title('My Profile')] class extends Component {
             $previous = $user->getPrevious()['email'];
             ActivityLog::record('auth.email_changed', properties: ['from' => $previous, 'to' => $user->email]);
 
+            // The new address's link comes back here, not to a page still held, such as a Security password prompt left unanswered.
+            redirect()->setIntendedUrl(route('profile.edit'));
+
             if ($confirmed) {
                 Notification::route('mail', $previous)->notify(new EmailChanged($previous, $user->email));
             }

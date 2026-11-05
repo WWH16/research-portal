@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobRetryRequested;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
@@ -74,6 +75,9 @@ class AppServiceProvider extends ServiceProvider
                 Notification::send(User::admins()->get(), new EmailFailed);
             }
         });
+
+        // A retry starts the hour over, so emails that fail again after a fix that didn't work bring a fresh notice.
+        Event::listen(JobRetryRequested::class, fn () => Cache::forget('email-failed-notice'));
     }
 
     /**

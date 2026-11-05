@@ -7,6 +7,7 @@ use App\Notifications\EmailFailed;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobRetryRequested;
 use Illuminate\Queue\Jobs\SyncJob;
 use Livewire\Livewire;
 use RuntimeException;
@@ -41,6 +42,17 @@ class EmailFailedTest extends TestCase
         $this->assertSame(0, $faculty->notifications()->count());
 
         $this->travel(61)->minutes();
+        $this->jobFails(SendQueuedNotifications::class);
+
+        $this->assertSame(2, $admin->notifications()->where('type', EmailFailed::class)->count());
+    }
+
+    public function test_emails_that_fail_again_after_a_retry_bring_a_fresh_notice(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->jobFails(SendQueuedNotifications::class);
+        event(new JobRetryRequested((object) ['payload' => '{}']));
         $this->jobFails(SendQueuedNotifications::class);
 
         $this->assertSame(2, $admin->notifications()->where('type', EmailFailed::class)->count());

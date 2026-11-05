@@ -5,6 +5,7 @@ namespace Tests\Feature\Settings;
 use App\Models\User;
 use App\Notifications\EmailChanged;
 use App\Notifications\QueuedVerifyEmail;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
@@ -41,6 +42,26 @@ class ProfileUpdateTest extends TestCase
         $this->assertEquals('Test User', $user->name);
         $this->assertEquals('test.user@isu.edu.ph', $user->email);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_the_new_email_link_returns_to_my_profile_even_after_an_unfinished_security_prompt(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+
+        // Security asks for the password and remembers the page; the member leaves without answering.
+        $this->get(route('security.edit'))->assertRedirect(route('password.confirm'));
+
+        Livewire::test('pages::settings.profile')
+            ->set('email', 'test.user@isu.edu.ph')
+            ->set('current_password', 'password')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $link = (new VerifyEmail)->toMail($user->refresh())->actionUrl;
+
+        $this->get($link)->assertRedirect(route('profile.edit', absolute: false));
     }
 
     public function test_email_can_only_change_to_an_isu_address(): void

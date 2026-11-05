@@ -278,7 +278,7 @@ new #[Title('Google Drive')] class extends Component {
         rescue(fn () => app(GoogleDrive::class)->revoke($connection->refresh_token), report: false);
 
         DB::transaction(function () use ($connection) {
-            $connection->update(['refresh_token' => null]);
+            app(DocumentStorage::class)->disconnect($connection, ['refresh_token' => null]);
             ActivityLog::record('drive.disconnected', $connection);
         });
 

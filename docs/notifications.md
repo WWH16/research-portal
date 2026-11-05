@@ -13,7 +13,7 @@ The Research Office hears about:
 
 - **A project completed** (its first terminal report), in the portal only.
 - **A project running late**, the day after its completion date passes without a terminal report, in the portal only.
-- **Google Drive full or disconnected**, in the portal and by email.
+- **Google Drive full or disconnected**, in the portal and by email, whether Google reports it or an admin presses Disconnect.
 - **Email not sent**, in the portal only, when an email fails all 3 tries. At most one notice an hour.
 
 Every member also gets, by email only:

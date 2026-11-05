@@ -252,12 +252,13 @@ class DocumentStorage
     }
 
     /**
-     * Mark the account not connected. Only the first failure tells the admins: once marked, the portal doesn't ask
-     * Google again until someone connects it, which starts the next incident afresh.
+     * Mark the account not connected, whether Google reported it or an admin chose it. Only the first failure tells
+     * the admins: once marked, the portal doesn't ask Google again until someone connects it, which starts the next
+     * incident afresh.
      *
      * @param  array<string, null>  $forget
      */
-    private function disconnect(GoogleDriveConnection $account, array $forget): void
+    public function disconnect(GoogleDriveConnection $account, array $forget): void
     {
         $wasConnected = $account->isConnected();
         $account->update($forget);

@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\GoogleDriveConnection;
 use App\Models\User;
+use App\Notifications\DriveDisconnected;
 use App\Services\GoogleDrive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -315,6 +316,26 @@ class GoogleDrivePageTest extends TestCase
         $log = ActivityLog::where('action', 'drive.disconnected')->sole();
         $this->assertSame('research.office@isu.edu.ph', $log->subject_label);
         $this->assertSame('disconnected Google Drive', $log->summary());
+    }
+
+    public function test_disconnect_tells_every_admin_once(): void
+    {
+        $other = User::factory()->create(['role' => 'admin']);
+        $faculty = User::factory()->create();
+        GoogleDriveConnection::factory()->create(['refresh_token' => 'secret-refresh-token']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('revoke')->once());
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'Research.Office@isu.edu.ph')
+            ->set('password', 'password')
+            ->call('disconnect')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, $this->admin->notifications()->where('type', DriveDisconnected::class)->count());
+        $this->assertSame(1, $other->notifications()->where('type', DriveDisconnected::class)->count());
+        $this->assertSame(0, $faculty->notifications()->count());
     }
 
     public function test_disconnect_needs_the_account_typed_and_the_password(): void

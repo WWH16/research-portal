@@ -4,6 +4,7 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\ActivityLog;
+use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\EmailChanged;
 use App\Services\DocumentStorage;
@@ -393,13 +394,16 @@ new #[Title('My Profile')] class extends Component {
             </x-pages::settings.section>
         </form>
 
-        {{-- Each switch saves as it flips, so this section needs no Save button --}}
-        <x-pages::settings.section :heading="__('Email me about')" :description="__('Notices always show in the portal. These choose which also come by email. Account and Google Drive notices always do.')">
-            <div class="flex flex-col gap-4" data-test="email-preferences">
-                @foreach (User::EMAIL_KINDS as $kind => $label)
-                    <flux:switch wire:model.live="emailMe.{{ $kind }}" :label="__($label)" align="left" />
-                @endforeach
-            </div>
-        </x-pages::settings.section>
+        {{-- These notices go to a project's people, and only an admin who was faculty can still be on a project --}}
+        @if (! $user->isAdmin() || Submission::involving($user)->exists())
+            {{-- Each switch saves as it flips, so this section needs no Save button --}}
+            <x-pages::settings.section :heading="__('Email me about')" :description="__('Notices always show in the portal. These choose which also come by email. Account and Google Drive notices always do.')">
+                <div class="flex flex-col gap-4" data-test="email-preferences">
+                    @foreach (User::EMAIL_KINDS as $kind => $label)
+                        <flux:switch wire:model.live="emailMe.{{ $kind }}" :label="__($label)" align="left" />
+                    @endforeach
+                </div>
+            </x-pages::settings.section>
+        @endif
     </x-pages::settings.layout>
 </section>

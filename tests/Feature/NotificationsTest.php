@@ -608,6 +608,19 @@ class NotificationsTest extends TestCase
         $this->assertSame(Role::Faculty, $this->maria->fresh()->role);
     }
 
+    public function test_admins_choose_their_emails_only_while_on_a_project(): void
+    {
+        $admin = $this->admin();
+
+        // Admins can't file or join a project, so these notices never reach them and the switches would do nothing.
+        $this->actingAs($admin)->get(route('profile.edit'))->assertOk()->assertDontSee('Email me about');
+
+        // Faculty made admin stay on their old projects, so the notices still reach them and they keep the choice.
+        $this->project()->proponents()->create(['user_id' => $admin->id, 'study' => 1, 'role' => 'Staff']);
+
+        $this->get(route('profile.edit'))->assertOk()->assertSee('Email me about');
+    }
+
     public function test_the_list_shows_a_new_notice_when_the_live_count_finds_it(): void
     {
         $this->actingAs($this->maria);

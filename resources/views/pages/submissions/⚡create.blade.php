@@ -8,6 +8,7 @@ use App\Models\Proponent;
 use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\ProjectCompleted;
+use App\Services\DocumentStorage;
 use Flux\Flux;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -89,6 +90,20 @@ new #[Title('Research Project')] class extends Component {
     private function fingerprint(): string
     {
         return sha1(json_encode([$this->submission->only(['title', 'abstract', 'category_id', 'designation']), $this->savedProponents()]));
+    }
+
+    /**
+     * Stop the save if someone changed what this form overwrites since it opened. A toast, since the change can be
+     * anywhere on the form; the error only stops the save, and no field shows it.
+     */
+    private function refuseIfChanged(): void
+    {
+        if ($this->submission && $this->fingerprint() !== $this->opened) {
+            $message = __('Someone changed this project while this form was open. Reload the page to see the change, then save again.');
+            Flux::toast(variant: 'danger', text: $message);
+
+            throw ValidationException::withMessages(['stale' => $message]);
+        }
     }
 
     /**
@@ -209,19 +224,22 @@ new #[Title('Research Project')] class extends Component {
         // The first terminal report completes the project; a corrected one later is no news.
         $completing = isset($this->documents['terminal']) && $this->submission?->terminal_uploaded_at === null;
 
+        // A form already out of date is refused before anything uploads; the check runs again under the lock below.
+        $this->refuseIfChanged();
+
+        $stored = [];
+
         try {
-            $submission = DB::transaction(function () use ($validated, $rows) {
+            // Uploaded before the save starts, so a slow upload never keeps the project locked from anyone else.
+            foreach ($this->documents as $stage => $file) {
+                $stored[$stage] = app(DocumentStorage::class)->store($file);
+            }
+
+            $submission = DB::transaction(function () use ($validated, $rows, $stored) {
                 if ($this->submission) {
                     // Locked until the save ends, so another save can't slip in; read again for whatever saved first.
                     $this->submission = Submission::lockForUpdate()->findOrFail($this->submission->id);
-
-                    if ($this->fingerprint() !== $this->opened) {
-                        // A toast, since the change can be anywhere on the form. The error only stops the save; no field shows it.
-                        $message = __('Someone changed this project while this form was open. Reload the page to see the change, then save again.');
-                        Flux::toast(variant: 'danger', text: $message);
-
-                        throw ValidationException::withMessages(['stale' => $message]);
-                    }
+                    $this->refuseIfChanged();
                 }
 
                 $submission = $this->submission ?? Auth::user()->submissions()->make(['department_id' => $this->department->id]);
@@ -256,8 +274,8 @@ new #[Title('Research Project')] class extends Component {
                 // Read before attaching, which overwrites the paths.
                 $replaced = array_values(array_filter(array_keys($this->documents), fn (string $stage) => $submission->{$stage.'_path'} !== null));
 
-                foreach ($this->documents as $stage => $file) {
-                    $submission->attachDocument($stage, $file);
+                foreach ($stored as $stage => $path) {
+                    $submission->attachDocument($stage, $path);
                 }
 
                 // Saving an edit that changed nothing and uploaded nothing is left out of the log.
@@ -270,8 +288,15 @@ new #[Title('Research Project')] class extends Component {
 
                 return $submission;
             });
-        } catch (DocumentStorageUnavailable) {
-            // The transaction rolled back, so the project is as it was; the member can save again once storage is back.
+        } catch (Throwable $e) {
+            // Nothing was saved, so the files just uploaded leave Drive again.
+            array_map(app(DocumentStorage::class)->delete(...), $stored);
+
+            if (! $e instanceof DocumentStorageUnavailable) {
+                throw $e;
+            }
+
+            // The project is as it was; the member can save again once storage is back.
             $this->addError('documents', __('Document storage is unavailable right now. Try again later or contact the Research Office.'));
 
             return;

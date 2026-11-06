@@ -68,22 +68,22 @@ class ProjectProgressTest extends TestCase
         $project = $this->project(['awaiting_review' => false]);
         $file = fn (string $name) => UploadedFile::fake()->create($name, 10, 'application/pdf');
 
-        $project->attachDocument('concept', $file('concept.pdf'));
+        $project->attachDocument('concept', $this->stored($file('concept.pdf')));
         $this->assertSame(['Concept', true], [$project->status, $project->awaiting_review]);
 
         $project->update(['awaiting_review' => false]);
-        $project->attachDocument('detailed', $file('detailed.pdf'));
+        $project->attachDocument('detailed', $this->stored($file('detailed.pdf')));
         $this->assertSame(['Detailed', false], [$project->status, $project->awaiting_review]);
 
-        $project->attachDocument('midyear', $file('midyear.pdf'));
+        $project->attachDocument('midyear', $this->stored($file('midyear.pdf')));
         $this->assertSame(['Mid-year', false], [$project->status, $project->awaiting_review]);
 
-        $project->attachDocument('terminal', $file('terminal.pdf'));
+        $project->attachDocument('terminal', $this->stored($file('terminal.pdf')));
         $this->assertSame(['Completed', false], [$project->status, $project->awaiting_review]);
 
         // A passed concept proposal is replaced without another review, and the project stays where it is.
         $project->update(['concept_passed' => true]);
-        $project->attachDocument('concept', $file('concept-2.pdf'));
+        $project->attachDocument('concept', $this->stored($file('concept-2.pdf')));
         $this->assertSame(['Completed', false, true], [$project->fresh()->status, $project->fresh()->awaiting_review, $project->fresh()->concept_passed]);
     }
 
@@ -122,7 +122,7 @@ class ProjectProgressTest extends TestCase
         $this->assertSame(['concept'], array_keys($project->uploadTimes()));
 
         // A new upload changes the files, so the times are read afresh; a time already known is kept, so it's never asked of Google again.
-        $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 10, 'application/pdf'));
+        $project->attachDocument('detailed', $this->stored(UploadedFile::fake()->create('detailed.pdf', 10, 'application/pdf')));
         $this->assertSame(['concept', 'detailed'], array_keys($project->uploadTimes()));
     }
 

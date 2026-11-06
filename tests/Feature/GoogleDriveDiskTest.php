@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\DriveFull;
 use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
+use Google\Client;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -64,6 +65,19 @@ class GoogleDriveDiskTest extends TestCase
                 // Google's own default: an error comes back as a response, not an exception.
                 new GuzzleClient(['handler' => HandlerStack::create(new MockHandler($answers)), 'http_errors' => false]),
             ))));
+    }
+
+    public function test_google_calls_have_time_limits(): void
+    {
+        $http = (new GoogleDrive)->client()->getHttpClient();
+
+        $this->assertGreaterThan(0, $http->getConfig('connect_timeout'));
+        $this->assertGreaterThan(0, $http->getConfig('timeout'));
+
+        // The rest of Google's default stays: its address, errors as responses, and the stack disk() adds to.
+        $this->assertSame((new Client)->getConfig('base_path'), (string) $http->getConfig('base_uri'));
+        $this->assertFalse($http->getConfig('http_errors'));
+        $this->assertInstanceOf(HandlerStack::class, $http->getConfig('handler'));
     }
 
     public function test_the_drive_disk_signs_in_as_the_saved_account_once_per_request(): void

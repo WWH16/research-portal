@@ -105,8 +105,7 @@ new class extends Component {
             'indexed_in' => ['array'],
             'indexed_in.*' => [Rule::in(array_keys(Publication::INDEXES))],
             'authorRows' => ['required', 'array', 'max:30'],
-            'authorRows.*.user_id' => ['sometimes', 'required', 'integer', 'distinct', Rule::exists('users', 'id')->where('role', 'faculty')
-                ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))],
+            'authorRows.*.user_id' => ['sometimes', 'required', 'integer', 'distinct', Rule::in($this->faculty->pluck('id'))],
             // The names are stored joined by semicolons, so one inside a name would split it in two.
             'authorRows.*.name' => ['sometimes', 'required', 'string', 'max:100', 'not_regex:/;/'],
         ], [
@@ -201,25 +200,16 @@ new class extends Component {
     }
 
     /**
-     * Faculty who can be tagged as authors.
+     * Who can be tagged as an author, which save() also checks: verified faculty, and anyone already tagged.
+     * Those already tagged stay while re-verifying a changed email or after moving to another role.
      */
     #[Computed]
     public function faculty(): Collection
     {
         // ponytail: one plain select of every verified faculty member, as on the project form; switch to a searchable picker past a few hundred.
-        return User::faculty()
-            ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))
+        return User::where(fn ($query) => $query->faculty()->whereNotNull('email_verified_at'))
+            ->orWhereIn('id', $this->publication?->faculty()->pluck('users.id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
-    }
-
-    /**
-     * Who is already tagged. They stay pickable while re-verifying a changed email.
-     *
-     * @return list<int>
-     */
-    private function listedIds(): array
-    {
-        return $this->publication?->faculty()->pluck('users.id')->all() ?? [];
     }
 
     // The tab says what the form does, like its heading.

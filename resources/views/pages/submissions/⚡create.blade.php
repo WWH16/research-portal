@@ -131,14 +131,10 @@ new #[Title('Research Project')] class extends Component {
             return;
         }
 
-        $faculty = Rule::exists('users', 'id')->where('role', 'faculty')
-            // New names must be verified faculty, as in the picker; one already listed stays even while re-verifying a changed email.
-            ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()));
-
-        // Each row checks only its own field: the faculty account, or the typed name of someone not in the portal.
+        // Each row checks only its own field: the account from the picker, or the typed name of someone not in the portal.
         $people = collect($this->proponents)->mapWithKeys(fn ($row, $index) => $this->isNamed($row)
             ? ["proponents.$index.name" => ['required', 'string', 'max:150']]
-            : ["proponents.$index.user_id" => ['required', 'integer', $faculty]])->all();
+            : ["proponents.$index.user_id" => ['required', 'integer', Rule::in($this->faculty->pluck('id'))]])->all();
 
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -377,25 +373,17 @@ new #[Title('Research Project')] class extends Component {
     }
 
     /**
-     * Faculty who can be listed as proponents. Staff and anyone else without an account are typed in by name instead.
+     * Who can be picked as a proponent, which save() also checks: verified faculty, and anyone already on the project.
+     * Those already on it stay while re-verifying a changed email or after moving to another role.
+     * Research staff without a portal account are typed in by name instead.
      */
     #[Computed]
     public function faculty(): Collection
     {
         // ponytail: one plain select of every verified faculty member; switch to a searchable picker past a few hundred.
-        return User::faculty()
-            ->where(fn ($query) => $query->whereNotNull('email_verified_at')->orWhereIn('id', $this->listedIds()))
+        return User::where(fn ($query) => $query->faculty()->whereNotNull('email_verified_at'))
+            ->orWhereIn('id', $this->submission?->proponents()->pluck('user_id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
-    }
-
-    /**
-     * Who is already on the project. They stay listed, and pickable, while re-verifying a changed email.
-     *
-     * @return list<int>
-     */
-    private function listedIds(): array
-    {
-        return $this->submission?->proponents()->pluck('user_id')->all() ?? [];
     }
 
     /**

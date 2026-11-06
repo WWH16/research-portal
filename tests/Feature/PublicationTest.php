@@ -149,6 +149,30 @@ class PublicationTest extends TestCase
         $this->assertSame(0, Publication::count());
     }
 
+    public function test_an_author_moved_to_staff_stays_on_their_paper_and_joins_no_other(): void
+    {
+        $paper = $this->publication([$this->rivera, $this->soriano], ['authors' => 'Rivera; Soriano', 'published_on' => '2025-06-01']);
+        $this->soriano->forceFill(['role' => 'staff'])->save();
+        $this->actingAs($this->rivera);
+
+        // Rivera can still save the paper with Soriano on it, and Soriano's row still shows the name.
+        Livewire::test('pages::publications.create', ['publication' => $paper])
+            ->assertSee('Soriano')
+            ->set('title', 'Renamed paper')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Renamed paper', $paper->fresh()->title);
+        $this->assertTrue($paper->authoredBy($this->soriano));
+
+        // A paper Soriano is not on takes faculty only.
+        Livewire::test('pages::publications.create')
+            ->set($this->fields())
+            ->set('authorRows', [['user_id' => $this->rivera->id], ['user_id' => $this->soriano->id]])
+            ->call('save')
+            ->assertHasErrors('authorRows.1.user_id');
+    }
+
     public function test_a_paper_already_in_the_portal_is_refused_however_its_doi_is_typed(): void
     {
         $this->publication([$this->soriano], ['link' => 'https://doi.org/10.1000/smart']);

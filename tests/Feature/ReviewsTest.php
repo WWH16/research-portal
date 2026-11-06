@@ -90,6 +90,16 @@ class ReviewsTest extends TestCase
         $page->dispatch('open-work-changed', changed: ['toReview'])->assertSee('Newly Uploaded Proposal');
     }
 
+    public function test_the_save_buttons_loading_state_does_not_read_the_choice_before_the_panel_has_it(): void
+    {
+        $project = $this->project('Solar Dryer Study');
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::test('pages::reviews.index')
+            ->call('review', $project->id)
+            ->assertSeeHtml('wire:target="saveReview"');
+    }
+
     public function test_faculty_see_no_reviews_link(): void
     {
         $this->actingAs($this->maria)->get(route('dashboard'))->assertDontSeeHtml('data-test="reviews-nav"');

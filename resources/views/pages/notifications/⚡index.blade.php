@@ -227,13 +227,13 @@ new #[Title('Notifications')] class extends Component {
     @endif
 
     @if ($this->notifications->isEmpty())
-        {{-- What arrives here differs by role: faculty hear about their projects, admins about finished projects and storage --}}
+        {{-- What arrives here differs by role: faculty hear about their projects, staff about finished and late projects and announcements, admins about finished projects and storage --}}
         <x-empty-state
             icon="bell"
             :heading="__('No notifications yet.')"
             :text="match (auth()->user()->role) {
                 \App\Enums\Role::Admin => __('Completed and late projects, and problems with Google Drive, will appear here.'),
-                \App\Enums\Role::Staff => __('Completed and late projects will appear here.'),
+                \App\Enums\Role::Staff => __('Completed and late projects, and new and changed announcements, will appear here.'),
                 default => __('Concept proposal decisions, completion date reminders and Research Office announcements will appear here.'),
             }"
             class="mt-8"

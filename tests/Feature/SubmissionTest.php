@@ -7,7 +7,6 @@ use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\GoogleDriveConnection;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use App\Services\DocumentStorage;
@@ -381,8 +380,6 @@ class SubmissionTest extends TestCase
             ->assertDontSee('Research type')
             ->call('save')
             ->assertHasNoErrors();
-
-        $this->assertNull(Submission::sole()->research_type_id);
     }
 
     public function test_blank_choices_are_real_options_and_still_required(): void
@@ -1344,7 +1341,6 @@ class SubmissionTest extends TestCase
     private function twoFacultyWithSubmissions(): array
     {
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
-        $researchType = ResearchType::create(['name' => 'Thesis']);
         $category = Category::create(['name' => 'Computing']);
 
         $maria = User::factory()->create(['name' => 'Maria Santos', 'department_id' => $department->id]);
@@ -1352,7 +1348,6 @@ class SubmissionTest extends TestCase
 
         foreach ([[$maria, 'Maria Proposal'], [$jose, 'Jose Proposal']] as [$user, $title]) {
             $user->submissions()->create([
-                'research_type_id' => $researchType->id,
                 'category_id' => $category->id,
                 'department_id' => $department->id,
                 'title' => $title,

@@ -7,7 +7,6 @@ use App\Models\Announcement;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Publication;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -445,7 +444,6 @@ class DriveTest extends TestCase
     private function project(User $by, string $title, array $attributes = []): Submission
     {
         $project = $by->submissions()->create([
-            'research_type_id' => ResearchType::firstOrCreate(['name' => 'Thesis'])->id,
             'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
             'department_id' => $by->department_id,
             'title' => $title,

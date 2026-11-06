@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Department;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -233,7 +232,6 @@ class ReferenceDataTest extends TestCase
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
 
         return $user->submissions()->create([
-            'research_type_id' => ResearchType::create(['name' => 'Thesis'])->id,
             'category_id' => Category::create(['name' => 'Computing'])->id,
             'department_id' => $department->id,
             'title' => 'Sample Proposal',

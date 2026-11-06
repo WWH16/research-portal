@@ -24,12 +24,4 @@ class Department extends Model
     {
         return $this->hasMany(Submission::class);
     }
-
-    /**
-     * @return HasMany<DriveItem, $this>
-     */
-    public function driveItems(): HasMany
-    {
-        return $this->hasMany(DriveItem::class);
-    }
 }

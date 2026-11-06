@@ -4,7 +4,6 @@ use App\Models\ActivityLog;
 use App\Models\Publication;
 use App\Models\Submission;
 use App\Models\User;
-use Flux\Flux;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -42,9 +41,9 @@ new class extends Component {
      */
     public array $authorRows = [];
 
-    /** The saved paper when the form opened, so a save never overwrites a co-author's change unseen. */
+    /** The saved authors when the form opened, so a save never overwrites a co-author's change unseen. */
     #[Locked]
-    public string $opened = '';
+    public string $openedAuthors = '';
 
     public function mount(?Publication $publication = null): void
     {
@@ -56,7 +55,7 @@ new class extends Component {
         }
 
         $this->publication = $publication;
-        $this->opened = $this->fingerprint();
+        $this->openedAuthors = $publication->authors;
         $this->fill(collect($publication->only(['title', 'journal', 'volume', 'issue', 'pages', 'description', 'link']))->map(fn ($value) => (string) $value)->all());
         $this->published_on = $publication->published_on->toDateString();
         $this->submission_id = $publication->submission_id;
@@ -70,14 +69,6 @@ new class extends Component {
             $tagged->forget($id === false ? [] : $id);
         }
         $this->authorRows = [...$this->authorRows, ...$tagged->keys()->map(fn ($id) => ['user_id' => $id])->all()];
-    }
-
-    /**
-     * What this form overwrites as it stands now.
-     */
-    private function fingerprint(): string
-    {
-        return sha1(json_encode($this->publication->only(['title', 'authors', 'journal', 'volume', 'issue', 'pages', 'published_on', 'description', 'link', 'submission_id', 'indexed_in'])));
     }
 
     public function addAuthor(bool $outside = false): void
@@ -166,17 +157,9 @@ new class extends Component {
         $validated['indexed_in'] = array_values(array_intersect(array_keys(Publication::INDEXES), $validated['indexed_in']));
 
         $publication = DB::transaction(function () use ($validated, $authorIds) {
-            if ($this->publication) {
-                // Locked until the save ends, so another save can't slip in; read again for whatever saved first.
-                $this->publication = Publication::lockForUpdate()->findOrFail($this->publication->id);
-
-                if ($this->fingerprint() !== $this->opened) {
-                    // A toast, since the change can be anywhere on the form. The error only stops the save; no field shows it.
-                    $message = __('Someone changed this paper while this form was open. Reload the page to see the change, then save again.');
-                    Flux::toast(variant: 'danger', text: $message);
-
-                    throw ValidationException::withMessages(['stale' => $message]);
-                }
+            // Locked until the save ends, so another save can't slip in between the check and this one.
+            if ($this->publication && Publication::lockForUpdate()->findOrFail($this->publication->id)->authors !== $this->openedAuthors) {
+                throw ValidationException::withMessages(['authorRows' => __('Someone changed the authors while this form was open. Reload the page to see the change, then save again.')]);
             }
 
             $publication = $this->publication ?? new Publication;

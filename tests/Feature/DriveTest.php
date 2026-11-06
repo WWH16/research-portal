@@ -190,7 +190,7 @@ class DriveTest extends TestCase
 
         // Opened from Submissions, or with any other value, it goes back to the list as before.
         Livewire::withQueryParams(['from' => 'https://example.com'])
-            ->test('pages::submissions.create', ['submission' => $this->smart->fresh()])
+            ->test('pages::submissions.create', ['submission' => $this->smart])
             ->set('abstract', 'A study.')
             ->set('start_date', '2026-01-01')
             ->set('target_date', '2026-12-31')

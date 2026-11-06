@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\EnsureUserIsFaculty;
+use App\Http\Middleware\RequirePassword;
 use App\Models\User;
 use App\Notifications\EmailFailed;
 use Carbon\CarbonImmutable;
@@ -44,8 +45,8 @@ class AppServiceProvider extends ServiceProvider
         $this->registerCsvResponse();
 
         // Livewire re-runs only these of a page's route middleware on each button click, so a role taken away
-        // while the page is open also takes away its actions.
-        Livewire::addPersistentMiddleware([EnsureUserIsAdmin::class, EnsureUserIsApproved::class, EnsureUserIsFaculty::class]);
+        // while the page is open also takes away its actions, and a password check that runs out asks again.
+        Livewire::addPersistentMiddleware([EnsureUserIsAdmin::class, EnsureUserIsApproved::class, EnsureUserIsFaculty::class, RequirePassword::class]);
 
         // A device signed out because the password changed elsewhere says so on the sign-in page, instead of looking
         // like an expired session. Kept until the next sign-in rather than flashed: the first request to notice is often

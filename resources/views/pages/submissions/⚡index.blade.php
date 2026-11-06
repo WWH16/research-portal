@@ -93,7 +93,8 @@ new #[Title('Submissions')] class extends Component {
     #[Computed]
     public function submissions(): LengthAwarePaginator
     {
-        $projects = $this->filtered()->latest()->paginate(15);
+        // Projects filed in the same second keep one order, so none shows on two pages or on neither.
+        $projects = $this->filtered()->latest()->orderByDesc('id')->paginate(15);
 
         // A page past the end, as once its last project was ticked off a filter, shows the last page that has any.
         if ($projects->isEmpty() && $projects->currentPage() > 1 && $projects->total() > 0) {
@@ -165,7 +166,7 @@ new #[Title('Submissions')] class extends Component {
         $filename = 'submissions-'.($filters ? Str::slug(implode(' ', $filters)) : today()->toDateString()).'.csv';
         $yesNo = fn (?bool $value) => $value === null ? '' : ($value ? __('Yes') : __('No'));
 
-        $rows = $this->filtered()->with('category:id,name')->latest()->lazy()->map(fn (Submission $project) => [
+        $rows = $this->filtered()->with('category:id,name')->latest()->orderByDesc('id')->lazy()->map(fn (Submission $project) => [
             $project->title,
             $project->year,
             $project->department->code,

@@ -60,6 +60,15 @@ class StaffRoleTest extends TestCase
         }
     }
 
+    public function test_only_admins_are_sent_to_the_colleges_page_when_none_exist(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'staff']));
+        $this->get(route('drive.index'))->assertSee('data-test="no-college-folders"', false)->assertDontSee('Go to Colleges');
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->get(route('drive.index'))->assertSee('Go to Colleges');
+    }
+
     public function test_staff_see_their_role_in_the_menu_and_on_my_profile(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'staff']));

@@ -9,7 +9,7 @@ return [
         'expire' => 1440,
     ],
 
-    // The first admin's password, used only when AdminUserSeeder creates that account.
-    'admin_seed_password' => env('ADMIN_SEED_PASSWORD'),
+    // The password DatabaseSeeder gives the accounts it creates.
+    'seed_password' => env('SEED_PASSWORD'),
 
 ];

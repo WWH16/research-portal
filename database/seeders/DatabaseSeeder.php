@@ -4,40 +4,38 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
+/**
+ * Runs with model events on, so each account gets a researcher ID like any other.
+ */
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
+     * Create the portal's starting accounts if they do not exist yet.
+     *
+     * The password comes from SEED_PASSWORD, so production never gets one that is written in the code. Other
+     * environments fall back to a development default.
      */
     public function run(): void
     {
-        $this->call(AdminUserSeeder::class);
-
-        // User::factory(10)->create();
+        $password = config('auth.seed_password') ?: (app()->isProduction()
+            ? throw new RuntimeException('Set SEED_PASSWORD before seeding on production.')
+            : 'password');
 
         $accounts = [
-            'test.user@isu.edu.ph' => 'Test User',
-            'maria.santos_cyn@isu.edu.ph' => 'Maria Santos',
-            'jose.reyes_cyn@isu.edu.ph' => 'Jose Reyes',
-            'ana.cruz_cyn@isu.edu.ph' => 'Ana Cruz',
-            'mark.bautista_cyn@isu.edu.ph' => 'Mark Bautista',
-            'liza.garcia_cyn@isu.edu.ph' => 'Liza Garcia',
+            'admin@isu.edu.ph' => ['Research Office', 'admin'],
+            'staff@isu.edu.ph' => ['Research Office Staff', 'staff'],
+            'test.user@isu.edu.ph' => ['Test User', 'faculty'],
         ];
 
-        foreach ($accounts as $email => $name) {
-            $user = User::firstOrCreate(
+        foreach ($accounts as $email => [$name, $role]) {
+            // The role isn't mass assignable, so the seeder lifts that guard for these trusted accounts. Only a new
+            // account takes these values; an existing one keeps its password and role.
+            User::unguarded(fn () => User::firstOrCreate(
                 ['email' => $email],
-                ['name' => $name, 'password' => 'password'],
-            );
-
-            if (! $user->hasVerifiedEmail()) {
-                $user->markEmailAsVerified();
-            }
-
-            if (! $user->isApproved()) {
-                $user->forceFill(['approved_at' => now()])->save();
-            }
+                ['name' => $name, 'password' => $password, 'role' => $role, 'email_verified_at' => now(), 'approved_at' => now()],
+            ));
         }
     }
 }

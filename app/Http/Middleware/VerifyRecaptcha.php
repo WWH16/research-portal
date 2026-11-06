@@ -28,15 +28,21 @@ class VerifyRecaptcha
         }
 
         try {
-            $result = Http::asForm()->timeout(5)->post('https://www.google.com/recaptcha/api/siteverify', [
+            $response = Http::asForm()->timeout(5)->post('https://www.google.com/recaptcha/api/siteverify', [
                 'secret' => $secret,
                 'response' => (string) $request->input('recaptcha_token'),
                 'remoteip' => $request->ip(),
-            ])->json();
+            ]);
         } catch (ConnectionException) {
-            // ponytail: fails open so faculty can still sign in while Google is unreachable; the rate limits still apply.
             return $next($request);
         }
+
+        // ponytail: fails open so faculty can still sign in while Google is down or unreachable; the rate limits still apply.
+        if ($response->failed()) {
+            return $next($request);
+        }
+
+        $result = $response->json();
 
         $human = ($result['success'] ?? false) === true
             && ($result['action'] ?? null) === $action

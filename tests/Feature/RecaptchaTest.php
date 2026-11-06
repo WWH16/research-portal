@@ -54,6 +54,17 @@ class RecaptchaTest extends TestCase
         Http::assertSent(fn ($request) => $request['secret'] === 'secret-key' && $request['response'] === 'token');
     }
 
+    public function test_sign_in_still_works_when_google_answers_with_an_error(): void
+    {
+        $this->keys();
+        Http::fake(['www.google.com/recaptcha/*' => Http::response('Service Unavailable', 503)]);
+        $user = User::factory()->create();
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password', 'recaptcha_token' => 'token']);
+
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_a_bot_score_or_another_forms_token_is_turned_away(): void
     {
         $this->keys();

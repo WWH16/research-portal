@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Department;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -510,7 +509,6 @@ class DashboardTest extends TestCase
     private function submit(User $user, string $title, string $status = 'Concept', array $attributes = []): Submission
     {
         $project = $user->submissions()->create([
-            'research_type_id' => ResearchType::firstOrCreate(['name' => 'Thesis'])->id,
             'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
             'department_id' => $user->department_id,
             'title' => $title,

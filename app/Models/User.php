@@ -365,14 +365,6 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
-     * @return HasMany<DriveItem, $this>
-     */
-    public function driveItems(): HasMany
-    {
-        return $this->hasMany(DriveItem::class, 'uploaded_by');
-    }
-
-    /**
      * @return HasMany<Announcement, $this>
      */
     public function announcements(): HasMany

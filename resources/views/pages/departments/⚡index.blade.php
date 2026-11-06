@@ -27,7 +27,7 @@ new #[Title('Colleges')] class extends Component {
     public function deleting(): ?Department
     {
         return $this->deletingId
-            ? Department::withCount(['users', 'submissions', 'driveItems'])->find($this->deletingId)
+            ? Department::withCount(['users', 'submissions'])->find($this->deletingId)
             : null;
     }
 
@@ -46,7 +46,6 @@ new #[Title('Colleges')] class extends Component {
         $uses = array_filter([
             $department->users_count ? trans_choice('{1} one member|[2,*] :count members', $department->users_count) : null,
             $department->submissions_count ? trans_choice('{1} one submission|[2,*] :count submissions', $department->submissions_count) : null,
-            $department->drive_items_count ? trans_choice('{1} one drive item|[2,*] :count drive items', $department->drive_items_count) : null,
         ]);
 
         return $uses === [] ? null : implode(', ', $uses);
@@ -128,7 +127,7 @@ new #[Title('Colleges')] class extends Component {
     }
 
     /**
-     * Delete the department unless members, submissions, or drive items still use it.
+     * Delete the department unless members or submissions still use it.
      */
     public function delete(): void
     {

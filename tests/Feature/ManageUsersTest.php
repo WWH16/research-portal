@@ -6,7 +6,6 @@ use App\Enums\Role;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
-use App\Models\ResearchType;
 use App\Models\User;
 use App\Notifications\AccountRejected;
 use App\Services\DocumentStorage;
@@ -500,7 +499,6 @@ class ManageUsersTest extends TestCase
         $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
         $user = User::factory()->create(['name' => 'Maria Santos']);
         $user->submissions()->create([
-            'research_type_id' => ResearchType::create(['name' => 'Thesis'])->id,
             'category_id' => Category::create(['name' => 'Computing'])->id,
             'department_id' => $department->id,
             'title' => 'Sample Proposal',

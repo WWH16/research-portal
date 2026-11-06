@@ -31,7 +31,6 @@ use Throwable;
  */
 #[Fillable([
     'user_id',
-    'research_type_id',
     'category_id',
     'department_id',
     'title',

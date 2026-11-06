@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -318,7 +317,6 @@ class ProjectProgressTest extends TestCase
     private function project(array $attributes = []): Submission
     {
         $project = $this->maria->submissions()->create([
-            'research_type_id' => ResearchType::firstOrCreate(['name' => 'Thesis'])->id,
             'category_id' => Category::firstOrCreate(['name' => 'Computing'])->id,
             'department_id' => $this->maria->department_id,
             'title' => 'Solar Dryer Study',

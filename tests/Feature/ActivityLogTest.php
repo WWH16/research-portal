@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
-use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -137,7 +136,7 @@ class ActivityLogTest extends TestCase
     {
         $maria = User::factory()->create(['name' => 'Maria Santos']);
         ActivityLog::record('auth.login', user: $maria);
-        ActivityLog::record('filing.created', ResearchType::create(['name' => 'Capstone']), ['kind' => 'research type'], $this->admin);
+        ActivityLog::record('filing.created', Category::create(['name' => 'Capstone']), ['kind' => 'category'], $this->admin);
 
         $this->actingAs($this->admin);
 
@@ -523,7 +522,6 @@ class ActivityLogTest extends TestCase
         $maria = User::factory()->create(['department_id' => Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies'])->id]);
 
         return $maria->submissions()->create([
-            'research_type_id' => ResearchType::create(['name' => 'Thesis'])->id,
             'category_id' => Category::create(['name' => 'Computing'])->id,
             'department_id' => $maria->department_id,
             'title' => $title,

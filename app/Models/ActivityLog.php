@@ -37,7 +37,6 @@ class ActivityLog extends Model
     public const PROJECT_FIELDS = [
         'title' => 'title',
         'abstract' => 'abstract',
-        'research_type_id' => 'research type',
         'category_id' => 'category',
         'designation' => 'designation',
         'start_date' => 'starting date',
@@ -247,7 +246,7 @@ class ActivityLog extends Model
      * Removed Co-Leader Ana Cruz from the proponents · Changed Ana Reyes from Staff to Co-Leader · Uploaded the
      * concept proposal".
      *
-     * @param  array<string, array{string|null, string|null}>  $values  Old and new title, Y-m-d dates, research type and category, keyed by column.
+     * @param  array<string, array{string|null, string|null}>  $values  Old and new title, Y-m-d dates and category, keyed by column.
      * @param  list<string>  $changed  Other columns, such as the abstract, named without values.
      * @param  array{added?: list<array{string, string}>, removed?: list<array{string, string}>, roles?: list<array{string, string, string}>}  $proponents
      * @param  list<string>  $documents

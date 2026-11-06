@@ -78,7 +78,7 @@ new #[Title('Manage Users')] class extends Component {
             })
             ->when(Role::tryFrom($this->roleFilter), fn ($query, Role $role) => $query->where('role', $role))
             ->when($this->statusFilter === 'pending', fn ($query) => $query->pendingApproval())
-            ->when($this->statusFilter === 'approved', fn ($query) => $query->whereNotNull('approved_at'))
+            ->when($this->statusFilter === 'approved', fn ($query) => $query->approved())
             ->when($this->statusFilter === 'rejected', fn ($query) => $query->whereNotNull('rejected_at'))
             ->when($this->college === 'none', fn ($query) => $query->whereNull('department_id'))
             ->when(! in_array($this->college, ['', 'none'], true), fn ($query) => $query->whereRelation('department', 'code', $this->college))

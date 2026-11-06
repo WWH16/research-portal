@@ -477,7 +477,7 @@ new #[Title('Manage Users')] class extends Component {
                             @endif
                         </flux:table.cell>
                         <flux:table.cell>
-                            <flux:badge size="sm" inset="top bottom" :color="match ($user->role) { Role::Admin => 'green', Role::Staff => 'blue', default => 'zinc' }">
+                            <flux:badge size="sm" inset="top bottom" data-test="role-badge" :color="match ($user->role) { Role::Admin => 'green', Role::Staff => 'blue', default => 'zinc' }">
                                 {{ __($user->role->label()) }}
                             </flux:badge>
                             @if ($user->isRejected())

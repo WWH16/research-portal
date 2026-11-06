@@ -168,11 +168,16 @@ class ManageUsersTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        Livewire::test('pages::users.index')
+        $component = Livewire::test('pages::users.index')
             ->set('roleFilter', 'staff')
             ->assertSee($staff->name)
             ->assertDontSee($faculty->name)
-            ->assertSeeInOrder([$staff->name, 'Staff']);
+            ->assertSeeHtml('value="staff"');
+
+        $this->assertMatchesRegularExpression(
+            '/data-test="role-badge"[^>]*>\s*Staff\s*</',
+            $component->html(),
+        );
     }
 
     public function test_the_role_cannot_be_mass_assigned(): void

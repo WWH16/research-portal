@@ -9,9 +9,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /*
@@ -41,10 +39,6 @@ new class extends Component {
      */
     public array $authorRows = [];
 
-    /** The saved authors when the form opened, so a save never overwrites a co-author's change unseen. */
-    #[Locked]
-    public string $openedAuthors = '';
-
     public function mount(?Publication $publication = null): void
     {
         if (! $publication?->exists) {
@@ -55,7 +49,6 @@ new class extends Component {
         }
 
         $this->publication = $publication;
-        $this->openedAuthors = $publication->authors;
         $this->fill(collect($publication->only(['title', 'journal', 'volume', 'issue', 'pages', 'description', 'link']))->map(fn ($value) => (string) $value)->all());
         $this->published_on = $publication->published_on->toDateString();
         $this->submission_id = $publication->submission_id;
@@ -157,11 +150,6 @@ new class extends Component {
         $validated['indexed_in'] = array_values(array_intersect(array_keys(Publication::INDEXES), $validated['indexed_in']));
 
         $publication = DB::transaction(function () use ($validated, $authorIds) {
-            // Locked until the save ends, so another save can't slip in between the check and this one.
-            if ($this->publication && Publication::lockForUpdate()->findOrFail($this->publication->id)->authors !== $this->openedAuthors) {
-                throw ValidationException::withMessages(['authorRows' => __('Someone changed the authors while this form was open. Reload the page to see the change, then save again.')]);
-            }
-
             $publication = $this->publication ?? new Publication;
             $publication->fill(array_map(fn ($value) => $value === '' || $value === [] ? null : $value, Arr::except($validated, 'authorRows')));
             $changed = array_keys($publication->getDirty());

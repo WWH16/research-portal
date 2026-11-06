@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Notification;
 use League\Flysystem\Filesystem;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Psr\Http\Message\ResponseInterface;
+use RuntimeException;
 
 /**
  * The Google API calls the portal makes itself: everything else goes through the "google" disk.
@@ -181,6 +182,7 @@ class GoogleDrive
      */
     public function revoke(string $refreshToken): void
     {
-        $this->client()->revokeToken($refreshToken);
+        // Google's client answers false instead of throwing when Google says no.
+        $this->client()->revokeToken($refreshToken) ?: throw new RuntimeException('Google did not accept the request to revoke the portal\'s access.');
     }
 }

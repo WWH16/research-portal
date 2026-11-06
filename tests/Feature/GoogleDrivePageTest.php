@@ -12,6 +12,7 @@ use App\Notifications\DriveDisconnected;
 use App\Services\GoogleDrive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
@@ -316,6 +317,25 @@ class GoogleDrivePageTest extends TestCase
         $log = ActivityLog::where('action', 'drive.disconnected')->sole();
         $this->assertSame('research.office@isu.edu.ph', $log->subject_label);
         $this->assertSame('disconnected Google Drive', $log->summary());
+    }
+
+    public function test_google_refusing_to_end_access_still_disconnects_and_tells_the_admin_what_to_do(): void
+    {
+        Exceptions::fake();
+        $connection = GoogleDriveConnection::factory()->create(['refresh_token' => 'secret-refresh-token']);
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('revoke')->once()->andThrow(new RuntimeException('Google said no.')));
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::google-drive.index')
+            ->set('confirmEmail', 'Research.Office@isu.edu.ph')
+            ->set('password', 'password')
+            ->call('disconnect')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast-show', fn ($name, $params) => $params['dataset']['variant'] === 'warning'
+                && $params['slots']['text'] === 'Google Drive disconnected. Google did not confirm that the portal’s access ended, so remove it at myaccount.google.com/permissions.');
+
+        Exceptions::assertReported(RuntimeException::class);
+        $this->assertFalse($connection->fresh()->isConnected());
     }
 
     public function test_disconnect_tells_every_admin_once(): void

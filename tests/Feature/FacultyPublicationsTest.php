@@ -43,6 +43,19 @@ class FacultyPublicationsTest extends TestCase
         $this->actingAs($this->admin)->get(route('faculty.show', $this->admin))->assertNotFound();
     }
 
+    public function test_sign_ups_not_yet_approved_are_not_listed(): void
+    {
+        User::factory()->rejected()->create(['name' => 'Rejected Person']);
+        User::factory()->pending()->create(['name' => 'Pending Person']);
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::faculty.index')
+            ->assertSee('Rivera')
+            ->assertDontSee('Rejected Person')
+            ->assertDontSee('Pending Person');
+    }
+
     public function test_staff_open_any_paper_and_have_no_profile_of_their_own(): void
     {
         $staff = User::factory()->create(['role' => 'staff']);

@@ -228,6 +228,35 @@ class SubmissionTest extends TestCase
             ->assertHasErrors('proponents.1.user_id');
     }
 
+    public function test_only_approved_faculty_can_be_picked_as_proponents(): void
+    {
+        $this->fakeDrive();
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $rejected = User::factory()->rejected()->create(['name' => 'Rejected Person']);
+        $pending = User::factory()->pending()->create(['name' => 'Pending Person']);
+        $this->actingAs($maria);
+
+        $form = Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->assertDontSee('Rejected Person')
+            ->assertDontSee('Pending Person');
+
+        foreach ([$rejected, $pending] as $person) {
+            $form->set('proponents', [['study' => 1, 'user_id' => $maria->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $person->id, 'role' => 'Staff']])
+                ->call('save')
+                ->assertHasErrors('proponents.1.user_id');
+        }
+
+        // Someone already on the project stays on it.
+        $project->proponents()->create(['user_id' => $rejected->id, 'study' => 1, 'role' => 'Staff']);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->assertSee('Rejected Person')
+            ->call('save')
+            ->assertHasNoErrors();
+    }
+
     public function test_required_fields_are_validated(): void
     {
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);

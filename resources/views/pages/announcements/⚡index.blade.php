@@ -296,7 +296,7 @@ new #[Title('Announcements')] class extends Component {
         if ($announcement->wasRecentlyCreated || $announcement->wasChanged()) {
             Notification::send(
                 // Everyone who does not post announcements hears of them: faculty and staff, once approved.
-                User::whereNot('role', \App\Enums\Role::Admin)->whereNotNull('approved_at')->get(),
+                User::whereNot('role', \App\Enums\Role::Admin)->approved()->get(),
                 $announcement->wasRecentlyCreated ? new AnnouncementPosted($announcement) : new AnnouncementUpdated($announcement),
             );
         }

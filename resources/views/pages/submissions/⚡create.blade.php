@@ -373,7 +373,7 @@ new #[Title('Research Project')] class extends Component {
     }
 
     /**
-     * Who can be picked as a proponent, which save() also checks: verified faculty, and anyone already on the project.
+     * Who can be picked as a proponent, which save() also checks: verified and approved faculty, and anyone already on the project.
      * Those already on it stay while re-verifying a changed email or after moving to another role.
      * Research staff without a portal account are typed in by name instead.
      */
@@ -381,7 +381,7 @@ new #[Title('Research Project')] class extends Component {
     public function faculty(): Collection
     {
         // ponytail: one plain select of every verified faculty member; switch to a searchable picker past a few hundred.
-        return User::where(fn ($query) => $query->faculty()->whereNotNull('email_verified_at'))
+        return User::where(fn ($query) => $query->faculty()->approved()->whereNotNull('email_verified_at'))
             ->orWhereIn('id', $this->submission?->proponents()->pluck('user_id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
     }

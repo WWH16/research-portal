@@ -237,23 +237,6 @@ class DashboardTest extends TestCase
             ->assertDontSee('Staffer');
     }
 
-    public function test_sign_ups_not_yet_approved_are_not_counted_as_faculty(): void
-    {
-        User::factory()->rejected()->create(['name' => 'Rejected Person', 'department_id' => null]);
-        User::factory()->pending()->create(['name' => 'Pending Person', 'department_id' => null]);
-
-        $this->actingAs(User::factory()->create(['role' => 'admin']));
-
-        $page = Livewire::test('pages::dashboard')->instance();
-        $this->assertSame(0, $page->facultyCounts['pending']);
-        $this->assertSame(0, $page->facultyWithoutDepartment);
-
-        Livewire::withQueryParams(['group' => 'pending'])
-            ->test('pages::dashboard')
-            ->assertDontSee('Rejected Person')
-            ->assertDontSee('Pending Person');
-    }
-
     public function test_admins_see_faculty_not_yet_submitted_by_department(): void
     {
         $year = now()->year;

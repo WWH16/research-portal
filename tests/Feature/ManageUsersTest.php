@@ -317,6 +317,48 @@ class ManageUsersTest extends TestCase
         $this->assertTrue($this->admin->fresh()->isAdmin());
     }
 
+    public function test_only_faculty_accounts_have_a_college(): void
+    {
+        $college = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->call('create')
+            ->assertSeeHtml('wire:model="department_id"')
+            ->set('role', 'staff')
+            ->assertDontSeeHtml('wire:model="department_id"')
+            ->set('name', 'Pedro Reyes')
+            ->set('email', 'pedro@isu.edu.ph')
+            ->set('department_id', $college->id)
+            ->set('password', 'secret-password')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull(User::where('email', 'pedro@isu.edu.ph')->sole()->department_id);
+
+        // An office account made before this rule loses its college the next time it is saved.
+        $staff = User::factory()->create(['role' => 'staff', 'department_id' => $college->id]);
+
+        Livewire::test('pages::users.index')
+            ->call('edit', $staff->id)
+            ->assertDontSeeHtml('wire:model="department_id"')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull($staff->fresh()->department_id);
+
+        // A faculty account keeps its college.
+        $faculty = User::factory()->create(['department_id' => $college->id]);
+
+        Livewire::test('pages::users.index')
+            ->call('edit', $faculty->id)
+            ->assertSeeHtml('wire:model="department_id"')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame($college->id, $faculty->fresh()->department_id);
+    }
+
     public function test_deleting_an_account_removes_its_photo_from_google_drive(): void
     {
         $drive = $this->fakeDrive();

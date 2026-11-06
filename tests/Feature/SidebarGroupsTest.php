@@ -33,6 +33,22 @@ class SidebarGroupsTest extends TestCase
         $this->get(route('dashboard'))->assertSee('data-test="overview-nav"', false)->assertSee('data-test="research-nav"', false);
     }
 
+    public function test_staff_get_the_office_links_but_no_admin_groups(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'staff']));
+
+        $this->get(route('dashboard'))
+            ->assertSee('data-test="overview-nav"', false)
+            ->assertSee(route('faculty.index'), escape: false)
+            ->assertSee(route('drive.index'), escape: false)
+            ->assertDontSee(route('reviews.index'), escape: false)
+            ->assertDontSee('Administration')
+            ->assertDontSee('Filing options')
+            ->assertDontSee(route('google-drive.index'), escape: false);
+
+        $this->assertSame(['overview-nav' => true, 'research-nav' => true], $this->openGroups('dashboard'));
+    }
+
     public function test_the_seal_shows_in_the_phone_bar_and_beside_the_title_on_wide_screens(): void
     {
         $this->actingAs(User::factory()->create());

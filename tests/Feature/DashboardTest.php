@@ -195,6 +195,42 @@ class DashboardTest extends TestCase
         Livewire::withQueryParams(['group' => 'completed'])->test('pages::dashboard')->assertDontSee('data-test="faculty-list"', escape: false)->call('export')->assertForbidden();
     }
 
+    public function test_staff_see_the_office_summary_and_export_it(): void
+    {
+        $navarro = $this->facultyInDepartment('Navarro');
+        $report = ['awaiting_review' => false, 'terminal_path' => 'drive-1/submissions/report.pdf', 'terminal_uploaded_at' => now()->subDay()];
+        $this->submit($navarro, 'Finished Study', 'Completed', $report + ['target_date' => today()]);
+
+        $this->actingAs(User::factory()->create(['role' => 'staff']));
+
+        Livewire::withQueryParams(['group' => 'completed'])
+            ->test('pages::dashboard')
+            ->assertSee('Faculty progress')
+            ->assertSee('Navarro')
+            ->assertDontSee('data-test="waiting-tile"', escape: false)
+            ->assertDontSee('data-test="setup-tile"', escape: false)
+            ->assertDontSee('data-test="no-department-tile"', escape: false)
+            ->assertDontSee(route('reviews.index'), escape: false)
+            ->call('export')
+            ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.now()->year.'-12-31.csv');
+    }
+
+    public function test_staff_accounts_are_not_counted_as_faculty_yet_to_submit(): void
+    {
+        $ccs = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        User::factory()->create(['name' => 'Navarro', 'department_id' => $ccs->id]);
+        User::factory()->create(['name' => 'Staffer', 'department_id' => $ccs->id, 'role' => 'staff']);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->assertSame(1, Livewire::test('pages::dashboard')->instance()->facultyCounts['pending']);
+
+        Livewire::withQueryParams(['group' => 'pending'])
+            ->test('pages::dashboard')
+            ->assertSee('Navarro')
+            ->assertDontSee('Staffer');
+    }
+
     public function test_admins_see_faculty_not_yet_submitted_by_department(): void
     {
         $year = now()->year;

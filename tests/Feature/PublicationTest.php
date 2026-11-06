@@ -142,6 +142,8 @@ class PublicationTest extends TestCase
         $form()->set('authorRows', [['user_id' => $this->soriano->id], ['name' => 'Garcia, P.']])->call('save')->assertHasErrors('authorRows');
         $form()->set('authorRows', [['user_id' => $this->rivera->id], ['user_id' => User::factory()->unverified()->create()->id]])->call('save')->assertHasErrors('authorRows.1.user_id');
         $form()->set('authorRows', [['user_id' => $this->rivera->id], ['user_id' => User::factory()->create(['role' => 'admin'])->id]])->call('save')->assertHasErrors('authorRows.1.user_id');
+        $form()->set('authorRows', [['user_id' => $this->rivera->id], ['user_id' => User::factory()->rejected()->create()->id]])->call('save')->assertHasErrors('authorRows.1.user_id');
+        $form()->set('authorRows', [['user_id' => $this->rivera->id], ['user_id' => User::factory()->pending()->create()->id]])->call('save')->assertHasErrors('authorRows.1.user_id');
         $form()->set('authorRows', [['user_id' => $this->rivera->id], ['user_id' => $this->rivera->id]])->call('save')->assertHasErrors('authorRows.0.user_id');
         $form()->set('authorRows', [['user_id' => $this->rivera->id], ['name' => '']])->call('save')->assertHasErrors('authorRows.1.name');
         $form()->set('authorRows', [['user_id' => $this->rivera->id], ['name' => 'Garcia, P.; Cruz, R.']])->call('save')->assertHasErrors('authorRows.1.name');

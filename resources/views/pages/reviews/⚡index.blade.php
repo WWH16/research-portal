@@ -33,7 +33,6 @@ new #[Title('Concept Reviews')] class extends Component {
         return Submission::where('awaiting_review', true)
             ->with(['department:id,code', 'proponents.user:id,name'])
             ->oldest('updated_at')
-            ->orderBy('id')
             ->paginate(15);
     }
 

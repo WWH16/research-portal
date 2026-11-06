@@ -165,9 +165,34 @@ class PublicationTest extends TestCase
             ->assertHasNoErrors();
 
         $this->actingAs($this->soriano);
-        $staleForm->set('title', 'Overwritten')->call('save')->assertHasErrors('authorRows');
+        $staleForm->set('title', 'Overwritten')->call('save')->assertHasErrors('stale');
 
         $this->assertSame('Rivera; Soriano; Garcia, P.', $paper->fresh()->authors);
+        $this->assertNotSame('Overwritten', $paper->fresh()->title);
+    }
+
+    public function test_a_form_opened_before_a_co_authors_edit_cannot_undo_it(): void
+    {
+        $paper = $this->publication([$this->rivera, $this->soriano], ['authors' => 'Rivera; Soriano', 'journal' => 'Old Journal', 'published_on' => '2025-06-01']);
+
+        $this->actingAs($this->soriano);
+        $staleForm = Livewire::test('pages::publications.create', ['publication' => $paper]);
+
+        $this->actingAs($this->rivera);
+        Livewire::test('pages::publications.create', ['publication' => $paper])
+            ->set('journal', 'Corrected Journal')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->actingAs($this->soriano);
+        $staleForm->set('title', 'Overwritten')
+            ->call('save')
+            ->assertHasErrors('stale')
+            ->assertHasNoErrors('authorRows')
+            ->assertDontSee('Someone changed this paper')
+            ->assertDispatched('toast-show', fn ($name, $params) => str_starts_with($params['slots']['text'], 'Someone changed this paper') && $params['dataset']['variant'] === 'danger');
+
+        $this->assertSame('Corrected Journal', $paper->fresh()->journal);
         $this->assertNotSame('Overwritten', $paper->fresh()->title);
     }
 

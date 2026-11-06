@@ -280,10 +280,56 @@ class SubmissionTest extends TestCase
             ->assertHasNoErrors();
 
         $this->actingAs($jose);
-        $staleForm->set('title', 'Overwritten')->call('save')->assertHasErrors('proponents');
+        $staleForm->set('title', 'Overwritten')->call('save')->assertHasErrors('stale');
 
         $this->assertTrue($project->fresh()->involves($pedro));
         $this->assertSame('Maria Proposal', $project->fresh()->title);
+    }
+
+    public function test_a_form_opened_before_a_co_proponents_edit_cannot_undo_it(): void
+    {
+        $this->fakeDrive();
+
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $project->proponents()->create(['user_id' => $jose->id, 'study' => 1, 'role' => 'Staff']);
+
+        $this->actingAs($jose);
+        $staleForm = Livewire::test('pages::submissions.create', ['submission' => $project->fresh()]);
+
+        $this->actingAs($maria);
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->set('title', 'Corrected title')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->actingAs($jose);
+        $staleForm->set('abstract', 'Another abstract.')
+            ->call('save')
+            ->assertHasErrors('stale')
+            ->assertHasNoErrors('proponents')
+            ->assertDontSee('Someone changed this project')
+            ->assertDispatched('toast-show', fn ($name, $params) => str_starts_with($params['slots']['text'], 'Someone changed this project') && $params['dataset']['variant'] === 'danger');
+
+        $this->assertSame('Corrected title', $project->fresh()->title);
+        $this->assertSame('An abstract.', $project->fresh()->abstract);
+    }
+
+    public function test_the_research_offices_changes_do_not_refuse_an_open_form(): void
+    {
+        $this->fakeDrive();
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs($maria);
+        $form = Livewire::test('pages::submissions.create', ['submission' => $project]);
+
+        // A concept review and new dates don't touch anything the form holds.
+        $project->update(['awaiting_review' => false, 'concept_passed' => true, 'target_date' => now()->addYears(2)]);
+
+        $form->set('abstract', 'Another abstract.')->call('save')->assertHasNoErrors();
+
+        $this->assertSame('Another abstract.', $project->fresh()->abstract);
     }
 
     public function test_required_fields_are_validated(): void

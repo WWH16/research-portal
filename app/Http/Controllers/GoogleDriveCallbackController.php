@@ -44,6 +44,11 @@ class GoogleDriveCallbackController
             $google = Socialite::driver('google')->user();
         } catch (InvalidStateException) {
             return $this->refuse(__('The Google sign-in expired. Click Connect again.'));
+        } catch (GuzzleException $e) {
+            // A wrong client secret, a code Google no longer accepts, or a moment without network.
+            report($e);
+
+            return $this->refuse(__('Google refused the sign-in, so nothing was saved. Try Connect again in a few minutes.'));
         }
 
         $email = strtolower((string) $google->getEmail());

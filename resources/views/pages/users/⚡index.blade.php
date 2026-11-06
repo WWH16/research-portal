@@ -176,6 +176,22 @@ new #[Title('Manage Users')] class extends Component {
     }
 
     /**
+     * The roles the form can give. A faculty account keeps its role, so a project or paper never loses the only person
+     * who can edit it. Admin and staff accounts swap between those two, and a new account can be any of the three.
+     *
+     * @return list<Role>
+     */
+    #[Computed]
+    public function roles(): array
+    {
+        return match (true) {
+            ! $this->editing => [Role::Faculty, Role::Staff, Role::Admin],
+            $this->editing->isFaculty() => [Role::Faculty],
+            default => [Role::Staff, Role::Admin],
+        };
+    }
+
+    /**
      * Open the form for a new user.
      */
     public function create(): void
@@ -222,7 +238,7 @@ new #[Title('Manage Users')] class extends Component {
             'email' => $this->emailRules($this->editingId),
             'mobile' => ['nullable', 'string', 'max:20'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
-            'role' => ['required', Rule::enum(Role::class)],
+            'role' => ['required', Rule::enum(Role::class)->only($this->roles)],
             'password' => [$this->editingId ? 'nullable' : 'required', 'string', Password::default()],
         ], attributes: [
             'department_id' => __('college'),
@@ -334,7 +350,7 @@ new #[Title('Manage Users')] class extends Component {
         });
 
         // Told once the approval is saved, so they don't keep trying to sign in.
-        $user->notify(new AccountApproved($user->isFaculty()));
+        $user->notify(new AccountApproved);
 
         Flux::toast(variant: 'success', text: __(':name can now use the portal.', ['name' => $user->name]));
         // The sidebar's sign-up count changes, so it counts again at once.
@@ -397,7 +413,7 @@ new #[Title('Manage Users')] class extends Component {
     {
         $this->reset('editingId', 'name', 'email', 'mobile', 'department_id', 'role', 'password');
         $this->resetValidation();
-        unset($this->editing, $this->editingSelf);
+        unset($this->editing, $this->editingSelf, $this->roles);
     }
 }; ?>
 
@@ -537,15 +553,17 @@ new #[Title('Manage Users')] class extends Component {
                     @endforeach
                 </flux:select>
 
-                <flux:select wire:model="role" :label="__('Role')" :disabled="$this->editingSelf">
-                    <flux:select.option :value="Role::Faculty->value">{{ __('Faculty') }}</flux:select.option>
-                    <flux:select.option :value="Role::Staff->value">{{ __('Staff') }}</flux:select.option>
-                    <flux:select.option :value="Role::Admin->value">{{ __('Admin') }}</flux:select.option>
+                <flux:select wire:model="role" :label="__('Role')" :disabled="$this->editingSelf || $this->editing?->isFaculty()">
+                    @foreach ($this->roles as $option)
+                        <flux:select.option :value="$option->value">{{ __($option->name) }}</flux:select.option>
+                    @endforeach
                 </flux:select>
 
                 {{-- Its own grid row under the Role column, so College and Role stay level above it. --}}
                 @if ($this->editingSelf)
                     <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('You can’t change your own role.') }}</flux:text>
+                @elseif ($this->editing?->isFaculty())
+                    <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('A faculty account keeps its role, so its projects and papers always have someone who can edit them.') }}</flux:text>
                 @endif
             </div>
 

@@ -382,7 +382,7 @@ class ManageUsersTest extends TestCase
 
         $form = Livewire::test('pages::users.index')
             ->call('edit', $maria->id)
-            ->assertSee('A faculty account’s role can’t be changed.');
+            ->assertSee('A faculty account keeps its role');
 
         foreach (['staff', 'admin'] as $role) {
             $form->set('role', $role)->call('save')->assertHasErrors(['role']);

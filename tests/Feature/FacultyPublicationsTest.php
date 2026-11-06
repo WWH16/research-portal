@@ -49,12 +49,27 @@ class FacultyPublicationsTest extends TestCase
         $paper = $this->publication('Rivera paper', '2025-08-01', [], $this->rivera);
         $this->actingAs($staff);
 
-        $this->get(route('publications.show', $paper))->assertOk()->assertSee('Faculty Publications');
+        $this->get(route('publications.show', $paper))->assertOk();
+        Livewire::test('pages::publications.show', ['publication' => $paper])
+            ->assertSeeHtml('href="'.route('faculty.index').'"')
+            ->assertSeeHtml('href="'.route('faculty.show', $this->rivera).'"');
         $this->get(route('faculty.show', $staff))->assertNotFound();
 
         $page = $this->get(route('profile.edit'))->assertOk();
         foreach (User::EMAIL_KINDS as $label) {
             $page->assertDontSee($label);
+        }
+    }
+
+    public function test_a_paper_whose_only_author_is_now_staff_links_to_no_profile(): void
+    {
+        $moved = User::factory()->create(['role' => 'staff']);
+        $paper = $this->publication('Moved paper', '2025-08-01', [], $moved);
+
+        foreach ([User::factory()->create(['role' => 'staff']), $this->admin] as $viewer) {
+            $this->actingAs($viewer)->get(route('publications.show', $paper))
+                ->assertOk()
+                ->assertDontSee(route('faculty.show', $moved), escape: false);
         }
     }
 

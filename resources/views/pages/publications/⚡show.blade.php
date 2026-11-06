@@ -31,7 +31,7 @@ new class extends Component {
             Flux::toast(variant: 'success', text: $message);
         }
 
-        $this->publication = $publication->load(['faculty:id,name', 'submission:id,title,year']);
+        $this->publication = $publication->load(['faculty:id,name,role', 'submission:id,title,year']);
         $this->year = now()->year;
     }
 
@@ -90,7 +90,9 @@ new class extends Component {
     $total = $publication->citations()->count();
     $citations = $publication->citations()->orderByDesc('year')->orderBy('link')->limit($this->shown)->get();
     $first = $publication->published_on->year;
-    $owner = $office ? ($publication->faculty->firstWhere('id', $this->author) ?? $publication->faculty->first()) : auth()->user();
+    // An author later switched to staff or admin has no profile page, so only faculty authors can be the owner.
+    $authors = $publication->faculty->filter(fn ($user) => $user->isFaculty());
+    $owner = $office ? ($authors->firstWhere('id', $this->author) ?? $authors->first()) : auth()->user();
 @endphp
 
 <div class="mx-auto w-full max-w-6xl">

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\AccountApproved;
 use App\Notifications\AccountRejected;
 use App\Notifications\PasswordChanged;
+use App\Services\DocumentStorage;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -325,6 +326,11 @@ new #[Title('Manage Users')] class extends Component {
             $this->deleting->delete();
             ActivityLog::record('user.deleted', $this->deleting);
         });
+
+        // Nothing points at the photo once the account is gone, so it leaves Google Drive too.
+        if ($this->deleting->profile_image) {
+            app(DocumentStorage::class)->delete($this->deleting->profile_image);
+        }
 
         Flux::modal('user-delete')->close();
         Flux::toast(variant: 'success', text: __('User deleted.'));

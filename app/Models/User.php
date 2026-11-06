@@ -98,7 +98,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     {
         $admin = $this->isAdmin();
         $toReview = $admin ? Submission::where('awaiting_review', true)->count() : 0;
-        $toRevise = $admin ? 0 : Submission::involving($this)->where('awaiting_review', false)->where('concept_passed', false)->count();
+        $toRevise = $this->isFaculty() ? Submission::involving($this)->where('awaiting_review', false)->where('concept_passed', false)->count() : 0;
         $toApprove = $admin ? self::pendingApproval()->count() : 0;
         $unread = $this->unreadNotifications()->count();
 
@@ -219,6 +219,22 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * Whether the account belongs to the Research Office, as an admin or as staff.
+     */
+    public function isResearchOffice(): bool
+    {
+        return $this->role === Role::Admin || $this->role === Role::Staff;
+    }
+
+    /**
+     * Whether the account is a proponent's.
+     */
+    public function isFaculty(): bool
+    {
+        return $this->role === Role::Faculty;
+    }
+
+    /**
      * Whether an admin let the account in. Sign-ups start without approval; admin-made and seeded accounts are approved.
      */
     public function isApproved(): bool
@@ -252,6 +268,16 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function scopeAdmins(Builder $query): void
     {
         $query->where('role', Role::Admin);
+    }
+
+    /**
+     * The Research Office's accounts, admins and staff, who hear of finished and late projects.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeResearchOffice(Builder $query): void
+    {
+        $query->whereIn('role', [Role::Admin, Role::Staff]);
     }
 
     /**

@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\EnsureUserIsFaculty;
+use App\Http\Middleware\RequirePassword;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'approved' => EnsureUserIsApproved::class,
             'faculty' => EnsureUserIsFaculty::class,
+            'password.confirm' => RequirePassword::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

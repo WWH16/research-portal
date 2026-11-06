@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
+use Livewire\Mechanisms\HandleRequests\HandleRequests;
 use Tests\TestCase;
 
 class SecurityTest extends TestCase
@@ -39,6 +40,34 @@ class SecurityTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('security.edit'))
             ->assertRedirect(route('password.confirm'));
+    }
+
+    public function test_a_click_on_a_page_left_open_past_the_password_timeout_asks_for_the_password_again(): void
+    {
+        $user = User::factory()->withTwoFactor()->create();
+        $html = $this->actingAs($user)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get(route('security.edit'))
+            ->assertOk()
+            ->getContent();
+        preg_match_all('/wire:snapshot="([^"]+)"/', $html, $matches);
+        $snapshot = collect($matches[1])->map(fn ($found) => html_entity_decode($found))->first(fn ($found) => str_contains($found, 'settings.security'));
+        $disable = fn () => $this->json('POST', app(HandleRequests::class)->getUpdateUri(), ['components' => [[
+            'snapshot' => $snapshot,
+            'updates' => [],
+            'calls' => [['path' => '', 'method' => 'disable', 'params' => []]],
+        ]]], ['X-Livewire' => 'true', 'Accept' => 'text/html']);
+
+        $this->withSession(['auth.password_confirmed_at' => 0]);
+        $disable()->assertRedirect(route('password.confirm'));
+
+        $this->assertTrue($user->fresh()->hasEnabledTwoFactorAuthentication());
+        $this->assertSame(route('security.edit'), session('url.intended'));
+
+        $this->withSession(['auth.password_confirmed_at' => time()]);
+        $disable()->assertOk();
+
+        $this->assertFalse($user->fresh()->hasEnabledTwoFactorAuthentication());
     }
 
     public function test_security_settings_page_renders_without_two_factor_when_feature_is_disabled(): void

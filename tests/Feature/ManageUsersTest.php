@@ -9,9 +9,12 @@ use App\Models\Department;
 use App\Models\ResearchType;
 use App\Models\User;
 use App\Notifications\AccountRejected;
+use App\Services\DocumentStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -312,6 +315,22 @@ class ManageUsersTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertTrue($this->admin->fresh()->isAdmin());
+    }
+
+    public function test_deleting_an_account_removes_its_photo_from_google_drive(): void
+    {
+        $drive = $this->fakeDrive();
+        $path = app(DocumentStorage::class)->store(UploadedFile::fake()->create('me.jpg', 10, 'image/jpeg'), 'profile-images');
+        $location = Str::after($path, '/');
+        $jose = User::factory()->create();
+        $jose->forceFill(['profile_image' => $path])->save();
+        $drive->assertExists($location);
+
+        $this->actingAs($this->admin);
+        Livewire::test('pages::users.index')->call('confirmDelete', $jose->id)->call('delete');
+
+        $this->assertNull($jose->fresh());
+        $drive->assertMissing($location);
     }
 
     public function test_a_faculty_account_keeps_its_role(): void

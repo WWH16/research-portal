@@ -75,12 +75,23 @@ class DriveTest extends TestCase
 
     public function test_faculty_moved_to_staff_keep_sight_of_their_project_but_cannot_edit_it(): void
     {
+        // Returned for revision, so it counts as work to revise while Navarro is still faculty.
+        $this->smart->update(['awaiting_review' => false, 'concept_passed' => false]);
+        $paper = Publication::factory()->create();
+        $paper->faculty()->attach($this->navarro->id);
+        $this->assertSame(1, $this->navarro->openWork()['toRevise']);
+
         $this->navarro->forceFill(['role' => 'staff'])->save();
 
         $this->assertTrue($this->navarro->can('view', $this->smart));
         $this->assertFalse($this->navarro->can('update', $this->smart));
         $this->actingAs($this->navarro)->get(route('submissions.edit', $this->smart))->assertForbidden();
         $this->assertSame(0, $this->navarro->openWork()['toRevise']);
+
+        // A paper they wrote while faculty stays readable, but is no longer theirs to edit.
+        $this->assertTrue($this->navarro->can('view', $paper));
+        $this->assertFalse($this->navarro->can('update', $paper));
+        $this->get(route('publications.edit', $paper))->assertForbidden();
     }
 
     public function test_faculty_see_only_projects_they_are_on_whatever_the_college(): void

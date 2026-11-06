@@ -261,7 +261,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
-     * The Research Office's accounts, who hear of work that needs an admin.
+     * Admins, who hear of work only an admin can fix, such as Google Drive problems and failed emails.
      *
      * @param  Builder<self>  $query
      */

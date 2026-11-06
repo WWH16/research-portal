@@ -576,7 +576,7 @@ new #[Title('Manage Users')] class extends Component {
                 @if ($this->editingSelf)
                     <flux:text class="-mt-4 text-sm">{{ __('You can’t change your own role.') }}</flux:text>
                 @elseif ($this->editing?->isFaculty())
-                    <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('A faculty account keeps its role, so its projects and papers always have someone who can edit them.') }}</flux:text>
+                    <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('A faculty account’s role can’t be changed.') }}</flux:text>
                 @endif
             </div>
 

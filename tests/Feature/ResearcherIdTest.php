@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Actions\Fortify\CreateNewUser;
 use App\Models\Department;
 use App\Models\User;
-use Database\Seeders\AdminUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -102,7 +101,7 @@ class ResearcherIdTest extends TestCase
 
     public function test_the_seeded_admin_gets_an_id(): void
     {
-        $this->seed(AdminUserSeeder::class);
+        $this->seed();
 
         $this->assertNotNull(User::where('email', 'admin@isu.edu.ph')->value('researcher_id'));
     }

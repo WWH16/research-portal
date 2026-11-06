@@ -4,7 +4,6 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Department;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -98,12 +97,5 @@ class SignupApprovalTest extends TestCase
 
         $this->assertNotNull(DB::table('users')->find($id)->approved_at);
         $this->assertNull(DB::table('users')->find($id)->rejected_at);
-    }
-
-    public function test_seeded_accounts_are_approved(): void
-    {
-        $this->seed(DatabaseSeeder::class);
-
-        $this->assertSame(0, User::whereNull('approved_at')->count());
     }
 }

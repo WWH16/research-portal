@@ -185,11 +185,8 @@ new #[Title('Google Drive')] class extends Component {
      */
     private function finish(string $message, ?string $tokenToRevoke = null): void
     {
-        $failed = $tokenToRevoke && ! rescue(function () use ($tokenToRevoke) {
-            app(GoogleDrive::class)->revoke($tokenToRevoke);
-
-            return true;
-        }, false);
+        // revoke() returns nothing, so only a failure gives rescue's true.
+        $failed = $tokenToRevoke && rescue(fn () => app(GoogleDrive::class)->revoke($tokenToRevoke), true);
 
         Flux::toast(
             variant: $failed ? 'warning' : 'success',

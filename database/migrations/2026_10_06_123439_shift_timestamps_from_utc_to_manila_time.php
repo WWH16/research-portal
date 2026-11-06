@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * The app timezone moved from UTC to Asia/Manila. Laravel saves times in the app timezone, so rows written
@@ -17,10 +16,8 @@ return new class extends Migration
         'users' => ['email_verified_at', 'two_factor_confirmed_at', 'created_at', 'updated_at'],
         'password_reset_tokens' => ['created_at'],
         'passkeys' => ['last_used_at', 'created_at', 'updated_at'],
-        'research_types' => ['created_at', 'updated_at'],
         'categories' => ['created_at', 'updated_at'],
         'submissions' => ['terminal_uploaded_at', 'created_at', 'updated_at'],
-        'drive_items' => ['created_at', 'updated_at'],
         'announcements' => ['created_at', 'updated_at'],
         'activity_logs' => ['created_at', 'updated_at'],
         'proponents' => ['created_at', 'updated_at'],
@@ -45,11 +42,6 @@ return new class extends Migration
 
         DB::transaction(function () use ($hours, $sqlite) {
             foreach (self::COLUMNS as $table => $columns) {
-                // A later migration dropped some of these, and ManilaTimeMigrationTest runs this one on the final tables.
-                if (! Schema::hasTable($table)) {
-                    continue;
-                }
-
                 $values = [];
                 foreach ($columns as $column) {
                     // Null columns stay null in both forms.

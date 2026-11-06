@@ -123,6 +123,27 @@ class Publication extends Model
         return trim($initials($words).' '.$last.$suffix);
     }
 
+    /**
+     * Put a tagged author's new name in the printed list, so the edit form still finds them there. The first match is
+     * theirs, as the form reads it. A list that would outgrow its 1,000-character column keeps the old name.
+     */
+    public function renameAuthor(string $from, string $to): void
+    {
+        $names = array_map(trim(...), explode(';', $this->authors));
+        $index = array_search($from, $names, true);
+
+        if ($index === false) {
+            return;
+        }
+
+        $names[$index] = $to;
+        $authors = implode('; ', $names);
+
+        if (mb_strlen($authors) <= 1000) {
+            $this->update(['authors' => $authors]);
+        }
+    }
+
     public function authoredBy(User $user): bool
     {
         return $this->faculty()->whereKey($user->id)->exists();

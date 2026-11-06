@@ -74,6 +74,6 @@ class StaffRoleTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'staff']));
 
         $this->get(route('dashboard'))->assertSee('Research Office staff');
-        $this->get(route('profile.edit'))->assertSeeInOrder(['Role', 'Staff']);
+        $this->get(route('profile.edit'))->assertSeeInOrder(['Role', 'Staff'])->assertDontSee('Not assigned');
     }
 }

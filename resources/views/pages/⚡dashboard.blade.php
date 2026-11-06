@@ -20,7 +20,8 @@ use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /*
- * Admins get one line on the concept proposals waiting for review, then faculty progress for a filing-date range:
+ * The Research Office (admins and staff) gets faculty progress for a filing-date range, and admins also get one line on the
+ * concept proposals waiting for review:
  * faculty counts per stage, each opening the faculty behind it and exportable as a report, the monthly trend as
  * stacked columns, and "where from / what about" as ranked horizontal bars. Faculty get what needs their attention, their projects beside
  * the button that starts a new one, then their counts and monthly trend.
@@ -28,7 +29,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 new #[Title('Dashboard')] class extends Component {
     use WithPagination;
 
-    /** First and last filing date the admin summary covers, as Y-m-d. Defaults to this calendar year. */
+    /** First and last filing date the office summary covers, as Y-m-d. Defaults to this calendar year. */
     #[Url]
     public string $from = '';
 
@@ -65,7 +66,7 @@ new #[Title('Dashboard')] class extends Component {
     #[On('open-work-changed')]
     public function openWorkChanged(array $changed): void
     {
-        if (! array_intersect($changed, $this->isAdmin ? ['toReview', 'toApprove'] : ['toRevise', 'unread'])) {
+        if (! array_intersect($changed, $this->office ? ['toReview', 'toApprove'] : ['toRevise', 'unread'])) {
             $this->skipRender();
         }
     }
@@ -95,7 +96,7 @@ new #[Title('Dashboard')] class extends Component {
     #[Computed]
     public function range(): array
     {
-        if (! $this->isAdmin) {
+        if (! $this->office) {
             return [now()->startOfMonth()->subMonths(11), now()->endOfMonth()];
         }
 
@@ -136,9 +137,9 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     #[Computed]
-    public function isAdmin(): bool
+    public function office(): bool
     {
-        return Auth::user()->isAdmin();
+        return Auth::user()->isResearchOffice();
     }
 
     /**
@@ -219,7 +220,7 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Projects filed in the chosen range and college, loaded once for the admin summary and the monthly chart.
+     * Projects filed in the chosen range and college, loaded once for the office summary and the monthly chart.
      */
     #[Computed]
     public function rangeRows(): Collection
@@ -238,12 +239,12 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * The open group's label, or null when no valid group is open or the viewer is not an admin.
+     * The open group's label, or null when no valid group is open or the viewer is not in the Research Office.
      */
     #[Computed]
     public function groupLabel(): ?string
     {
-        return $this->isAdmin ? ($this->groups()[$this->group]['label'] ?? null) : null;
+        return $this->office ? ($this->groups()[$this->group]['label'] ?? null) : null;
     }
 
     /**
@@ -298,7 +299,7 @@ new #[Title('Dashboard')] class extends Component {
 
     /**
      * Projects filed in each month of the range, split by their current status: the selected college's for
-     * admins, the member's own for faculty. Capped at the range's last 24 months so the columns stay readable.
+     * the Research Office, the member's own for faculty. Capped at the range's last 24 months so the columns stay readable.
      *
      * @return list<array{month: CarbonInterface, counts: array<string, int>, total: int}>
      */
@@ -310,7 +311,7 @@ new #[Title('Dashboard')] class extends Component {
         $months = (int) round($start->diffInMonths($end->startOfMonth())) + 1;
 
         // ponytail: grouped in PHP so it runs the same on MySQL and SQLite; move to a SQL GROUP BY past ~50k proposals a year.
-        $rows = ($this->isAdmin ? $this->rangeRows : $this->myProjects)
+        $rows = ($this->office ? $this->rangeRows : $this->myProjects)
             ->filter(fn ($submission) => $submission->created_at->between($start, $end))
             ->groupBy(fn ($submission) => $submission->created_at->format('Y-m'));
 
@@ -401,7 +402,7 @@ new #[Title('Dashboard')] class extends Component {
 <section class="mx-auto w-full max-w-6xl">
     <x-page-title :subtitle="__('Welcome, :name.', ['name' => auth()->user()->shortName()])">{{ __('Dashboard') }}</x-page-title>
 
-    @if ($this->isAdmin)
+    @if ($this->office)
         @php
             $facultyCounts = $this->facultyCounts;
             $projects = $this->rangeProjects;
@@ -418,8 +419,9 @@ new #[Title('Dashboard')] class extends Component {
             ];
         @endphp
 
-        {{-- Things blocking faculty from submitting, only when they apply. Fix-it buttons stack full width on phones --}}
-        @if ($this->facultyWithoutDepartment > 0 || $this->missingSetup)
+        {{-- Things blocking faculty from submitting, only when they apply. Fix-it buttons stack full width on phones.
+             Each one links to an admin page, so staff do not see them --}}
+        @if (auth()->user()->isAdmin() && ($this->facultyWithoutDepartment > 0 || $this->missingSetup))
             <div class="mt-6 grid gap-3">
                 @if ($this->facultyWithoutDepartment > 0)
                     <flux:callout variant="warning" icon="exclamation-triangle" data-test="no-department-tile">
@@ -448,7 +450,9 @@ new #[Title('Dashboard')] class extends Component {
 
         {{-- Proposals waiting for review get one line above the counts, in pastel seal gold, with the way to Concept
              Reviews, where the list itself lives. With none waiting the line says so --}}
-        @if ($this->waitingCount === 0)
+        @if (! auth()->user()->isAdmin())
+            {{-- Concept Reviews is an admin page, so staff get no waiting line --}}
+        @elseif ($this->waitingCount === 0)
             <x-empty-state inline good icon="check-circle" :heading="__('No concept proposals are waiting for review.')" class="mt-6" data-test="waiting-tile" />
         @else
             <flux:callout icon="inbox-arrow-down" inline class="mt-6 pastel" data-test="waiting-tile">

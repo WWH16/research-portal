@@ -85,18 +85,18 @@ new class extends Component {
 
 @php
     $publication = $this->publication;
-    $admin = auth()->user()->isAdmin();
+    $office = auth()->user()->isResearchOffice();
     $canEdit = auth()->user()->can('update', $publication);
     $total = $publication->citations()->count();
     $citations = $publication->citations()->orderByDesc('year')->orderBy('link')->limit($this->shown)->get();
     $first = $publication->published_on->year;
-    $owner = $admin ? ($publication->faculty->firstWhere('id', $this->author) ?? $publication->faculty->first()) : auth()->user();
+    $owner = $office ? ($publication->faculty->firstWhere('id', $this->author) ?? $publication->faculty->first()) : auth()->user();
 @endphp
 
 <div class="mx-auto w-full max-w-6xl">
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
-            @if ($admin)
+            @if ($office)
                 <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty Publications') }}</flux:breadcrumbs.item>
                 @if ($owner)
                     <flux:breadcrumbs.item :href="route('faculty.show', $owner)" wire:navigate>{{ $owner->name }}</flux:breadcrumbs.item>

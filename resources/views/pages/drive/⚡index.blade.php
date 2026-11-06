@@ -26,15 +26,15 @@ new #[Title('Research Drive')] class extends Component {
     public string $search = '';
 
     #[Computed]
-    public function isAdmin(): bool
+    public function office(): bool
     {
-        return Auth::user()->isAdmin();
+        return Auth::user()->isResearchOffice();
     }
 
     #[Computed]
     public function folder(): ?Department
     {
-        return $this->isAdmin && $this->college !== '' ? Department::where('code', $this->college)->firstOrFail() : null;
+        return $this->office && $this->college !== '' ? Department::where('code', $this->college)->firstOrFail() : null;
     }
 
     /**
@@ -54,7 +54,7 @@ new #[Title('Research Drive')] class extends Component {
     public function projects(): Collection
     {
         // ponytail: no pagination; add ->paginate() when one college passes a few hundred projects a year.
-        $query = $this->isAdmin
+        $query = $this->office
             ? Submission::where('department_id', $this->folder?->id)->with('user:id,name')
             : Submission::involving(Auth::user())->with(['proponents' => fn ($query) => $query->where('user_id', Auth::id())->orderBy('study')]);
 
@@ -70,12 +70,12 @@ new #[Title('Research Drive')] class extends Component {
 }; ?>
 
 @php
-    $browsingFolders = $this->isAdmin && ! $this->folder;
+    $browsingFolders = $this->office && ! $this->folder;
 @endphp
 
 <section class="mx-auto w-full max-w-5xl">
     {{-- On phones the search takes its own row, with the count and year under it --}}
-    <x-page-title :subtitle="$this->isAdmin ? __('Documents for every project, filed under its college.') : __('Documents for the projects you filed or are a proponent on.')">
+    <x-page-title :subtitle="$this->office ? __('Documents for every project, filed under its college.') : __('Documents for the projects you filed or are a proponent on.')">
         {{ __('Research Drive') }}
 
         <x-slot:actions class="gap-3 max-sm:w-full">
@@ -148,7 +148,7 @@ new #[Title('Research Drive')] class extends Component {
             <flux:table class="mt-4">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Project') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ $this->isAdmin ? __('Filed by') : __('My role') }}</flux:table.column>
+                    <flux:table.column class="max-sm:hidden">{{ $this->office ? __('Filed by') : __('My role') }}</flux:table.column>
                     <flux:table.column class="max-sm:hidden">{{ __('Year') }}</flux:table.column>
                     <flux:table.column>{{ __('Status') }}</flux:table.column>
                 </flux:table.columns>
@@ -163,7 +163,7 @@ new #[Title('Research Drive')] class extends Component {
                                 </a>
                             </flux:table.cell>
                             <flux:table.cell class="max-sm:hidden">
-                                {{ $this->isAdmin
+                                {{ $this->office
                                     ? $submission->user->shortName()
                                     : ($submission->proponents->map(fn ($row) => __('Study :number', ['number' => $row->study]).' '.__($row->role))->join(', ') ?: __('Filed by you')) }}
                             </flux:table.cell>

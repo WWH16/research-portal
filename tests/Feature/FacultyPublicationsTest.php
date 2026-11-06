@@ -43,6 +43,21 @@ class FacultyPublicationsTest extends TestCase
         $this->actingAs($this->admin)->get(route('faculty.show', $this->admin))->assertNotFound();
     }
 
+    public function test_staff_open_any_paper_and_have_no_profile_of_their_own(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $paper = $this->publication('Rivera paper', '2025-08-01', [], $this->rivera);
+        $this->actingAs($staff);
+
+        $this->get(route('publications.show', $paper))->assertOk()->assertSee('Faculty Publications');
+        $this->get(route('faculty.show', $staff))->assertNotFound();
+
+        $page = $this->get(route('profile.edit'))->assertOk();
+        foreach (User::EMAIL_KINDS as $label) {
+            $page->assertDontSee($label);
+        }
+    }
+
     public function test_the_profile_lists_the_most_cited_papers_first_with_their_counts_and_totals(): void
     {
         $older = $this->publication('Older paper', '2024-03-01', [2024, 2025, 2026], $this->rivera);

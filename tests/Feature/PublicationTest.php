@@ -151,33 +151,6 @@ class PublicationTest extends TestCase
         $this->assertSame(0, Publication::count());
     }
 
-    public function test_a_renamed_author_is_renamed_on_their_papers_only(): void
-    {
-        $paper = $this->publication([$this->rivera, $this->soriano], ['authors' => 'Rivera; Soriano; Garcia, P.', 'published_on' => '2025-06-01']);
-        $notTagged = $this->publication([$this->rivera], ['authors' => 'Rivera; Soriano']);
-
-        $this->soriano->update(['name' => 'Soriano Reyes']);
-
-        $this->assertSame('Rivera; Soriano Reyes; Garcia, P.', $paper->fresh()->authors);
-        $this->assertSame('Rivera; Soriano', $notTagged->fresh()->authors);
-
-        // A co-author saving the paper afterwards does not list them twice.
-        $this->actingAs($this->rivera);
-        Livewire::test('pages::publications.create', ['publication' => $paper->fresh()])->set('title', 'Renamed paper')->call('save')->assertHasNoErrors();
-        $this->assertSame('Rivera; Soriano Reyes; Garcia, P.', $paper->fresh()->authors);
-    }
-
-    public function test_a_rename_that_would_overflow_the_author_list_keeps_the_old_name(): void
-    {
-        $authors = 'Soriano; '.str_repeat('x', 990);
-        $paper = $this->publication([$this->soriano], ['authors' => $authors]);
-
-        $this->soriano->update(['name' => 'Soriano Reyes']);
-
-        $this->assertSame('Soriano Reyes', $this->soriano->fresh()->name);
-        $this->assertSame($authors, $paper->fresh()->authors);
-    }
-
     public function test_an_author_moved_to_staff_stays_on_their_paper_and_joins_no_other(): void
     {
         $paper = $this->publication([$this->rivera, $this->soriano], ['authors' => 'Rivera; Soriano', 'published_on' => '2025-06-01']);

@@ -192,12 +192,40 @@ class SubmissionTest extends TestCase
             ->assertHasErrors(['proponents'])
             ->set('proponents', [['study' => 1, 'user_id' => $navarro->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $admin->id, 'role' => 'Staff']])
             ->call('save')
-            ->assertHasErrors(['proponents.1.user_id' => 'exists'])
+            ->assertHasErrors(['proponents.1.user_id' => 'in'])
             ->set('proponents', [['study' => 0, 'user_id' => $navarro->id, 'role' => 'Boss']])
             ->call('save')
             ->assertHasErrors(['proponents.0.study' => 'between', 'proponents.0.role' => 'in']);
 
         $this->assertSame(0, Submission::count());
+    }
+
+    public function test_a_proponent_moved_to_staff_stays_on_their_project_and_joins_no_other(): void
+    {
+        $this->fakeDrive();
+
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $project->update(['awaiting_review' => false, 'concept_passed' => true]);
+        $project->proponents()->create(['user_id' => $jose->id, 'study' => 1, 'role' => 'Staff']);
+        $jose->forceFill(['role' => 'staff'])->save();
+        $this->actingAs($maria);
+
+        // Maria can still save her project with Jose on it, and Jose's row still shows the name.
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->assertSee('Jose Reyes')
+            ->set('documents.detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNotNull($project->fresh()->detailed_path);
+        $this->assertTrue($project->involves($jose));
+
+        // A project Jose is not on takes faculty only.
+        $this->fillProject(Livewire::test('pages::submissions.create'))
+            ->set('proponents', [['study' => 1, 'user_id' => $maria->id, 'role' => 'Leader'], ['study' => 1, 'user_id' => $jose->id, 'role' => 'Staff']])
+            ->call('save')
+            ->assertHasErrors('proponents.1.user_id');
     }
 
     public function test_required_fields_are_validated(): void

@@ -414,7 +414,7 @@ new #[Title('Manage Users')] class extends Component {
             class="sm:flex-1"
         />
 
-        <flux:select wire:model.live="roleFilter" :aria-label="__('Filter by role')" class="sm:max-w-44">
+        <flux:select wire:model.live="roleFilter" data-test="role-filter" :aria-label="__('Filter by role')" class="sm:max-w-44">
             <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
             <flux:select.option :value="Role::Admin->value">{{ __('Admins') }}</flux:select.option>
             <flux:select.option :value="Role::Staff->value">{{ __('Staff') }}</flux:select.option>

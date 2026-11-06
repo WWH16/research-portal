@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -21,6 +22,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Throwable;
 
 /**
  * The role isn't mass assignable, so no form's input can make someone an admin: it is set with forceFill() only
@@ -170,6 +172,17 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
                 $user->publications()->get()->each(fn (Publication $paper) => $paper->renameAuthor($user->getPrevious()['name'], $user->name));
             }
         });
+    }
+
+    /**
+     * Make an account, trying again if another one took its researcher ID between reading the last ID and saving, as
+     * when a college signs up together. The callback builds a new User each time, so each try picks a new ID.
+     *
+     * @param  callable(): self  $create
+     */
+    public static function createRetryingResearcherId(callable $create): self
+    {
+        return retry(3, $create, 100, fn (Throwable $e) => $e instanceof UniqueConstraintViolationException && str_contains($e->getMessage(), 'researcher_id'));
     }
 
     /**

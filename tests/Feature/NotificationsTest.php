@@ -278,6 +278,46 @@ class NotificationsTest extends TestCase
         Notification::assertNotSentTo($this->maria, ProjectLate::class);
     }
 
+    public function test_staff_hear_once_the_day_after_a_project_runs_late(): void
+    {
+        Notification::fake();
+        $staff = User::factory()->create(['role' => 'staff']);
+        foreach ([-1, -2, -8] as $days) {
+            $this->project(['target_date' => today()->addDays($days), 'title' => "Study {$days}"]);
+        }
+
+        $this->artisan('projects:remind')->assertSuccessful();
+
+        Notification::assertSentToTimes($staff, ProjectLate::class, 1);
+        Notification::assertSentTo($staff, ProjectLate::class, fn (ProjectLate $notification) => $notification->via($staff) === ['database']);
+    }
+
+    public function test_the_first_terminal_report_tells_staff_the_project_is_complete(): void
+    {
+        Notification::fake();
+        $this->fakeDrive();
+        $staff = User::factory()->create(['role' => 'staff']);
+        $project = $this->project(['awaiting_review' => false, 'concept_passed' => true, 'status' => 'Mid-year', 'detailed_path' => 'drive-1/submissions/detailed.pdf', 'midyear_path' => 'drive-1/submissions/midyear.pdf']);
+        $this->actingAs($this->maria);
+
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->set('documents.terminal', UploadedFile::fake()->create('report.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo($staff, ProjectCompleted::class, fn (ProjectCompleted $notification) => $notification->via($staff) === ['database']);
+    }
+
+    public function test_staff_see_what_their_notices_will_be(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+
+        $this->actingAs($staff)
+            ->get(route('notifications.index'))
+            ->assertSee('Completed and late projects will appear here.')
+            ->assertDontSee('Google Drive');
+    }
+
     public function test_no_reminder_on_the_day_itself_without_a_target_date_or_once_finished(): void
     {
         Notification::fake();

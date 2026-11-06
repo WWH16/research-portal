@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Announcement;
 use App\Models\User;
+use App\Notifications\AnnouncementPosted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -269,6 +271,28 @@ class AnnouncementsTest extends TestCase
             ->assertRedirect($link);
 
         $this->actingAs($faculty)->get(route('announcements.index'))->assertSee('id="announcement-'.Announcement::sole()->id.'"', false);
+    }
+
+    public function test_staff_hear_of_a_new_announcement_and_the_admin_who_posted_it_does_not(): void
+    {
+        $this->fakeDrive();
+        Notification::fake();
+        $staff = User::factory()->create(['role' => 'staff']);
+        $pending = User::factory()->pending()->create(['role' => 'staff']);
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test('pages::announcements.index')
+            ->call('create')
+            ->set('title', 'Schedule of Submission of Concept Proposals')
+            ->set('description', 'Concept proposals for 2027 are due on the date below.')
+            ->set('dueOn', '2026-11-15')
+            ->set('memo', $this->memo())
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo($staff, AnnouncementPosted::class);
+        Notification::assertNotSentTo($admin, AnnouncementPosted::class);
+        Notification::assertNotSentTo($pending, AnnouncementPosted::class);
     }
 
     public function test_an_edit_tells_faculty_again_and_says_when_it_was_made(): void

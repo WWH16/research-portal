@@ -201,6 +201,12 @@ class DashboardTest extends TestCase
         $report = ['awaiting_review' => false, 'terminal_path' => 'drive-1/submissions/report.pdf', 'terminal_uploaded_at' => now()->subDay()];
         $this->submit($navarro, 'Finished Study', 'Completed', $report + ['target_date' => today()]);
 
+        // Faculty with no college would raise the admin-only tile; the same data must not reach staff.
+        User::factory()->create(['name' => 'Collegeless']);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test('pages::dashboard')->assertSeeHtml('data-test="no-department-tile"');
+
         $this->actingAs(User::factory()->create(['role' => 'staff']));
 
         Livewire::withQueryParams(['group' => 'completed'])

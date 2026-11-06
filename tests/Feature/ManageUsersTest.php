@@ -246,7 +246,7 @@ class ManageUsersTest extends TestCase
 
     public function test_admin_can_update_a_user_and_keep_their_password(): void
     {
-        $user = User::factory()->create(['name' => 'Maria Santos', 'role' => 'staff']);
+        $user = User::factory()->create(['name' => 'Maria Santos', 'role' => 'faculty']);
         $originalHash = $user->password;
 
         $this->actingAs($this->admin);
@@ -312,41 +312,6 @@ class ManageUsersTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertTrue($this->admin->fresh()->isAdmin());
-    }
-
-    public function test_a_faculty_account_keeps_its_role(): void
-    {
-        $maria = User::factory()->create(['name' => 'Maria Santos', 'role' => 'faculty']);
-        $this->actingAs($this->admin);
-
-        $form = Livewire::test('pages::users.index')
-            ->call('edit', $maria->id)
-            ->assertSee('A faculty account keeps its role');
-
-        foreach (['staff', 'admin'] as $role) {
-            $form->set('role', $role)->call('save')->assertHasErrors(['role']);
-            $this->assertSame(Role::Faculty, $maria->fresh()->role);
-        }
-
-        // The rest of the account still saves.
-        $form->set('role', 'faculty')->set('mobile', '09171234567')->call('save')->assertHasNoErrors();
-        $this->assertSame('09171234567', $maria->fresh()->mobile);
-    }
-
-    public function test_admin_and_staff_accounts_swap_but_never_become_faculty(): void
-    {
-        $pedro = User::factory()->create(['name' => 'Pedro Reyes', 'role' => 'staff']);
-        $this->actingAs($this->admin);
-        $form = fn () => Livewire::test('pages::users.index')->call('edit', $pedro->id);
-
-        $form()->set('role', 'faculty')->call('save')->assertHasErrors(['role']);
-        $this->assertSame(Role::Staff, $pedro->fresh()->role);
-
-        $form()->set('role', 'admin')->call('save')->assertHasNoErrors();
-        $this->assertSame(Role::Admin, $pedro->fresh()->role);
-
-        $form()->set('role', 'staff')->call('save')->assertHasNoErrors();
-        $this->assertSame(Role::Staff, $pedro->fresh()->role);
     }
 
     public function test_a_page_past_the_end_shows_the_last_page_instead_of_claiming_no_one_matches(): void

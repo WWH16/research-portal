@@ -7,7 +7,10 @@ use App\Models\GoogleDriveConnection;
 use App\Models\User;
 use App\Services\GoogleDrive;
 use Google\Service\Exception as GoogleServiceException;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 use Laravel\Socialite\Two\User as GoogleUser;
@@ -191,6 +194,23 @@ class GoogleDriveConnectTest extends TestCase
             ->get(route('google-drive.callback'))
             ->assertSessionHas('drive-error', 'Google didn’t give the portal lasting access. Click Connect again and allow access.');
 
+        $this->assertFalse(GoogleDriveConnection::sole()->isConnected());
+    }
+
+    public function test_google_refusing_the_sign_in_shows_a_message_and_saves_nothing(): void
+    {
+        Exceptions::fake();
+        GoogleDriveConnection::factory()->unconnected()->create();
+        $provider = Mockery::mock(GoogleProvider::class);
+        $provider->shouldReceive('user')->andThrow(new ConnectException('Could not reach Google.', new Request('POST', 'https://oauth2.googleapis.com/token')));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->actingAs($this->admin)
+            ->get(route('google-drive.callback'))
+            ->assertRedirect(route('google-drive.index'))
+            ->assertSessionHas('drive-error', 'Google refused the sign-in, so nothing was saved. Try Connect again in a few minutes.');
+
+        Exceptions::assertReported(ConnectException::class);
         $this->assertFalse(GoogleDriveConnection::sole()->isConnected());
     }
 

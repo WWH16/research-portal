@@ -66,7 +66,7 @@ class ActivityLogTest extends TestCase
 
     public function test_a_role_change_is_recorded_and_flagged(): void
     {
-        $maria = User::factory()->create(['name' => 'Maria Santos']);
+        $maria = User::factory()->create(['name' => 'Maria Santos', 'role' => 'staff']);
 
         $this->actingAs($this->admin);
 
@@ -77,11 +77,11 @@ class ActivityLogTest extends TestCase
             ->assertHasNoErrors();
 
         $log = ActivityLog::sole();
-        $this->assertSame(['role' => ['faculty', 'admin']], $log->properties);
+        $this->assertSame(['role' => ['staff', 'admin']], $log->properties);
         $this->assertTrue($log->isWarning());
-        $this->assertSame(['Faculty', 'Admin'], $log->change());
+        $this->assertSame(['Staff', 'Admin'], $log->change());
 
-        $this->get(route('activity-log.index'))->assertSeeInOrder(['Edited an account', 'Security', 'Maria Santos', 'Faculty', 'Admin']);
+        $this->get(route('activity-log.index'))->assertSeeInOrder(['Edited an account', 'Security', 'Maria Santos', 'Staff', 'Admin']);
     }
 
     public function test_creating_an_office_account_is_a_warning_but_a_faculty_one_is_not(): void

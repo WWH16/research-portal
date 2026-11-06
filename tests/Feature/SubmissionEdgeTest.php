@@ -63,12 +63,12 @@ class SubmissionEdgeTest extends TestCase
     public function test_replacing_the_terminal_report_after_the_target_date_keeps_it_on_time(): void
     {
         $this->project->update(['detailed_path' => 'drive-1/submissions/detailed.pdf', 'status' => 'Detailed']);
-        $this->project->fresh()->attachDocument('terminal', $this->pdf());
+        $this->project->fresh()->attachDocument('terminal', $this->stored($this->pdf()));
         $this->assertTrue($this->project->fresh()->completedOnTime());
 
         // A corrected terminal report weeks after the target date is still the same finished project.
         $this->travel(2)->months();
-        $this->project->fresh()->attachDocument('terminal', $this->pdf('report-v2.pdf'));
+        $this->project->fresh()->attachDocument('terminal', $this->stored($this->pdf('report-v2.pdf')));
 
         $this->assertTrue($this->project->fresh()->completedOnTime(), 'A correction must not turn an on-time project late.');
     }
@@ -79,13 +79,13 @@ class SubmissionEdgeTest extends TestCase
 
         $this->travelTo($this->project->target_date->copy()->setTime(23, 59));
         $this->assertFalse($this->project->fresh()->isDelayed(), 'Not delayed on the target day itself.');
-        $this->project->fresh()->attachDocument('terminal', $this->pdf());
+        $this->project->fresh()->attachDocument('terminal', $this->stored($this->pdf()));
         $this->assertTrue($this->project->fresh()->completedOnTime());
 
         $this->project->fresh()->update(['terminal_path' => null, 'terminal_uploaded_at' => null, 'status' => 'Detailed']);
         $this->travelTo($this->project->target_date->copy()->addDay()->startOfDay());
         $this->assertTrue($this->project->fresh()->isDelayed());
-        $this->project->fresh()->attachDocument('terminal', $this->pdf());
+        $this->project->fresh()->attachDocument('terminal', $this->stored($this->pdf()));
         $this->assertFalse($this->project->fresh()->completedOnTime());
     }
 
@@ -173,7 +173,7 @@ class SubmissionEdgeTest extends TestCase
         $this->assertStringContainsString('Add the methodology.', $export());
 
         // A corrected concept proposal is in and waits for review, so the old remarks no longer apply.
-        $this->project->fresh()->attachDocument('concept', $this->pdf('concept-v2.pdf'));
+        $this->project->fresh()->attachDocument('concept', $this->stored($this->pdf('concept-v2.pdf')));
         $this->assertStringNotContainsString('Add the methodology.', $export());
     }
 

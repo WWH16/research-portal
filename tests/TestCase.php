@@ -3,9 +3,11 @@
 namespace Tests;
 
 use App\Models\GoogleDriveConnection;
+use App\Services\DocumentStorage;
 use App\Services\GoogleDrive;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
@@ -25,6 +27,14 @@ abstract class TestCase extends BaseTestCase
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
 
         return $disk;
+    }
+
+    /**
+     * Upload a file to the fake Drive and return its path, for Submission::attachDocument().
+     */
+    protected function stored(UploadedFile $file): string
+    {
+        return app(DocumentStorage::class)->store($file);
     }
 
     /**

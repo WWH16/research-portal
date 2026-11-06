@@ -9,6 +9,7 @@ use App\Notifications\DriveFull;
 use Google\Client;
 use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
+use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Middleware;
 use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -42,6 +43,9 @@ class GoogleDrive
     public function client(?string $refreshToken = null): Client
     {
         $client = new Client;
+        // Google's own default, plus time limits: without them a call Google never answers holds the request open for good.
+        // Two minutes is long enough for a 25 MB document to move between servers.
+        $client->setHttpClient(new GuzzleClient(['connect_timeout' => 10, 'timeout' => 120] + $client->getHttpClient()->getConfig()));
         $client->setClientId((string) config('services.google.client_id'));
         $client->setClientSecret((string) config('services.google.client_secret'));
         $client->setScopes([self::SCOPE]);

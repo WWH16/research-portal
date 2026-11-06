@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -285,20 +284,16 @@ class Submission extends Model
     }
 
     /**
-     * Store a document for one stage, replacing the earlier file so only one version exists, and move
-     * the status to the furthest document on file. A concept proposal goes on the Research Office's
-     * review list; the other documents are filed without review. Inside a transaction, the
-     * earlier file is deleted only once it commits, so a save that rolls back keeps it.
+     * Put an uploaded document in place for one stage, replacing the earlier file so only one version exists, and
+     * move the status to the furthest document on file. A concept proposal goes on the Research Office's review
+     * list; the other documents are filed without review. The caller uploads first, so a save holds no lock during an
+     * upload, and removes the new file if the save fails. The earlier file is deleted only once the save commits.
      */
-    public function attachDocument(string $stage, UploadedFile $file): void
+    public function attachDocument(string $stage, string $path): void
     {
         $old = $this->{$stage.'_path'};
 
-        $new = app(DocumentStorage::class)->store($file);
-
-        DB::afterRollBack(fn () => app(DocumentStorage::class)->delete($new));
-
-        $this->{$stage.'_path'} = $new;
+        $this->{$stage.'_path'} = $path;
         $this->uploadTimes = null;
         $this->status = collect(self::STAGE_DOCUMENTS)->filter(fn (string $document) => $this->{$document.'_path'})->keys()->last();
 

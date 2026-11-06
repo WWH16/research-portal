@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\DocumentStorageUnavailable;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Department;
@@ -9,13 +10,16 @@ use App\Models\GoogleDriveConnection;
 use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
+use App\Services\DocumentStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Exceptions\PublicPropertyNotFoundException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -758,7 +762,7 @@ class SubmissionTest extends TestCase
 
         // A corrected upload goes back for review; passing it opens the detailed proposal.
         $this->fakeDrive();
-        $project->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'));
+        $project->attachDocument('concept', $this->stored(UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf')));
         $this->assertSame('pending', $project->fresh()->conceptReview());
         $this->actingAs(User::factory()->create(['role' => 'admin']));
         Livewire::test('pages::reviews.index')
@@ -859,7 +863,7 @@ class SubmissionTest extends TestCase
         $review = Livewire::test('pages::reviews.index')->call('review', $project->id);
 
         // Maria replaces the concept proposal while the Research Office still has the old one open.
-        $project->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'));
+        $project->attachDocument('concept', $this->stored(UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf')));
 
         $review->call('saveReview', 'passed')->assertHasErrors('review');
         $this->assertTrue($project->fresh()->awaiting_review);
@@ -871,7 +875,7 @@ class SubmissionTest extends TestCase
         // A detailed proposal isn't reviewed, so one that comes in meanwhile doesn't stop the review.
         $project->refresh()->update(['awaiting_review' => true]);
         $review = Livewire::test('pages::reviews.index')->call('review', $project->id);
-        $project->attachDocument('detailed', UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf'));
+        $project->attachDocument('detailed', $this->stored(UploadedFile::fake()->create('detailed.pdf', 100, 'application/pdf')));
         $review->call('saveReview', 'passed')->assertHasNoErrors();
         $this->assertFalse($project->fresh()->awaiting_review);
     }
@@ -918,6 +922,76 @@ class SubmissionTest extends TestCase
 
         $this->assertSame('drive-1/submissions/sample.pdf', $project->fresh()->concept_path);
         $this->assertSame(['submissions/sample.pdf'], Storage::disk('drive')->allFiles());
+    }
+
+    public function test_documents_upload_before_the_project_is_locked(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs($maria);
+
+        // RefreshDatabase runs each test in a transaction of its own, so this is the level with no save's transaction open.
+        $outsideSave = DB::transactionLevel();
+        $levelDuringUpload = null;
+        $this->partialMock(DocumentStorage::class, function (MockInterface $mock) use (&$levelDuringUpload) {
+            $mock->shouldReceive('delete');
+            $mock->shouldReceive('store')->once()->andReturnUsing(function () use (&$levelDuringUpload) {
+                $levelDuringUpload = DB::transactionLevel();
+
+                return 'drive-1/submissions/new.pdf';
+            });
+        });
+
+        Livewire::test('pages::submissions.create', ['submission' => $project])
+            ->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame($outsideSave, $levelDuringUpload);
+        $this->assertSame('drive-1/submissions/new.pdf', $project->fresh()->concept_path);
+    }
+
+    public function test_a_form_refused_for_being_out_of_date_uploads_nothing(): void
+    {
+        $this->fakeDrive();
+
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $this->actingAs($maria);
+        $form = Livewire::test('pages::submissions.create', ['submission' => $project]);
+
+        $project->update(['title' => 'Changed meanwhile']);
+
+        $form->set('documents.concept', UploadedFile::fake()->create('concept-v2.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasErrors('stale');
+
+        $this->assertSame([], Storage::disk('drive')->allFiles());
+    }
+
+    public function test_a_document_that_fails_takes_the_one_before_it_back_off_drive(): void
+    {
+        [$maria] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $project->update(['concept_passed' => true, 'awaiting_review' => false, 'detailed_path' => 'drive-1/submissions/detailed.pdf']);
+        $this->actingAs($maria);
+
+        $this->partialMock(DocumentStorage::class, function (MockInterface $mock) {
+            $mock->shouldReceive('store')->twice()->andReturnUsing(
+                fn () => 'drive-1/submissions/uploaded-first.pdf',
+                fn () => throw new DocumentStorageUnavailable('Google is down.'),
+            );
+            $mock->shouldReceive('delete')->once()->with('drive-1/submissions/uploaded-first.pdf');
+        });
+
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->set('documents.detailed', UploadedFile::fake()->create('detailed-v2.pdf', 100, 'application/pdf'))
+            ->set('documents.midyear', UploadedFile::fake()->create('midyear.pdf', 100, 'application/pdf'))
+            ->call('save')
+            ->assertHasErrors('documents');
+
+        $this->assertSame('drive-1/submissions/detailed.pdf', $project->fresh()->detailed_path);
+        $this->assertNull($project->fresh()->midyear_path);
     }
 
     public function test_a_review_never_changes_the_year_or_college(): void

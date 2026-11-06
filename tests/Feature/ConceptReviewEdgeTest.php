@@ -157,7 +157,7 @@ class ConceptReviewEdgeTest extends TestCase
         Livewire::actingAs($admin)->test('pages::reviews.index')
             ->call('review', $this->project->id)->set('remarks', 'Fix the objectives.')->call('saveReview', 'returned');
 
-        $this->project->refresh()->attachDocument('concept', UploadedFile::fake()->create('concept-v2.pdf', 10, 'application/pdf'));
+        $this->project->refresh()->attachDocument('concept', $this->stored(UploadedFile::fake()->create('concept-v2.pdf', 10, 'application/pdf')));
 
         Livewire::actingAs($admin)->test('pages::reviews.index')
             ->call('review', $this->project->id)

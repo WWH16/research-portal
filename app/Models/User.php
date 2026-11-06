@@ -261,16 +261,6 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
-     * Accounts an admin let in.
-     *
-     * @param  Builder<self>  $query
-     */
-    public function scopeApproved(Builder $query): void
-    {
-        $query->whereNotNull('approved_at');
-    }
-
-    /**
      * Admins, who hear of work only an admin can fix, such as Google Drive problems and failed emails.
      *
      * @param  Builder<self>  $query

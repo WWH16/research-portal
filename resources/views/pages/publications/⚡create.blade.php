@@ -200,14 +200,14 @@ new class extends Component {
     }
 
     /**
-     * Who can be tagged as an author, which save() also checks: verified and approved faculty, and anyone already tagged.
+     * Who can be tagged as an author, which save() also checks: verified faculty, and anyone already tagged.
      * Those already tagged stay while re-verifying a changed email or after moving to another role.
      */
     #[Computed]
     public function faculty(): Collection
     {
         // ponytail: one plain select of every verified faculty member, as on the project form; switch to a searchable picker past a few hundred.
-        return User::where(fn ($query) => $query->faculty()->approved()->whereNotNull('email_verified_at'))
+        return User::where(fn ($query) => $query->faculty()->whereNotNull('email_verified_at'))
             ->orWhereIn('id', $this->publication?->faculty()->pluck('users.id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
     }

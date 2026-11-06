@@ -231,9 +231,11 @@ new #[Title('Notifications')] class extends Component {
         <x-empty-state
             icon="bell"
             :heading="__('No notifications yet.')"
-            :text="auth()->user()->isAdmin()
-                ? __('Completed and late projects, and problems with Google Drive, will appear here.')
-                : __('Concept proposal decisions, completion date reminders and Research Office announcements will appear here.')"
+            :text="match (auth()->user()->role) {
+                \App\Enums\Role::Admin => __('Completed and late projects, and problems with Google Drive, will appear here.'),
+                \App\Enums\Role::Staff => __('Completed and late projects will appear here.'),
+                default => __('Concept proposal decisions, completion date reminders and Research Office announcements will appear here.'),
+            }"
             class="mt-8"
             data-test="no-notifications"
         />

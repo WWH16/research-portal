@@ -47,6 +47,17 @@ class EmailFailedTest extends TestCase
         $this->assertSame(2, $admin->notifications()->where('type', EmailFailed::class)->count());
     }
 
+    public function test_staff_get_no_failed_email_notice(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->jobFails(SendQueuedNotifications::class);
+
+        $this->assertSame(1, $admin->notifications()->count());
+        $this->assertSame(0, $staff->notifications()->count());
+    }
+
     public function test_emails_that_fail_again_after_a_retry_bring_a_fresh_notice(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

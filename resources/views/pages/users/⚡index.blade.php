@@ -247,10 +247,6 @@ new #[Title('Manage Users')] class extends Component {
 
         $validated['mobile'] = $validated['mobile'] ?: null;
 
-        if ($validated['role'] !== Role::Faculty->value) {
-            $validated['department_id'] = null;
-        }
-
         if (blank($validated['password'])) {
             unset($validated['password']);
         }
@@ -555,26 +551,23 @@ new #[Title('Manage Users')] class extends Component {
             </div>
 
             <div class="grid gap-6 sm:grid-cols-2">
-                {{-- Only faculty file projects under a college, so the Research Office's accounts have none --}}
-                @if ($role === Role::Faculty->value)
-                    <flux:select wire:model="department_id" :label="__('College')">
-                        {{-- A real, selectable option so users without a department show it and admins can clear one. --}}
-                        <flux:select.option value="">{{ __('No college') }}</flux:select.option>
-                        @foreach ($this->departments as $department)
-                            <flux:select.option :value="$department->id">{{ $department->code }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-                @endif
+                <flux:select wire:model="department_id" :label="__('College')">
+                    {{-- A real, selectable option so users without a department show it and admins can clear one. --}}
+                    <flux:select.option value="">{{ __('No college') }}</flux:select.option>
+                    @foreach ($this->departments as $department)
+                        <flux:select.option :value="$department->id">{{ $department->code }}</flux:select.option>
+                    @endforeach
+                </flux:select>
 
-                <flux:select wire:model.live="role" :label="__('Role')" :disabled="$this->editingSelf || $this->editing?->isFaculty()">
+                <flux:select wire:model="role" :label="__('Role')" :disabled="$this->editingSelf || $this->editing?->isFaculty()">
                     @foreach ($this->roles as $option)
                         <flux:select.option :value="$option->value">{{ __($option->name) }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
-                {{-- Its own grid row under the Role column, so College and Role stay level above it. An admin editing themself has no College beside it. --}}
+                {{-- Its own grid row under the Role column, so College and Role stay level above it. --}}
                 @if ($this->editingSelf)
-                    <flux:text class="-mt-4 text-sm">{{ __('You can’t change your own role.') }}</flux:text>
+                    <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('You can’t change your own role.') }}</flux:text>
                 @elseif ($this->editing?->isFaculty())
                     <flux:text class="-mt-4 text-sm sm:col-start-2">{{ __('A faculty account keeps its role, so its projects and papers always have someone who can edit them.') }}</flux:text>
                 @endif

@@ -250,6 +250,56 @@ class DriveTest extends TestCase
         $this->assertFalse($this->smart->fresh()->presented);
     }
 
+    public function test_staff_tick_presented_but_cannot_change_dates_or_review(): void
+    {
+        $this->actingAs($this->staff());
+
+        // Not completed yet: a forged tick is refused.
+        Livewire::test('pages::submissions.index')->call('setPresented', $this->smart->id, true)->assertForbidden();
+
+        // Dates and reviews belong to admins alone.
+        Livewire::test('pages::submissions.index')->call('editDates', $this->smart->id)->assertForbidden();
+        Livewire::test('pages::submissions.index')->call('saveDates')->assertForbidden();
+
+        $this->smart->update(['status' => 'Completed', 'awaiting_review' => false, 'concept_passed' => true, 'terminal_path' => 'drive-1/submissions/t.pdf']);
+        Livewire::test('pages::submissions.index')->call('setPresented', $this->smart->id, true)->assertHasNoErrors();
+        $this->assertTrue($this->smart->fresh()->presented);
+
+        $this->get(route('submissions.index', ['q' => 'Navarro']))
+            ->assertSee('data-test="presented-checkbox"', false)
+            ->assertDontSee('data-test="change-dates-button"', false);
+        $this->project($this->navarro, 'Open Dates Project');
+        $this->get(route('submissions.index'))->assertDontSee('data-test="change-dates-button"', false);
+
+        Livewire::test('pages::drive.show', ['submission' => $this->smart])
+            ->call('review', $this->smart->id)
+            ->assertForbidden();
+        $this->smart->update(['status' => 'Concept', 'awaiting_review' => true]);
+        $this->get(route('drive.show', $this->smart))->assertDontSee('data-test="drive-review-button"', false);
+    }
+
+    public function test_staff_browse_the_drive_by_college_and_see_presented(): void
+    {
+        $this->actingAs($this->staff());
+
+        $this->get(route('drive.index'))->assertOk()->assertSee('CCSICT')->assertSee('CAS');
+
+        $this->smart->update(['status' => 'Completed']);
+        $this->get(route('drive.show', $this->smart))
+            ->assertOk()
+            ->assertSee('data-test="drive-presented"', false)
+            ->assertSee(route('drive.index', ['college' => 'CCSICT']), false);
+    }
+
+    public function test_staff_download_the_submissions_report(): void
+    {
+        $this->actingAs($this->staff());
+
+        Livewire::test('pages::submissions.index')
+            ->call('export')
+            ->assertFileDownloaded('submissions-'.today()->toDateString().'.csv');
+    }
+
     public function test_admins_list_completed_projects_by_whether_they_presented_in_house(): void
     {
         $this->smart->update(['status' => 'Completed', 'presented' => true]);
@@ -327,6 +377,11 @@ class DriveTest extends TestCase
             ->assertSee('2 projects')
             ->set('search', 'mining')
             ->assertSee('1 project');
+    }
+
+    private function staff(): User
+    {
+        return User::factory()->create(['role' => 'staff']);
     }
 
     private function admin(): User

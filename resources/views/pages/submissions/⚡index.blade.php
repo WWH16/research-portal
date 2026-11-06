@@ -55,12 +55,21 @@ new #[Title('Submissions')] class extends Component {
     }
 
     /**
-     * Admins monitor every project in the portal; faculty see the ones they are on.
+     * The Research Office (admins and staff) monitors every project in the portal; faculty see the ones they are on.
      */
     #[Computed]
     public function monitoring(): bool
     {
-        return Auth::user()->isAdmin();
+        return Auth::user()->isResearchOffice();
+    }
+
+    /**
+     * Only admins move a project's dates; staff see the list without that column.
+     */
+    #[Computed]
+    public function canChangeDates(): bool
+    {
+        return Auth::user()->can('review', Submission::class);
     }
 
     /**
@@ -195,7 +204,7 @@ new #[Title('Submissions')] class extends Component {
      */
     public function setPresented(int $id, bool $presented): void
     {
-        $this->authorize('review', Submission::class);
+        $this->authorize('markPresented', Submission::class);
 
         $submission = Submission::findOrFail($id);
         abort_unless($submission->status === 'Completed', 403);
@@ -384,7 +393,9 @@ new #[Title('Submissions')] class extends Component {
                     <flux:table.column class="max-sm:hidden">{{ __('Presented') }}</flux:table.column>
                 @endif
                 <flux:table.column class="max-sm:hidden">{{ __('Schedule') }}</flux:table.column>
-                <flux:table.column align="end">{{ $this->monitoring ? __('Dates') : __('Actions') }}</flux:table.column>
+                @if (! $this->monitoring || $this->canChangeDates)
+                    <flux:table.column align="end">{{ $this->monitoring ? __('Dates') : __('Actions') }}</flux:table.column>
+                @endif
             </flux:table.columns>
 
             <flux:table.rows>
@@ -495,18 +506,20 @@ new #[Title('Submissions')] class extends Component {
                             <div class="text-sm text-zinc-500">{{ __('Starts :date', ['date' => $submission->start_date?->format('M j, Y') ?? __('not set')]) }}</div>
                             <div class="text-sm {{ $standingClass }}">{{ $standing }}</div>
                         </flux:table.cell>
-                        <flux:table.cell align="end">
-                            @if ($this->monitoring && $submission->status === 'Completed')
-                                <span class="text-zinc-500" aria-hidden="true">–</span>
-                                <span class="sr-only">{{ __('Dates locked: project completed') }}</span>
-                            @elseif ($this->monitoring)
-                                <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
-                            @else
-                                <flux:button size="sm" variant="ghost" inset="top bottom" icon="pencil-square" :href="route('submissions.edit', $submission)" wire:navigate :aria-label="__('Edit :title', ['title' => $submission->title])" data-test="edit-submission-button" class="max-sm:h-11">
-                                    {{ __('Edit') }}
-                                </flux:button>
-                            @endif
-                        </flux:table.cell>
+                        @if (! $this->monitoring || $this->canChangeDates)
+                            <flux:table.cell align="end">
+                                @if ($this->monitoring && $submission->status === 'Completed')
+                                    <span class="text-zinc-500" aria-hidden="true">–</span>
+                                    <span class="sr-only">{{ __('Dates locked: project completed') }}</span>
+                                @elseif ($this->monitoring)
+                                    <flux:button size="sm" variant="ghost" inset="top bottom" icon="calendar-days" wire:click="editDates({{ $submission->id }})" wire:island="dates" :aria-label="__('Change dates for :title', ['title' => $submission->title])" :tooltip="__('Change dates')" data-test="change-dates-button" class="max-sm:size-11" />
+                                @else
+                                    <flux:button size="sm" variant="ghost" inset="top bottom" icon="pencil-square" :href="route('submissions.edit', $submission)" wire:navigate :aria-label="__('Edit :title', ['title' => $submission->title])" data-test="edit-submission-button" class="max-sm:h-11">
+                                        {{ __('Edit') }}
+                                    </flux:button>
+                                @endif
+                            </flux:table.cell>
+                        @endif
                     </flux:table.row>
                 @endforeach
             </flux:table.rows>
@@ -514,7 +527,7 @@ new #[Title('Submissions')] class extends Component {
     @endif
     @endisland
 
-    @if ($this->monitoring)
+    @if ($this->canChangeDates)
         {{-- Closing forgets the project without a request, so later filter changes don't reload it --}}
         <flux:modal name="project-dates" wire:close="$set('datingId', null, false)" class="w-full sm:w-96" aria-labelledby="project-dates-heading">
             @island(name: 'dates', always: true)

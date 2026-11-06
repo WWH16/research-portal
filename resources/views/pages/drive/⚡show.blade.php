@@ -47,6 +47,7 @@ new #[Title('Research Drive')] class extends Component {
 @php
     $project = $submission;
     $admin = auth()->user()->isAdmin();
+    $office = auth()->user()->isResearchOffice();
     $onTime = $project->completedOnTime();
     $history = $historyOpen ? $project->history() : null;
 @endphp
@@ -58,7 +59,7 @@ new #[Title('Research Drive')] class extends Component {
              tap area reaches above and below its text, so the way back is easy to hit --}}
         <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1 [&_a]:relative max-sm:[&_a]:before:absolute max-sm:[&_a]:before:-inset-x-1 max-sm:[&_a]:before:-inset-y-3">
             <flux:breadcrumbs.item :href="route('drive.index')" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
-            @if ($admin)
+            @if ($office)
                 <flux:breadcrumbs.item :href="route('drive.index', ['college' => $project->department->code])" wire:navigate>{{ $project->department->code }}</flux:breadcrumbs.item>
             @endif
             <flux:breadcrumbs.item>{{ str($project->title)->limit(40) }}</flux:breadcrumbs.item>
@@ -109,7 +110,7 @@ new #[Title('Research Drive')] class extends Component {
             </div>
         @endif
         {{-- The Research Office ticks this on Submissions; shown here too so a project's page answers it --}}
-        @if ($admin && $project->status === 'Completed')
+        @if ($office && $project->status === 'Completed')
             <div data-test="drive-presented">
                 <dt class="text-zinc-500">{{ __('Presented in-house') }}</dt>
                 <dd class="mt-1 font-medium text-zinc-800">{{ $project->presented ? __('Yes') : __('No') }}</dd>

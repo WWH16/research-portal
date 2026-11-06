@@ -27,8 +27,8 @@ new class extends Component {
 
     public function mount(User $user): void
     {
-        // Admins record no publications, so only faculty accounts have a profile.
-        abort_if($user->isAdmin(), 404);
+        // Only faculty record publications, so only faculty accounts have a profile.
+        abort_unless($user->isFaculty(), 404);
 
         // A deleted publication comes back here with a confirmation.
         if ($message = session('status')) {

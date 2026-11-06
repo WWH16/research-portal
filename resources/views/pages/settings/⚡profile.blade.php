@@ -394,8 +394,8 @@ new #[Title('My Profile')] class extends Component {
             </x-pages::settings.section>
         </form>
 
-        {{-- These notices go to a project's people, and only an admin who was faculty can still be on a project --}}
-        @if (! $user->isAdmin() || Submission::involving($user)->exists())
+        {{-- These notices go to a project's people, and only an office account that was once faculty can still be on a project --}}
+        @if ($user->isFaculty() || Submission::involving($user)->exists())
             {{-- Each switch saves as it flips, so this section needs no Save button --}}
             <x-pages::settings.section :heading="__('Email me about')" :description="__('Notices always show in the portal. These choose which also come by email. Account and Google Drive notices always do.')">
                 <div class="flex flex-col gap-4" data-test="email-preferences">

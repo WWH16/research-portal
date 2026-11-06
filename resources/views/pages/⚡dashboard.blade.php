@@ -176,7 +176,7 @@ new #[Title('Dashboard')] class extends Component {
     private function facultyIn(string $group): Builder
     {
         $query = $group === 'pending'
-            ? User::faculty()->whereNotNull('email_verified_at')->whereDoesntHave('projects', $this->projectsIn($group))
+            ? User::faculty()->approved()->whereNotNull('email_verified_at')->whereDoesntHave('projects', $this->projectsIn($group))
             : User::whereHas('projects', $this->projectsIn($group));
 
         return $query->tap($this->inDepartment());
@@ -361,7 +361,7 @@ new #[Title('Dashboard')] class extends Component {
     #[Computed]
     public function facultyWithoutDepartment(): int
     {
-        return User::faculty()->whereNull('department_id')->count();
+        return User::faculty()->approved()->whereNull('department_id')->count();
     }
 
     /**

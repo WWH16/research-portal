@@ -78,7 +78,7 @@ new #[Title('Notifications')] class extends Component {
     public function kind(DatabaseNotification $notice): array
     {
         // A Research Office account's welcome opens the dashboard, not a new proposal, so its button says where it goes.
-        if ($notice->type === AccountApproved::class && str_ends_with((string) parse_url($notice->data['url'] ?? '', PHP_URL_PATH), '/dashboard')) {
+        if ($notice->type === AccountApproved::class && str_ends_with($notice->data['url'] ?? '', '/dashboard')) {
             return ['Welcome', 'Open the dashboard', 'check-badge'];
         }
 

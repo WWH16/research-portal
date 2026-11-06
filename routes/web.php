@@ -66,7 +66,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::livewire('publications/create', 'pages::publications.create')->middleware('faculty')->name('publications.create');
     Route::livewire('publications/{publication}', 'pages::publications.show')->middleware('can:view,publication')->name('publications.show');
     Route::livewire('publications/{publication}/edit', 'pages::publications.create')->middleware(['faculty', 'can:update,publication'])->name('publications.edit');
-    Route::livewire('faculty', 'pages::faculty.index')->middleware('can:viewAnyPublications,'.User::class)->name('faculty.index');
+    Route::livewire('faculty', 'pages::faculty.index')->middleware('can:viewAny,'.Submission::class)->name('faculty.index');
     Route::livewire('faculty/{user}', 'pages::faculty.show')->middleware('can:viewPublications,user')->name('faculty.show');
 
     // Documents live on the portal's private Google Drive, so only the project's proponents and the Research Office (admins and staff) can open one.

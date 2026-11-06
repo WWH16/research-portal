@@ -8,7 +8,8 @@ use App\Models\User;
 class SubmissionPolicy
 {
     /**
-     * Seeing every project at once, such as the portal-wide exports, is for the Research Office.
+     * Seeing every project or faculty record at once, such as the portal-wide exports and the Faculty Publications
+     * list, is for the Research Office.
      */
     public function viewAny(User $user): bool
     {
@@ -21,14 +22,6 @@ class SubmissionPolicy
     public function review(User $user): bool
     {
         return $user->isAdmin();
-    }
-
-    /**
-     * Admins and staff tick whether a completed project presented in-house; staff prepare the certificates.
-     */
-    public function markPresented(User $user): bool
-    {
-        return $user->isResearchOffice();
     }
 
     /**

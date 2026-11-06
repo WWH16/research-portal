@@ -13,12 +13,4 @@ class UserPolicy
     {
         return $viewer->isResearchOffice() || $viewer->is($faculty);
     }
-
-    /**
-     * The list of every faculty member's publications is for the Research Office.
-     */
-    public function viewAnyPublications(User $viewer): bool
-    {
-        return $viewer->isResearchOffice();
-    }
 }

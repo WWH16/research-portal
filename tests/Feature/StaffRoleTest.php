@@ -60,4 +60,12 @@ class StaffRoleTest extends TestCase
             $this->assertFalse($ids->contains($staff->id));
         }
     }
+
+    public function test_staff_see_their_role_in_the_menu_and_on_my_profile(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'staff']));
+
+        $this->get(route('dashboard'))->assertSee('Research Office staff');
+        $this->get(route('profile.edit'))->assertSeeInOrder(['Role', 'Staff']);
+    }
 }

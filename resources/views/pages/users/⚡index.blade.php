@@ -417,6 +417,7 @@ new #[Title('Manage Users')] class extends Component {
         <flux:select wire:model.live="roleFilter" :aria-label="__('Filter by role')" class="sm:max-w-44">
             <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
             <flux:select.option :value="Role::Admin->value">{{ __('Admins') }}</flux:select.option>
+            <flux:select.option :value="Role::Staff->value">{{ __('Staff') }}</flux:select.option>
             <flux:select.option :value="Role::Faculty->value">{{ __('Faculty') }}</flux:select.option>
         </flux:select>
 
@@ -476,8 +477,8 @@ new #[Title('Manage Users')] class extends Component {
                             @endif
                         </flux:table.cell>
                         <flux:table.cell>
-                            <flux:badge size="sm" inset="top bottom" :color="$user->isAdmin() ? 'green' : 'zinc'">
-                                {{ $user->isAdmin() ? __('Admin') : __('Faculty') }}
+                            <flux:badge size="sm" inset="top bottom" :color="match ($user->role) { Role::Admin => 'green', Role::Staff => 'blue', default => 'zinc' }">
+                                {{ __($user->role->label()) }}
                             </flux:badge>
                             @if ($user->isRejected())
                                 <flux:badge size="sm" inset="top bottom" color="red" data-test="rejected-badge">{{ __('Rejected') }}</flux:badge>
@@ -538,6 +539,7 @@ new #[Title('Manage Users')] class extends Component {
 
                 <flux:select wire:model="role" :label="__('Role')" :disabled="$this->editingSelf">
                     <flux:select.option :value="Role::Faculty->value">{{ __('Faculty') }}</flux:select.option>
+                    <flux:select.option :value="Role::Staff->value">{{ __('Staff') }}</flux:select.option>
                     <flux:select.option :value="Role::Admin->value">{{ __('Admin') }}</flux:select.option>
                 </flux:select>
 

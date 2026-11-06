@@ -9,4 +9,7 @@ return [
         'expire' => 1440,
     ],
 
+    // The first admin's password, used only when AdminUserSeeder creates that account.
+    'admin_seed_password' => env('ADMIN_SEED_PASSWORD'),
+
 ];

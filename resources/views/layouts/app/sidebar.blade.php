@@ -145,10 +145,6 @@
 
             {{-- Rare and high-stakes, so it sits apart at the bottom, away from everyday clicks --}}
             @if (auth()->user()->isAdmin())
-                @if ($backgroundIssue = \App\Services\Heartbeat::issue())
-                    <flux:callout variant="danger" icon="exclamation-triangle" :text="__($backgroundIssue)" data-test="background-issue" />
-                @endif
-
                 <flux:sidebar.nav>
                     <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="$driveIssue !== null || request()->routeIs('google-drive.*')" class="grid" data-test="system-nav">
                         {{-- A rose "!" while uploads can't work: no account saved, disconnected, or full. The title says which,

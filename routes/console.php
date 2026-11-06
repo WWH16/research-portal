@@ -4,7 +4,6 @@ use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\ProjectDeadline;
 use App\Notifications\ProjectLate;
-use App\Services\Heartbeat;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Artisan;
@@ -27,9 +26,6 @@ Artisan::command('notifications:prune', function () {
 })->purpose('Delete notifications older than 12 months');
 Schedule::command('notifications:prune')->daily();
 Schedule::command('queue:prune-failed', ['--hours' => 365 * 24])->daily();
-
-// Lets the sidebar warn admins when the scheduler or the queue worker has stopped.
-Schedule::call(fn () => Heartbeat::beat())->everyFiveMinutes();
 
 // Reminds each open project's people 30 and 7 days before its target date, then the day after it passes and weekly until the terminal report is in.
 Artisan::command('projects:remind', function () {

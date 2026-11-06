@@ -151,6 +151,26 @@ class PublicationTest extends TestCase
         $this->assertSame(0, Publication::count());
     }
 
+    public function test_a_form_opened_before_a_co_authors_change_cannot_overwrite_it(): void
+    {
+        $paper = $this->publication([$this->rivera, $this->soriano], ['authors' => 'Rivera; Soriano', 'published_on' => '2025-06-01']);
+
+        $this->actingAs($this->soriano);
+        $staleForm = Livewire::test('pages::publications.create', ['publication' => $paper]);
+
+        $this->actingAs($this->rivera);
+        Livewire::test('pages::publications.create', ['publication' => $paper])
+            ->set('authorRows', [['user_id' => $this->rivera->id], ['user_id' => $this->soriano->id], ['name' => 'Garcia, P.']])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->actingAs($this->soriano);
+        $staleForm->set('title', 'Overwritten')->call('save')->assertHasErrors('authorRows');
+
+        $this->assertSame('Rivera; Soriano; Garcia, P.', $paper->fresh()->authors);
+        $this->assertNotSame('Overwritten', $paper->fresh()->title);
+    }
+
     public function test_a_renamed_author_is_renamed_on_their_papers_only(): void
     {
         $paper = $this->publication([$this->rivera, $this->soriano], ['authors' => 'Rivera; Soriano; Garcia, P.', 'published_on' => '2025-06-01']);

@@ -257,6 +257,35 @@ class SubmissionTest extends TestCase
             ->assertHasNoErrors();
     }
 
+    public function test_a_form_opened_before_a_co_proponents_change_cannot_overwrite_it(): void
+    {
+        $this->fakeDrive();
+
+        [$maria, $jose] = $this->twoFacultyWithSubmissions();
+        $project = $maria->submissions()->sole();
+        $project->proponents()->create(['user_id' => $jose->id, 'study' => 1, 'role' => 'Staff']);
+        $pedro = User::factory()->create();
+
+        $this->actingAs($jose);
+        $staleForm = Livewire::test('pages::submissions.create', ['submission' => $project->fresh()]);
+
+        $this->actingAs($maria);
+        Livewire::test('pages::submissions.create', ['submission' => $project->fresh()])
+            ->set('proponents', [
+                ['study' => 1, 'user_id' => $maria->id, 'role' => 'Leader'],
+                ['study' => 1, 'user_id' => $jose->id, 'role' => 'Staff'],
+                ['study' => 1, 'user_id' => $pedro->id, 'role' => 'Staff'],
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->actingAs($jose);
+        $staleForm->set('title', 'Overwritten')->call('save')->assertHasErrors('proponents');
+
+        $this->assertTrue($project->fresh()->involves($pedro));
+        $this->assertSame('Maria Proposal', $project->fresh()->title);
+    }
+
     public function test_required_fields_are_validated(): void
     {
         $department = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);

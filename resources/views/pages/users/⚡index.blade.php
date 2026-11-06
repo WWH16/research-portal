@@ -282,7 +282,7 @@ new #[Title('Manage Users')] class extends Component {
 
             Flux::toast(variant: 'success', text: __('User updated.'));
         } else {
-            $user = DB::transaction(function () use ($validated) {
+            $user = User::createRetryingResearcherId(fn () => DB::transaction(function () use ($validated) {
                 // Accounts an admin creates are trusted, so they skip email verification and approval;
                 // markEmailAsVerified() saves, which creates the account.
                 $user = (new User)->forceFill([...$validated, 'approved_at' => now()]);
@@ -290,7 +290,7 @@ new #[Title('Manage Users')] class extends Component {
                 ActivityLog::record('user.created', $user, ['role' => $user->role->value]);
 
                 return $user;
-            });
+            }));
 
             Flux::toast(variant: 'success', text: __('User added as :id.', ['id' => $user->researcher_id]));
         }

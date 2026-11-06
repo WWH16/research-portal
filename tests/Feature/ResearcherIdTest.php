@@ -2,15 +2,68 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Fortify\CreateNewUser;
+use App\Models\Department;
 use App\Models\User;
 use Database\Seeders\AdminUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ResearcherIdTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Have another account take the same researcher ID once, just as the next account is about to save.
+     */
+    private function loseTheNextIdOnce(): void
+    {
+        $raced = false;
+        // Boots the model first, so this listener runs after the one that picks the ID.
+        User::query();
+
+        User::creating(function (User $user) use (&$raced) {
+            if (! $raced) {
+                $raced = true;
+                DB::table('users')->insert(['name' => 'Other', 'email' => 'other@isu.edu.ph', 'password' => 'x', 'researcher_id' => $user->researcher_id]);
+            }
+        });
+    }
+
+    public function test_a_sign_up_that_loses_the_race_for_an_id_takes_the_next_one(): void
+    {
+        $college = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
+        $this->loseTheNextIdOnce();
+
+        $user = app(CreateNewUser::class)->create([
+            'name' => 'Maria Santos',
+            'email' => 'maria@isu.edu.ph',
+            'department_id' => $college->id,
+            'password' => 'Str0ng!pass-word',
+            'password_confirmation' => 'Str0ng!pass-word',
+        ]);
+
+        $this->assertTrue($user->exists);
+        $this->assertSame(2, User::distinct()->count('researcher_id'));
+    }
+
+    public function test_an_account_an_admin_adds_also_survives_losing_the_race(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->loseTheNextIdOnce();
+
+        Livewire::test('pages::users.index')
+            ->call('create')
+            ->set('name', 'Maria Santos')
+            ->set('email', 'maria@isu.edu.ph')
+            ->set('password', 'Str0ng!pass-word')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(User::where('email', 'maria@isu.edu.ph')->exists());
+    }
 
     public function test_new_users_get_sequential_ids_for_the_current_year(): void
     {

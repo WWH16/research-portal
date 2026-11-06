@@ -171,8 +171,12 @@ class ManageUsersTest extends TestCase
         $component = Livewire::test('pages::users.index')
             ->set('roleFilter', 'staff')
             ->assertSee($staff->name)
-            ->assertDontSee($faculty->name)
-            ->assertSeeHtml('value="staff"');
+            ->assertDontSee($faculty->name);
+
+        $this->assertMatchesRegularExpression(
+            '/data-test="role-filter"(?:(?!<\/select>).)*?<option[^>]*value="staff"/s',
+            $component->html(),
+        );
 
         $this->assertMatchesRegularExpression(
             '/data-test="role-badge"[^>]*>\s*Staff\s*</',

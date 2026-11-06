@@ -106,10 +106,7 @@ new #[Title('Research Drive')] class extends Component {
     @if ($browsingFolders && $this->folders->isEmpty())
         {{-- Each college is a folder, so with none there is nothing to open yet --}}
         <x-empty-state icon="folder" :heading="__('No college folders yet')" :text="__('Each college added on the Colleges page gets a folder here.')" class="mt-6" data-test="no-college-folders">
-            {{-- Colleges is an admin page, so staff get no way there --}}
-            @if (auth()->user()->isAdmin())
-                <flux:button :href="route('departments.index')" wire:navigate class="max-sm:h-11">{{ __('Go to Colleges') }}</flux:button>
-            @endif
+            <flux:button :href="route('departments.index')" wire:navigate class="max-sm:h-11">{{ __('Go to Colleges') }}</flux:button>
         </x-empty-state>
     @elseif ($browsingFolders)
         <flux:table class="mt-4" data-test="college-folders">

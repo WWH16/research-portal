@@ -163,13 +163,6 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         static::creating(function (User $user): void {
             $user->researcher_id ??= static::nextResearcherId();
         });
-
-        // A paper's printed author list holds names, so it follows a rename, whichever page made it.
-        static::updated(function (User $user): void {
-            if ($user->wasChanged('name')) {
-                $user->publications()->get()->each(fn (Publication $paper) => $paper->renameAuthor($user->getPrevious()['name'], $user->name));
-            }
-        });
     }
 
     /**

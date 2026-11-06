@@ -112,7 +112,8 @@
 
                     <flux:text x-show="decision === 'passed'" x-cloak>{{ __('The proponents can then upload the detailed proposal. A pass can\'t be undone.') }}</flux:text>
 
-                    <flux:button wire:click="saveReview(decision)" x-bind:disabled="! decision" variant="primary" data-test="save-review-button" class="w-full max-sm:h-11">
+                    {{-- Its own target: Flux would copy wire:click, and Livewire would read decision before this panel's Alpine data exists --}}
+                    <flux:button wire:click="saveReview(decision)" wire:target="saveReview" x-bind:disabled="! decision" variant="primary" data-test="save-review-button" class="w-full max-sm:h-11">
                         <span x-text="{ passed: @js(__('Pass concept')), returned: @js(__('Return for revision')) }[decision] ?? @js(__('Pick a decision'))">{{ __('Pick a decision') }}</span>
                     </flux:button>
                 </div>

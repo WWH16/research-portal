@@ -12,7 +12,7 @@ class PublicationPolicy
      */
     public function view(User $user, Publication $publication): bool
     {
-        return $user->isAdmin() || $publication->authoredBy($user);
+        return $user->isResearchOffice() || $publication->authoredBy($user);
     }
 
     /**
@@ -20,7 +20,7 @@ class PublicationPolicy
      */
     public function create(User $user): bool
     {
-        return ! $user->isAdmin();
+        return $user->isFaculty();
     }
 
     /**
@@ -28,7 +28,7 @@ class PublicationPolicy
      */
     public function update(User $user, Publication $publication): bool
     {
-        return ! $user->isAdmin() && $publication->authoredBy($user);
+        return $user->isFaculty() && $publication->authoredBy($user);
     }
 
     public function delete(User $user, Publication $publication): bool

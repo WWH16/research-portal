@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class StaffRoleTest extends TestCase
@@ -31,5 +32,32 @@ class StaffRoleTest extends TestCase
 
         $this->assertSame(Role::Staff, $staff->fresh()->role);
         $this->assertSame(2, User::researchOffice()->count());
+    }
+
+    public function test_staff_are_kept_off_admin_and_faculty_pages(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'staff']));
+
+        foreach (['reviews.index', 'users.index', 'activity-log.index', 'categories.index', 'departments.index', 'google-drive.index', 'submissions.create', 'publications.create'] as $route) {
+            $this->get(route($route))->assertForbidden();
+        }
+
+        $this->get(route('faculty.index'))->assertOk();
+        $this->get(route('submissions.index'))->assertOk();
+        $this->get(route('drive.index'))->assertOk();
+    }
+
+    public function test_staff_are_not_offered_as_proponents_or_authors(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $faculty = User::factory()->create(['role' => 'faculty']);
+        $this->actingAs($faculty);
+
+        foreach (['pages::submissions.create', 'pages::publications.create'] as $page) {
+            $ids = Livewire::test($page)->instance()->faculty->pluck('id');
+
+            $this->assertTrue($ids->contains($faculty->id));
+            $this->assertFalse($ids->contains($staff->id));
+        }
     }
 }

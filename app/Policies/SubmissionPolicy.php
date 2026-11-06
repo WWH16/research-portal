@@ -12,7 +12,7 @@ class SubmissionPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->isResearchOffice();
     }
 
     /**
@@ -24,19 +24,27 @@ class SubmissionPolicy
     }
 
     /**
-     * Admins open every project to review its concept proposal; faculty open the ones they filed or are listed on.
+     * Admins and staff tick whether a completed project presented in-house; staff prepare the certificates.
+     */
+    public function markPresented(User $user): bool
+    {
+        return $user->isResearchOffice();
+    }
+
+    /**
+     * The Research Office opens every project; faculty open the ones they filed or are listed on.
      */
     public function view(User $user, Submission $submission): bool
     {
-        return $user->isAdmin() || $submission->involves($user);
+        return $user->isResearchOffice() || $submission->involves($user);
     }
 
     /**
      * Any faculty member on the project can edit its details, proponents and documents.
-     * Admins only review the concept proposal, so they never edit the researcher's entry.
+     * The Research Office never edits the researcher's entry.
      */
     public function update(User $user, Submission $submission): bool
     {
-        return ! $user->isAdmin() && $submission->involves($user);
+        return $user->isFaculty() && $submission->involves($user);
     }
 }

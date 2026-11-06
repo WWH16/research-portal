@@ -52,7 +52,7 @@ class SubmissionTest extends TestCase
 
         $this->get(route('submissions.create'))
             ->assertForbidden()
-            ->assertSee('Admins monitor submissions and don’t submit proposals.');
+            ->assertSee('The Research Office monitors submissions and does not submit proposals.');
     }
 
     public function test_admins_monitor_every_project_without_a_new_button(): void

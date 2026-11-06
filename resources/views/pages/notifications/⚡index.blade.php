@@ -61,7 +61,16 @@ new #[Title('Notifications')] class extends Component {
     #[Computed]
     public function notifications(): LengthAwarePaginator
     {
-        return Auth::user()->notifications()->paginate(20);
+        $notices = Auth::user()->notifications()->paginate(20);
+
+        // A page past the end, once its last notice was deleted, shows the last page that has any.
+        if ($notices->isEmpty() && $notices->currentPage() > 1 && $notices->total() > 0) {
+            $this->setPage($notices->lastPage());
+
+            return $this->notifications();
+        }
+
+        return $notices;
     }
 
     #[Computed]

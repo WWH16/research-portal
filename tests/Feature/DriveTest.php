@@ -309,6 +309,21 @@ class DriveTest extends TestCase
             ->assertFileDownloaded('submissions-'.today()->toDateString().'.csv');
     }
 
+    public function test_ticking_the_last_project_on_a_page_shows_the_page_before_it(): void
+    {
+        foreach (range(1, 16) as $number) {
+            $this->project($this->navarro, "Done {$number}", ['status' => 'Completed'])->forceFill(['created_at' => now()->subDays($number)])->save();
+        }
+
+        $this->actingAs($this->staff());
+
+        $page = Livewire::withQueryParams(['page' => 2, 'status' => 'not-presented'])->test('pages::submissions.index')
+            ->assertSee('Done 16')
+            ->call('setPresented', Submission::where('title', 'Done 16')->sole()->id, true);
+
+        $this->assertCount(15, $page->instance()->submissions);
+    }
+
     public function test_admins_list_completed_projects_by_whether_they_presented_in_house(): void
     {
         $this->smart->update(['status' => 'Completed', 'presented' => true]);

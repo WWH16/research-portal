@@ -43,9 +43,9 @@ new #[Title('Research Project')] class extends Component {
     /** @var list<array{study: int|string, user_id: int|string|null, role: string}> */
     public array $proponents = [];
 
-    /** The saved details and proponents when the form opened, so a save never overwrites a co-proponent's change unseen. */
+    /** The saved proponents when the form opened, so a save never overwrites a co-proponent's change unseen. */
     #[Locked]
-    public string $opened = '';
+    public string $openedProponents = '';
 
     /** New uploads keyed by stage (concept, detailed, terminal). */
     public array $documents = [];
@@ -79,16 +79,7 @@ new #[Title('Research Project')] class extends Component {
         $this->start_date = (string) $submission->start_date?->toDateString();
         $this->target_date = (string) $submission->target_date?->toDateString();
         $this->proponents = $this->savedProponents();
-        $this->opened = $this->fingerprint();
-    }
-
-    /**
-     * What this form overwrites as it stands now. Dates and reviews are the Research Office's and the form never saves
-     * them over an existing project, so a change to those doesn't refuse an open form.
-     */
-    private function fingerprint(): string
-    {
-        return sha1(json_encode([$this->submission->only(['title', 'abstract', 'category_id', 'designation']), $this->savedProponents()]));
+        $this->openedProponents = sha1(json_encode($this->proponents));
     }
 
     /**
@@ -212,15 +203,11 @@ new #[Title('Research Project')] class extends Component {
         try {
             $submission = DB::transaction(function () use ($validated, $rows) {
                 if ($this->submission) {
-                    // Locked until the save ends, so another save can't slip in; read again for whatever saved first.
-                    $this->submission = Submission::lockForUpdate()->findOrFail($this->submission->id);
+                    // Locked until the save ends, so another save can't slip in between the check and this one.
+                    Submission::lockForUpdate()->findOrFail($this->submission->id);
 
-                    if ($this->fingerprint() !== $this->opened) {
-                        // A toast, since the change can be anywhere on the form. The error only stops the save; no field shows it.
-                        $message = __('Someone changed this project while this form was open. Reload the page to see the change, then save again.');
-                        Flux::toast(variant: 'danger', text: $message);
-
-                        throw ValidationException::withMessages(['stale' => $message]);
+                    if (sha1(json_encode($this->savedProponents())) !== $this->openedProponents) {
+                        throw ValidationException::withMessages(['proponents' => __('Someone changed the proponents while this form was open. Reload the page to see the change, then save again.')]);
                     }
                 }
 

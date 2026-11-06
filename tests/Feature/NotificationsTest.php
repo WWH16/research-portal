@@ -517,6 +517,24 @@ class NotificationsTest extends TestCase
         $this->assertNull($joses->fresh()->read_at);
     }
 
+    public function test_the_welcome_button_names_where_it_goes(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $staff->notify(new AccountApproved(faculty: false));
+        $this->maria->notify(new AccountApproved);
+
+        $this->actingAs($staff);
+        Livewire::test('pages::notifications.index')
+            ->call('read', $staff->notifications()->sole()->id)
+            ->assertSee('Open the dashboard')
+            ->assertDontSee('Start a proposal');
+
+        $this->actingAs($this->maria);
+        Livewire::test('pages::notifications.index')
+            ->call('read', $this->maria->notifications()->sole()->id)
+            ->assertSee('Start a proposal');
+    }
+
     public function test_an_approved_office_account_is_not_sent_to_submit_a_proposal(): void
     {
         Notification::fake();

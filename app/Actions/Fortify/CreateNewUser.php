@@ -44,11 +44,11 @@ class CreateNewUser implements CreatesNewUsers
         ])->validate();
 
         // Role is left out on purpose: sign-ups always get the default faculty role.
-        return User::create([
+        return User::createRetryingResearcherId(fn () => User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'department_id' => $input['department_id'],
             'password' => $input['password'],
-        ]);
+        ]));
     }
 }

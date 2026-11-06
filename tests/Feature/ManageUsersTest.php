@@ -138,6 +138,43 @@ class ManageUsersTest extends TestCase
         $this->assertTrue(Hash::check('secret-password', $user->password));
     }
 
+    public function test_admin_can_create_a_staff_account(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->call('create')
+            ->set('name', 'Pedro Reyes')
+            ->set('email', 'pedro@isu.edu.ph')
+            ->set('department_id', $department->id)
+            ->set('role', 'staff')
+            ->set('password', 'secret-password')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $user = User::where('email', 'pedro@isu.edu.ph')->sole();
+
+        $this->assertSame(Role::Staff, $user->role);
+        $this->assertTrue($user->isApproved());
+        $this->assertFalse($user->isAdmin());
+    }
+
+    public function test_staff_can_be_filtered_and_show_a_staff_badge(): void
+    {
+        $staff = User::factory()->create(['name' => 'Stella Staffer', 'role' => 'staff']);
+        $faculty = User::factory()->create(['name' => 'Felix Facultyman', 'role' => 'faculty']);
+
+        $this->actingAs($this->admin);
+
+        Livewire::test('pages::users.index')
+            ->set('roleFilter', 'staff')
+            ->assertSee($staff->name)
+            ->assertDontSee($faculty->name)
+            ->assertSeeInOrder([$staff->name, 'Staff']);
+    }
+
     public function test_the_role_cannot_be_mass_assigned(): void
     {
         $user = User::factory()->create(['role' => 'faculty']);

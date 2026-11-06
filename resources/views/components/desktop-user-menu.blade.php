@@ -13,6 +13,8 @@
             <span class="block truncate text-start text-xs font-normal text-isu-green-200">
                 @if (auth()->user()->isAdmin())
                     {{ __('Administrator') }}
+                @elseif (auth()->user()->role === \App\Enums\Role::Staff)
+                    {{ __('Research Office staff') }}
                 @elseif (auth()->user()->department)
                     {{ __('Faculty, :college', ['college' => auth()->user()->department->code]) }}
                 @else

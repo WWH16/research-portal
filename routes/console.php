@@ -6,6 +6,7 @@ use App\Notifications\ProjectDeadline;
 use App\Notifications\ProjectLate;
 use App\Services\Heartbeat;
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schedule;
@@ -19,6 +20,13 @@ Schedule::command('model:prune')->daily();
 
 // Deletes password reset tokens past their expiry, which would otherwise stay in the table for good.
 Schedule::command('auth:clear-resets')->daily();
+
+// Bell notifications and failed email records would otherwise stay for good, so each is kept for 12 months.
+Artisan::command('notifications:prune', function () {
+    DatabaseNotification::where('created_at', '<', now()->subMonths(12))->delete();
+})->purpose('Delete notifications older than 12 months');
+Schedule::command('notifications:prune')->daily();
+Schedule::command('queue:prune-failed', ['--hours' => 365 * 24])->daily();
 
 // Lets the sidebar warn admins when the scheduler or the queue worker has stopped.
 Schedule::call(fn () => Heartbeat::beat())->everyFiveMinutes();

@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
+use App\Models\Announcement;
 use App\Models\Category;
 use App\Models\Department;
+use App\Models\Publication;
 use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
@@ -54,6 +56,31 @@ class DriveTest extends TestCase
         ]);
 
         $this->project($this->torres, 'CAS Soil Survey');
+    }
+
+    public function test_staff_see_and_export_but_do_not_act(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $project = $this->smart;
+
+        $this->assertTrue($staff->can('viewAny', Submission::class));
+        $this->assertTrue($staff->can('view', $project));
+        $this->assertTrue($staff->can('markPresented', Submission::class));
+        $this->assertTrue($staff->can('viewAnyPublications', User::class));
+        $this->assertFalse($staff->can('review', Submission::class));
+        $this->assertFalse($staff->can('update', $project));
+        $this->assertFalse($staff->can('create', Publication::class));
+        $this->assertFalse($staff->can('create', Announcement::class));
+    }
+
+    public function test_faculty_moved_to_staff_keep_sight_of_their_project_but_cannot_edit_it(): void
+    {
+        $this->navarro->forceFill(['role' => 'staff'])->save();
+
+        $this->assertTrue($this->navarro->can('view', $this->smart));
+        $this->assertFalse($this->navarro->can('update', $this->smart));
+        $this->actingAs($this->navarro)->get(route('submissions.edit', $this->smart))->assertForbidden();
+        $this->assertSame(0, $this->navarro->openWork()['toRevise']);
     }
 
     public function test_faculty_see_only_projects_they_are_on_whatever_the_college(): void

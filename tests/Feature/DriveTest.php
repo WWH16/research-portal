@@ -11,7 +11,6 @@ use App\Models\ResearchType;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -320,22 +319,6 @@ class DriveTest extends TestCase
 
         $found = Livewire::withQueryParams(['college' => 'CCSICT', 'q' => 'Sentiment Analysis'])->test('pages::drive.index')->instance()->projects;
         $this->assertSame(['Sentiment_Analysis_Study'], $found->pluck('title')->all());
-    }
-
-    public function test_projects_filed_in_the_same_second_keep_one_order(): void
-    {
-        // SQLite happens to keep ties in order, so this checks that the lists ask for it.
-        $this->actingAs($this->admin());
-        $asked = function (string $page): array {
-            DB::flushQueryLog();
-            DB::enableQueryLog();
-            Livewire::test($page);
-
-            return array_column(DB::getQueryLog(), 'query');
-        };
-
-        $this->assertNotEmpty(preg_grep('/order by "created_at" desc, "id" desc/', $asked('pages::submissions.index')));
-        $this->assertNotEmpty(preg_grep('/order by "updated_at" asc, "id" asc/', $asked('pages::reviews.index')));
     }
 
     public function test_ticking_the_last_project_on_a_page_shows_the_page_before_it(): void

@@ -175,11 +175,26 @@ new #[Title('Google Drive')] class extends Component {
             ActivityLog::record('drive.account_removed', $account);
         });
 
-        if ($account->isConnected()) {
-            rescue(fn () => app(GoogleDrive::class)->revoke($account->refresh_token), report: false);
-        }
+        $this->finish(__(':email removed.', ['email' => $account->email]), $account->isConnected() ? $account->refresh_token : null);
+    }
 
-        Flux::toast(variant: 'success', text: __(':email removed.', ['email' => $account->email]));
+    /**
+     * Say the change is done, after giving back the portal's access at Google when a token is passed. The change stands
+     * either way, as a token Google already revoked or a moment without network must not undo it, so a failure is
+     * logged and the admin is told how to finish the job.
+     */
+    private function finish(string $message, ?string $tokenToRevoke = null): void
+    {
+        $failed = $tokenToRevoke && ! rescue(function () use ($tokenToRevoke) {
+            app(GoogleDrive::class)->revoke($tokenToRevoke);
+
+            return true;
+        }, false);
+
+        Flux::toast(
+            variant: $failed ? 'warning' : 'success',
+            text: $failed ? $message.' '.__('Google did not confirm that the portal’s access ended, so remove it at myaccount.google.com/permissions.') : $message,
+        );
     }
 
     /**
@@ -241,18 +256,14 @@ new #[Title('Google Drive')] class extends Component {
             ActivityLog::record('drive.account_changed', $next, ['from' => $current->email, 'to' => $next->email]);
         });
 
-        // Otherwise its token would stay saved with no page left to disconnect it from.
-        if (! $keep && $current->isConnected()) {
-            rescue(fn () => app(GoogleDrive::class)->revoke($current->refresh_token), report: false);
-        }
-
         $this->resetConfirmation();
         Flux::modal('drive-change')->close();
         unset($this->connection, $this->currentFiles, $this->accounts);
-        // Switching back to an earlier account that kept its access leaves nothing to connect.
-        Flux::toast(variant: 'success', text: $this->connection->isConnected()
+        // Switching back to an earlier account that kept its access leaves nothing to connect. A dropped account's
+        // access goes back to Google, or its token would stay valid with no page left to disconnect it from.
+        $this->finish($this->connection->isConnected()
             ? __('Storage account changed. New uploads go to :email.', ['email' => $this->connection->email])
-            : __('Storage account changed. Connect it so new uploads can be saved.'));
+            : __('Storage account changed. Connect it so new uploads can be saved.'), ! $keep && $current->isConnected() ? $current->refresh_token : null);
 
         $this->dispatch('open-work-stale');
 
@@ -274,8 +285,7 @@ new #[Title('Google Drive')] class extends Component {
 
         $this->confirmCurrentAccount($connection);
 
-        // A token Google already revoked, or a moment without network, must not keep the portal connected.
-        rescue(fn () => app(GoogleDrive::class)->revoke($connection->refresh_token), report: false);
+        $token = $connection->refresh_token;
 
         DB::transaction(function () use ($connection) {
             app(DocumentStorage::class)->disconnect($connection, ['refresh_token' => null]);
@@ -284,7 +294,7 @@ new #[Title('Google Drive')] class extends Component {
 
         $this->resetConfirmation();
         Flux::modal('drive-disconnect')->close();
-        Flux::toast(variant: 'success', text: __('Google Drive disconnected.'));
+        $this->finish(__('Google Drive disconnected.'), $token);
         $this->dispatch('open-work-stale');
         unset($this->connection);
     }

@@ -12,17 +12,37 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
 use Mockery\MockInterface;
+use RuntimeException;
 
 abstract class TestCase extends BaseTestCase
 {
     /**
+     * Tests wipe their database, so stop before they can run on one that isn't named for testing, whatever the settings say.
+     */
+    public function createApplication()
+    {
+        $app = parent::createApplication();
+
+        self::refuseRealDatabase($app['db']->getDatabaseName());
+
+        return $app;
+    }
+
+    public static function refuseRealDatabase(string $database): void
+    {
+        if (! preg_match('/_test(ing)?$/', $database)) {
+            throw new RuntimeException("Tests wipe their database, so they only run on one named *_test or *_testing, not {$database}.");
+        }
+    }
+
+    /**
      * A connected Google Drive storage account whose Drive is the fake "drive" disk, so uploads and opens never
-     * reach Google. The first account a test makes is number 1, so a stored path reads "drive-1/submissions/...",
-     * and its place on the fake disk is the part after "drive-1/".
+     * reach Google. The account is number 1, set by hand since MySQL's ids keep counting after a test's rollback, so a
+     * stored path reads "drive-1/submissions/...", and its place on the fake disk is the part after "drive-1/".
      */
     protected function fakeDrive(): FilesystemAdapter
     {
-        GoogleDriveConnection::current() ?? GoogleDriveConnection::factory()->create();
+        GoogleDriveConnection::current() ?? GoogleDriveConnection::factory()->create(['id' => 1]);
         $disk = Storage::fake('drive');
         $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
 

@@ -145,7 +145,7 @@ class GoogleDrivePageTest extends TestCase
 
         $log = ActivityLog::where('action', 'drive.account_changed')->sole();
         $this->assertSame('changed the Google Drive storage account', $log->summary());
-        $this->assertSame(['from' => 'email1@gmail.com', 'to' => 'email2@gmail.com'], $log->properties);
+        $this->assertEquals(['from' => 'email1@gmail.com', 'to' => 'email2@gmail.com'], $log->properties);
     }
 
     public function test_an_admin_who_loses_the_role_with_the_page_open_can_no_longer_use_it(): void

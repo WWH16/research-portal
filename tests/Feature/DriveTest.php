@@ -324,7 +324,7 @@ class DriveTest extends TestCase
 
     public function test_projects_filed_in_the_same_second_keep_one_order(): void
     {
-        // SQLite happens to keep ties in order, so this checks that the lists ask for it.
+        // A few rows can come back in order by luck, so this checks that the lists ask for it.
         $this->actingAs($this->admin());
         $asked = function (string $page): array {
             DB::flushQueryLog();
@@ -334,8 +334,8 @@ class DriveTest extends TestCase
             return array_column(DB::getQueryLog(), 'query');
         };
 
-        $this->assertNotEmpty(preg_grep('/order by "created_at" desc, "id" desc/', $asked('pages::submissions.index')));
-        $this->assertNotEmpty(preg_grep('/order by "updated_at" asc, "id" asc/', $asked('pages::reviews.index')));
+        $this->assertNotEmpty(preg_grep('/order by `created_at` desc, `id` desc/', $asked('pages::submissions.index')));
+        $this->assertNotEmpty(preg_grep('/order by `updated_at` asc, `id` asc/', $asked('pages::reviews.index')));
     }
 
     public function test_ticking_the_last_project_on_a_page_shows_the_page_before_it(): void

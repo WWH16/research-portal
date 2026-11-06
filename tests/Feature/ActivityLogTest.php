@@ -55,7 +55,7 @@ class ActivityLogTest extends TestCase
 
         $log = ActivityLog::sole();
         $this->assertSame('submission.reviewed', $log->action);
-        $this->assertSame(['decision' => 'returned', 'remarks' => 'Add the budget table.'], $log->properties, 'A review never records a status.');
+        $this->assertEquals(['decision' => 'returned', 'remarks' => 'Add the budget table.'], $log->properties, 'A review never records a status.');
         $this->assertTrue($log->subject_id === $project->id && $log->subject_label === 'Solar Dryer Study');
 
         $this->get(route('activity-log.index'))
@@ -310,7 +310,7 @@ class ActivityLogTest extends TestCase
         }
         $reads = 0;
         DB::listen(function ($query) use (&$reads) {
-            $reads += str_contains($query->sql, 'from "activity_logs"') ? 1 : 0;
+            $reads += preg_match('/from `activity_logs`/', $query->sql);
         });
 
         $this->actingAs($this->admin)
@@ -360,7 +360,7 @@ class ActivityLogTest extends TestCase
             ->assertHasNoErrors();
 
         $log = ActivityLog::sole();
-        $this->assertSame([
+        $this->assertEquals([
             'values' => [
                 'title' => ['Solar Dryer Study', 'Solar Dryer Study, Phase 2'],
                 'category_id' => ['Computing', 'Agriculture'],
@@ -403,7 +403,7 @@ class ActivityLogTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame(['documents' => ['concept'], 'replaced' => ['concept']], ActivityLog::sole()->properties);
+        $this->assertEquals(['documents' => ['concept'], 'replaced' => ['concept']], ActivityLog::sole()->properties);
         $this->assertSame('Replaced the concept proposal', ActivityLog::sole()->note());
     }
 

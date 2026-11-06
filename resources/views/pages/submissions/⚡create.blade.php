@@ -43,10 +43,6 @@ new #[Title('Research Project')] class extends Component {
     /** @var list<array{study: int|string, user_id: int|string|null, role: string}> */
     public array $proponents = [];
 
-    /** The saved proponents when the form opened, so a save never overwrites a co-proponent's change unseen. */
-    #[Locked]
-    public string $openedProponents = '';
-
     /** New uploads keyed by stage (concept, detailed, terminal). */
     public array $documents = [];
 
@@ -78,16 +74,7 @@ new #[Title('Research Project')] class extends Component {
         $this->designation = (string) $submission->designation;
         $this->start_date = (string) $submission->start_date?->toDateString();
         $this->target_date = (string) $submission->target_date?->toDateString();
-        $this->proponents = $this->savedProponents();
-        $this->openedProponents = sha1(json_encode($this->proponents));
-    }
-
-    /**
-     * @return list<array{study: int, user_id: int|null, name: string|null, role: string}>
-     */
-    private function savedProponents(): array
-    {
-        return $this->submission->proponents()->orderBy('study')->orderBy('id')->get(['study', 'user_id', 'name', 'role'])->toArray();
+        $this->proponents = $submission->proponents()->orderBy('study')->orderBy('id')->get(['study', 'user_id', 'name', 'role'])->toArray();
     }
 
     /**
@@ -202,15 +189,6 @@ new #[Title('Research Project')] class extends Component {
 
         try {
             $submission = DB::transaction(function () use ($validated, $rows) {
-                if ($this->submission) {
-                    // Locked until the save ends, so another save can't slip in between the check and this one.
-                    Submission::lockForUpdate()->findOrFail($this->submission->id);
-
-                    if (sha1(json_encode($this->savedProponents())) !== $this->openedProponents) {
-                        throw ValidationException::withMessages(['proponents' => __('Someone changed the proponents while this form was open. Reload the page to see the change, then save again.')]);
-                    }
-                }
-
                 $submission = $this->submission ?? Auth::user()->submissions()->make(['department_id' => $this->department->id]);
 
                 $submission->fill([

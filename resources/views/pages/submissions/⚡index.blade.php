@@ -146,7 +146,8 @@ new #[Title('Submissions')] class extends Component {
             ->when($this->monitoring && trim($this->search) !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';
                 $query->where(fn ($query) => $query
-                    ->where('title', 'like', $term)
+                    // Lists print underscores in a title as spaces, and LIKE's _ matches either.
+                    ->where('title', 'like', str_replace(' ', '_', $term))
                     ->orWhereHas('user', fn ($query) => $query->where('name', 'like', $term))
                     ->orWhereHas('proponents.user', fn ($query) => $query->where('name', 'like', $term))
                     ->orWhereHas('proponents', fn ($query) => $query->where('name', 'like', $term)));

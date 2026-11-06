@@ -93,13 +93,13 @@ class ActivityLog extends Model
     }
 
     /**
-     * Two-factor turned off and admin rights handed out: the entries worth a second look.
+     * Two-factor turned off and Research Office rights handed out: the entries worth a second look.
      */
     public function isWarning(): bool
     {
         return match ($this->action) {
             'auth.two_factor_disabled' => true,
-            'user.created' => ($this->properties['role'] ?? null) === 'admin',
+            'user.created' => in_array($this->properties['role'] ?? null, ['admin', 'staff'], true),
             'user.updated' => isset($this->properties['role']),
             default => false,
         };

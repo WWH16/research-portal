@@ -334,7 +334,7 @@ new #[Title('Manage Users')] class extends Component {
         });
 
         // Told once the approval is saved, so they don't keep trying to sign in.
-        $user->notify(new AccountApproved);
+        $user->notify(new AccountApproved($user->isFaculty()));
 
         Flux::toast(variant: 'success', text: __(':name can now use the portal.', ['name' => $user->name]));
         // The sidebar's sign-up count changes, so it counts again at once.

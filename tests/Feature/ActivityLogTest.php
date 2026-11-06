@@ -84,6 +84,15 @@ class ActivityLogTest extends TestCase
         $this->get(route('activity-log.index'))->assertSeeInOrder(['Edited an account', 'Security', 'Maria Santos', 'Faculty', 'Admin']);
     }
 
+    public function test_creating_an_office_account_is_a_warning_but_a_faculty_one_is_not(): void
+    {
+        foreach (['staff' => true, 'admin' => true, 'faculty' => false] as $role => $warns) {
+            $log = ActivityLog::record('user.created', User::factory()->create(), ['role' => $role]);
+
+            $this->assertSame($warns, $log->isWarning(), $role);
+        }
+    }
+
     public function test_saving_an_unchanged_account_records_nothing(): void
     {
         $maria = User::factory()->create();

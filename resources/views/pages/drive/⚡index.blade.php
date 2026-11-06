@@ -65,8 +65,7 @@ new #[Title('Research Drive')] class extends Component {
     {
         return $query
             ->when($this->year !== '', fn ($query) => $query->where('year', (int) $this->year))
-            // Lists print underscores in a title as spaces, and LIKE's _ matches either.
-            ->when(trim($this->search) !== '', fn ($query) => $query->where('title', 'like', '%'.str_replace(' ', '_', trim($this->search)).'%'));
+            ->when(trim($this->search) !== '', fn ($query) => $query->where('title', 'like', '%'.trim($this->search).'%'));
     }
 }; ?>
 

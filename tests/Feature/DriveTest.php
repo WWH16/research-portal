@@ -309,18 +309,6 @@ class DriveTest extends TestCase
             ->assertFileDownloaded('submissions-'.today()->toDateString().'.csv');
     }
 
-    public function test_a_title_saved_with_underscores_is_found_by_the_words_the_list_shows(): void
-    {
-        $this->project($this->navarro, 'Sentiment_Analysis_Study');
-        $this->actingAs($this->admin());
-
-        $found = Livewire::withQueryParams(['q' => 'Sentiment Analysis'])->test('pages::submissions.index')->instance()->submissions;
-        $this->assertSame(['Sentiment_Analysis_Study'], $found->pluck('title')->all());
-
-        $found = Livewire::withQueryParams(['college' => 'CCSICT', 'q' => 'Sentiment Analysis'])->test('pages::drive.index')->instance()->projects;
-        $this->assertSame(['Sentiment_Analysis_Study'], $found->pluck('title')->all());
-    }
-
     public function test_ticking_the_last_project_on_a_page_shows_the_page_before_it(): void
     {
         foreach (range(1, 16) as $number) {

@@ -4,6 +4,7 @@ use App\Models\Submission;
 use App\Models\User;
 use App\Notifications\ProjectDeadline;
 use App\Notifications\ProjectLate;
+use App\Services\Heartbeat;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;
@@ -18,6 +19,9 @@ Schedule::command('model:prune')->daily();
 
 // Deletes password reset tokens past their expiry, which would otherwise stay in the table for good.
 Schedule::command('auth:clear-resets')->daily();
+
+// Lets the sidebar warn admins when the scheduler or the queue worker has stopped.
+Schedule::call(fn () => Heartbeat::beat())->everyFiveMinutes();
 
 // Reminds each open project's people 30 and 7 days before its target date, then the day after it passes and weekly until the terminal report is in.
 Artisan::command('projects:remind', function () {

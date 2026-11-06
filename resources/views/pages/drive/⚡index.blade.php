@@ -48,7 +48,7 @@ new #[Title('Research Drive')] class extends Component {
     }
 
     /**
-     * Faculty: their own projects, with their rows in each proponents table. Admins: the open folder's projects.
+     * Faculty: their own projects, with their rows in each proponents table. The Research Office (admins and staff): the open folder's projects.
      */
     #[Computed]
     public function projects(): Collection

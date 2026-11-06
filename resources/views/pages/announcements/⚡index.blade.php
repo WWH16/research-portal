@@ -496,7 +496,7 @@ new #[Title('Announcements')] class extends Component {
                             {{-- The header already says what belongs here, so this says what happens next: for faculty the
                                  notice they will get, for an admin the one action that fills it --}}
                             <li data-test="no-announcements">
-                                <x-empty-state icon="megaphone" :level="3" :heading="__('No announcements yet.')" :text="auth()->user()->can('create', App\Models\Announcement::class) ? __('Faculty get a notification when one is posted.') : __('You will get a notification when the Research Office posts one.')">
+                                <x-empty-state icon="megaphone" :level="3" :heading="__('No announcements yet.')" :text="auth()->user()->can('create', App\Models\Announcement::class) ? __('Faculty and staff get a notification when one is posted.') : __('You will get a notification when the Research Office posts one.')">
                                     @can('create', App\Models\Announcement::class)
                                         <flux:button icon="plus" wire:click="create" class="max-sm:h-11">{{ __('Post the first announcement') }}</flux:button>
                                     @endcan
@@ -688,8 +688,8 @@ new #[Title('Announcements')] class extends Component {
                         <flux:heading size="lg" id="announcement-delete-heading" class="wrap-anywhere">{{ __('Delete “:title”?', ['title' => $this->deleting->title]) }}</flux:heading>
                         <flux:text class="mt-2">
                             {{ $this->deleting->attachment_path
-                                ? __('Faculty will no longer see this announcement, and its memo will be removed from Google Drive.')
-                                : __('Faculty will no longer see this announcement.') }}
+                                ? __('Faculty and staff will no longer see this announcement, and its memo will be removed from Google Drive.')
+                                : __('Faculty and staff will no longer see this announcement.') }}
                         </flux:text>
                     </div>
 

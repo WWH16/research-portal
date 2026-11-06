@@ -69,7 +69,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::livewire('faculty', 'pages::faculty.index')->middleware('can:viewAnyPublications,'.User::class)->name('faculty.index');
     Route::livewire('faculty/{user}', 'pages::faculty.show')->middleware('can:viewPublications,user')->name('faculty.show');
 
-    // Documents live on the portal's private Google Drive, so only the project's proponents and admins can open one.
+    // Documents live on the portal's private Google Drive, so only the project's proponents and the Research Office (admins and staff) can open one.
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
         $path = $submission->{$stage.'_path'} ?? abort(404);
 

@@ -36,11 +36,11 @@ new #[Title('Submissions')] class extends Component {
     #[Url(as: 'year', except: '')]
     public string $yearFilter = '';
 
-    /** Admins narrow the list to one college by department code; the dashboard links here with ?dept=. */
+    /** The Research Office narrows the list to one college by department code; the dashboard links here with ?dept=. */
     #[Url(as: 'dept', except: '')]
     public string $department = '';
 
-    /** Admins find a faculty member's projects by name. */
+    /** The Research Office finds a faculty member's projects by name. */
     #[Url(as: 'q', except: '')]
     public string $search = '';
 

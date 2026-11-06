@@ -16,7 +16,7 @@ class SubmissionPolicy
     }
 
     /**
-     * Only the Research Office reviews the concept proposal: leaves remarks and clears the review flag.
+     * Only admins review the concept proposal: leaves remarks and clears the review flag.
      */
     public function review(User $user): bool
     {

@@ -64,15 +64,6 @@ new #[Title('Submissions')] class extends Component {
     }
 
     /**
-     * Only admins move a project's dates; staff see the list without that column.
-     */
-    #[Computed]
-    public function canChangeDates(): bool
-    {
-        return Auth::user()->can('review', Submission::class);
-    }
-
-    /**
      * The college codes for the College filter, read once for the column header and the phone filter that stands in for it.
      *
      * @return Collection<int, string>
@@ -204,7 +195,8 @@ new #[Title('Submissions')] class extends Component {
      */
     public function setPresented(int $id, bool $presented): void
     {
-        $this->authorize('markPresented', Submission::class);
+        // Admins and staff tick this; staff prepare the certificates.
+        abort_unless($this->monitoring, 403);
 
         $submission = Submission::findOrFail($id);
         abort_unless($submission->status === 'Completed', 403);
@@ -393,7 +385,7 @@ new #[Title('Submissions')] class extends Component {
                     <flux:table.column class="max-sm:hidden">{{ __('Presented') }}</flux:table.column>
                 @endif
                 <flux:table.column class="max-sm:hidden">{{ __('Schedule') }}</flux:table.column>
-                @if (! $this->monitoring || $this->canChangeDates)
+                @if (! $this->monitoring || auth()->user()->isAdmin())
                     <flux:table.column align="end">{{ $this->monitoring ? __('Dates') : __('Actions') }}</flux:table.column>
                 @endif
             </flux:table.columns>
@@ -506,7 +498,7 @@ new #[Title('Submissions')] class extends Component {
                             <div class="text-sm text-zinc-500">{{ __('Starts :date', ['date' => $submission->start_date?->format('M j, Y') ?? __('not set')]) }}</div>
                             <div class="text-sm {{ $standingClass }}">{{ $standing }}</div>
                         </flux:table.cell>
-                        @if (! $this->monitoring || $this->canChangeDates)
+                        @if (! $this->monitoring || auth()->user()->isAdmin())
                             <flux:table.cell align="end">
                                 @if ($this->monitoring && $submission->status === 'Completed')
                                     <span class="text-zinc-500" aria-hidden="true">–</span>
@@ -527,7 +519,7 @@ new #[Title('Submissions')] class extends Component {
     @endif
     @endisland
 
-    @if ($this->canChangeDates)
+    @if (auth()->user()->isAdmin())
         {{-- Closing forgets the project without a request, so later filter changes don't reload it --}}
         <flux:modal name="project-dates" wire:close="$set('datingId', null, false)" class="w-full sm:w-96" aria-labelledby="project-dates-heading">
             @island(name: 'dates', always: true)

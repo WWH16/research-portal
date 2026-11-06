@@ -21,7 +21,6 @@ class StaffRoleTest extends TestCase
         $this->assertSame([true, false, false], [$admin->isAdmin(), $staff->isAdmin(), $faculty->isAdmin()]);
         $this->assertSame([true, true, false], [$admin->isResearchOffice(), $staff->isResearchOffice(), $faculty->isResearchOffice()]);
         $this->assertSame([false, false, true], [$admin->isFaculty(), $staff->isFaculty(), $faculty->isFaculty()]);
-        $this->assertSame('Staff', Role::Staff->label());
     }
 
     public function test_the_users_table_stores_the_staff_role(): void

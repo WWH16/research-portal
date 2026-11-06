@@ -12,16 +12,4 @@ enum Role: string
     case Admin = 'admin';
     case Staff = 'staff';
     case Faculty = 'faculty';
-
-    /**
-     * The role's name as members read it.
-     */
-    public function label(): string
-    {
-        return match ($this) {
-            self::Admin => 'Admin',
-            self::Staff => 'Staff',
-            self::Faculty => 'Faculty',
-        };
-    }
 }

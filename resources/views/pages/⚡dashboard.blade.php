@@ -449,12 +449,11 @@ new #[Title('Dashboard')] class extends Component {
         @endif
 
         {{-- Proposals waiting for review get one line above the counts, in pastel seal gold, with the way to Concept
-             Reviews, where the list itself lives. With none waiting the line says so --}}
-        @if (! auth()->user()->isAdmin())
-            {{-- Concept Reviews is an admin page, so staff get no waiting line --}}
-        @elseif ($this->waitingCount === 0)
+             Reviews, where the list itself lives. With none waiting the line says so. Concept Reviews is an admin page,
+             so staff get no line --}}
+        @if (auth()->user()->isAdmin() && $this->waitingCount === 0)
             <x-empty-state inline good icon="check-circle" :heading="__('No concept proposals are waiting for review.')" class="mt-6" data-test="waiting-tile" />
-        @else
+        @elseif (auth()->user()->isAdmin())
             <flux:callout icon="inbox-arrow-down" inline class="mt-6 pastel" data-test="waiting-tile">
                 <flux:callout.heading>{{ trans_choice('{1} One concept proposal is waiting for review.|[2,*] :count concept proposals are waiting for review.', $this->waitingCount) }}</flux:callout.heading>
                 <flux:callout.text>{{ trans_choice('{1} It has waited :wait.|[2,*] The oldest has waited :wait.', $this->waitingCount, ['wait' => $this->oldestWaiting->diffForHumans(null, true)]) }}</flux:callout.text>

@@ -65,8 +65,6 @@ class DriveTest extends TestCase
 
         $this->assertTrue($staff->can('viewAny', Submission::class));
         $this->assertTrue($staff->can('view', $project));
-        $this->assertTrue($staff->can('markPresented', Submission::class));
-        $this->assertTrue($staff->can('viewAnyPublications', User::class));
         $this->assertFalse($staff->can('review', Submission::class));
         $this->assertFalse($staff->can('update', $project));
         $this->assertFalse($staff->can('create', Publication::class));

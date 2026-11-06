@@ -343,7 +343,7 @@ new #[Title('My Profile')] class extends Component {
                 </div>
                 <div>
                     <dt class="text-sm text-zinc-500">{{ __('Role') }}</dt>
-                    <dd class="mt-1 font-medium text-zinc-800">{{ __($user->role->label()) }}</dd>
+                    <dd class="mt-1 font-medium text-zinc-800">{{ __($user->role->name) }}</dd>
                 </div>
                 <div class="col-span-2 min-w-0 sm:col-span-1">
                     <dt class="text-sm text-zinc-500">{{ __('College') }}</dt>

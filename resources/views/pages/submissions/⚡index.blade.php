@@ -93,16 +93,7 @@ new #[Title('Submissions')] class extends Component {
     #[Computed]
     public function submissions(): LengthAwarePaginator
     {
-        $projects = $this->filtered()->latest()->paginate(15);
-
-        // A page past the end, as once its last project was ticked off a filter, shows the last page that has any.
-        if ($projects->isEmpty() && $projects->currentPage() > 1 && $projects->total() > 0) {
-            $this->setPage($projects->lastPage());
-
-            return $this->submissions();
-        }
-
-        return $projects;
+        return $this->filtered()->latest()->paginate(15);
     }
 
     /**

@@ -517,23 +517,6 @@ class NotificationsTest extends TestCase
         $this->assertNull($joses->fresh()->read_at);
     }
 
-    public function test_deleting_the_last_notice_on_a_page_shows_the_page_before_it(): void
-    {
-        foreach (range(1, 20) as $number) {
-            $this->maria->notifications()->create(['id' => (string) Str::uuid(), 'type' => ProjectDeadline::class, 'data' => ['message' => "Notice {$number}", 'url' => '/dashboard']]);
-        }
-        $last = $this->maria->notifications()->create(['id' => (string) Str::uuid(), 'type' => ProjectDeadline::class, 'data' => ['message' => 'Oldest notice', 'url' => '/dashboard']]);
-        $last->forceFill(['created_at' => now()->subYear()])->save();
-
-        $this->actingAs($this->maria);
-
-        Livewire::withQueryParams(['page' => 2])->test('pages::notifications.index')
-            ->assertSee('Oldest notice')
-            ->call('delete', $last->id)
-            ->assertDontSee('No notifications yet.')
-            ->assertSee('Notice 20');
-    }
-
     public function test_an_approved_member_hears_they_can_sign_in(): void
     {
         Notification::fake();

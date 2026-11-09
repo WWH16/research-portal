@@ -316,7 +316,7 @@ new #[Title('Notifications')] class extends Component {
 
             <div class="mt-6 flex flex-wrap items-center gap-2">
                 <flux:button variant="ghost" size="sm" icon="envelope" wire:click="toggleRead('{{ $notice->id }}')" x-on:click="$flux.modal('notice').close()" class="max-sm:h-11">{{ __('Mark as unread') }}</flux:button>
-                <flux:button variant="ghost" size="sm" icon="trash" wire:click="delete('{{ $notice->id }}')" class="max-sm:h-11">{{ __('Delete notification') }}</flux:button>
+                <flux:button variant="ghost" size="sm" icon="trash" wire:click="delete('{{ $notice->id }}')" class="max-sm:h-11">{{ __('Delete') }}</flux:button>
                 <flux:spacer />
                 <flux:button variant="primary" wire:click="open('{{ $notice->id }}')" class="max-sm:h-11">{{ __($action) }}</flux:button>
             </div>

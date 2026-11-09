@@ -48,6 +48,10 @@ new #[Title('Research project')] class extends Component {
     #[Locked]
     public string $opened = '';
 
+    /** The Drive folder this form saves into, kept so saving again after a failure reuses it. Locked, because a browser must never choose it. */
+    #[Locked]
+    public ?string $driveFolder = null;
+
     /** New uploads keyed by stage (concept, detailed, terminal). */
     public array $documents = [];
 
@@ -231,8 +235,11 @@ new #[Title('Research project')] class extends Component {
 
         try {
             // Uploaded before the save starts, so a slow upload never keeps the project locked from anyone else.
+            // One folder for the whole save, so documents sent together stay together.
+            $this->driveFolder ??= $this->submission?->driveFolder() ?? Submission::newDriveFolder($this->department->code, $validated['title']);
+
             foreach ($this->documents as $stage => $file) {
-                $stored[$stage] = app(DocumentStorage::class)->store($file);
+                $stored[$stage] = app(DocumentStorage::class)->store($file, $this->driveFolder, Submission::driveDocumentName($stage));
             }
 
             $submission = DB::transaction(function () use ($validated, $rows, $stored) {

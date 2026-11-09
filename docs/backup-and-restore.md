@@ -45,9 +45,11 @@ Project documents are stored on the Research Office's Google Drive in `Research 
 
 ### Moving older documents into folders
 
-Documents in `submissions` keep working where they are. To file them into project folders, run `php artisan drive:organize` from the environment's **Commands** tab in Laravel Cloud. On its own it only lists what would move. Add `--force` to move the files and update their saved paths. Take a database backup first, and run it when nobody is uploading. It is safe to run again: documents already in a folder are left alone.
+Documents in `submissions` keep working where they are. To file them into project folders, run `php artisan drive:organize` from the environment's **Commands** tab in Laravel Cloud. On its own it only lists what would move. Add `--force` to move the files and update their saved paths, and add `--project=<id>` to try one project first. Run it when nobody is uploading or reviewing. Laravel Cloud stops a command after 30 minutes. Running it again continues the work, because documents already in a folder are left alone.
 
-Never run it from a computer whose database is not the production database. It would move the files on Google Drive but update only that computer's paths, and production would lose those documents.
+Take a database backup first, but only as protection against a database problem. Restoring a backup from before the run does not undo the run: the files stay in their new folders while the restored paths point to the old place, so every moved document stops opening.
+
+The command refuses `--force` when its database is on the same computer. Never get around that: it would move the files on Google Drive but update only that computer's paths, and production would lose those documents.
 
 ## Database backups on Laravel Cloud
 

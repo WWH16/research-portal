@@ -32,6 +32,8 @@ class OrganizeDriveFoldersTest extends TestCase
     {
         parent::setUp();
 
+        // The command refuses a local database; the open test connection is unaffected by this setting.
+        config(['database.connections.'.config('database.default').'.host' => 'db.example.laravel.cloud']);
         $this->drive = $this->fakeDrive();
         $college = Department::create(['code' => 'CCS', 'name' => 'College of Computer Studies']);
         $this->maria = User::factory()->create(['department_id' => $college->id]);
@@ -125,6 +127,57 @@ class OrganizeDriveFoldersTest extends TestCase
         $this->partialMock(DocumentStorage::class, fn (MockInterface $mock) => $mock->shouldReceive('move')->andThrow(new DocumentStorageUnavailable));
 
         $this->artisan('drive:organize', ['--force' => true])->assertFailed();
+
+        $this->assertSame('drive-1/submissions/concept.pdf', $project->fresh()->concept_path);
+    }
+
+    public function test_one_project_can_be_moved_on_its_own(): void
+    {
+        $this->drive->put('submissions/one.pdf', 'pdf');
+        $this->drive->put('submissions/two.pdf', 'pdf');
+        $one = $this->project(['concept_path' => 'drive-1/submissions/one.pdf']);
+        $two = $this->project(['concept_path' => 'drive-1/submissions/two.pdf']);
+
+        $this->artisan('drive:organize', ['--force' => true, '--project' => $one->id])->assertSuccessful();
+
+        $this->assertStringStartsWith('drive-1/Research Drive/', $one->fresh()->concept_path);
+        $this->assertSame('drive-1/submissions/two.pdf', $two->fresh()->concept_path);
+    }
+
+    public function test_a_document_replaced_during_the_run_is_left_alone(): void
+    {
+        $first = $this->project(['concept_path' => 'drive-1/submissions/first.pdf']);
+        $second = $this->project(['concept_path' => 'drive-1/submissions/second.pdf']);
+        // The run has both rows in hand when the first one moves, and that is when the member replaces the second.
+        $this->partialMock(DocumentStorage::class, fn (MockInterface $mock) => $mock->shouldReceive('move')->once()
+            ->andReturnUsing(fn () => $second->update(['concept_path' => 'drive-1/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (newr).pdf'])));
+
+        $this->artisan('drive:organize', ['--force' => true])->assertSuccessful();
+
+        $this->assertStringStartsWith('drive-1/Research Drive/', $first->fresh()->concept_path);
+        $this->assertSame('drive-1/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (newr).pdf', $second->fresh()->concept_path);
+    }
+
+    public function test_force_is_refused_for_a_local_database(): void
+    {
+        config(['database.connections.'.config('database.default').'.host' => '127.0.0.1']);
+        $this->drive->put('submissions/concept.pdf', 'pdf');
+        $project = $this->project(['concept_path' => 'drive-1/submissions/concept.pdf']);
+
+        $this->artisan('drive:organize', ['--force' => true])->assertFailed();
+
+        $this->assertSame('drive-1/submissions/concept.pdf', $project->fresh()->concept_path);
+        $this->drive->assertExists('submissions/concept.pdf');
+    }
+
+    public function test_a_trial_run_still_works_on_a_local_database(): void
+    {
+        config(['database.connections.'.config('database.default').'.host' => '127.0.0.1']);
+        $project = $this->project(['concept_path' => 'drive-1/submissions/concept.pdf']);
+
+        $this->artisan('drive:organize')
+            ->expectsOutputToContain('To move: 1.')
+            ->assertSuccessful();
 
         $this->assertSame('drive-1/submissions/concept.pdf', $project->fresh()->concept_path);
     }

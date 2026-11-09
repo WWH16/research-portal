@@ -145,7 +145,7 @@ new #[Title('Research Drive')] class extends Component {
                 <x-empty-state icon="folder-open" :heading="__('No projects yet')" :text="$year !== '' ? __(':college has no projects filed for :year.', ['college' => $this->folder->code, 'year' => $year]) : __(':college has no projects filed yet.', ['college' => $this->folder->code])" class="mt-6" />
             @else
                 <x-empty-state icon="document-plus" :heading="__('You’re not on any projects yet')" :text="__('Projects appear here once you submit one or a colleague lists you as a proponent.')" class="mt-6">
-                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="max-sm:h-11" wire:navigate>{{ __('New proposal') }}</flux:button>
+                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" class="max-sm:h-11" wire:navigate>{{ __('Create proposal') }}</flux:button>
                 </x-empty-state>
             @endif
         @else

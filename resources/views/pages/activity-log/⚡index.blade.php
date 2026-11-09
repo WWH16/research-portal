@@ -12,7 +12,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Activity Log')] class extends Component {
+new #[Title('Activity log')] class extends Component {
     use WithPagination;
 
     #[Url(except: '')]
@@ -195,7 +195,7 @@ new #[Title('Activity Log')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <x-page-title :subtitle="__('Who did what in the portal, newest first.')">{{ __('Activity Log') }}</x-page-title>
+    <x-page-title :subtitle="__('Who did what in the portal, newest first.')">{{ __('Activity log') }}</x-page-title>
 
     <div class="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
         <flux:input
@@ -220,7 +220,7 @@ new #[Title('Activity Log')] class extends Component {
             <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from ?: null" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
 
             <flux:dropdown position="bottom" align="end">
-                <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" />
+                <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" />
                 <flux:menu>
                     <flux:menu.item wire:click="preset('today')">{{ __('Today') }}</flux:menu.item>
                     <flux:menu.item wire:click="preset('week')">{{ __('Last 7 days') }}</flux:menu.item>

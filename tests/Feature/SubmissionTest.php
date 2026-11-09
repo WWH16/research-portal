@@ -732,7 +732,7 @@ class SubmissionTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         // The sidebar counts what waits, and the panel offers both decisions.
-        $this->get(route('dashboard'))->assertSeeInOrder(['data-test="reviews-nav"', 'Reviews', '2'], false);
+        $this->get(route('dashboard'))->assertSeeInOrder(['data-test="reviews-nav"', 'Concept reviews', '2'], false);
         $panel = Livewire::test('pages::reviews.index')
             ->call('review', $project->id)
             ->assertSeeHtml('data-test="review-to-check"')

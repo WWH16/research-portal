@@ -40,7 +40,7 @@ class ManageUsersTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'faculty']));
 
         $this->get(route('users.index'))->assertForbidden();
-        $this->get(route('dashboard'))->assertDontSee('Manage Users');
+        $this->get(route('dashboard'))->assertDontSee('Manage users');
     }
 
     public function test_admins_see_the_user_list(): void
@@ -51,7 +51,7 @@ class ManageUsersTest extends TestCase
 
         $this->get(route('users.index'))
             ->assertOk()
-            ->assertSee('Manage Users')
+            ->assertSee('Manage users')
             ->assertSee('Maria Santos')
             ->assertSee('maria@isu.edu.ph');
     }

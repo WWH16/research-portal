@@ -40,7 +40,7 @@
                     <flux:label>{{ __('Password') }}</flux:label>
 
                     <flux:link class="text-sm" :href="route('password.request')" wire:navigate>
-                        {{ __('Forgot your password?') }}
+                        {{ __('Reset password') }}
                     </flux:link>
                 </div>
 

@@ -10,7 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Concept Reviews')] class extends Component {
+new #[Title('Concept reviews')] class extends Component {
     use ReviewsSubmissions, WithPagination;
 
     /**
@@ -73,7 +73,7 @@ new #[Title('Concept Reviews')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <x-page-title :subtitle="__('Concept proposals waiting for a decision, longest waiting first.')">{{ __('Concept Reviews') }}</x-page-title>
+    <x-page-title :subtitle="__('Concept proposals waiting for a decision, longest waiting first.')">{{ __('Concept reviews') }}</x-page-title>
 
     @island(name: 'list', always: true)
     @if ($this->queue->isEmpty())

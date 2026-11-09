@@ -23,7 +23,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Manage Users')] class extends Component {
+new #[Title('Manage users')] class extends Component {
     use ProfileValidationRules, WithPagination;
 
     #[Url(except: '')]
@@ -427,7 +427,7 @@ new #[Title('Manage Users')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <x-page-title :subtitle="__('Accounts, roles, and college assignments for portal members.')">{{ __('Manage Users') }}</x-page-title>
+    <x-page-title :subtitle="__('Accounts, roles, and college assignments for portal members.')">{{ __('Manage users') }}</x-page-title>
 
     <div class="mt-6 flex flex-col gap-3 sm:flex-row">
         <flux:input
@@ -454,7 +454,7 @@ new #[Title('Manage Users')] class extends Component {
         </flux:select>
 
         <flux:button variant="primary" icon="plus" wire:click="create" class="shrink-0 max-sm:h-11" data-test="new-user-button">
-            {{ __('New') }}
+            {{ __('Add user') }}
         </flux:button>
     </div>
 
@@ -513,7 +513,7 @@ new #[Title('Manage Users')] class extends Component {
                         </flux:table.cell>
                         <flux:table.cell>
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Actions for :name', ['name' => $user->name])" />
+                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Open actions for :name', ['name' => $user->name])" />
 
                                 <flux:menu>
                                     @unless ($user->isApproved())
@@ -582,7 +582,7 @@ new #[Title('Manage Users')] class extends Component {
             <flux:input
                 wire:model="password"
                 :label="$editingId ? __('New password') : __('Password')"
-                :description:trailing="$editingId ? __('Leave blank to keep the current password.') : __('Share it with the member; they can change it under My Profile, Security.')"
+                :description:trailing="$editingId ? __('Leave blank to keep the current password.') : __('Share it with the member; they can change it under My profile, Security.')"
                 type="password"
                 autocomplete="new-password"
                 viewable
@@ -612,7 +612,7 @@ new #[Title('Manage Users')] class extends Component {
                     <flux:modal.close>
                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
-                    <flux:button variant="danger" wire:click="reject" data-test="reject-user-button">{{ __('Reject') }}</flux:button>
+                    <flux:button variant="danger" wire:click="reject" data-test="reject-user-button">{{ __('Reject sign-up') }}</flux:button>
                 </div>
             </div>
         @endif
@@ -636,7 +636,7 @@ new #[Title('Manage Users')] class extends Component {
                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @unless ($this->deletingBlocker)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button">{{ __('Delete') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button">{{ __('Delete user') }}</flux:button>
                     @endunless
                 </div>
             </div>

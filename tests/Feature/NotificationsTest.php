@@ -544,7 +544,7 @@ class NotificationsTest extends TestCase
 
         Notification::assertSentTo($waiting, AccountApproved::class, fn (AccountApproved $notification) => $notification->via($waiting) === ['database', 'mail']
             && $notification->toArray($waiting) === [
-                'message' => 'The Research Office has approved your account. To begin, submit your concept proposal; the Research Office will review it and notify you of its decision here. You may also add your mobile number and profile photo under My Profile.',
+                'message' => 'The Research Office has approved your account. To begin, submit your concept proposal; the Research Office will review it and notify you of its decision here. You may also add your mobile number and profile photo under My profile.',
                 'url' => route('submissions.create'),
             ]
             && $notification->toMail($waiting)->introLines[1] === 'You may now sign in to submit research proposals, upload the documents for each stage, and follow the progress of your projects.'

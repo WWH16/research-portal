@@ -468,7 +468,7 @@ new #[Title('Dashboard')] class extends Component {
                 <flux:callout.heading>{{ trans_choice('{1} One concept proposal is waiting for review.|[2,*] :count concept proposals are waiting for review.', $this->waitingCount) }}</flux:callout.heading>
                 <flux:callout.text>{{ trans_choice('{1} It has waited :wait.|[2,*] The oldest has waited :wait.', $this->waitingCount, ['wait' => $this->oldestWaiting->diffForHumans(null, true)]) }}</flux:callout.text>
                 <x-slot name="actions" class="max-sm:grid">
-                    <flux:button size="sm" :href="route('reviews.index')" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Review them') }}</flux:button>
+                    <flux:button size="sm" :href="route('reviews.index')" wire:navigate class="max-sm:h-11 max-sm:px-4">{{ __('Review proposals') }}</flux:button>
                 </x-slot>
             </flux:callout>
         @endif
@@ -491,7 +491,7 @@ new #[Title('Dashboard')] class extends Component {
                         </flux:select>
 
                         <flux:dropdown position="bottom" align="end">
-                            <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" class="max-sm:size-11" />
+                            <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" class="max-sm:size-11" />
                             <flux:menu>
                                 <flux:menu.item wire:click="preset('this-year')" class="max-sm:h-11">{{ __('This year') }}</flux:menu.item>
                                 @if (now()->year > Submission::FIRST_YEAR)
@@ -760,7 +760,7 @@ new #[Title('Dashboard')] class extends Component {
 
                 @if (auth()->user()->department_id)
                     <flux:text class="mt-2 mb-4 text-pretty">{{ __('Upload your concept proposal for the Research Office to review. The detailed proposal and reports go on the same project later.') }}</flux:text>
-                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-auto w-full max-sm:h-11">{{ __('New proposal') }}</flux:button>
+                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-auto w-full max-sm:h-11">{{ __('Create proposal') }}</flux:button>
                 @else
                     <flux:text class="mt-2">{{ __('Your account has no college yet. Contact the Research Office to have one assigned.') }}</flux:text>
                 @endif

@@ -80,7 +80,7 @@ new class extends Component {
     {
         $mine = $this->user->is(auth()->user());
 
-        return $this->view(['mine' => $mine])->title($mine ? __('My Publications') : __(':name’s publications', ['name' => $this->user->name]));
+        return $this->view(['mine' => $mine])->title($mine ? __('My publications') : __(':name’s publications', ['name' => $this->user->name]));
     }
 }; ?>
 
@@ -94,7 +94,7 @@ new class extends Component {
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         @if ($mine)
             {{-- For screen readers only: the sidebar already marks the page, and the member's name leads it --}}
-            <flux:heading level="1" class="sr-only">{{ __('My Publications') }}</flux:heading>
+            <flux:heading level="1" class="sr-only">{{ __('My publications') }}</flux:heading>
 
             {{-- On phones it comes before the summary rather than under it. An empty profile leaves it to the empty
                  list's own button, so the page offers one, not two. --}}
@@ -103,7 +103,7 @@ new class extends Component {
             @endif
         @else
             <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
-                <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty Publications') }}</flux:breadcrumbs.item>
+                <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty publications') }}</flux:breadcrumbs.item>
                 <flux:breadcrumbs.item>{{ $user->name }}</flux:breadcrumbs.item>
             </flux:breadcrumbs>
         @endif

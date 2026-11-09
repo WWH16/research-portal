@@ -107,7 +107,7 @@ class AnnouncementsTest extends TestCase
         // A fresh page for each try, since a refused call leaves the test component unusable.
         $page = fn () => Livewire::actingAs(User::factory()->create())->test('pages::announcements.index');
 
-        $page()->assertDontSeeHtml('data-test="post-announcement"')->assertDontSee('Actions for');
+        $page()->assertDontSeeHtml('data-test="post-announcement"')->assertDontSee('Open actions for');
         $page()->call('create')->assertForbidden();
         $page()->call('edit', $announcement->id)->assertForbidden();
         $page()->call('confirmDelete', $announcement->id)->assertForbidden();

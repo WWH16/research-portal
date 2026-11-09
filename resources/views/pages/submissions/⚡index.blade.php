@@ -357,7 +357,7 @@ new #[Title('Submissions')] class extends Component {
         @else
             {{-- Takes the count's place at the end of the row when there is no count --}}
             <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate @class(['max-sm:h-11 max-sm:w-full', 'sm:ms-auto' => $this->submissions->isEmpty()])>
-                {{ __('New proposal') }}
+                {{ __('Create proposal') }}
             </flux:button>
         @endif
     </div>
@@ -373,7 +373,7 @@ new #[Title('Submissions')] class extends Component {
         @else
             <x-empty-state icon="document-plus" :heading="__('You’re not on any projects yet.')" :text="__('Submit a proposal, or ask a colleague to list you as a proponent on theirs.')" class="mt-8">
                 @if (auth()->user()->department_id)
-                    <flux:button :href="route('submissions.create')" icon="plus" wire:navigate class="max-sm:h-11">{{ __('New proposal') }}</flux:button>
+                    <flux:button :href="route('submissions.create')" icon="plus" wire:navigate class="max-sm:h-11">{{ __('Create proposal') }}</flux:button>
                 @endif
             </x-empty-state>
         @endif

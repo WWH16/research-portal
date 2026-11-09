@@ -44,7 +44,7 @@
     </ul>
 
     <h2 id="your-rights">{{ __('Your rights') }}</h2>
-    <p>{{ __('Under the Data Privacy Act you may ask to see the personal information the portal holds about you, ask for mistakes to be corrected, object to its use, or ask for it to be removed where the university no longer needs it as a research record. You can update your name, mobile number, and photo yourself under My Profile. For anything else, write to the Research Office.') }}</p>
+    <p>{{ __('Under the Data Privacy Act you may ask to see the personal information the portal holds about you, ask for mistakes to be corrected, object to its use, or ask for it to be removed where the university no longer needs it as a research record. You can update your name, mobile number, and photo yourself under My profile. For anything else, write to the Research Office.') }}</p>
 
     <h2 id="contact">{{ __('Contact') }}</h2>
     <p>

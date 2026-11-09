@@ -23,7 +23,7 @@ class AccountApproved extends PortalNotification
 
     protected function message(): string
     {
-        return __('The Research Office has approved your account. To begin, submit your concept proposal; the Research Office will review it and notify you of its decision here. You may also add your mobile number and profile photo under My Profile.');
+        return __('The Research Office has approved your account. To begin, submit your concept proposal; the Research Office will review it and notify you of its decision here. You may also add your mobile number and profile photo under My profile.');
     }
 
     protected function url(): string

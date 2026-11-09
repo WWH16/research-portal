@@ -16,6 +16,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Storage;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Mockery\MockInterface;
 use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 class GoogleDriveDiskTest extends TestCase
@@ -113,6 +115,78 @@ class GoogleDriveDiskTest extends TestCase
         rescue(fn () => $service->files->get('folder-123'), report: false);
         $this->googleAnswers([$token('second-token')]);
         $this->assertSame('second-token', $accessToken());
+    }
+
+    /**
+     * One folder's contents as Google's batch endpoint answers them.
+     *
+     * @param  list<array<string, mixed>>  $files
+     */
+    private function listing(array $files): Response
+    {
+        return new Response(200, ['Content-Type' => 'multipart/mixed; boundary=b'], "--b\r\nContent-Type: application/http\r\nContent-ID: response-1\r\n\r\nHTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n".json_encode(['files' => $files])."\r\n--b--");
+    }
+
+    public function test_a_document_in_nested_folders_is_found_by_its_saved_path(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
+        $path = "drive-{$account->id}/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (a1b2).pdf";
+        $item = fn (string $id, string $name, string $parent, string $mime = 'application/vnd.google-apps.folder') => ['id' => $id, 'name' => $name, 'mimeType' => $mime, 'parents' => [$parent], 'modifiedTime' => '2026-11-09T00:00:00.000Z'];
+
+        // Sign-in, one listing per level, then the download: walking the folders any other way runs out of answers.
+        $this->googleAnswers([
+            new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
+            $this->listing([$item('a', 'Research Drive', 'root-folder')]),
+            $this->listing([$item('b', 'CCS', 'a')]),
+            $this->listing([$item('c', 'Soil Study (m2p7)', 'b')]),
+            $this->listing([$item('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf')]),
+            new Response(200, ['Content-Type' => 'application/pdf', 'Content-Length' => '9'], 'pdf-bytes'),
+        ]);
+
+        $response = app(DocumentStorage::class)->open($path, 'soil-study-concept.pdf');
+
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertSame('file-456', Cache::get(DocumentStorage::fileIdKey($path)));
+    }
+
+    public function test_a_document_missing_from_google_drive_answers_not_found(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
+        $this->googleAnswers([
+            new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
+            $this->listing([]),
+        ]);
+
+        $this->expectException(NotFoundHttpException::class);
+
+        app(DocumentStorage::class)->respond("drive-{$account->id}/Research Drive/CCS/Gone (aaaa)/Concept proposal (a1b2).pdf", 'gone.pdf');
+    }
+
+    public function test_a_new_project_folder_is_created_level_by_level(): void
+    {
+        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
+        $json = fn (array $body) => new Response(200, ['Content-Type' => 'application/json'], json_encode($body));
+        $item = fn (string $id, string $name, string $parent, string $mime = 'application/vnd.google-apps.folder') => ['id' => $id, 'name' => $name, 'mimeType' => $mime, 'parents' => [$parent], 'modifiedTime' => '2026-11-09T00:00:00.000Z'];
+        [$drive, $college, $project] = [$item('a', 'Research Drive', 'root-folder'), $item('b', 'CCS', 'a'), $item('c', 'Soil Study (m2p7)', 'b')];
+
+        // Sign-in; the empty Drive looked at twice; each folder made, then listed before the next; the upload; its permissions.
+        $this->googleAnswers([
+            $json(['access_token' => 'fresh-access-token', 'expires_in' => 3599]),
+            $this->listing([]),
+            $this->listing([]),
+            $json($drive),
+            $this->listing([$drive]),
+            $json($college),
+            $this->listing([$college]),
+            $json($project),
+            $this->listing([$project]),
+            $json($item('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf')),
+            $json(['permissions' => []]),
+        ]);
+
+        $path = app(DocumentStorage::class)->store(UploadedFile::fake()->create('p.pdf', 10, 'application/pdf'), 'Research Drive/CCS/Soil Study (m2p7)', 'Concept proposal (a1b2)');
+
+        $this->assertSame("drive-{$account->id}/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (a1b2).pdf", $path);
     }
 
     public function test_a_document_opened_before_downloads_straight_from_its_saved_file_id(): void

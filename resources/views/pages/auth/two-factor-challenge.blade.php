@@ -88,10 +88,7 @@
                     </flux:button>
                 </div>
 
-                <div class="mt-2">
-                    <flux:button variant="ghost" class="w-full" x-show="!showRecoveryInput" x-on:click="toggleInput()">{{ __('Use a recovery code') }}</flux:button>
-                    <flux:button variant="ghost" class="w-full" x-show="showRecoveryInput" x-on:click="toggleInput()">{{ __('Use an authentication code') }}</flux:button>
-                </div>
+                <flux:button variant="ghost" class="mt-2 w-full" x-on:click="toggleInput()"><span x-text="showRecoveryInput ? @js(__('Use an authentication code')) : @js(__('Use a recovery code'))">{{ __('Use a recovery code') }}</span></flux:button>
             </form>
         </div>
     </div>

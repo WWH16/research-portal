@@ -408,6 +408,7 @@ new #[Title('Dashboard')] class extends Component {
             $projects = $this->rangeProjects;
             $filters = array_filter(['from' => $from, 'to' => $to, 'dept' => $department]);
             $scope = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
+            $paired = count($this->breakdowns) > 1;
 
             $kpis = [
                 'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed in :range|{1} Across one project in :range|[2,*] Across :count projects in :range', $projects['projects'], ['range' => $scope])],
@@ -508,13 +509,15 @@ new #[Title('Dashboard')] class extends Component {
                 </div>
             </section>
 
-            {{-- Trend over time, split by status: stacked columns --}}
-            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope])
+            {{-- Trend over time, split by status: stacked columns. From xl it takes two thirds with the breakdowns beside
+                 it; xl because the sidebar leaves a third too narrow for their bars on smaller screens --}}
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope, 'span' => 'lg:col-span-12 xl:col-span-8'.($paired ? ' xl:row-span-2' : '')])
 
             {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
-                {{-- Colleges and categories side by side; the category chart alone takes the row once a college is picked --}}
-                <flux:card @class(['lg:col-span-6' => count($this->breakdowns) > 1, 'lg:col-span-12' => count($this->breakdowns) === 1])>
+                {{-- Colleges and categories side by side, then stacked beside the trend from xl. Below xl the category chart
+                     alone takes the row once a college is picked --}}
+                <flux:card @class(['xl:col-span-4', 'lg:col-span-6' => $paired, 'lg:col-span-12' => ! $paired])>
                     <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
 
                     @if ($rows->isEmpty())
@@ -696,7 +699,7 @@ new #[Title('Dashboard')] class extends Component {
 
         <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
             {{-- The main action. First on phones, so it is on the first screen; beside the projects on wide screens --}}
-            <flux:card class="self-start lg:col-span-4 lg:col-start-9 lg:row-start-1" data-test="submit-tile">
+            <flux:card class="lg:col-span-12 xl:col-span-4 xl:col-start-9 xl:row-start-1" data-test="submit-tile">
                 <flux:heading size="lg" level="2">{{ __('Start a research project') }}</flux:heading>
 
                 @if (auth()->user()->department_id)
@@ -708,7 +711,7 @@ new #[Title('Dashboard')] class extends Component {
             </flux:card>
 
             {{-- The member's projects lead the page: they are what a member comes here to open --}}
-            <flux:card class="lg:col-span-8 lg:col-start-1 lg:row-start-1">
+            <flux:card class="lg:col-span-12 xl:col-span-8 xl:col-start-1 xl:row-start-1">
                 <div class="flex items-baseline justify-between gap-4">
                     <flux:heading size="lg" level="2">{{ __('Recent projects') }}</flux:heading>
                     @if ($total > 0)

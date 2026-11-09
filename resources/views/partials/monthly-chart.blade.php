@@ -1,7 +1,8 @@
 {{--
     Stacked columns of projects filed per month, split by current status, with hover and focus
     tooltips and a table view. Expects: $monthly (one entry per month, up to 24), $bars, $heading,
-    and $period, how the months are described ("2026", "the last 12 months").
+    and $period, how the months are described ("2026", "the last 12 months"). Optional: $span, the card's
+    grid classes. A card stretched taller than it needs gives the extra height to the plot.
 --}}
 @php
     $peak = max(1, max(array_column($monthly, 'total')));
@@ -16,7 +17,7 @@
     $labelEvery = (int) ceil($columns / 12);
 @endphp
 
-<flux:card class="lg:col-span-12" data-test="monthly-chart">
+<flux:card class="flex flex-col {{ $span ?? 'lg:col-span-12' }}" data-test="monthly-chart">
     <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <div>
             <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
@@ -45,15 +46,15 @@
     @if ($filed === 0)
         <flux:text class="mt-6">{{ __('No projects in :period.', ['period' => $period]) }}</flux:text>
     @else
-        <div class="mt-6 flex gap-3">
-            <div class="flex h-56 flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
+        <div class="mt-6 grid flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(14rem,1fr)_auto] gap-x-3">
+            <div class="flex flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
                 @foreach ($ticks as $tick)
                     <span class="-my-2">{{ $tick }}</span>
                 @endforeach
             </div>
 
-            <div class="min-w-0 flex-1">
-                <div class="relative h-56">
+            <div class="contents">
+                <div class="relative">
                     @foreach ($ticks as $tick)
                         <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
@@ -106,7 +107,7 @@
                 </div>
 
                 {{-- Month labels; every other one hides on phones so they never collide --}}
-                <ol class="mt-2 grid gap-1 text-center text-xs text-zinc-500" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
+                <ol class="col-start-2 mt-2 grid gap-1 text-center text-xs text-zinc-500" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
                     @php($yearShown = null)
                     @foreach ($monthly as $index => $month)
                         @php($labelled = $index % $labelEvery === 0)

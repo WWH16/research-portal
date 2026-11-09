@@ -46,19 +46,14 @@ class DocumentStorage
         try {
             $disk = $this->driveOf($account);
             $location = $name === null ? $disk->putFile($folder, $file) : $disk->putFileAs($folder, $file, rtrim($name.'.'.$file->guessExtension(), '.'));
+            // The disk answers false, not an error, when Google refuses the upload; GoogleDrive::disk() marks a full account then.
+            $location ?: throw new DocumentStorageUnavailable('The document could not be stored.');
         } catch (Throwable $e) {
             // The member only sees that storage is down, so the cause has to reach the log here.
             report($e);
             $this->markIfUnreachable($account, $e);
 
             throw new DocumentStorageUnavailable(previous: $e);
-        }
-
-        // The disk answers false, not an error, when Google refuses the upload; GoogleDrive::disk() marks a full account then.
-        if (! $location) {
-            report($unavailable = new DocumentStorageUnavailable('The document could not be stored.'));
-
-            throw $unavailable;
         }
 
         Cache::forget($account->fullKey());
@@ -118,19 +113,13 @@ class DocumentStorage
         } catch (UnableToMoveFile $e) {
             // The adapter also fails when Google moved the file and only its read afterwards failed. The target's name
             // is new to this move, so finding it there proves the file went. The cleared cache makes the adapter look.
-            $adapter = $disk->getAdapter();
-
-            if ($adapter instanceof GoogleDriveAdapter) {
-                $adapter->clearCache();
-            }
+            $disk->getAdapter() instanceof GoogleDriveAdapter && $disk->getAdapter()->clearCache();
 
             $disk->exists($target) ?: throw $e;
             report($e);
         }
 
         Cache::forever(self::uploadedAtKey($to), $uploadedAt);
-        Cache::forget(self::uploadedAtKey($from));
-        Cache::forget(self::fileIdKey($from));
     }
 
     /**

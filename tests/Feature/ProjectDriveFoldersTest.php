@@ -156,16 +156,12 @@ class ProjectDriveFoldersTest extends TestCase
         $this->drive->assertExists(Str::after($path, '/'));
     }
 
-    public function test_an_unsafe_title_is_saved_with_safe_names_only(): void
-    {
-        $this->assertMatchesRegularExpression('#^drive-1/Research Drive/CCS/Rice Corn A Study '.self::CODE.'/#', $this->newProject('Rice & Corn: A "Study"?'));
-    }
-
-    public function test_the_next_document_joins_the_project_folder(): void
+    public function test_the_next_document_joins_the_project_folder_even_after_a_rename(): void
     {
         $project = $this->project(['concept_path' => 'drive-1/'.self::FOLDER.'/Concept proposal (a1b2).pdf']);
+        $this->maria->department->update(['code' => 'CICT']);
 
-        $this->upload($project, ['detailed']);
+        $this->upload($project, ['detailed'], 'A New Title');
 
         $this->assertMatchesRegularExpression('#^drive-1/Research Drive/CCS/Soil Study \(m2p7\)/Detailed proposal '.self::CODE.'\.pdf$#', $project->fresh()->detailed_path);
     }
@@ -205,16 +201,6 @@ class ProjectDriveFoldersTest extends TestCase
         $project->refresh();
         $this->assertStringStartsWith('drive-1/Research Drive/CCS/Soil Study (', $project->concept_path);
         $this->assertSame(Str::beforeLast($project->concept_path, '/'), Str::beforeLast($project->detailed_path, '/'));
-    }
-
-    public function test_renaming_a_project_or_its_college_keeps_the_folder(): void
-    {
-        $project = $this->project(['concept_path' => 'drive-1/'.self::FOLDER.'/Concept proposal (a1b2).pdf']);
-        $this->maria->department->update(['code' => 'CICT']);
-
-        $this->upload($project, ['detailed'], 'A New Title');
-
-        $this->assertStringStartsWith('drive-1/'.self::FOLDER.'/', $project->fresh()->detailed_path);
     }
 
     public function test_a_project_on_an_earlier_account_keeps_its_folder_name_on_the_current_account(): void

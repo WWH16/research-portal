@@ -261,6 +261,21 @@ select:focus[data-flux-control] {
     scrollbar-color: var(--color-isu-green-600) transparent;
 }
 
+/*
+ * Flux only slides the collapsed phone sidebar off screen, which leaves its links in the Tab order, so keyboard focus
+ * would vanish there. Hidden, they drop out of it. Transitioning visibility as it collapses keeps the sidebar painted
+ * until it has slid away.
+ */
+.isu-sidebar[data-flux-sidebar-on-mobile][data-flux-sidebar-collapsed-mobile] {
+    visibility: hidden;
+    transition-property: translate, visibility;
+}
+
+/* Windows high contrast mode strips background colours, and those are all the chart bars and legend swatches are. */
+[class*='bg-status-'] {
+    forced-color-adjust: none;
+}
+
 /* The user menu opens inside the sidebar but keeps the page's light styling. */
 .isu-sidebar [data-flux-menu] {
     --color-accent: var(--color-isu-green-700);

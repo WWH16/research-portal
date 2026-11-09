@@ -45,6 +45,11 @@
         x-on:visibilitychange.document="if (! document.hidden) { lastActive = Date.now(); refresh() }"
         x-on:review-queue-changed.window="toReview = $event.detail.toReview; reviewLabel = $event.detail.label"
         x-on:open-work-stale.window="refresh()">
+        {{-- The first Tab stop, out of sight until it has focus: it takes a keyboard user past the sidebar to the page --}}
+        <div class="sr-only focus-within:not-sr-only focus-within:fixed focus-within:start-4 focus-within:top-4 focus-within:z-30">
+            <flux:button href="#main-content">{{ __('Skip to main content') }}</flux:button>
+        </div>
+
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}
         <flux:sidebar sticky collapsible="mobile" class="isu-sidebar w-72 border-e">
             {{-- The brand and the account menu stay put while the links between them scroll; each covers the sidebar's

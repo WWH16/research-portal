@@ -103,7 +103,7 @@
                                     </div>
                                 @endif
 
-                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $tooltipSide }}" aria-hidden="true">
+                                <div class="absolute bottom-full z-10 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $tooltipSide }}" aria-hidden="true">
                                     <p class="text-zinc-500">{{ $label }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No projects|{1} One project|[2,*] :count projects', $month['total']) }}</p>
                                     @if ($month['total'] > 0)
@@ -147,8 +147,12 @@
             <flux:button size="sm" icon="table-cells" class="max-sm:h-11" x-on:click="open = ! open" x-bind:aria-expanded="open" aria-expanded="false">
                 <span x-text="open ? @js(__('Hide table')) : @js(__('Show as table'))">{{ __('Show as table') }}</span>
             </flux:button>
-            <div x-show="open" x-cloak>
-                <flux:table class="mt-3 tabular-nums">
+            {{-- This box does the sideways scrolling on phones, because Flux's own scroll area can't take the tabindex a
+                 keyboard needs to reach it --}}
+            <div x-show="open" x-cloak tabindex="0" role="region" aria-labelledby="monthly-chart-caption" class="mt-3 overflow-x-auto focus-visible:outline-2 focus-visible:outline-accent">
+                <flux:table container:class="w-max min-w-full" class="tabular-nums">
+                    <caption id="monthly-chart-caption" class="sr-only">{{ $heading }}, {{ $period }}</caption>
+
                     <flux:table.columns>
                         <flux:table.column>{{ __('Month') }}</flux:table.column>
                         @foreach (\App\Models\Submission::STATUSES as $status)
@@ -160,7 +164,8 @@
                     <flux:table.rows>
                         @foreach ($monthly as $month)
                             <flux:table.row>
-                                <flux:table.cell>{{ $month['month']->format('M Y') }}</flux:table.cell>
+                                {{-- A row header, which Flux's cell can't be; its borders are switched to match the cells beside it --}}
+                                <flux:table.column scope="row" class="border-b-0! not-in-[tr:first-child]:border-t">{{ $month['month']->format('M Y') }}</flux:table.column>
                                 @foreach ($month['counts'] as $count)
                                     <flux:table.cell align="end">{{ $count }}</flux:table.cell>
                                 @endforeach

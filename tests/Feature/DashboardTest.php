@@ -340,21 +340,24 @@ class DashboardTest extends TestCase
 
     public function test_the_monthly_chart_keeps_a_year_change_labelled_on_phones(): void
     {
-        $monthly = collect(range(0, 11))->map(fn (int $offset) => [
-            'month' => Date::create(2025, 12)->addMonths($offset),
-            'counts' => ['Concept' => 1, 'Detailed' => 0, 'Mid-year' => 0, 'Completed' => 0],
-            'total' => 1,
-        ])->all();
-
-        $html = view('partials.monthly-chart', [
-            'monthly' => $monthly,
-            'heading' => 'Submissions per month',
-            'period' => 'the last 12 months',
-            'bars' => ['Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Mid-year' => 'bg-status-midyear', 'Completed' => 'bg-status-completed'],
-        ])->render();
-
-        $this->assertSame(1, preg_match('/<li class="([^"]*)">\s*Jan\s*<span[^>]*>2026/', $html, $january));
+        $this->assertSame(1, preg_match('/<li class="([^"]*)">\s*Jan\s*<span[^>]*>2026/', $this->monthlyChart(), $january));
         $this->assertStringNotContainsString('max-sm:invisible', $january[1]);
+    }
+
+    public function test_the_monthly_chart_tooltip_stays_while_the_pointer_moves_onto_it(): void
+    {
+        $this->assertSame(12, preg_match_all('/class="([^"]*bottom-full[^"]*)"/', $this->monthlyChart(), $tooltips));
+
+        $this->assertStringNotContainsString('pointer-events-none', $tooltips[1][0]);
+    }
+
+    public function test_the_monthly_chart_table_is_named_and_reachable_by_keyboard(): void
+    {
+        $html = $this->monthlyChart();
+
+        $this->assertStringContainsString('tabindex="0" role="region" aria-labelledby="monthly-chart-caption"', $html);
+        $this->assertStringContainsString('<caption id="monthly-chart-caption" class="sr-only">Submissions per month, the last 12 months</caption>', $html);
+        $this->assertSame(12, preg_match_all('/<th [^>]*scope="row"/', $html));
     }
 
     public function test_admins_see_submissions_per_month_by_status(): void
@@ -521,6 +524,86 @@ class DashboardTest extends TestCase
             ->assertDontSee(route('submissions.create'), escape: false);
     }
 
+    public function test_keyboard_users_can_skip_past_the_sidebar(): void
+    {
+        $this->actingAs($this->facultyInDepartment('Maria Santos'));
+
+        $this->get(route('dashboard'))
+            ->assertSeeInOrder(['href="#main-content"', 'data-flux-sidebar', 'id="main-content"'], escape: false);
+    }
+
+    public function test_faculty_dashboard_cards_tab_in_the_order_they_appear(): void
+    {
+        $this->actingAs($this->facultyInDepartment('Maria Santos'));
+
+        $this->get(route('dashboard'))
+            ->assertSeeInOrder(['My projects', 'data-test="monthly-chart"', 'Recent projects', 'data-test="submit-tile"'], escape: false)
+            ->assertDontSee('xl:col-start-', escape: false)
+            ->assertDontSee('xl:row-start-', escape: false);
+    }
+
+    public function test_faculty_recent_projects_show_the_three_newest(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+
+        foreach (['Oldest', 'Second', 'Third', 'Newest'] as $title) {
+            $this->travel(1)->minutes();
+            $this->submit($maria, "{$title} Study");
+        }
+
+        $this->actingAs($maria);
+
+        $this->get(route('dashboard'))
+            ->assertSeeInOrder(['Newest Study', 'Third Study', 'Second Study'])
+            ->assertDontSee('Oldest Study');
+    }
+
+    public function test_new_proposal_sits_at_the_foot_of_its_card(): void
+    {
+        $this->actingAs($this->facultyInDepartment('Maria Santos'));
+
+        Livewire::test('pages::dashboard')->assertSeeHtml('mt-auto');
+    }
+
+    public function test_each_open_project_link_names_its_project(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $this->submit($maria, 'Late Study', 'Detailed', ['target_date' => today()->subWeek()]);
+
+        $this->actingAs($maria);
+
+        $this->get(route('dashboard'))
+            ->assertSeeHtml('Open project<span class="sr-only">: Late Study</span>');
+    }
+
+    public function test_faculty_project_titles_and_due_dates_are_never_cut_off(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $this->submit($maria, 'Late Study', 'Detailed', ['target_date' => today()->subWeek()]);
+
+        $this->actingAs($maria);
+
+        Livewire::test('pages::dashboard')
+            ->assertSeeHtml('Late Study')
+            ->assertDontSeeHtml('line-clamp')
+            ->assertDontSeeHtml('sm:truncate')
+            ->assertDontSeeHtml('title="Late Study"');
+    }
+
+    public function test_faculty_dashboard_links_have_phone_sized_targets(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $this->submit($maria, 'Late Study', 'Detailed', ['target_date' => today()->subWeek()]);
+
+        $this->actingAs($maria);
+
+        $html = $this->get(route('dashboard'))->getContent();
+
+        // Open project and View all, then the project's title, whose target runs down over the line under it
+        $this->assertSame(2, substr_count($html, 'max-sm:before:-inset-3'));
+        $this->assertStringContainsString('max-sm:before:-bottom-6', $html);
+    }
+
     public function test_admins_arrive_on_reviews_reviewing(): void
     {
         $waiting = $this->submit($this->facultyInDepartment('Maria Santos'), 'Waiting Proposal');
@@ -574,6 +657,25 @@ class DashboardTest extends TestCase
         $this->actingAs($maria);
         // Three of these are the sidebar's: projects that need revision, unread notifications, and the announcements' version.
         $this->assertQueriesAtMost(6, fn () => $this->get(route('dashboard'))->assertOk());
+    }
+
+    /**
+     * The monthly chart rendered for twelve months, from December 2025, with one project in each.
+     */
+    private function monthlyChart(): string
+    {
+        $monthly = collect(range(0, 11))->map(fn (int $offset) => [
+            'month' => Date::create(2025, 12)->addMonths($offset),
+            'counts' => ['Concept' => 1, 'Detailed' => 0, 'Mid-year' => 0, 'Completed' => 0],
+            'total' => 1,
+        ])->all();
+
+        return view('partials.monthly-chart', [
+            'monthly' => $monthly,
+            'heading' => 'Submissions per month',
+            'period' => 'the last 12 months',
+            'bars' => ['Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Mid-year' => 'bg-status-midyear', 'Completed' => 'bg-status-completed'],
+        ])->render();
     }
 
     private function facultyInDepartment(string $name): User

@@ -23,8 +23,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * The Research Office (admins and staff) gets faculty progress for a filing-date range, and admins also get one line on the
  * concept proposals waiting for review:
  * faculty counts per stage, each opening the faculty behind it and exportable as a report, the monthly trend as
- * stacked columns, and "where from / what about" as ranked horizontal bars. Faculty get what needs their attention, their projects beside
- * the button that starts a new one, then their counts and monthly trend.
+ * stacked columns, and "where from / what about" as ranked horizontal bars. Faculty get what needs their attention, their counts and monthly
+ * trend, then their newest projects beside the button that starts a new one.
  */
 new #[Title('Dashboard')] class extends Component {
     use WithPagination;
@@ -690,7 +690,7 @@ new #[Title('Dashboard')] class extends Component {
                     @foreach ($this->needsAttention as $submission)
                         <li class="py-3 first:pt-0 last:pb-0">
                             <div class="flex items-center gap-3">
-                                <p class="line-clamp-2 min-w-0 flex-1 text-sm font-medium text-zinc-800 [overflow-wrap:anywhere]" title="{{ $submission->displayTitle() }}">{{ $submission->displayTitle() }}</p>
+                                <p class="min-w-0 flex-1 text-sm font-medium text-zinc-800 [overflow-wrap:anywhere]">{{ $submission->displayTitle() }}</p>
                                 @if ($submission->conceptReview() === 'returned')
                                     <flux:badge size="sm" color="amber">{{ __('Concept needs revision') }}</flux:badge>
                                 @endif
@@ -704,7 +704,8 @@ new #[Title('Dashboard')] class extends Component {
                             @if ($submission->conceptReview() === 'returned')
                                 <p class="mt-1 text-sm text-amber-800 wrap-anywhere">{{ __('What to fix: :remarks', ['remarks' => $submission->remarks]) }}</p>
                             @endif
-                            <flux:link :href="route('submissions.edit', $submission)" wire:navigate class="mt-2 inline-block text-sm">{{ __('Open project') }}</flux:link>
+                            {{-- The target reaches 44px on phones without moving anything; the hidden title tells these links apart in a screen reader's list --}}
+                            <flux:link :href="route('submissions.edit', $submission)" wire:navigate class="relative mt-2 inline-block text-sm max-sm:before:absolute max-sm:before:-inset-3">{{ __('Open project') }}<span class="sr-only">: {{ $submission->displayTitle() }}</span></flux:link>
                         </li>
                     @endforeach
                 </ul>
@@ -712,24 +713,22 @@ new #[Title('Dashboard')] class extends Component {
         @endif
 
         <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
-            {{-- The main action. First on phones, so it is on the first screen; beside the projects on wide screens --}}
-            <flux:card class="xl:col-span-4 xl:col-start-9 xl:row-start-1" data-test="submit-tile">
-                <flux:heading size="lg" level="2">{{ __('Start a research project') }}</flux:heading>
+            {{-- Counts by stage, each opening the projects it counts. One strip split by hairlines: pairs below xl with the
+                 last spanning the row, then all five in a row. The cells on its corners take its curve --}}
+            <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line [&>:last-child]:col-span-2 xl:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1 *:first:rounded-tl-cell *:last:rounded-br-cell max-xl:*:nth-2:rounded-tr-cell max-xl:*:last:rounded-bl-cell xl:*:first:rounded-bl-cell xl:*:last:rounded-tr-cell">
+                @foreach ($kpis as $kpi)
+                    @include('partials.stat-tile', $kpi)
+                @endforeach
+            </div>
 
-                @if (auth()->user()->department_id)
-                    <flux:text class="mt-2">{{ __('Upload your concept proposal for the Research Office to review. The detailed proposal and reports go on the same project later.') }}</flux:text>
-                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-4 w-full max-sm:h-11">{{ __('New proposal') }}</flux:button>
-                @else
-                    <flux:text class="mt-2">{{ __('Your account has no college yet. Contact the Research Office to have one assigned.') }}</flux:text>
-                @endif
-            </flux:card>
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('My submissions per month'), 'period' => __('the last 12 months')])
 
-            {{-- The member's projects lead the page: they are what a member comes here to open --}}
-            <flux:card class="xl:col-span-8 xl:col-start-1 xl:row-start-1">
+            {{-- The member's three newest projects, under the figures; "View all" opens the rest --}}
+            <flux:card class="xl:col-span-8">
                 <div class="flex items-baseline justify-between gap-4">
                     <flux:heading size="lg" level="2">{{ __('Recent projects') }}</flux:heading>
                     @if ($total > 0)
-                        <flux:link :href="route('submissions.index')" wire:navigate class="shrink-0 text-sm">{{ __('View all') }}</flux:link>
+                        <flux:link :href="route('submissions.index')" wire:navigate class="relative shrink-0 text-sm max-sm:before:absolute max-sm:before:-inset-3">{{ __('View all') }}</flux:link>
                     @endif
                 </div>
 
@@ -737,13 +736,12 @@ new #[Title('Dashboard')] class extends Component {
                     <x-empty-state inline icon="document-plus" :heading="__('You haven’t submitted a proposal yet.')" class="mt-4" />
                 @else
                     <ul class="mt-4 divide-y divide-line">
-                        @foreach ($this->myProjects->take(5) as $submission)
-                            @php($title = $submission->displayTitle())
+                        @foreach ($this->myProjects->take(3) as $submission)
                             <li class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1 text-sm">
-                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline sm:line-clamp-1">{{ $title }}</a>
-                                    {{-- Phones wrap this line so the due date is never cut off or split --}}
-                                    <p class="mt-0.5 tabular-nums text-zinc-500 sm:truncate">
+                                    {{-- On phones the target runs down over the line below, to 44px without reaching "View all" above --}}
+                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate class="relative block font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:top-0 max-sm:before:-bottom-6">{{ $submission->displayTitle() }}</a>
+                                    <p class="mt-0.5 tabular-nums text-zinc-500">
                                         {{ $submission->category->name }}.
                                         <span @class(['whitespace-nowrap', 'font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('M j, Y')]) : __('No schedule yet') }}</span>
                                     </p>
@@ -755,15 +753,18 @@ new #[Title('Dashboard')] class extends Component {
                 @endif
             </flux:card>
 
-            {{-- Counts by stage, each opening the projects it counts. One strip split by hairlines: pairs below xl with the
-                 last spanning the row, then all five in a row. The cells on its corners take its curve --}}
-            <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line [&>:last-child]:col-span-2 xl:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1 *:first:rounded-tl-cell *:last:rounded-br-cell max-xl:*:nth-2:rounded-tr-cell max-xl:*:last:rounded-bl-cell xl:*:first:rounded-bl-cell xl:*:last:rounded-tr-cell">
-                @foreach ($kpis as $kpi)
-                    @include('partials.stat-tile', $kpi)
-                @endforeach
-            </div>
+            {{-- The main action, beside the list it adds to. The button keeps to the card's foot, however tall the list
+                 makes the card, so the space never gathers under it --}}
+            <flux:card class="flex flex-col xl:col-span-4" data-test="submit-tile">
+                <flux:heading size="lg" level="2">{{ __('Start a research project') }}</flux:heading>
 
-            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('My submissions per month'), 'period' => __('the last 12 months')])
+                @if (auth()->user()->department_id)
+                    <flux:text class="mt-2 mb-4 text-pretty">{{ __('Upload your concept proposal for the Research Office to review. The detailed proposal and reports go on the same project later.') }}</flux:text>
+                    <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="mt-auto w-full max-sm:h-11">{{ __('New proposal') }}</flux:button>
+                @else
+                    <flux:text class="mt-2">{{ __('Your account has no college yet. Contact the Research Office to have one assigned.') }}</flux:text>
+                @endif
+            </flux:card>
         </div>
     @endif
 </section>

@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Date;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -337,6 +338,25 @@ class DashboardTest extends TestCase
             ->assertSeeHtml('aria-label="Copy Maria Santos’s email"');
     }
 
+    public function test_the_monthly_chart_keeps_a_year_change_labelled_on_phones(): void
+    {
+        $monthly = collect(range(0, 11))->map(fn (int $offset) => [
+            'month' => Date::create(2025, 12)->addMonths($offset),
+            'counts' => ['Concept' => 1, 'Detailed' => 0, 'Mid-year' => 0, 'Completed' => 0],
+            'total' => 1,
+        ])->all();
+
+        $html = view('partials.monthly-chart', [
+            'monthly' => $monthly,
+            'heading' => 'Submissions per month',
+            'period' => 'the last 12 months',
+            'bars' => ['Concept' => 'bg-status-concept', 'Detailed' => 'bg-status-detailed', 'Mid-year' => 'bg-status-midyear', 'Completed' => 'bg-status-completed'],
+        ])->render();
+
+        $this->assertSame(1, preg_match('/<li class="([^"]*)">\s*Jan\s*<span[^>]*>2026/', $html, $january));
+        $this->assertStringNotContainsString('max-sm:invisible', $january[1]);
+    }
+
     public function test_admins_see_submissions_per_month_by_status(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');
@@ -356,7 +376,7 @@ class DashboardTest extends TestCase
 
         $this->get(route('dashboard', $sinceLastMonth))
             ->assertSee('Submissions per month')
-            ->assertSee("{$lastMonth}: 2 projects, 1 Concept, 1 Detailed, 0 Mid-year, 0 Completed")
+            ->assertSee("{$lastMonth}: 2 projects, 1 Concept, 1 Detailed\"", false)
             ->assertSee('Show as table');
 
         // Projects have no research type any more, so the summary charts colleges and categories only.

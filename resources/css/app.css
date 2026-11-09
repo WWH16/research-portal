@@ -92,10 +92,11 @@
 
     /* Project stages, shared by the chart, stat tiles and swatches. Each holds at least 3:1 on white
        so a bar or swatch reads as a shape (WCAG 1.4.11). Badges use the matching Flux hues, from
-       Submission::STATUS_COLORS, so change both together. */
+       Submission::STATUS_COLORS, so change both together. Mid-year is a dark purple so it stands apart from
+       Detailed's blue, colour-blind readers included; amber would clash, as it means a return or lateness here. */
     --color-status-concept: var(--color-cyan-600);
     --color-status-detailed: var(--color-blue-600);
-    --color-status-midyear: var(--color-violet-600);
+    --color-status-midyear: var(--color-purple-800);
     --color-status-completed: var(--color-green-700);
     --color-status-delayed: var(--color-red-600);
 

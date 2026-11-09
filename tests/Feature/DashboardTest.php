@@ -114,9 +114,9 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $component = Livewire::test('pages::dashboard')->assertSet('from', "{$year}-01-01")->assertSet('to', "{$year}-12-31");
+        $component = Livewire::test('pages::dashboard')->assertSet('from', "{$year}-01-01")->assertSet('to', today()->toDateString());
         $this->assertSame(['submitted' => 3, 'pending' => 0, 'proposal' => 3, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $component->instance()->facultyCounts);
-        $component->assertSee('Across 2 projects in '.$year)->assertSee('1 of 1 project finished on time');
+        $component->assertSee('Across 2 projects in '.$component->instance()->rangeLabel)->assertSee('1 of 1 project finished on time');
 
         $lastYear = Livewire::test('pages::dashboard')->call('preset', 'last-year');
         $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
@@ -148,10 +148,10 @@ class DashboardTest extends TestCase
         $reversed = Livewire::withQueryParams(['from' => "{$year}-12-31", 'to' => "{$year}-07-01"])->test('pages::dashboard');
         $this->assertSame(1, $reversed->instance()->facultyCounts['submitted']);
 
-        // A bad date falls back to the whole year, and the chart shows one column per month in range.
+        // A bad date falls back to the year so far, and the chart shows one column per month in range.
         $whole = Livewire::withQueryParams(['from' => 'not-a-date', 'to' => "{$year}-12-31"])->test('pages::dashboard');
         $this->assertSame(2, $whole->instance()->facultyCounts['submitted']);
-        $this->assertCount(12, $whole->instance()->monthly);
+        $this->assertCount(now()->month, $whole->instance()->monthly);
 
         $this->assertCount(24, Livewire::withQueryParams(['from' => ($year - 3).'-01-01', 'to' => "{$year}-12-31"])->test('pages::dashboard')->instance()->monthly);
 
@@ -176,11 +176,11 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->get(route('dashboard'))->assertSee(route('dashboard', ['from' => now()->year.'-01-01', 'to' => now()->year.'-12-31', 'group' => 'completed']));
+        $this->get(route('dashboard'))->assertSee(route('dashboard', ['from' => now()->year.'-01-01', 'to' => today()->toDateString(), 'group' => 'completed']));
 
         Livewire::withQueryParams(['group' => 'completed'])
             ->test('pages::dashboard')
-            ->assertSee('Completed, '.now()->year)
+            ->assertSee('Completed, ')
             ->assertSee('Navarro')
             ->assertSee('Finished Study')
             // The list names the projects only; the stat card already says which group they are in.
@@ -188,7 +188,7 @@ class DashboardTest extends TestCase
             ->assertDontSee('Late')
             ->assertDontSee('Soriano')
             ->call('export')
-            ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.now()->year.'-12-31.csv');
+            ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.today()->toDateString().'.csv');
 
         $this->actingAs($navarro);
         Livewire::withQueryParams(['group' => 'completed'])->test('pages::dashboard')->assertDontSee('data-test="faculty-list"', escape: false)->call('export')->assertForbidden();
@@ -217,7 +217,7 @@ class DashboardTest extends TestCase
             ->assertDontSee('data-test="no-department-tile"', escape: false)
             ->assertDontSee(route('reviews.index'), escape: false)
             ->call('export')
-            ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.now()->year.'-12-31.csv');
+            ->assertFileDownloaded('completed-'.now()->year.'-01-01-'.today()->toDateString().'.csv');
     }
 
     public function test_staff_accounts_are_not_counted_as_faculty_yet_to_submit(): void
@@ -275,18 +275,18 @@ class DashboardTest extends TestCase
 
         Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CBM'])
             ->test('pages::dashboard')
-            ->assertSee("Not yet submitted, CBM, {$year}")
+            ->assertSee('Not yet submitted, CBM, ')
             ->assertSee('Reyes')
             ->assertSeeHtml('href="mailto:'.$reyes->email.'"')
             ->assertDontSee('CBM · 0')
             ->assertDontSee('Unverified Person')
             ->assertDontSee('By college')
             ->call('export')
-            ->assertFileDownloaded("not-yet-submitted-cbm-{$year}-01-01-{$year}-12-31.csv");
+            ->assertFileDownloaded("not-yet-submitted-cbm-{$year}-01-01-".today()->toDateString().'.csv');
 
         Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CCS'])
             ->test('pages::dashboard')
-            ->assertSee("Every faculty member in CCS has submitted in {$year}.");
+            ->assertSee('Every faculty member in CCS has submitted in ');
     }
 
     public function test_a_big_faculty_list_opens_in_place_one_page_at_a_time_and_exports_whole(): void
@@ -386,6 +386,43 @@ class DashboardTest extends TestCase
             ->assertDontSee('<span class="-my-2">20</span>', escape: false);
     }
 
+    public function test_filters_show_the_values_used_and_a_half_typed_year_keeps_the_results(): void
+    {
+        $first = Submission::FIRST_YEAR;
+        $this->travelTo("{$first}-06-15 10:00:00");
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $dashboard = Livewire::withQueryParams(['from' => '2020-01-01', 'to' => '2099-01-01', 'dept' => 'XYZ'])
+            ->test('pages::dashboard')
+            ->assertSet('from', "{$first}-01-01")
+            ->assertSet('to', "{$first}-06-15")
+            ->assertSet('department', '');
+
+        $dashboard->set('to', '0002-06-15');
+        $this->assertArrayNotHasKey('html', $dashboard->effects);
+
+        $dashboard->set('to', "{$first}-06-10");
+        $this->assertArrayHasKey('html', $dashboard->effects);
+
+        $dashboard->call('preset', 'last-12-months')
+            ->assertSet('from', "{$first}-01-01")
+            ->assertSet('to', "{$first}-06-15");
+    }
+
+    public function test_a_range_past_today_stops_today(): void
+    {
+        $this->submit($this->facultyInDepartment('Maria Santos'), 'Filed today');
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $dashboard = Livewire::withQueryParams(['from' => now()->startOfYear()->toDateString(), 'to' => '9999-12-31'])
+            ->test('pages::dashboard')
+            ->instance();
+
+        $this->assertSame(1, $dashboard->rangeProjects['projects']);
+        $this->assertSame(1, array_sum(array_column($dashboard->monthly, 'total')));
+    }
+
     public function test_every_college_stays_listed_whatever_the_dates(): void
     {
         $this->submit($this->facultyInDepartment('Maria Santos'), 'Filed today');
@@ -400,8 +437,8 @@ class DashboardTest extends TestCase
         $this->assertSame(0, $colleges->firstWhere('label', 'CAS')['count']);
 
         // A range with no projects at all says so instead of charting every college at zero.
-        $tomorrow = today()->addDay()->toDateString();
-        $this->get(route('dashboard', ['from' => $tomorrow, 'to' => $tomorrow]))
+        $yesterday = today()->subDay()->toDateString();
+        $this->get(route('dashboard', ['from' => $yesterday, 'to' => $yesterday]))
             ->assertOk()
             ->assertSee('No projects for');
     }

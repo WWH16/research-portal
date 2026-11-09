@@ -45,17 +45,12 @@ new #[Title('Dashboard')] class extends Component {
     public string $department = '';
 
     /**
-     * Default the dates, and put the dates and college actually used in the filters, whatever the URL asked for.
+     * Default the dates, and put the dates actually used in the filters, whatever the URL asked for.
      */
     public function mount(): void
     {
-        [$start, $end] = $this->range;
-        $this->from = $start->toDateString();
-        $this->to = $end->toDateString();
-
-        if ($this->department !== '' && ! Department::where('code', $this->department)->exists()) {
-            $this->department = '';
-        }
+        $this->from = $this->range[0]->toDateString();
+        $this->to = $this->range[1]->toDateString();
     }
 
     /**
@@ -122,9 +117,8 @@ new #[Title('Dashboard')] class extends Component {
         }
 
         $first = Date::create(Submission::FIRST_YEAR);
-        $last = now();
 
-        return [$start->max($first)->min($last)->startOfDay(), $end->max($first)->min($last)->endOfDay()];
+        return [$start->max($first)->min(now())->startOfDay(), $end->max($first)->min(now())->endOfDay()];
     }
 
     /**

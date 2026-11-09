@@ -21,7 +21,7 @@ use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
-new #[Title('My Profile')] class extends Component {
+new #[Title('My profile')] class extends Component {
     use PasswordValidationRules, ProfileValidationRules, WithFileUploads;
 
     public string $name = '';
@@ -202,7 +202,7 @@ new #[Title('My Profile')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    <x-pages::settings.layout :heading="__('My Profile')" :subheading="__('Your photo, contact details, and portal account.')">
+    <x-pages::settings.layout :heading="__('My profile')" :subheading="__('Your photo, contact details, and portal account.')">
         @php($user = auth()->user()->loadMissing('department:id,code'))
 
         {{-- Who you are in the portal: photo, name, and the record the Research Office keeps --}}
@@ -248,7 +248,7 @@ new #[Title('My Profile')] class extends Component {
                             @if ($user->profile_image)
                                 <flux:modal.trigger name="remove-photo">
                                     <flux:button size="sm" variant="ghost" wire:target="photo" wire:loading.attr="disabled" data-test="remove-photo-button" class="max-sm:h-11 max-sm:px-4">
-                                        {{ __('Remove') }}
+                                        {{ __('Remove photo') }}
                                     </flux:button>
                                 </flux:modal.trigger>
                             @endif
@@ -368,7 +368,7 @@ new #[Title('My Profile')] class extends Component {
                                 {{ __('Your email address is unverified.') }}
 
                                 <flux:link class="text-sm cursor-pointer" wire:click.prevent="resendVerificationNotification">
-                                    {{ __('Click here to re-send the verification email.') }}
+                                    {{ __('Resend verification email') }}
                                 </flux:link>
                             </flux:text>
 
@@ -390,7 +390,7 @@ new #[Title('My Profile')] class extends Component {
 
                 <x-slot:footer>
                     <flux:button variant="primary" type="submit" data-test="update-profile-button">
-                        {{ __('Save') }}
+                        {{ __('Save changes') }}
                     </flux:button>
                 </x-slot:footer>
             </x-pages::settings.section>

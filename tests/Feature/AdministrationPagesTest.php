@@ -19,7 +19,7 @@ class AdministrationPagesTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->get(route('activity-log.index'))->assertOk()->assertSee('Activity Log');
+        $this->get(route('activity-log.index'))->assertOk()->assertSee('Activity log');
     }
 
     public function test_faculty_are_forbidden(): void

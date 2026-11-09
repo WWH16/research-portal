@@ -38,7 +38,7 @@
             />
 
             <flux:button variant="primary" type="submit" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="confirm-password-button">
-                {{ __('Confirm') }}
+                {{ __('Confirm password') }}
             </flux:button>
         </form>
     </div>

@@ -29,7 +29,7 @@ use Livewire\WithFileUploads;
  * One form for a new project and for editing an existing one: the researcher enters the project
  * once, then comes back to add proponents who registered later or to upload the next document.
  */
-new #[Title('Research Project')] class extends Component {
+new #[Title('Research project')] class extends Component {
     use WithFileUploads;
 
     public ?Submission $submission = null;
@@ -646,7 +646,7 @@ new #[Title('Research Project')] class extends Component {
                                     <span class="text-zinc-600">{{ __('On file') }}</span>
                                     <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm">{{ __('Open current file') }}</flux:link>
                                     @if ($open)
-                                        <flux:button size="sm" variant="ghost" icon="arrow-path" x-show="! replacing" x-on:click="replacing = true" aria-controls="dropzone-wrap-{{ $stage }}" class="max-sm:h-11" data-test="replace-{{ $stage }}">{{ __('Replace') }}</flux:button>
+                                        <flux:button size="sm" variant="ghost" icon="arrow-path" x-show="! replacing" x-on:click="replacing = true" aria-controls="dropzone-wrap-{{ $stage }}" class="max-sm:h-11" data-test="replace-{{ $stage }}">{{ __('Replace file') }}</flux:button>
                                     @endif
                                 </div>
                             @endif
@@ -721,7 +721,7 @@ new #[Title('Research Project')] class extends Component {
                 </flux:callout.text>
                 <x-slot name="actions">
                     <flux:button size="sm" :href="$this->backUrl" wire:navigate>{{ __('Cancel') }}</flux:button>
-                    <flux:button size="sm" variant="ghost" wire:click="submitAnyway" data-test="submit-anyway-button">{{ __('Submit anyway') }}</flux:button>
+                    <flux:button size="sm" variant="ghost" wire:click="submitAnyway" data-test="submit-anyway-button">{{ __('Submit proposal anyway') }}</flux:button>
                 </x-slot>
             </flux:callout>
         @endif
@@ -736,7 +736,7 @@ new #[Title('Research Project')] class extends Component {
             {{-- Flux drops its built-in spinner when a :disabled binding is present, so turn it back on; skipped when
                  there's no college, because Flux shows the spinner on any disabled submit button. --}}
             <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save,documents" :disabled="! $this->department" :loading="(bool) $this->department" data-test="submit-proposal-button">
-                {{ $submission ? __('Save') : __('Submit') }}
+                {{ $submission ? __('Save changes') : __('Submit proposal') }}
             </flux:button>
         </div>
     </form>

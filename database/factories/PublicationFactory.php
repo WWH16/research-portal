@@ -25,7 +25,8 @@ class PublicationFactory extends Factory
             'issue' => (string) fake()->numberBetween(1, 12),
             'pages' => '1-12',
             'description' => fake()->paragraph(),
-            'published_on' => fake()->dateTimeBetween('-5 years', 'now')->format('Y-m-d'),
+            // now(), not Faker's clock, so a test that freezes time never gets a date after its "today"
+            'published_on' => now()->subDays(fake()->numberBetween(0, 1825))->toDateString(),
             'link' => 'https://doi.org/10.1000/'.fake()->unique()->bothify('????-####'),
         ];
     }

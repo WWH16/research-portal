@@ -140,14 +140,13 @@ new class extends Component {
             return [
                 'title' => __('Verify authentication code'),
                 'description' => __('Enter the 6-digit code from your authenticator app.'),
-                'buttonText' => __('Continue'),
             ];
         }
 
         return [
             'title' => __('Enable two-factor authentication'),
             'description' => __('To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app.'),
-            'buttonText' => __('Continue'),
+            'buttonText' => __('Enter code'),
         ];
     }
 }; ?>
@@ -206,7 +205,7 @@ new class extends Component {
                             class="flex-1"
                             wire:click="resetVerification"
                         >
-                            {{ __('Back') }}
+                            {{ __('Go back') }}
                         </flux:button>
 
                         <flux:button
@@ -215,7 +214,7 @@ new class extends Component {
                             wire:click="confirmTwoFactor"
                             x-bind:disabled="$wire.code.length < 6"
                         >
-                            {{ __('Confirm') }}
+                            {{ __('Verify code') }}
                         </flux:button>
                     </div>
                 </div>

@@ -89,7 +89,7 @@
                     @if (auth()->user()->isAdmin())
                         {{-- The Research Office's open work leads the group, with a count visible from every page. Screen readers hear the sentence, not the bare number. --}}
                         <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$capped($toReview)" :badge:style="$toReview ? null : 'display: none'" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
-                            {{ __('Concept Reviews') }}
+                            {{ __('Concept reviews') }}
                             <span class="sr-only" x-show="toReview" x-text="reviewLabel">{{ $toReview ? $reviewLabel : '' }}</span>
                         </flux:sidebar.item>
                     @endif
@@ -109,11 +109,11 @@
                     {{-- Faculty keep their own record; the Research Office reads everyone's --}}
                     @if (auth()->user()->isResearchOffice())
                         <flux:sidebar.item icon="book-open" :href="route('faculty.index')" :current="request()->routeIs('faculty.*', 'publications.*')" wire:navigate data-test="publications-nav">
-                            {{ __('Faculty Publications') }}
+                            {{ __('Faculty publications') }}
                         </flux:sidebar.item>
                     @else
                         <flux:sidebar.item icon="book-open" :href="route('faculty.show', auth()->user())" :current="request()->routeIs('faculty.*', 'publications.*')" wire:navigate data-test="publications-nav">
-                            {{ __('My Publications') }}
+                            {{ __('My publications') }}
                         </flux:sidebar.item>
                     @endif
                 </flux:sidebar.group>
@@ -122,14 +122,14 @@
                     {{-- Sign-ups waiting for approval keep the group open and show as a count; the item opens straight to them --}}
                     <flux:sidebar.group :heading="__('Administration')" icon="shield-check" expandable :expanded="$toApprove > 0 || request()->routeIs('users.*', 'activity-log.*')" class="grid" data-test="administration-nav">
                         <flux:sidebar.item icon="users" :href="route('users.index', $toApprove ? ['status' => 'pending'] : [])" :current="request()->routeIs('users.*')" :badge="$capped($toApprove)" :badge:style="$toApprove ? null : 'display: none'" :badge:title="$approveLabel" badge:x-bind:title="approveLabel" badge:x-show="toApprove" badge:x-text="toApprove > 99 ? '99+' : toApprove" badge:aria-hidden="true" wire:navigate data-test="users-nav">
-                            {{ __('Manage Users') }}
+                            {{ __('Manage users') }}
                             @if ($toApprove)
                                 <span class="sr-only">{{ $approveLabel }}</span>
                             @endif
                         </flux:sidebar.item>
 
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log.index')" :current="request()->routeIs('activity-log.*')" wire:navigate>
-                            {{ __('Activity Log') }}
+                            {{ __('Activity log') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
@@ -216,7 +216,7 @@
 
                     <flux:menu.radio.group>
                         <flux:menu.item :href="route('profile.edit')" icon="user-circle" wire:navigate>
-                            {{ __('My Profile') }}
+                            {{ __('My profile') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>
 
@@ -231,7 +231,7 @@
                             class="w-full cursor-pointer"
                             data-test="logout-button"
                         >
-                            {{ __('Log out') }}
+                            {{ __('Sign out') }}
                         </flux:menu.item>
                     </form>
                 </flux:menu>

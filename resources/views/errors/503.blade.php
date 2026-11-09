@@ -17,7 +17,7 @@
 
                 <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
                     <flux:button :href="auth()->check() ? route('dashboard') : route('home')" variant="primary" icon="arrow-left">
-                        {{ auth()->check() ? __('Back to dashboard') : __('Back to home') }}
+                        {{ auth()->check() ? __('Return to dashboard') : __('Return to home') }}
                     </flux:button>
                 </div>
             </div>

@@ -13,7 +13,7 @@ use Livewire\WithPagination;
  * Every faculty member with how many publications they recorded and how often those were cited, for the
  * Research Office. Members with none are listed too, so the office can see who hasn't added any.
  */
-new #[Title('Faculty Publications')] class extends Component {
+new #[Title('Faculty publications')] class extends Component {
     use WithPagination;
 
     #[Url(except: '')]
@@ -83,7 +83,7 @@ new #[Title('Faculty Publications')] class extends Component {
 <section class="mx-auto w-full max-w-5xl [&>h1+*]:mt-0">
     {{-- For screen readers only: the sidebar already marks the page. Whatever follows drops its top margin, so the
          content starts at the top --}}
-    <flux:heading level="1" class="sr-only">{{ __('Faculty Publications') }}</flux:heading>
+    <flux:heading level="1" class="sr-only">{{ __('Faculty publications') }}</flux:heading>
 
     <div class="mt-6 flex items-center gap-3">
         <flux:input

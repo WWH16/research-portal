@@ -39,4 +39,17 @@ class TwoFactorChallengeTest extends TestCase
             'password' => 'password',
         ])->assertRedirect(route('two-factor.login'));
     }
+
+    public function test_the_code_type_toggles_are_buttons_that_do_not_submit_the_form(): void
+    {
+        $user = User::factory()->withTwoFactor()->create();
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
+
+        $page = $this->get(route('two-factor.login'))->assertOk()->getContent();
+
+        foreach (['Use a recovery code', 'Use an authentication code'] as $label) {
+            $this->assertMatchesRegularExpression('~<button\b[^>]*\btype="button"[^>]*>(?:\s*<[^>]+>)*\s*'.$label.'~', $page);
+        }
+    }
 }

@@ -25,7 +25,7 @@ class MyProfileTest extends TestCase
 
         $this->get(route('profile.edit'))
             ->assertOk()
-            ->assertSee('My Profile')
+            ->assertSee('My profile')
             ->assertSee($user->researcher_id)
             ->assertSee('Faculty')
             ->assertSee('CCSICT')
@@ -36,7 +36,7 @@ class MyProfileTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        $this->get(route('dashboard'))->assertSee(route('profile.edit'), escape: false)->assertSee('My Profile');
+        $this->get(route('dashboard'))->assertSee(route('profile.edit'), escape: false)->assertSee('My profile');
     }
 
     public function test_mobile_can_be_updated_and_cleared(): void

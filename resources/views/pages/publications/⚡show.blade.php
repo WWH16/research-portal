@@ -99,12 +99,12 @@ new class extends Component {
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
             @if ($office)
-                <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty Publications') }}</flux:breadcrumbs.item>
+                <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty publications') }}</flux:breadcrumbs.item>
                 @if ($owner)
                     <flux:breadcrumbs.item :href="route('faculty.show', $owner)" wire:navigate>{{ $owner->name }}</flux:breadcrumbs.item>
                 @endif
             @else
-                <flux:breadcrumbs.item :href="route('faculty.show', $owner)" wire:navigate>{{ __('My Publications') }}</flux:breadcrumbs.item>
+                <flux:breadcrumbs.item :href="route('faculty.show', $owner)" wire:navigate>{{ __('My publications') }}</flux:breadcrumbs.item>
             @endif
             <flux:breadcrumbs.item>{{ str($publication->title)->limit(40) }}</flux:breadcrumbs.item>
         </flux:breadcrumbs>
@@ -115,7 +115,7 @@ new class extends Component {
 
         @if ($canEdit)
             <div class="flex gap-2 sm:col-start-2 sm:row-start-1">
-                <flux:button :href="route('publications.edit', $publication)" icon="pencil-square" wire:navigate class="max-sm:h-11 max-sm:flex-1">{{ __('Edit') }}</flux:button>
+                <flux:button :href="route('publications.edit', $publication)" icon="pencil-square" wire:navigate class="max-sm:h-11 max-sm:flex-1">{{ __('Edit publication') }}</flux:button>
             </div>
         @endif
     </header>
@@ -257,7 +257,7 @@ new class extends Component {
                                     <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
                                     {{-- Disabled while the request runs, so a double click can't remove twice. Its row is gone afterwards, so focus moves to the heading --}}
                                     <flux:button variant="danger" wire:loading.attr="disabled" wire:target="removeCitation"
-                                        x-on:click="$wire.removeCitation(removing.id).then(() => document.getElementById('citing-heading')?.focus())">{{ __('Remove') }}</flux:button>
+                                        x-on:click="$wire.removeCitation(removing.id).then(() => document.getElementById('citing-heading')?.focus())">{{ __('Remove citing paper') }}</flux:button>
                                 </div>
                             </div>
                         </flux:modal>

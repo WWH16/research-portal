@@ -155,7 +155,7 @@ new #[Title('Colleges')] class extends Component {
         <x-slot:actions>
             @unless ($this->departments->isEmpty())
                 <flux:button variant="primary" icon="plus" wire:click="create" class="max-sm:h-11" data-test="new-department-button">
-                    {{ __('New') }}
+                    {{ __('Add college') }}
                 </flux:button>
             @endunless
         </x-slot:actions>
@@ -184,7 +184,7 @@ new #[Title('Colleges')] class extends Component {
                         <flux:table.cell align="end" class="tabular-nums">{{ $department->submissions_count }}</flux:table.cell>
                         <flux:table.cell>
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Actions for :name', ['name' => $department->code])" />
+                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Open actions for :name', ['name' => $department->code])" />
 
                                 <flux:menu>
                                     <flux:menu.item icon="pencil-square" wire:click="edit({{ $department->id }})">{{ __('Edit') }}</flux:menu.item>
@@ -238,7 +238,7 @@ new #[Title('Colleges')] class extends Component {
                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @unless ($this->deletingBlocker)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-department-button">{{ __('Delete') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-department-button">{{ __('Delete college') }}</flux:button>
                     @endunless
                 </div>
             </div>

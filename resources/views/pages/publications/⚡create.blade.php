@@ -244,7 +244,7 @@ new class extends Component {
     // The tab says what the form does, like its heading.
     public function render()
     {
-        return $this->view()->title($this->publication ? __('Edit Publication') : __('Add Publication'));
+        return $this->view()->title($this->publication ? __('Edit publication') : __('Add publication'));
     }
 }; ?>
 
@@ -252,7 +252,7 @@ new class extends Component {
     {{-- The same breadcrumb as the publication page, which an edit came from and a new one goes to --}}
     <header class="grid gap-4 border-b border-line pb-6">
         <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
-            <flux:breadcrumbs.item :href="route('faculty.show', Auth::user())" wire:navigate>{{ __('My Publications') }}</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item :href="route('faculty.show', Auth::user())" wire:navigate>{{ __('My publications') }}</flux:breadcrumbs.item>
             @if ($publication)
                 <flux:breadcrumbs.item :href="route('publications.show', $publication)" wire:navigate>{{ str($publication->title)->limit(40) }}</flux:breadcrumbs.item>
                 <flux:breadcrumbs.item>{{ __('Edit') }}</flux:breadcrumbs.item>
@@ -261,7 +261,7 @@ new class extends Component {
             @endif
         </flux:breadcrumbs>
         {{-- For screen readers only: the breadcrumb already names the page --}}
-        <flux:heading level="1" class="sr-only">{{ $publication ? __('Edit Publication') : __('Add Publication') }}</flux:heading>
+        <flux:heading level="1" class="sr-only">{{ $publication ? __('Edit publication') : __('Add publication') }}</flux:heading>
     </header>
 
     {{-- Ordered like a citation: what the paper is, who wrote it, where it came out, then the optional extras.
@@ -353,7 +353,7 @@ new class extends Component {
             @endif
 
             <flux:button :href="$publication ? route('publications.show', $publication) : route('faculty.show', Auth::user())" variant="ghost" wire:navigate>{{ __('Cancel') }}</flux:button>
-            <flux:button type="submit" variant="primary" data-test="save-publication-button">{{ $publication ? __('Save') : __('Add publication') }}</flux:button>
+            <flux:button type="submit" variant="primary" data-test="save-publication-button">{{ $publication ? __('Save changes') : __('Add publication') }}</flux:button>
         </div>
     </form>
 
@@ -371,7 +371,7 @@ new class extends Component {
                     <flux:modal.close>
                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
-                    <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-publication">{{ __('Delete') }}</flux:button>
+                    <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-publication">{{ __('Delete publication') }}</flux:button>
                 </div>
             </div>
         </flux:modal>

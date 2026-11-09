@@ -131,7 +131,7 @@ new #[Title('Categories')] class extends Component {
         <x-slot:actions>
             @unless ($this->records->isEmpty())
                 <flux:button variant="primary" icon="plus" wire:click="create" class="max-sm:h-11" data-test="new-named-record-button">
-                    {{ __('New') }}
+                    {{ __('Add category') }}
                 </flux:button>
             @endunless
         </x-slot:actions>
@@ -156,7 +156,7 @@ new #[Title('Categories')] class extends Component {
                         <flux:table.cell align="end" class="tabular-nums">{{ $record->submissions_count }}</flux:table.cell>
                         <flux:table.cell>
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Actions for :name', ['name' => $record->name])" />
+                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Open actions for :name', ['name' => $record->name])" />
 
                                 <flux:menu>
                                     <flux:menu.item icon="pencil-square" wire:click="edit({{ $record->id }})">{{ __('Edit') }}</flux:menu.item>
@@ -208,7 +208,7 @@ new #[Title('Categories')] class extends Component {
                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @if ($this->deleting->submissions_count === 0)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-named-record-button">{{ __('Delete') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-named-record-button">{{ __('Delete category') }}</flux:button>
                     @endif
                 </div>
             </div>

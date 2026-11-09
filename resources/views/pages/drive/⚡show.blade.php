@@ -146,7 +146,7 @@ new #[Title('Research Drive')] class extends Component {
                         </p>
                     </div>
                     @if ($path)
-                        <flux:button :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11 max-sm:px-4">{{ __('Open') }}</flux:button>
+                        <flux:button :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11 max-sm:px-4">{{ __('Open file') }}</flux:button>
                     @endif
                 </li>
             @endforeach

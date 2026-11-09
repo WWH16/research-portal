@@ -392,7 +392,7 @@ new #[Title('Google Drive')] class extends Component {
                     {{-- Opens for whoever is signed in to Google as the storage account; anyone else sees no access --}}
                     <flux:button :href="'https://drive.google.com/drive/folders/'.$this->connection->folder_id" target="_blank" icon:trailing="arrow-top-right-on-square">{{ __('Open folder in Google Drive') }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:button>
                     <flux:modal.trigger name="drive-disconnect">
-                        <flux:button variant="danger">{{ __('Disconnect') }}</flux:button>
+                        <flux:button variant="danger">{{ __('Disconnect Google Drive') }}</flux:button>
                     </flux:modal.trigger>
                     <flux:modal.trigger name="drive-change">
                         <flux:button variant="ghost">{{ __('Change account') }}</flux:button>
@@ -581,7 +581,7 @@ new #[Title('Google Drive')] class extends Component {
                         <flux:modal.close>
                             <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                         </flux:modal.close>
-                        <flux:button variant="danger" wire:click="$set('step', 2)" data-test="change-understood-button">{{ __('I understand, continue') }}</flux:button>
+                        <flux:button variant="danger" wire:click="$set('step', 2)" data-test="change-understood-button">{{ __('Go to confirmation') }}</flux:button>
                     </div>
                 @else
                     <form wire:submit="changeAccount" class="flex flex-col gap-5" x-data="{ typed: '' }"
@@ -629,7 +629,7 @@ new #[Title('Google Drive')] class extends Component {
                             <flux:modal.close>
                                 <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                             </flux:modal.close>
-                            <flux:button variant="danger" wire:click="$set('step', 2)" data-test="disconnect-understood-button">{{ __('I understand, continue') }}</flux:button>
+                            <flux:button variant="danger" wire:click="$set('step', 2)" data-test="disconnect-understood-button">{{ __('Go to confirmation') }}</flux:button>
                         </div>
                     @else
                         <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }"
@@ -650,7 +650,7 @@ new #[Title('Google Drive')] class extends Component {
                                 </flux:modal.close>
                                 <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="disconnect-drive-button">
                                     <flux:icon.loading wire:loading wire:target="disconnect" variant="micro" />
-                                    {{ __('Disconnect') }}
+                                    {{ __('Disconnect Google Drive') }}
                                 </flux:button>
                             </div>
                         </form>

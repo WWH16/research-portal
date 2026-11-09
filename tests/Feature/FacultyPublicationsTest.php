@@ -142,7 +142,7 @@ class FacultyPublicationsTest extends TestCase
 
     public function test_the_tab_title_names_whose_publications_these_are(): void
     {
-        $this->actingAs($this->rivera)->get(route('faculty.show', $this->rivera))->assertSee('My Publications - ', false);
+        $this->actingAs($this->rivera)->get(route('faculty.show', $this->rivera))->assertSee('My publications - ', false);
         $this->actingAs($this->admin)->get(route('faculty.show', $this->rivera))->assertSee($this->rivera->name.'’s publications - ', false);
     }
 
@@ -240,14 +240,14 @@ class FacultyPublicationsTest extends TestCase
     public function test_the_sidebar_names_the_page_for_each_role(): void
     {
         $this->actingAs($this->rivera)->get(route('dashboard'))
-            ->assertSee('My Publications')
+            ->assertSee('My publications')
             ->assertSee(route('faculty.show', $this->rivera))
-            ->assertDontSee('Faculty Publications');
+            ->assertDontSee('Faculty publications');
 
         $this->actingAs($this->admin)->get(route('dashboard'))
-            ->assertSee('Faculty Publications')
+            ->assertSee('Faculty publications')
             ->assertSee(route('faculty.index'))
-            ->assertDontSee('My Publications');
+            ->assertDontSee('My publications');
     }
 
     /**

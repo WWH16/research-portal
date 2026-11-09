@@ -18,7 +18,7 @@
                 </a>
 
                 <flux:link :href="auth()->check() ? route('dashboard') : route('login')" class="text-sm">
-                    {{ auth()->check() ? __('Back to the portal') : __('Sign in') }}
+                    {{ auth()->check() ? __('Return to the portal') : __('Sign in') }}
                 </flux:link>
             </div>
         </header>

@@ -3,8 +3,8 @@
     <x-page-title :divider="false" :subtitle="$subheading ?? null">{{ $heading ?? '' }}</x-page-title>
 
     <div class="border-b border-line lg:mt-4">
-        <flux:navbar class="settings-tabs -mb-px" scrollable aria-label="{{ __('My Profile') }}">
-            <flux:navbar.item :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>{{ __('My Profile') }}</flux:navbar.item>
+        <flux:navbar class="settings-tabs -mb-px" scrollable aria-label="{{ __('My profile') }}">
+            <flux:navbar.item :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>{{ __('My profile') }}</flux:navbar.item>
             <flux:navbar.item :href="route('security.edit')" :current="request()->routeIs('security.edit')" wire:navigate>{{ __('Security') }}</flux:navbar.item>
         </flux:navbar>
     </div>

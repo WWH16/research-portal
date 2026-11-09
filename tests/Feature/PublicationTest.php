@@ -348,8 +348,8 @@ class PublicationTest extends TestCase
         $paper = $this->publication([$this->rivera]);
         $this->actingAs($this->rivera);
 
-        $this->get(route('publications.create'))->assertSee('Add Publication - ', false);
-        $this->get(route('publications.edit', $paper))->assertSee('Edit Publication - ', false);
+        $this->get(route('publications.create'))->assertSee('Add publication - ', false);
+        $this->get(route('publications.edit', $paper))->assertSee('Edit publication - ', false);
     }
 
     public function test_the_date_cannot_move_past_the_year_of_a_citing_paper(): void

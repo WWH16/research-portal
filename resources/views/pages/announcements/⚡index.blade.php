@@ -439,7 +439,7 @@ new #[Title('Announcements')] class extends Component {
                                     @can('update', $announcement)
                                         <flux:dropdown position="bottom" align="end">
                                             {{-- 44px on a phone, a comfortable thumb target --}}
-                                            <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" class="-me-2 max-sm:size-11" :aria-label="__('Actions for :title', ['title' => $announcement->title])" />
+                                            <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" class="-me-2 max-sm:size-11" :aria-label="__('Open actions for :title', ['title' => $announcement->title])" />
                                             <flux:menu>
                                                 <flux:menu.item icon="pencil-square" wire:click="edit({{ $announcement->id }})">{{ __('Edit') }}</flux:menu.item>
                                                 <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $announcement->id }})">{{ __('Delete') }}</flux:menu.item>
@@ -571,15 +571,15 @@ new #[Title('Announcements')] class extends Component {
                 <flux:tooltip :content="__('Copy image')" x-show="canCopy && kind === 'image'">
                     <flux:button icon="clipboard-document" class="max-sm:size-11" x-bind:disabled="! file" x-on:click="copyImage({{ Js::from(__('Image copied.')) }}, {{ Js::from(__('The image could not be copied. Download it instead.')) }})" :aria-label="__('Copy image')" data-test="copy-image" />
                 </flux:tooltip>
-                <flux:tooltip :content="__('Download')">
-                    <flux:button icon="arrow-down-tray" class="max-sm:size-11" href="#" x-bind:href="url" download :aria-label="__('Download')" />
+                <flux:tooltip :content="__('Download memo')">
+                    <flux:button icon="arrow-down-tray" class="max-sm:size-11" href="#" x-bind:href="url" download :aria-label="__('Download memo')" />
                 </flux:tooltip>
-                <flux:tooltip :content="__('Share')">
-                    <flux:button icon="share" class="max-sm:size-11" x-on:click="share({{ Js::from(__('Link to the announcement copied.')) }}, {{ Js::from(__('The announcement could not be shared. Download the memo instead.')) }})" :aria-label="__('Share')" data-test="share-memo" />
+                <flux:tooltip :content="__('Share memo')">
+                    <flux:button icon="share" class="max-sm:size-11" x-on:click="share({{ Js::from(__('Link to the announcement copied.')) }}, {{ Js::from(__('The announcement could not be shared. Download the memo instead.')) }})" :aria-label="__('Share memo')" data-test="share-memo" />
                 </flux:tooltip>
-                <flux:tooltip :content="__('Close')">
+                <flux:tooltip :content="__('Close viewer')">
                     <flux:modal.close>
-                        <flux:button icon="x-mark" class="max-sm:size-11" :aria-label="__('Close')" />
+                        <flux:button icon="x-mark" class="max-sm:size-11" :aria-label="__('Close viewer')" />
                     </flux:modal.close>
                 </flux:tooltip>
             </div>
@@ -697,7 +697,7 @@ new #[Title('Announcements')] class extends Component {
                         <flux:modal.close>
                             <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                         </flux:modal.close>
-                        <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-announcement">{{ __('Delete') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-announcement">{{ __('Delete announcement') }}</flux:button>
                     </div>
                 </div>
             @endif

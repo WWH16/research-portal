@@ -22,11 +22,11 @@
         @guest
             <div class="flex flex-col gap-3">
                 <flux:button variant="primary" class="w-full" :href="route('login')" wire:navigate>
-                    {{ __('Back to sign in') }}
+                    {{ __('Return to sign in') }}
                 </flux:button>
 
                 <flux:button variant="ghost" class="w-full" :href="route('password.request')" wire:navigate>
-                    {{ __('Forgot your password?') }}
+                    {{ __('Reset password') }}
                 </flux:button>
             </div>
         @else

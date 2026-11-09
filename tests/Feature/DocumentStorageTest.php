@@ -10,6 +10,7 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Mockery\MockInterface;
@@ -221,6 +222,48 @@ class DocumentStorageTest extends TestCase
 
         $this->assertFalse($email1->fresh()->isConnected());
         $this->assertTrue($current->fresh()->isConnected());
+    }
+
+    public function test_a_named_document_is_saved_in_its_folder_under_that_name(): void
+    {
+        $this->fakeDrives();
+        $account = GoogleDriveConnection::factory()->create();
+
+        $path = app(DocumentStorage::class)->store($this->pdf(), 'Research Drive/CCS/Soil Study (m2p7)', 'Concept proposal (a1b2)');
+
+        $this->assertSame("drive-{$account->id}/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (a1b2).pdf", $path);
+        [$disk, $location] = app(DocumentStorage::class)->locate($path);
+        $disk->assertExists($location);
+    }
+
+    public function test_a_named_document_google_refuses_is_reported_as_unavailable(): void
+    {
+        Exceptions::fake();
+        GoogleDriveConnection::factory()->create();
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('putFileAs')->andReturnFalse();
+        $this->mock(GoogleDrive::class, fn (MockInterface $mock) => $mock->shouldReceive('disk')->andReturn($disk));
+
+        try {
+            app(DocumentStorage::class)->store($this->pdf(), 'Research Drive/CCS/Soil Study (m2p7)', 'Concept proposal (a1b2)');
+            $this->fail('The upload should have failed.');
+        } catch (DocumentStorageUnavailable) {
+            Exceptions::assertReported(DocumentStorageUnavailable::class);
+        }
+    }
+
+    public function test_a_failed_upload_leaves_its_cause_in_the_log(): void
+    {
+        Exceptions::fake();
+        GoogleDriveConnection::factory()->create();
+        $this->failingDrive('Google is unavailable.');
+
+        try {
+            app(DocumentStorage::class)->store($this->pdf());
+            $this->fail('The upload should have failed.');
+        } catch (DocumentStorageUnavailable) {
+            Exceptions::assertReported(RuntimeException::class);
+        }
     }
 
     public function test_a_path_not_on_a_storage_account_is_unavailable(): void

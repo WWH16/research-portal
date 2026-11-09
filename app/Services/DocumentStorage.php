@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use League\Flysystem\FileAttributes;
+use League\Flysystem\UnableToReadFile;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -34,22 +35,31 @@ class DocumentStorage
     public function __construct(private GoogleDrive $drive) {}
 
     /**
-     * Save an uploaded document or profile photo in a folder of the storage account and return the path to keep.
+     * Save an uploaded document or profile photo in a folder of the storage account and return the path to keep. With a
+     * name, without its extension, the file is saved under it; otherwise it gets a random one.
      */
-    public function store(UploadedFile $file, string $folder = 'submissions'): string
+    public function store(UploadedFile $file, string $folder = 'submissions', ?string $name = null): string
     {
         $account = GoogleDriveConnection::current() ?? throw new DocumentStorageUnavailable('No Google Drive storage account is saved.');
 
         try {
-            $location = $this->driveOf($account)->putFile($folder, $file);
+            $disk = $this->driveOf($account);
+            $location = $name === null ? $disk->putFile($folder, $file) : $disk->putFileAs($folder, $file, rtrim($name.'.'.$file->guessExtension(), '.'));
         } catch (Throwable $e) {
+            // The member only sees that storage is down, so the cause has to reach the log here.
+            report($e);
             $this->markIfUnreachable($account, $e);
 
             throw new DocumentStorageUnavailable(previous: $e);
         }
 
         // The disk answers false, not an error, when Google refuses the upload; GoogleDrive::disk() marks a full account then.
-        $location ?: throw new DocumentStorageUnavailable('The document could not be stored.');
+        if (! $location) {
+            report($unavailable = new DocumentStorageUnavailable('The document could not be stored.'));
+
+            throw $unavailable;
+        }
+
         Cache::forget($account->fullKey());
 
         // Known now, so no page ever has to ask Google when this was uploaded.
@@ -193,7 +203,12 @@ class DocumentStorage
      */
     private function findFileId(GoogleDriveAdapter $adapter, string $path, string $location): ?string
     {
-        $found = $adapter->getMetadata($location);
+        // Only "not there": any other failure means Google can't be reached, which is a 503, not a missing document.
+        try {
+            $found = $adapter->getMetadata($location);
+        } catch (UnableToReadFile) {
+            return null;
+        }
 
         if (! $found instanceof FileAttributes) {
             return null;

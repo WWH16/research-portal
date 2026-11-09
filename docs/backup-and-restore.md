@@ -20,7 +20,7 @@ Don't attach a bucket for documents. They go to Google Drive, which replaced the
 
 ## Storing documents on Google Drive
 
-Project documents and profile photos are stored only on the Research Office's Google Drive, in the `submissions` and `profile-images` folders. Each saved path starts with `drive-<account number>/`, so a file always opens from the account that saved it. Until an admin saves and connects a storage account, uploads are refused.
+Project documents are stored on the Research Office's Google Drive in `Research Drive/<college code>/<project title> (<code>)/`, one folder per project. Memos are in `announcements` and profile photos in `profile-images`. Documents uploaded before these folders existed stay in `submissions`. Each saved path starts with `drive-<account number>/`, so a file always opens from the account that saved it. Until an admin saves and connects a storage account, uploads are refused.
 
 ### Setting it up
 
@@ -41,6 +41,7 @@ Project documents and profile photos are stored only on the Research Office's Go
 - **Changing `APP_KEY`** makes the saved Google token unreadable. Reconnect after any key change.
 - **Disconnect** revokes the portal's access at Google. The saved account and the files on Drive stay.
 - **Replaced documents** go to the Drive trash, so they still count against storage for 30 days.
+- **Leave the folders as they are.** The portal finds each document by its saved path, so don't move or rename files or folders by hand. A renamed project or college keeps its old folder name on Drive, and its documents still open.
 
 ## Database backups on Laravel Cloud
 

@@ -201,14 +201,17 @@ select:focus[data-flux-control] {
     color: var(--color-isu-green-800);
 }
 
-/* Primary buttons deepen on hover instead of fading. */
-[data-flux-button][class*='bg-[var(--color-accent)]']:hover {
-    background-color: var(--color-isu-green-800);
-}
+/* Mouse only, so a tap on a touch screen does not leave these stuck on. */
+@media (hover: hover) {
+    /* Primary buttons deepen on hover instead of fading. */
+    [data-flux-button][class*='bg-[var(--color-accent)]']:hover {
+        background-color: var(--color-isu-green-800);
+    }
 
-/* Links keep green text and pick up a gold underline on hover. */
-[data-flux-link]:hover {
-    text-decoration-color: var(--color-highlight);
+    /* Links keep green text and pick up a gold underline on hover. */
+    [data-flux-link]:hover {
+        text-decoration-color: var(--color-highlight);
+    }
 }
 
 /* Phones: centred dialogs get a 12px gutter, no 320px minimum, and lighter padding. */
@@ -221,8 +224,10 @@ select:focus[data-flux-control] {
 }
 
 /* Settings tabs: gold marks where you are and where you're pointing. */
-.settings-tabs [data-flux-navbar-items]:not([data-current]):hover {
-    background-color: var(--color-highlight-soft);
+@media (hover: hover) {
+    .settings-tabs [data-flux-navbar-items]:not([data-current]):hover {
+        background-color: var(--color-highlight-soft);
+    }
 }
 
 .settings-tabs [data-flux-navbar-items][data-current]::after {
@@ -364,19 +369,21 @@ select:focus[data-flux-control] {
         color 150ms ease-out;
 }
 
-.isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
-.isu-sidebar [data-flux-sidebar-profile]:hover,
-.isu-sidebar [data-flux-sidebar-collapse] button:hover,
-.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button:hover {
-    background-color: var(--color-isu-green-700);
-}
+@media (hover: hover) {
+    .isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
+    .isu-sidebar [data-flux-sidebar-profile]:hover,
+    .isu-sidebar [data-flux-sidebar-collapse] button:hover,
+    .isu-sidebar ui-disclosure[data-flux-sidebar-group] > button:hover {
+        background-color: var(--color-isu-green-700);
+    }
 
-.isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
-.isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover [data-flux-icon],
-.isu-sidebar [data-flux-sidebar-profile]:hover > span,
-.isu-sidebar [data-flux-sidebar-profile]:hover > div [data-flux-icon],
-.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button:hover {
-    color: var(--color-white);
+    .isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover,
+    .isu-sidebar [data-flux-sidebar-item]:not([data-current]):hover [data-flux-icon],
+    .isu-sidebar [data-flux-sidebar-profile]:hover > span,
+    .isu-sidebar [data-flux-sidebar-profile]:hover > div [data-flux-icon],
+    .isu-sidebar ui-disclosure[data-flux-sidebar-group] > button:hover {
+        color: var(--color-white);
+    }
 }
 
 .isu-sidebar [data-flux-sidebar-item]:not([data-current]):active {

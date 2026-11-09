@@ -29,7 +29,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 new #[Title('Dashboard')] class extends Component {
     use WithPagination;
 
-    /** First and last filing date the office summary covers, as Y-m-d. Defaults to this calendar year. */
+    /** First and last filing date the office summary covers, as Y-m-d. Defaults to this year so far. */
     #[Url]
     public string $from = '';
 
@@ -44,18 +44,31 @@ new #[Title('Dashboard')] class extends Component {
     #[Url(as: 'dept', except: '')]
     public string $department = '';
 
+    /**
+     * Default the dates, and put the dates and college actually used in the filters, whatever the URL asked for.
+     */
     public function mount(): void
     {
-        $this->from = $this->from ?: now()->startOfYear()->toDateString();
-        $this->to = $this->to ?: now()->endOfYear()->toDateString();
+        [$start, $end] = $this->range;
+        $this->from = $start->toDateString();
+        $this->to = $end->toDateString();
+
+        if ($this->department !== '' && ! Department::where('code', $this->department)->exists()) {
+            $this->department = '';
+        }
     }
 
     /**
-     * A new group, college or date range starts the faculty list back on its first page.
+     * A new group, college or date range starts the faculty list back on its first page. A date that is cleared or
+     * has a year still being typed (0002, 0020) keeps the last results on screen until it is complete.
      */
-    public function updated(): void
+    public function updated(string $name): void
     {
         $this->resetPage();
+
+        if (in_array($name, ['from', 'to'], true) && (int) $this->{$name} < Submission::FIRST_YEAR) {
+            $this->skipRender();
+        }
     }
 
     /**
@@ -79,17 +92,17 @@ new #[Title('Dashboard')] class extends Component {
         [$from, $to] = match ($key) {
             'last-year' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
             'last-12-months' => [now()->subMonths(11)->startOfMonth(), today()],
-            default => [now()->startOfYear(), now()->endOfYear()],
+            default => [now()->startOfYear(), today()],
         };
 
-        $this->from = $from->toDateString();
+        $this->from = $from->max(Date::create(Submission::FIRST_YEAR))->toDateString();
         $this->to = $to->toDateString();
     }
 
     /**
      * The filing-date window as [start of the first day, end of the last day]. Faculty always see the
-     * last 12 months; a bad date falls back to this year, a reversed pair is swapped, not rejected, and
-     * nothing starts before Submission::FIRST_YEAR.
+     * last 12 months; a bad date falls back to this year so far, a reversed pair is swapped, not rejected, and
+     * the range stays between Submission::FIRST_YEAR and today, since nothing is filed in the future.
      *
      * @return array{0: CarbonInterface, 1: CarbonInterface}
      */
@@ -102,15 +115,16 @@ new #[Title('Dashboard')] class extends Component {
 
         $parse = fn (string $date, CarbonInterface $fallback) => rescue(fn () => Date::createFromFormat('Y-m-d', $date), $fallback, false);
         $start = $parse($this->from, now()->startOfYear());
-        $end = $parse($this->to, now()->endOfYear());
+        $end = $parse($this->to, now());
 
         if ($start->greaterThan($end)) {
             [$start, $end] = [$end, $start];
         }
 
         $first = Date::create(Submission::FIRST_YEAR);
+        $last = now();
 
-        return [$start->max($first)->startOfDay(), $end->max($first)->endOfDay()];
+        return [$start->max($first)->min($last)->startOfDay(), $end->max($first)->min($last)->endOfDay()];
     }
 
     /**
@@ -340,7 +354,7 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * The top six of each reference list by number of projects filed in the range, for the ranked bar charts.
+     * Every college and the top six categories by number of projects filed in the range, for the ranked bar charts.
      *
      * @return array<string, Collection>
      */
@@ -465,7 +479,8 @@ new #[Title('Dashboard')] class extends Component {
             </flux:callout>
         @endif
 
-        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {{-- While a filter loads, everything it changes dims, but not the filters being used --}}
+        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12" wire:loading.delay.class="[&>:not(section)]:opacity-60 [&_[data-test=summary-tiles]]:opacity-60" wire:target="department,from,to,preset">
             {{-- Faculty progress, with the filters beside its heading: they narrow the counts and charts below --}}
             <section class="lg:col-span-12" aria-labelledby="progress-heading">
                 <div class="flex flex-wrap items-center justify-between gap-4">
@@ -474,30 +489,30 @@ new #[Title('Dashboard')] class extends Component {
                     {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
                          the quick-range button share the first row, so the two dates get the whole second row and show in full --}}
                     <div class="flex w-full flex-wrap gap-3 sm:w-auto">
-                        <flux:select wire:model.live="department" :aria-label="__('College')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
+                        <flux:select wire:model.live="department" :aria-label="__('College')" class="min-w-0 flex-1 max-sm:h-11 sm:w-40 sm:flex-none" data-test="department-select">
                             <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
                             @foreach (Department::orderBy('code')->pluck('code') as $option)
                                 <flux:select.option :value="$option">{{ $option }}</flux:select.option>
                             @endforeach
                         </flux:select>
 
-                        <div class="flex w-full items-center gap-2 max-sm:order-last sm:w-auto" data-test="date-range">
-                            {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                            <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
-                            <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
-                            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
-                        </div>
-
                         <flux:dropdown position="bottom" align="end">
                             <flux:button icon="calendar-days" :aria-label="__('Quick date ranges')" :tooltip="__('Quick date ranges')" class="max-sm:size-11" />
                             <flux:menu>
-                                <flux:menu.item wire:click="preset('this-year')">{{ __('This year') }}</flux:menu.item>
+                                <flux:menu.item wire:click="preset('this-year')" class="max-sm:h-11">{{ __('This year') }}</flux:menu.item>
                                 @if (now()->year > Submission::FIRST_YEAR)
-                                    <flux:menu.item wire:click="preset('last-year')">{{ __('Last year') }}</flux:menu.item>
+                                    <flux:menu.item wire:click="preset('last-year')" class="max-sm:h-11">{{ __('Last year') }}</flux:menu.item>
                                 @endif
-                                <flux:menu.item wire:click="preset('last-12-months')">{{ __('Last 12 months') }}</flux:menu.item>
+                                <flux:menu.item wire:click="preset('last-12-months')" class="max-sm:h-11">{{ __('Last 12 months') }}</flux:menu.item>
                             </flux:menu>
                         </flux:dropdown>
+
+                        <div class="flex w-full items-center gap-2 sm:w-auto" data-test="date-range">
+                            {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
+                            <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
+                            <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
+                            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
+                        </div>
                     </div>
                 </div>
 
@@ -681,7 +696,7 @@ new #[Title('Dashboard')] class extends Component {
                     @foreach ($this->needsAttention as $submission)
                         <li class="py-3 first:pt-0 last:pb-0">
                             <div class="flex items-center gap-3">
-                                <p class="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800">{{ $submission->displayTitle() }}</p>
+                                <p class="line-clamp-2 min-w-0 flex-1 text-sm font-medium text-zinc-800 [overflow-wrap:anywhere]" title="{{ $submission->displayTitle() }}">{{ $submission->displayTitle() }}</p>
                                 @if ($submission->conceptReview() === 'returned')
                                     <flux:badge size="sm" color="amber">{{ __('Concept needs revision') }}</flux:badge>
                                 @endif

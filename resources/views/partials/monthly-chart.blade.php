@@ -62,7 +62,15 @@
                         <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
 
-                    <ol class="relative grid h-full gap-1" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))">
+                    {{-- One Tab stop for the whole chart: the arrow keys move between months --}}
+                    <ol
+                        class="relative grid h-full gap-1"
+                        style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))"
+                        x-data
+                        x-on:keydown.left.prevent="$event.target.previousElementSibling?.focus()"
+                        x-on:keydown.right.prevent="$event.target.nextElementSibling?.focus()"
+                        x-on:focusin="[...$el.children].forEach(month => month.tabIndex = month === $event.target ? 0 : -1)"
+                    >
                         @foreach ($monthly as $index => $month)
                             @php
                                 $label = $month['month']->format('F Y');
@@ -72,7 +80,7 @@
                             {{-- The whole column is the hover and focus target, not just the painted bar --}}
                             <li
                                 class="group relative flex h-full items-end justify-center rounded focus-visible:outline-2 focus-visible:outline-accent"
-                                tabindex="0"
+                                tabindex="{{ $index === 0 ? 0 : -1 }}"
                                 aria-label="{{ trans_choice('{0} :month: no projects|{1} :month: one project, :summary|[2,*] :month: :count projects, :summary', $month['total'], ['month' => $label, 'summary' => $summary]) }}"
                             >
                                 @if ($month['total'] > 0)

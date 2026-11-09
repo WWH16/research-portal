@@ -18,6 +18,8 @@
     $columns = count($monthly);
     // Label every month up to 12 columns; past that, every other one, so the labels never collide.
     $labelEvery = (int) ceil($columns / 12);
+    // Phones show every other label, counted from the first label of the next year, so a year change is never hidden.
+    $labelAnchor = collect($monthly)->search(fn ($month, $index) => $index % $labelEvery === 0 && $month['month']->year !== $monthly[0]['month']->year) ?: 0;
 @endphp
 
 <flux:card class="{{ $span ?? 'xl:col-span-12' }}" data-test="monthly-chart">
@@ -59,22 +61,28 @@
             <div class="min-w-0 flex-1">
                 <div class="relative h-56">
                     @foreach ($ticks as $tick)
-                        <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
+                        <div class="absolute inset-x-0 border-t {{ $tick ? 'border-line' : 'border-zinc-300' }}" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
 
-                    {{-- One Tab stop for the whole chart: the arrow keys move between months --}}
+                    {{-- One Tab stop for the whole chart: the arrow keys move between months. Escape hides the tooltip until the pointer or focus moves --}}
                     <ol
-                        class="relative grid h-full gap-1"
+                        class="group/chart relative grid h-full gap-1"
                         style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))"
-                        x-data
+                        aria-label="{{ __(':heading. Use the arrow keys to move between months.', ['heading' => $heading]) }}"
+                        x-data="{ dismissed: false }"
+                        x-bind:data-dismissed="dismissed"
+                        x-on:keydown.escape.window="dismissed = true"
+                        x-on:pointerover="dismissed = false"
                         x-on:keydown.left.prevent="$event.target.previousElementSibling?.focus()"
                         x-on:keydown.right.prevent="$event.target.nextElementSibling?.focus()"
-                        x-on:focusin="[...$el.children].forEach(month => month.tabIndex = month === $event.target ? 0 : -1)"
+                        x-on:keydown.home.prevent="$el.firstElementChild.focus()"
+                        x-on:keydown.end.prevent="$el.lastElementChild.focus()"
+                        x-on:focusin="dismissed = false; [...$el.children].forEach(month => month.tabIndex = month === $event.target ? 0 : -1)"
                     >
                         @foreach ($monthly as $index => $month)
                             @php
                                 $label = $month['month']->format('F Y');
-                                $summary = collect($month['counts'])->map(fn ($count, $status) => $count.' '.__($status))->join(', ');
+                                $summary = collect($month['counts'])->filter()->map(fn ($count, $status) => $count.' '.__($status))->join(', ');
                                 $tooltipSide = match (true) { $index < 2 => 'left-0', $index > $columns - 3 => 'right-0', default => 'left-1/2 -translate-x-1/2' };
                             @endphp
                             {{-- The whole column is the hover and focus target, not just the painted bar --}}
@@ -85,7 +93,7 @@
                             >
                                 @if ($month['total'] > 0)
                                     <div
-                                        class="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t transition group-hover:brightness-110"
+                                        class="flex min-h-0.5 w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t transition group-hover:brightness-75"
                                         style="height: {{ $month['total'] / $axisMax * 100 }}%"
                                         aria-hidden="true"
                                     >
@@ -97,14 +105,15 @@
                                     </div>
                                 @endif
 
-                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus:block {{ $tooltipSide }}" aria-hidden="true">
+                                <div class="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $tooltipSide }}" aria-hidden="true">
                                     <p class="text-zinc-500">{{ $label }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No projects|{1} One project|[2,*] :count projects', $month['total']) }}</p>
                                     @if ($month['total'] > 0)
                                         <ul class="mt-1.5 grid gap-1">
-                                            @foreach ($month['counts'] as $status => $count)
+                                            {{-- Top to bottom, as the bar stacks them --}}
+                                            @foreach (array_reverse($month['counts'], true) as $status => $count)
                                                 <li class="flex items-center gap-2">
-                                                    <span class="h-0.5 w-3 rounded-full {{ $bars[$status] }}"></span>
+                                                    <span class="h-2.5 w-3 rounded-sm {{ $bars[$status] }}"></span>
                                                     <span class="font-semibold tabular-nums text-zinc-900">{{ $count }}</span>
                                                     <span class="text-zinc-500">{{ __($status) }}</span>
                                                 </li>
@@ -122,7 +131,7 @@
                     @php($yearShown = null)
                     @foreach ($monthly as $index => $month)
                         @php($labelled = $index % $labelEvery === 0)
-                        <li class="{{ $labelled ? '' : 'invisible' }} {{ ($index / $labelEvery) % 2 ? 'max-sm:invisible' : '' }}">
+                        <li class="{{ $labelled ? '' : 'invisible' }} {{ intdiv($index - $labelAnchor, $labelEvery) % 2 ? 'max-sm:invisible' : '' }}">
                             {{ $month['month']->format('M') }}
                             {{-- The year sits under the first labelled month of each year, so a year change is always marked --}}
                             @if ($labelled && $month['month']->year !== $yearShown)

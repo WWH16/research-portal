@@ -69,7 +69,7 @@ class Submission extends Model
      * through the --color-status-* tokens in app.css, so change both together. Gray stays free for "none", such
      * as a zero count, and amber for "awaiting review".
      */
-    public const STATUS_COLORS = ['Concept' => 'cyan', 'Detailed' => 'blue', 'Mid-year' => 'violet', 'Completed' => 'green'];
+    public const STATUS_COLORS = ['Concept' => 'cyan', 'Detailed' => 'blue', 'Mid-year' => 'purple', 'Completed' => 'green'];
 
     /** The documents a project collects, keyed by the prefix of the column that holds each one. */
     public const DOCUMENTS = ['concept' => 'Concept proposal', 'detailed' => 'Detailed proposal', 'midyear' => 'Mid-year progress report', 'terminal' => 'Terminal report'];

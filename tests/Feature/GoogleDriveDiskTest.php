@@ -133,15 +133,14 @@ class GoogleDriveDiskTest extends TestCase
     {
         $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
         $path = "drive-{$account->id}/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (a1b2).pdf";
-        $item = fn (string $id, string $name, string $parent, string $mime = 'application/vnd.google-apps.folder') => ['id' => $id, 'name' => $name, 'mimeType' => $mime, 'parents' => [$parent], 'modifiedTime' => '2026-11-09T00:00:00.000Z'];
 
         // Sign-in, one listing per level, then the download: walking the folders any other way runs out of answers.
         $this->googleAnswers([
             new Response(200, ['Content-Type' => 'application/json'], '{"access_token": "fresh-access-token", "expires_in": 3599}'),
-            $this->listing([$item('a', 'Research Drive', 'root-folder')]),
-            $this->listing([$item('b', 'CCS', 'a')]),
-            $this->listing([$item('c', 'Soil Study (m2p7)', 'b')]),
-            $this->listing([$item('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf')]),
+            $this->listing([$this->driveItem('a', 'Research Drive', 'root-folder')]),
+            $this->listing([$this->driveItem('b', 'CCS', 'a')]),
+            $this->listing([$this->driveItem('c', 'Soil Study (m2p7)', 'b')]),
+            $this->listing([$this->driveItem('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf')]),
             new Response(200, ['Content-Type' => 'application/pdf', 'Content-Length' => '9'], 'pdf-bytes'),
         ]);
 
@@ -167,23 +166,21 @@ class GoogleDriveDiskTest extends TestCase
     public function test_a_new_project_folder_is_created_level_by_level(): void
     {
         $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
-        $json = fn (array $body) => new Response(200, ['Content-Type' => 'application/json'], json_encode($body));
-        $item = fn (string $id, string $name, string $parent, string $mime = 'application/vnd.google-apps.folder') => ['id' => $id, 'name' => $name, 'mimeType' => $mime, 'parents' => [$parent], 'modifiedTime' => '2026-11-09T00:00:00.000Z'];
-        [$drive, $college, $project] = [$item('a', 'Research Drive', 'root-folder'), $item('b', 'CCS', 'a'), $item('c', 'Soil Study (m2p7)', 'b')];
+        [$drive, $college, $project] = [$this->driveItem('a', 'Research Drive', 'root-folder'), $this->driveItem('b', 'CCS', 'a'), $this->driveItem('c', 'Soil Study (m2p7)', 'b')];
 
         // Sign-in; the empty Drive looked at twice; each folder made, then listed before the next; the upload; its permissions.
         $this->googleAnswers([
-            $json(['access_token' => 'fresh-access-token', 'expires_in' => 3599]),
+            $this->driveJson(['access_token' => 'fresh-access-token', 'expires_in' => 3599]),
             $this->listing([]),
             $this->listing([]),
-            $json($drive),
+            $this->driveJson($drive),
             $this->listing([$drive]),
-            $json($college),
+            $this->driveJson($college),
             $this->listing([$college]),
-            $json($project),
+            $this->driveJson($project),
             $this->listing([$project]),
-            $json($item('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf')),
-            $json(['permissions' => []]),
+            $this->driveJson($this->driveItem('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf')),
+            $this->driveJson(['permissions' => []]),
         ]);
 
         $path = app(DocumentStorage::class)->store(UploadedFile::fake()->create('p.pdf', 10, 'application/pdf'), 'Research Drive/CCS/Soil Study (m2p7)', 'Concept proposal (a1b2)');

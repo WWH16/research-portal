@@ -75,8 +75,6 @@
                         x-on:pointerover="dismissed = false"
                         x-on:keydown.left.prevent="$event.target.previousElementSibling?.focus()"
                         x-on:keydown.right.prevent="$event.target.nextElementSibling?.focus()"
-                        x-on:keydown.home.prevent="$el.firstElementChild.focus()"
-                        x-on:keydown.end.prevent="$el.lastElementChild.focus()"
                         x-on:focusin="dismissed = false; [...$el.children].forEach(month => month.tabIndex = month === $event.target ? 0 : -1)"
                     >
                         @foreach ($monthly as $index => $month)
@@ -111,7 +109,7 @@
                                     @if ($month['total'] > 0)
                                         <ul class="mt-1.5 grid gap-1">
                                             {{-- Top to bottom, as the bar stacks them --}}
-                                            @foreach (array_reverse($month['counts'], true) as $status => $count)
+                                            @foreach (array_reverse($month['counts']) as $status => $count)
                                                 <li class="flex items-center gap-2">
                                                     <span class="h-2.5 w-3 rounded-sm {{ $bars[$status] }}"></span>
                                                     <span class="font-semibold tabular-nums text-zinc-900">{{ $count }}</span>

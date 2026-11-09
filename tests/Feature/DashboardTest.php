@@ -371,6 +371,41 @@ class DashboardTest extends TestCase
             ->assertDontSee("{$lastMonth}: 2 projects");
     }
 
+    public function test_the_monthly_chart_scale_stops_just_above_the_busiest_month(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+
+        foreach (range(1, 10) as $number) {
+            $this->submit($maria, "Project {$number}");
+        }
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('dashboard'))
+            ->assertSee('<span class="-my-2">12</span>', escape: false)
+            ->assertDontSee('<span class="-my-2">20</span>', escape: false);
+    }
+
+    public function test_every_college_stays_listed_whatever_the_dates(): void
+    {
+        $this->submit($this->facultyInDepartment('Maria Santos'), 'Filed today');
+        Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $today = ['from' => today()->toDateString(), 'to' => today()->toDateString()];
+        $colleges = Livewire::withQueryParams($today)->test('pages::dashboard')->instance()->breakdowns[__('By college')];
+
+        $this->assertCount(2, $colleges);
+        $this->assertSame(0, $colleges->firstWhere('label', 'CAS')['count']);
+
+        // A range with no projects at all says so instead of charting every college at zero.
+        $tomorrow = today()->addDay()->toDateString();
+        $this->get(route('dashboard', ['from' => $tomorrow, 'to' => $tomorrow]))
+            ->assertOk()
+            ->assertSee('No projects for');
+    }
+
     public function test_admins_are_told_about_missing_departments_and_setup(): void
     {
         User::factory()->create(['role' => 'faculty', 'department_id' => null]);

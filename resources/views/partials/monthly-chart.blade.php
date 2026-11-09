@@ -2,22 +2,25 @@
     Stacked columns of projects filed per month, split by current status, with hover and focus
     tooltips and a table view. Expects: $monthly (one entry per month, up to 24), $bars, $heading,
     and $period, how the months are described ("2026", "the last 12 months"). Optional: $span, the card's
-    grid classes. A card stretched taller than it needs gives the extra height to the plot.
+    grid classes.
 --}}
 @php
     $peak = max(1, max(array_column($monthly, 'total')));
-    // The smallest clean number above the peak, never equal to it, so the tallest bar always has headroom under
-    // the top line: a peak of 2 gets 3, 5 gets 6, 10 gets 20. Ticks run by whole steps, every one up to 5.
-    $magnitude = (int) (10 ** floor(log10($peak)));
-    $axisMax = collect([1, 2, 3, 4, 5, 6, 8, 10])->map(fn ($step) => $step * $magnitude)->first(fn ($value) => $value > $peak);
-    $ticks = range($axisMax, 0, $axisMax / $magnitude <= 5 ? $magnitude : 2 * $magnitude);
+    // One unit of headroom over the peak, then the smallest step of 1, 2 or 5 times a power of ten that covers it in
+    // 6 steps, as in year-chart. The tallest bar never touches the top line and little sits empty above it: a peak of
+    // 2 gets 3, 5 gets 6, 10 gets 12.
+    $top = $peak + 1;
+    $magnitude = 10 ** floor(log10(ceil($top / 6)));
+    $step = (int) collect([1, 2, 5, 10])->map(fn ($factor) => $factor * $magnitude)->first(fn ($value) => $value * 6 >= $top);
+    $axisMax = (int) (ceil($top / $step) * $step);
+    $ticks = range($axisMax, 0, $step);
     $filed = array_sum(array_column($monthly, 'total'));
     $columns = count($monthly);
     // Label every month up to 12 columns; past that, every other one, so the labels never collide.
     $labelEvery = (int) ceil($columns / 12);
 @endphp
 
-<flux:card class="flex flex-col {{ $span ?? 'lg:col-span-12' }}" data-test="monthly-chart">
+<flux:card class="{{ $span ?? 'xl:col-span-12' }}" data-test="monthly-chart">
     <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <div>
             <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
@@ -46,15 +49,15 @@
     @if ($filed === 0)
         <flux:text class="mt-6">{{ __('No projects in :period.', ['period' => $period]) }}</flux:text>
     @else
-        <div class="mt-6 grid flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(14rem,1fr)_auto] gap-x-3">
-            <div class="flex flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
+        <div class="mt-6 flex gap-3">
+            <div class="flex h-56 flex-col justify-between text-end text-xs tabular-nums text-zinc-500" aria-hidden="true">
                 @foreach ($ticks as $tick)
                     <span class="-my-2">{{ $tick }}</span>
                 @endforeach
             </div>
 
-            <div class="contents">
-                <div class="relative">
+            <div class="min-w-0 flex-1">
+                <div class="relative h-56">
                     @foreach ($ticks as $tick)
                         <div class="absolute inset-x-0 border-t border-line" style="bottom: {{ $tick / $axisMax * 100 }}%" aria-hidden="true"></div>
                     @endforeach
@@ -107,7 +110,7 @@
                 </div>
 
                 {{-- Month labels; every other one hides on phones so they never collide --}}
-                <ol class="col-start-2 mt-2 grid gap-1 text-center text-xs text-zinc-500" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
+                <ol class="mt-2 grid gap-1 text-center text-xs text-zinc-500" style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))" aria-hidden="true">
                     @php($yearShown = null)
                     @foreach ($monthly as $index => $month)
                         @php($labelled = $index % $labelEvery === 0)

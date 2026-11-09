@@ -348,13 +348,14 @@ new #[Title('Dashboard')] class extends Component {
     public function breakdowns(): array
     {
         $inRange = fn ($query) => $query->tap($this->inRange())->tap($this->inDepartment());
-        $top = fn ($model, string $label) => $model::whereHas('submissions', $inRange)->withCount(['submissions' => $inRange])->orderByDesc('submissions_count')->limit(6)->get()
+        $top = fn ($query, string $label) => $query->withCount(['submissions' => $inRange])->orderByDesc('submissions_count')->orderBy($label)->get()
             ->map(fn ($row) => ['label' => $row->{$label}, 'title' => $row->{$label}, 'count' => $row->submissions_count]);
 
-        // One department picked would chart a single bar, so that chart drops out.
+        // One department picked would chart a single bar, so that chart drops out. Every college stays listed, at zero
+        // when it filed nothing in the range, so changing the dates never changes which colleges are compared.
         return array_filter([
-            __('By college') => $this->department === '' ? $top(Department::class, 'code') : null,
-            __('By category') => $top(Category::class, 'name'),
+            __('By college') => $this->department === '' ? $top(Department::query(), 'code') : null,
+            __('By category') => $top(Category::whereHas('submissions', $inRange)->limit(6), 'name'),
         ]);
     }
 
@@ -509,29 +510,33 @@ new #[Title('Dashboard')] class extends Component {
                 </div>
             </section>
 
-            {{-- Trend over time, split by status: stacked columns. From xl it takes two thirds with the breakdowns beside
-                 it; xl because the sidebar leaves a third too narrow for their bars on smaller screens --}}
-            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope, 'span' => 'lg:col-span-12 xl:col-span-8'.($paired ? ' xl:row-span-2' : '')])
+            {{-- Trend over time, split by status: stacked columns. From xl it takes two thirds with a breakdown beside it;
+                 xl because the sidebar leaves a third too narrow for the bars on smaller screens --}}
+            @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope, 'span' => 'lg:col-span-12 xl:col-span-8'])
 
             {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
-                {{-- Colleges and categories side by side, then stacked beside the trend from xl. Below xl the category chart
-                     alone takes the row once a college is picked --}}
-                <flux:card @class(['xl:col-span-4', 'lg:col-span-6' => $paired, 'lg:col-span-12' => ! $paired])>
+                {{-- Colleges and categories side by side. From xl the colleges sit beside the trend, spaced to match its
+                     height, and the categories take the row below in two columns. Below xl the category chart alone
+                     takes the row once a college is picked --}}
+                @php
+                    $below = $paired && $loop->last;
+                @endphp
+                <flux:card @class(['lg:col-span-6' => $paired, 'lg:col-span-12' => ! $paired, 'xl:col-span-12' => $below, 'xl:col-span-4' => ! $below])>
                     <flux:heading size="lg" level="2">{{ $heading }}</flux:heading>
 
-                    @if ($rows->isEmpty())
+                    @if ($rows->sum('count') === 0)
                         <x-empty-state inline icon="chart-bar" :heading="__('No projects for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
                     @else
                         @php
                             $most = $rows->max('count');
                         @endphp
-                        <dl class="mt-5 grid gap-3">
+                        <dl @class(['mt-5 grid gap-3', 'xl:grid-cols-2 xl:gap-x-10' => $below, 'xl:gap-5' => $paired && ! $below])>
                             @foreach ($rows as $row)
                                 <div class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3 text-sm">
                                     <dt class="truncate text-zinc-800" title="{{ $row['title'] }}">{{ $row['label'] }}</dt>
                                     <dd class="flex items-center gap-2 border-s border-zinc-300 py-0.5">
-                                        <span class="h-4 rounded-e bg-isu-green-600" style="width: {{ max(2, $row['count'] / $most * 80) }}%" aria-hidden="true"></span>
+                                        <span class="h-4 rounded-e bg-isu-green-600" style="width: {{ $row['count'] ? max(2, $row['count'] / $most * 80) : 0 }}%" aria-hidden="true"></span>
                                         <span class="font-medium tabular-nums text-zinc-700">{{ $row['count'] }}</span>
                                     </dd>
                                 </div>
@@ -697,9 +702,9 @@ new #[Title('Dashboard')] class extends Component {
             </flux:card>
         @endif
 
-        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
             {{-- The main action. First on phones, so it is on the first screen; beside the projects on wide screens --}}
-            <flux:card class="lg:col-span-12 xl:col-span-4 xl:col-start-9 xl:row-start-1" data-test="submit-tile">
+            <flux:card class="xl:col-span-4 xl:col-start-9 xl:row-start-1" data-test="submit-tile">
                 <flux:heading size="lg" level="2">{{ __('Start a research project') }}</flux:heading>
 
                 @if (auth()->user()->department_id)
@@ -711,7 +716,7 @@ new #[Title('Dashboard')] class extends Component {
             </flux:card>
 
             {{-- The member's projects lead the page: they are what a member comes here to open --}}
-            <flux:card class="lg:col-span-12 xl:col-span-8 xl:col-start-1 xl:row-start-1">
+            <flux:card class="xl:col-span-8 xl:col-start-1 xl:row-start-1">
                 <div class="flex items-baseline justify-between gap-4">
                     <flux:heading size="lg" level="2">{{ __('Recent projects') }}</flux:heading>
                     @if ($total > 0)
@@ -743,7 +748,7 @@ new #[Title('Dashboard')] class extends Component {
 
             {{-- Counts by stage, each opening the projects it counts. One strip split by hairlines: pairs below xl with the
                  last spanning the row, then all five in a row. The cells on its corners take its curve --}}
-            <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line [&>:last-child]:col-span-2 lg:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1 *:first:rounded-tl-cell *:last:rounded-br-cell max-xl:*:nth-2:rounded-tr-cell max-xl:*:last:rounded-bl-cell xl:*:first:rounded-bl-cell xl:*:last:rounded-tr-cell">
+            <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line [&>:last-child]:col-span-2 xl:col-span-12 xl:grid-cols-5 xl:[&>:last-child]:col-span-1 *:first:rounded-tl-cell *:last:rounded-br-cell max-xl:*:nth-2:rounded-tr-cell max-xl:*:last:rounded-bl-cell xl:*:first:rounded-bl-cell xl:*:last:rounded-tr-cell">
                 @foreach ($kpis as $kpi)
                     @include('partials.stat-tile', $kpi)
                 @endforeach

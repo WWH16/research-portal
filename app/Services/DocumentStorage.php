@@ -103,6 +103,22 @@ class DocumentStorage
     }
 
     /**
+     * Move a stored document to another place on the account that holds it. It keeps its upload time, since moving a
+     * file isn't uploading it.
+     */
+    public function move(string $from, string $to): void
+    {
+        $uploadedAt = $this->uploadedAt($from)->timestamp;
+        [$disk, $source] = $this->locate($from);
+
+        $disk->move($source, $this->locate($to)[1]) ?: throw new DocumentStorageUnavailable("The document {$from} could not be moved.");
+
+        Cache::forever(self::uploadedAtKey($to), $uploadedAt);
+        Cache::forget(self::uploadedAtKey($from));
+        Cache::forget(self::fileIdKey($from));
+    }
+
+    /**
      * Where the cache keeps a stored document's Google file ID, once it has been opened. Losing it only means the
      * next open finds the file by name again.
      */

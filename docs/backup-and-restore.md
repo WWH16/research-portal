@@ -43,6 +43,12 @@ Project documents are stored on the Research Office's Google Drive in `Research 
 - **Replaced documents** go to the Drive trash, so they still count against storage for 30 days.
 - **Leave the folders as they are.** The portal finds each document by its saved path, so don't move or rename files or folders by hand. A renamed project or college keeps its old folder name on Drive, and its documents still open.
 
+### Moving older documents into folders
+
+Documents in `submissions` keep working where they are. To file them into project folders, run `php artisan drive:organize` from the environment's **Commands** tab in Laravel Cloud. On its own it only lists what would move. Add `--force` to move the files and update their saved paths. Take a database backup first, and run it when nobody is uploading. It is safe to run again: documents already in a folder are left alone.
+
+Never run it from a computer whose database is not the production database. It would move the files on Google Drive but update only that computer's paths, and production would lose those documents.
+
 ## Database backups on Laravel Cloud
 
 Laravel Cloud takes a database backup every day between 3 AM and 6 AM EDT and keeps it for 1 to 30 days. The backups cover the database only, not the documents on Google Drive.

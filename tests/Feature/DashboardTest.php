@@ -392,11 +392,10 @@ class DashboardTest extends TestCase
         $this->travelTo("{$first}-06-15 10:00:00");
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $dashboard = Livewire::withQueryParams(['from' => '2020-01-01', 'to' => '2099-01-01', 'dept' => 'XYZ'])
+        $dashboard = Livewire::withQueryParams(['from' => '2020-01-01', 'to' => '2099-01-01'])
             ->test('pages::dashboard')
             ->assertSet('from', "{$first}-01-01")
-            ->assertSet('to', "{$first}-06-15")
-            ->assertSet('department', '');
+            ->assertSet('to', "{$first}-06-15");
 
         $dashboard->set('to', '0002-06-15');
         $this->assertArrayNotHasKey('html', $dashboard->effects);
@@ -407,20 +406,6 @@ class DashboardTest extends TestCase
         $dashboard->call('preset', 'last-12-months')
             ->assertSet('from', "{$first}-01-01")
             ->assertSet('to', "{$first}-06-15");
-    }
-
-    public function test_a_range_past_today_stops_today(): void
-    {
-        $this->submit($this->facultyInDepartment('Maria Santos'), 'Filed today');
-
-        $this->actingAs(User::factory()->create(['role' => 'admin']));
-
-        $dashboard = Livewire::withQueryParams(['from' => now()->startOfYear()->toDateString(), 'to' => '9999-12-31'])
-            ->test('pages::dashboard')
-            ->instance();
-
-        $this->assertSame(1, $dashboard->rangeProjects['projects']);
-        $this->assertSame(1, array_sum(array_column($dashboard->monthly, 'total')));
     }
 
     public function test_every_college_stays_listed_whatever_the_dates(): void

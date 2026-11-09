@@ -133,11 +133,6 @@
         pointer-events: none;
     }
 
-    ::selection {
-        background-color: var(--color-isu-gold-200);
-        color: var(--color-isu-green-950);
-    }
-
     /* Tailwind leaves buttons on the plain arrow; the hand shows they can be clicked, as links do. */
     button:not(:disabled),
     [role='button']:not([aria-disabled='true']) {

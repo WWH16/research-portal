@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -76,6 +77,9 @@ class Submission extends Model
 
     /** The document whose upload moves a project into each stage. */
     public const STAGE_DOCUMENTS = ['Concept' => 'concept', 'Detailed' => 'detailed', 'Mid-year' => 'midyear', 'Completed' => 'terminal'];
+
+    /** The folder on the storage account that mirrors the portal's Research Drive. */
+    public const DRIVE_ROOT = 'Research Drive';
 
     protected function casts(): array
     {
@@ -192,6 +196,58 @@ class Submission extends Model
     public function displayTitle(): string
     {
         return str_replace('_', ' ', $this->title);
+    }
+
+    /**
+     * Where a new project's documents go on the storage account: its college, then its title. The short code keeps two
+     * projects with the same title apart.
+     *
+     * ponytail: two first uploads for a college at once can make two same-named folders; files still open from either. Lock the folder creation if that ever shows up.
+     */
+    public static function newDriveFolder(string $college, string $title): string
+    {
+        return self::DRIVE_ROOT.'/'.self::driveName($college, 'College').'/'.self::driveName($title, 'Project').' ('.self::driveCode().')';
+    }
+
+    /**
+     * A document's name on Google Drive, without its extension. The short code keeps a replacement apart from the file
+     * it replaces, which stays until the save commits.
+     */
+    public static function driveDocumentName(string $stage): string
+    {
+        return self::DOCUMENTS[$stage].' ('.self::driveCode().')';
+    }
+
+    /**
+     * The folder this project's documents are in, or null while they are all still in the older flat folder.
+     */
+    public function driveFolder(): ?string
+    {
+        foreach (array_keys(self::DOCUMENTS) as $stage) {
+            $location = Str::after((string) $this->{$stage.'_path'}, '/');
+
+            if (str_starts_with($location, self::DRIVE_ROOT.'/')) {
+                return Str::beforeLast($location, '/');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * User text made safe for a Google Drive name. The Drive adapter rewrites many punctuation marks when it lists a
+     * folder, so a name holding one could never be found again; only letters, digits, spaces and hyphens are kept.
+     */
+    private static function driveName(string $text, string $fallback): string
+    {
+        $name = (string) Str::of(str_replace('_', ' ', $text))->ascii()->replaceMatches('/[^A-Za-z0-9 \-]/', '')->squish()->limit(100, '')->trim();
+
+        return $name !== '' ? $name : $fallback;
+    }
+
+    private static function driveCode(): string
+    {
+        return Str::lower(Str::random(4));
     }
 
     public function isDelayed(): bool

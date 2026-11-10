@@ -20,7 +20,7 @@ Don't attach a bucket for documents. They go to Google Drive, which replaced the
 
 ## Storing documents on Google Drive
 
-Project documents are stored on the Research Office's Google Drive in `Research Drive/<college code>/<project title> (<code>)/`, one folder per project. Memos are in `announcements` and profile photos in `profile-images`. Documents uploaded before these folders existed stay in `submissions`. Each saved path starts with `drive-<account number>/`, so a file always opens from the account that saved it. Until an admin saves and connects a storage account, uploads are refused.
+Project documents are stored on the Research Office's Google Drive in `Research Drive/<college code>/<project title> (<code>)/`, one folder per project. Memos are in `announcements` and profile photos in `profile-images`. Each saved path starts with `drive-<account number>/`, so a file always opens from the account that saved it. Until an admin saves and connects a storage account, uploads are refused.
 
 ### Setting it up
 
@@ -42,14 +42,6 @@ Project documents are stored on the Research Office's Google Drive in `Research 
 - **Disconnect** revokes the portal's access at Google. The saved account and the files on Drive stay.
 - **Replaced documents** go to the Drive trash, so they still count against storage for 30 days.
 - **Leave the folders as they are.** The portal finds each document by its saved path, so don't move or rename files or folders by hand. A renamed project or college keeps its old folder name on Drive, and its documents still open.
-
-### Moving older documents into folders
-
-Documents in `submissions` keep working where they are. To file them into project folders, run `php artisan drive:organize` from the environment's **Commands** tab in Laravel Cloud. On its own it only lists what would move. Add `--force` to move the files and update their saved paths, and add `--project=<id>` to try one project first. Run it when nobody is uploading or reviewing. Laravel Cloud stops a command after 30 minutes. Running it again continues the work, because documents already in a folder are left alone.
-
-Take a database backup first, but only as protection against a database problem. Restoring a backup from before the run does not undo the run: the files stay in their new folders while the restored paths point to the old place, so every moved document stops opening.
-
-The command refuses `--force` when its database is on the same computer. Never get around that: it would move the files on Google Drive but update only that computer's paths, and production would lose those documents.
 
 ## Database backups on Laravel Cloud
 

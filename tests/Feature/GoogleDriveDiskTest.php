@@ -19,10 +19,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use League\Flysystem\UnableToMoveFile;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Mockery\MockInterface;
 use RuntimeException;
@@ -199,85 +197,6 @@ class GoogleDriveDiskTest extends TestCase
     private function driveJson(array $body): Response
     {
         return new Response(200, ['Content-Type' => 'application/json'], json_encode($body));
-    }
-
-    /**
-     * Google's answers for moving submissions/old.pdf into an existing project folder, up to the move: sign-in, the walk
-     * to the file, then the walk to the folder it is going to.
-     *
-     * @return list<Response>
-     */
-    private function answersBeforeTheMove(): array
-    {
-        return [
-            $this->driveJson(['access_token' => 'fresh-access-token', 'expires_in' => 3599]),
-            $this->listing([$this->driveItem('s', 'submissions', 'root-folder'), $this->driveItem('a', 'Research Drive', 'root-folder')]),
-            $this->listing([$this->driveItem('file-456', 'old.pdf', 's', 'application/pdf')]),
-            $this->listing([$this->driveItem('b', 'CCS', 'a')]),
-            $this->listing([$this->driveItem('c', 'Soil Study (m2p7)', 'b')]),
-            $this->listing([]),
-        ];
-    }
-
-    /**
-     * What Google answers when the portal looks for the moved file again, one listing per level.
-     *
-     * @return list<Response>
-     */
-    private function answersFindingTheFolder(array $filesInIt): array
-    {
-        return [
-            $this->listing([$this->driveItem('a', 'Research Drive', 'root-folder')]),
-            $this->listing([$this->driveItem('b', 'CCS', 'a')]),
-            $this->listing([$this->driveItem('c', 'Soil Study (m2p7)', 'b')]),
-            $this->listing($filesInIt),
-        ];
-    }
-
-    public function test_a_document_moves_into_its_project_folder(): void
-    {
-        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
-        $moved = $this->driveItem('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf');
-        $to = "drive-{$account->id}/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (a1b2).pdf";
-        $this->googleAnswers([...$this->answersBeforeTheMove(), $this->driveJson($moved), $this->driveJson($moved), $this->driveJson(['permissions' => []])]);
-
-        app(DocumentStorage::class)->move("drive-{$account->id}/submissions/old.pdf", $to);
-
-        // Google has no answers left, so this comes from the time the move carried over.
-        $this->assertSame(strtotime('2026-11-09T00:00:00.000Z'), app(DocumentStorage::class)->uploadedAt($to)->timestamp);
-    }
-
-    public function test_a_move_google_finished_counts_even_when_the_read_after_it_fails(): void
-    {
-        Exceptions::fake();
-        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
-        $moved = $this->driveItem('file-456', 'Concept proposal (a1b2).pdf', 'c', 'application/pdf');
-        $to = "drive-{$account->id}/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (a1b2).pdf";
-        $this->googleAnswers([
-            ...$this->answersBeforeTheMove(),
-            $this->driveJson($moved),
-            new Response(500, ['Content-Type' => 'application/json'], '{"error": {"code": 500, "message": "Internal Error"}}'),
-            ...$this->answersFindingTheFolder([$moved]),
-        ]);
-
-        app(DocumentStorage::class)->move("drive-{$account->id}/submissions/old.pdf", $to);
-
-        $this->assertSame(strtotime('2026-11-09T00:00:00.000Z'), app(DocumentStorage::class)->uploadedAt($to)->timestamp);
-        Exceptions::assertReportedCount(1);
-    }
-
-    public function test_a_move_that_never_happened_is_still_a_failure(): void
-    {
-        $account = GoogleDriveConnection::factory()->create(['folder_id' => 'root-folder']);
-        $this->googleAnswers([
-            ...$this->answersBeforeTheMove(),
-            new Response(500, ['Content-Type' => 'application/json'], '{"error": {"code": 500, "message": "Internal Error"}}'),
-            ...$this->answersFindingTheFolder([]),
-        ]);
-
-        $this->expectException(UnableToMoveFile::class);
-
-        app(DocumentStorage::class)->move("drive-{$account->id}/submissions/old.pdf", "drive-{$account->id}/Research Drive/CCS/Soil Study (m2p7)/Concept proposal (a1b2).pdf");
     }
 
     public function test_a_document_opened_before_downloads_straight_from_its_saved_file_id(): void

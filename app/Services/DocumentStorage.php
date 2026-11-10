@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use League\Flysystem\FileAttributes;
-use League\Flysystem\UnableToMoveFile;
 use League\Flysystem\UnableToReadFile;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Psr\Http\Message\ResponseInterface;
@@ -96,30 +95,6 @@ class DocumentStorage
             [$disk, $location] = $this->locate($path);
             $disk->delete($location);
         });
-    }
-
-    /**
-     * Move a stored document to another place on the account that holds it. It keeps its upload time, since moving a
-     * file isn't uploading it.
-     */
-    public function move(string $from, string $to): void
-    {
-        $uploadedAt = $this->uploadedAt($from)->timestamp;
-        [$disk, $source] = $this->locate($from);
-        [, $target] = $this->locate($to);
-
-        try {
-            $disk->getDriver()->move($source, $target);
-        } catch (UnableToMoveFile $e) {
-            // The adapter also fails when Google moved the file and only its read afterwards failed. The target's name
-            // is new to this move, so finding it there proves the file went. The cleared cache makes the adapter look.
-            $disk->getAdapter() instanceof GoogleDriveAdapter && $disk->getAdapter()->clearCache();
-
-            $disk->exists($target) ?: throw $e;
-            report($e);
-        }
-
-        Cache::forever(self::uploadedAtKey($to), $uploadedAt);
     }
 
     /**

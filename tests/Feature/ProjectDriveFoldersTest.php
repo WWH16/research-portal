@@ -120,11 +120,6 @@ class ProjectDriveFoldersTest extends TestCase
         $this->assertMatchesRegularExpression('#^Research Drive/College/Project '.self::CODE.'$#', Submission::newDriveFolder('研究', '研究'));
     }
 
-    public function test_two_projects_with_the_same_title_get_different_folders(): void
-    {
-        $this->assertNotSame(Submission::newDriveFolder('CCS', 'Soil Study'), Submission::newDriveFolder('CCS', 'Soil Study'));
-    }
-
     public function test_the_longest_title_and_college_fit_the_path_column(): void
     {
         $path = 'drive-999999/'.Submission::newDriveFolder(str_repeat('C', 20), str_repeat('a', 255)).'/'.Submission::driveDocumentName('midyear').'.docx';

@@ -43,8 +43,7 @@ class RegistrationTest extends TestCase
     {
         $this->get(route('register'))
             ->assertSee('At least 8 characters')
-            ->assertDontSee('Uppercase and lowercase letters')
-            ->assertDontSee('known data breach');
+            ->assertDontSee('Uppercase and lowercase letters');
 
         Password::defaults(fn () => Password::min(12)->mixedCase()->letters()->numbers()->symbols()->uncompromised());
 
@@ -54,10 +53,11 @@ class RegistrationTest extends TestCase
                 'Uppercase and lowercase letters',
                 'At least one number',
                 'At least one symbol, like ! or #',
-                'Not in a known data breach',
             ])
             ->assertDontSee('At least one letter')
-            // JavaScript rejects PHP's \pN shorthand, which hides the row's icon.
+            // The browser can't run the breach check, so the list leaves it to the server.
+            ->assertDontSee('known data breach')
+            // JavaScript rejects PHP's \pN shorthand, which hides the row's tick.
             ->assertSee('/\p{N}/u.test', escape: false);
     }
 

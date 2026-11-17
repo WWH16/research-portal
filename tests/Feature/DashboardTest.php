@@ -421,11 +421,17 @@ class DashboardTest extends TestCase
         $this->assertStringNotContainsString('max-sm:invisible', $january[1]);
     }
 
-    public function test_the_monthly_chart_tooltip_stays_while_the_pointer_moves_onto_it(): void
+    public function test_the_monthly_chart_tooltip_sits_on_its_bar_and_stays_while_the_pointer_moves_onto_it(): void
     {
-        $this->assertSame(12, preg_match_all('/class="([^"]*bottom-full[^"]*)"/', $this->monthlyChart(), $tooltips));
+        $html = $this->monthlyChart();
+        $this->assertSame(12, preg_match_all('/<div class="([^"]*)" style="bottom: ([\d.]+)%" aria-hidden="true" data-test="month-tooltip">/', $html, $tooltips));
 
         $this->assertStringNotContainsString('pointer-events-none', $tooltips[1][0]);
+
+        // Each month has one project on a scale of 2, so the bar is half the column and its tooltip starts there,
+        // beside the pointer, instead of at the top of the chart.
+        $this->assertStringContainsString('style="height: 50%"', $html);
+        $this->assertSame(array_fill(0, 12, '50'), $tooltips[2]);
     }
 
     public function test_the_monthly_chart_table_is_named_and_reachable_by_keyboard(): void

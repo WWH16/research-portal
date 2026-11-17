@@ -82,6 +82,7 @@
                                 $label = $month['month']->format('F Y');
                                 $summary = collect($month['counts'])->filter()->map(fn ($count, $status) => $count.' '.__($status))->join(', ');
                                 $tooltipSide = match (true) { $index < 2 => 'left-0', $index > $columns - 3 => 'right-0', default => 'left-1/2 -translate-x-1/2' };
+                                $height = $month['total'] / $axisMax * 100;
                             @endphp
                             {{-- The whole column is the hover and focus target, not just the painted bar --}}
                             <li
@@ -92,7 +93,7 @@
                                 @if ($month['total'] > 0)
                                     <div
                                         class="flex min-h-0.5 w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t transition group-hover:brightness-75"
-                                        style="height: {{ $month['total'] / $axisMax * 100 }}%"
+                                        style="height: {{ $height }}%"
                                         aria-hidden="true"
                                     >
                                         @foreach ($month['counts'] as $status => $count)
@@ -103,7 +104,8 @@
                                     </div>
                                 @endif
 
-                                <div class="absolute bottom-full z-10 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $tooltipSide }}" aria-hidden="true">
+                                {{-- Sits just above the bar's top, where the pointer is, not at the top of the whole column --}}
+                                <div class="absolute z-10 mb-1.5 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $tooltipSide }}" style="bottom: {{ $height }}%" aria-hidden="true" data-test="month-tooltip">
                                     <p class="text-zinc-500">{{ $label }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No projects|{1} One project|[2,*] :count projects', $month['total']) }}</p>
                                     @if ($month['total'] > 0)

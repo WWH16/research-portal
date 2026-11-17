@@ -66,9 +66,9 @@ class Submission extends Model
     public const PROPOSAL_STAGES = ['Concept', 'Detailed'];
 
     /**
-     * Flux badge colour for each status, shared by every list that shows one. The dashboard charts use shades of
-     * green instead, through the --color-status-* tokens in app.css; matching the two is left for a later colour
-     * pass. Gray stays free for "none", such as a zero count, and amber for "awaiting review".
+     * Flux badge colour for each status, shared by every list that shows one. The dashboard charts use four shades
+     * of green instead, through the --color-status-* tokens in app.css, since a badge has only one green. Gray stays
+     * free for "none", such as a zero count, and amber for "awaiting review".
      */
     public const STATUS_COLORS = ['Concept' => 'cyan', 'Detailed' => 'blue', 'Mid-year' => 'purple', 'Completed' => 'green'];
 

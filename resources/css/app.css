@@ -90,15 +90,16 @@
     /* Corner cells of a 1px-bordered rounded box (the stat strip) take this, so fill and ring follow the curve. */
     --radius-cell: calc(var(--radius-xl) - 1px);
 
-    /* Project stages, shared by the dashboard charts, stat tiles and swatches: shades of one green, light to dark
-       in stage order, so healthy work stays calm and red (Delayed) is the only loud colour. Known gaps, left for a
-       later colour pass: Concept and Detailed fall below 3:1 on white (WCAG 1.4.11), with exact values in the
-       chart's tooltips and table; adjacent shades are harder to tell apart than hues; and the status badges still
-       use the Flux hues in Submission::STATUS_COLORS, so they no longer match. */
-    --color-status-concept: var(--color-isu-green-200);
+    /* Project stages, shared by the dashboard charts, stat tiles and swatches: soft shades of one green, light to
+       dark in stage order, so healthy work stays calm and red (Delayed) is the only loud colour. The steps are
+       spaced so Detailed and Mid-year sit furthest apart (2.9:1 between them). Chosen by the user for the soft
+       look, knowing Concept and Detailed fall below 3:1 on white (WCAG 1.4.11); the chart's tooltips and table
+       carry the exact values. Status badges keep the Flux hues in Submission::STATUS_COLORS, since a badge has
+       one green, not four shades. */
+    --color-status-concept: var(--color-isu-green-100);
     --color-status-detailed: var(--color-isu-green-300);
-    --color-status-midyear: var(--color-isu-green-500);
-    --color-status-completed: var(--color-isu-green-800);
+    --color-status-midyear: var(--color-isu-green-600);
+    --color-status-completed: var(--color-isu-green-900);
     --color-status-delayed: var(--color-red-600);
 
     /* Flux reads these for primary buttons, links, focus rings and checked controls. */

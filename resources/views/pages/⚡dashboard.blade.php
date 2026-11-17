@@ -534,8 +534,8 @@ new #[Title('Dashboard')] class extends Component {
                  xl because the sidebar leaves a third too narrow for the bars on smaller screens --}}
             @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope, 'span' => 'lg:col-span-12 xl:col-span-8'])
 
-            {{-- Magnitude comparisons for the selected year: ranked horizontal bars in neutral grey, so green means only
-                 "Completed" on this page, value at the tip --}}
+            {{-- Magnitude comparisons for the selected year: ranked horizontal bars in one soft green that matches the
+                 stage chart without being one of its four shades, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
                 {{-- Colleges and categories side by side. From xl the colleges sit beside the trend, spaced to match its
                      height, and the categories take the row below in two columns. Below xl the category chart alone
@@ -557,7 +557,7 @@ new #[Title('Dashboard')] class extends Component {
                                 <div class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3 text-sm">
                                     <dt class="truncate text-zinc-800" title="{{ $row['title'] }}">{{ $row['label'] }}</dt>
                                     <dd class="flex items-center gap-2 border-s border-zinc-300 py-0.5">
-                                        <span class="h-4 rounded-e bg-zinc-300" style="width: {{ $row['count'] ? max(2, $row['count'] / $most * 80) : 0 }}%" aria-hidden="true"></span>
+                                        <span class="h-4 rounded-e bg-isu-green-300" style="width: {{ $row['count'] ? max(2, $row['count'] / $most * 80) : 0 }}%" aria-hidden="true"></span>
                                         <span class="font-medium tabular-nums text-zinc-700">{{ $row['count'] }}</span>
                                     </dd>
                                 </div>

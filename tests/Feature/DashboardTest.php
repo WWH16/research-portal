@@ -87,7 +87,7 @@ class DashboardTest extends TestCase
         $page->dispatch('open-work-changed', changed: ['toReview'])->assertSee('One concept proposal is waiting for review.');
     }
 
-    public function test_yearly_summary_counts_each_faculty_member_once_per_group(): void
+    public function test_yearly_summary_counts_faculty_once_and_stages_by_project(): void
     {
         $navarro = $this->facultyInDepartment('Navarro');
         $soriano = $this->facultyInDepartment('Soriano');
@@ -116,11 +116,15 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $component = Livewire::test('pages::dashboard')->assertSet('from', "{$year}-01-01")->assertSet('to', today()->toDateString());
-        $this->assertSame(['submitted' => 3, 'pending' => 0, 'proposal' => 3, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $component->instance()->facultyCounts);
+        // Three faculty submitted, but the stage tiles count projects: SMART is one project at proposal stage, however
+        // many people are on it, so the stages add up to the projects filed, as the monthly chart does.
+        $counts = $component->instance()->counts;
+        $this->assertSame(['submitted' => 3, 'pending' => 0, 'proposal' => 1, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $counts);
+        $this->assertSame($component->instance()->rangeProjects['projects'], $counts['proposal'] + $counts['midyear'] + $counts['completed']);
         $component->assertSee('Across 2 projects in '.$component->instance()->rangeLabel)->assertSee('1 of 1 project finished on time');
 
         $lastYear = Livewire::test('pages::dashboard')->call('preset', 'last-year');
-        $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->facultyCounts);
+        $this->assertSame(['submitted' => 1, 'pending' => 2, 'proposal' => 0, 'midyear' => 0, 'completed' => 1, 'delayed' => 0], $lastYear->instance()->counts);
 
         // The proposal-stage list names the projects without status badges.
         Livewire::withQueryParams(['group' => 'proposal'])
@@ -142,16 +146,16 @@ class DashboardTest extends TestCase
         $year = now()->year;
 
         $firstHalf = Livewire::withQueryParams(['from' => "{$year}-01-01", 'to' => "{$year}-06-30"])->test('pages::dashboard');
-        $this->assertSame(1, $firstHalf->instance()->facultyCounts['submitted']);
+        $this->assertSame(1, $firstHalf->instance()->counts['submitted']);
         $firstHalf->assertSee("Jan 1 – Jun 30, {$year}")->assertSee('Across one project in');
 
         // A reversed pair is swapped instead of showing nothing.
         $reversed = Livewire::withQueryParams(['from' => "{$year}-12-31", 'to' => "{$year}-07-01"])->test('pages::dashboard');
-        $this->assertSame(1, $reversed->instance()->facultyCounts['submitted']);
+        $this->assertSame(1, $reversed->instance()->counts['submitted']);
 
         // A bad date falls back to the year so far, and the chart shows one column per month in range.
         $whole = Livewire::withQueryParams(['from' => 'not-a-date', 'to' => "{$year}-12-31"])->test('pages::dashboard');
-        $this->assertSame(2, $whole->instance()->facultyCounts['submitted']);
+        $this->assertSame(2, $whole->instance()->counts['submitted']);
         $this->assertCount(now()->month, $whole->instance()->monthly);
 
         $this->assertCount(24, Livewire::withQueryParams(['from' => ($year - 3).'-01-01', 'to' => "{$year}-12-31"])->test('pages::dashboard')->instance()->monthly);
@@ -229,7 +233,7 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $this->assertSame(1, Livewire::test('pages::dashboard')->instance()->facultyCounts['pending']);
+        $this->assertSame(1, Livewire::test('pages::dashboard')->instance()->counts['pending']);
 
         Livewire::withQueryParams(['group' => 'pending'])
             ->test('pages::dashboard')
@@ -245,7 +249,7 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $page = Livewire::test('pages::dashboard')->instance();
-        $this->assertSame(0, $page->facultyCounts['pending']);
+        $this->assertSame(0, $page->counts['pending']);
         $this->assertSame(0, $page->facultyWithoutDepartment);
 
         Livewire::withQueryParams(['group' => 'pending'])
@@ -271,7 +275,7 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $counts = Livewire::test('pages::dashboard')->instance()->facultyCounts;
+        $counts = Livewire::test('pages::dashboard')->instance()->counts;
         $this->assertSame([2, 1], [$counts['submitted'], $counts['pending']]);
 
         Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CBM'])

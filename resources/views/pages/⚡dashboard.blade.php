@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /*
  * The Research Office (admins and staff) gets faculty progress for a filing-date range, and admins also get one line on the
  * concept proposals waiting for review:
- * faculty counts per stage, each opening the faculty behind it and exportable as a report, the monthly trend as
+ * faculty who submitted or not, project counts per stage, each opening the faculty behind it and exportable as a report, the monthly trend as
  * stacked columns, and "where from / what about" as ranked horizontal bars. Faculty get what needs their attention, their counts and monthly
  * trend, then their newest projects beside the button that starts a new one.
  */
@@ -191,14 +191,18 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Number of faculty in each group for the selected year and department.
+     * Each tile's count for the selected dates and college: faculty for "submitted" and "not yet", projects for the
+     * stages, so the stage tiles match the monthly chart and add up to the projects filed. A stage tile still opens
+     * the faculty behind its projects.
      *
      * @return array<string, int>
      */
     #[Computed]
-    public function facultyCounts(): array
+    public function counts(): array
     {
-        return collect($this->groups())->map(fn ($group, $key) => $this->facultyIn($key)->count())->all();
+        return collect($this->groups())->map(fn ($group, $key) => in_array($key, ['submitted', 'pending'], true)
+            ? $this->facultyIn($key)->count()
+            : Submission::query()->tap($this->projectsIn($key))->tap($this->inDepartment())->count())->all();
     }
 
     /**
@@ -413,7 +417,7 @@ new #[Title('Dashboard')] class extends Component {
 
     @if ($this->office)
         @php
-            $facultyCounts = $this->facultyCounts;
+            $counts = $this->counts;
             $projects = $this->rangeProjects;
             $filters = array_filter(['from' => $from, 'to' => $to, 'dept' => $department]);
             $scope = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
@@ -422,10 +426,10 @@ new #[Title('Dashboard')] class extends Component {
             $kpis = [
                 'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed in :range|{1} Across one project in :range|[2,*] Across :count projects in :range', $projects['projects'], ['range' => $scope])],
                 'pending' => ['label' => __('Not yet submitted'), 'note' => __('Verified faculty on no project yet')],
-                'proposal' => ['label' => __('At proposal stage'), 'note' => __('Concept or detailed proposal uploaded'), 'swatch' => $proposalSwatches],
-                'midyear' => ['label' => __('At mid-year stage'), 'note' => __('Mid-year progress report uploaded'), 'swatch' => $bars['Mid-year']],
+                'proposal' => ['label' => __('At proposal stage'), 'note' => __('Projects with a concept or detailed proposal'), 'swatch' => $proposalSwatches],
+                'midyear' => ['label' => __('At mid-year stage'), 'note' => __('Projects with a mid-year report'), 'swatch' => $bars['Mid-year']],
                 'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
-                'delayed' => ['label' => __('Delayed'), 'note' => __('Past target date, no terminal report'), 'swatch' => $delayedSwatch($facultyCounts['delayed'])],
+                'delayed' => ['label' => __('Delayed'), 'note' => __('Projects past target date, no terminal report'), 'swatch' => $delayedSwatch($counts['delayed'])],
             ];
         @endphp
 
@@ -514,7 +518,7 @@ new #[Title('Dashboard')] class extends Component {
                      phones, rows of three, then all six in a row once each has room for its note --}}
                 <div class="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line lg:grid-cols-3 xl:grid-cols-6 *:first:rounded-tl-cell *:last:rounded-br-cell max-lg:*:nth-2:rounded-tr-cell max-lg:*:nth-5:rounded-bl-cell lg:max-xl:*:nth-3:rounded-tr-cell lg:max-xl:*:nth-4:rounded-bl-cell xl:*:first:rounded-bl-cell xl:*:last:rounded-tr-cell" data-test="summary-tiles">
                     @foreach ($kpis as $key => $kpi)
-                        @include('partials.stat-tile', $kpi + ['value' => $facultyCounts[$key], 'href' => route('dashboard', $filters + ['group' => $key]).'#faculty-list', 'group' => $key])
+                        @include('partials.stat-tile', $kpi + ['value' => $counts[$key], 'href' => route('dashboard', $filters + ['group' => $key]).'#faculty-list', 'group' => $key])
                     @endforeach
                 </div>
             </section>

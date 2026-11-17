@@ -404,8 +404,8 @@ class DriveTest extends TestCase
     {
         $this->actingAs($this->admin());
 
-        $ccsict = Livewire::withQueryParams(['dept' => 'CCSICT'])->test('pages::dashboard')->instance()->facultyCounts;
-        $cas = Livewire::withQueryParams(['dept' => 'CAS'])->test('pages::dashboard')->instance()->facultyCounts;
+        $ccsict = Livewire::withQueryParams(['dept' => 'CCSICT'])->test('pages::dashboard')->instance()->counts;
+        $cas = Livewire::withQueryParams(['dept' => 'CAS'])->test('pages::dashboard')->instance()->counts;
 
         // Navarro and Soriano count under CCSICT; Torres counts under CAS, though SMART is filed under CCSICT.
         $this->assertSame(2, $ccsict['submitted']);

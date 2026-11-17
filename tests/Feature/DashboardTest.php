@@ -266,7 +266,6 @@ class DashboardTest extends TestCase
         $navarro = User::factory()->create(['name' => 'Navarro', 'department_id' => $ccs->id]);
         $soriano = User::factory()->create(['name' => 'Soriano', 'department_id' => $ccs->id]);
         $reyes = User::factory()->create(['name' => 'Reyes', 'department_id' => $cbm->id]);
-        User::factory()->unverified()->create(['name' => 'Unverified Person', 'department_id' => $cbm->id]);
 
         // Soriano is only a co-proponent, which still counts as submitting; Reyes filed last year only.
         $this->submit($navarro, 'SMART-ResearchTrack', 'Concept', ['awaiting_review' => false])
@@ -284,7 +283,6 @@ class DashboardTest extends TestCase
             ->assertSee('Reyes')
             ->assertSeeHtml('href="mailto:'.$reyes->email.'"')
             ->assertDontSee('CBM · 0')
-            ->assertDontSee('Unverified Person')
             ->assertDontSee('By college')
             ->call('export')
             ->assertFileDownloaded("not-yet-submitted-cbm-{$year}-01-01-".today()->toDateString().'.csv');
@@ -292,6 +290,35 @@ class DashboardTest extends TestCase
         Livewire::withQueryParams(['group' => 'pending', 'dept' => 'CCS'])
             ->test('pages::dashboard')
             ->assertSee('Every faculty member in CCS has submitted in ');
+    }
+
+    public function test_submitted_and_not_yet_always_add_up_to_the_approved_faculty(): void
+    {
+        $leader = $this->facultyInDepartment('Leader B');
+        $proponent = $this->facultyInDepartment('Proponent A');
+        $idle = $this->facultyInDepartment('Idle C');
+        $movedToStaff = $this->facultyInDepartment('Moved To Staff');
+
+        // B files, A is a proponent, and so is someone who later became staff and is no longer faculty.
+        $this->submit($leader, 'Shared Study')->proponents()->createMany([
+            ['user_id' => $proponent->id, 'study' => 1, 'role' => 'Co-Leader'],
+            ['user_id' => $movedToStaff->id, 'study' => 1, 'role' => 'Staff'],
+        ]);
+        $movedToStaff->forceFill(['role' => 'staff'])->save();
+
+        // A and C change their email and haven't confirmed the new one yet; neither leaves their tile.
+        $proponent->forceFill(['email_verified_at' => null])->save();
+        $idle->forceFill(['email_verified_at' => null])->save();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $counts = Livewire::test('pages::dashboard')->instance()->counts;
+        $this->assertSame([2, 1], [$counts['submitted'], $counts['pending']]);
+        $this->assertSame(User::faculty()->approved()->count(), $counts['submitted'] + $counts['pending']);
+
+        Livewire::withQueryParams(['group' => 'submitted'])->test('pages::dashboard')
+            ->assertSee('Leader B')->assertSee('Proponent A')->assertDontSee('Moved To Staff');
+        Livewire::withQueryParams(['group' => 'pending'])->test('pages::dashboard')->assertSee('Idle C');
     }
 
     public function test_a_big_faculty_list_opens_in_place_one_page_at_a_time_and_exports_whole(): void

@@ -161,7 +161,7 @@ new #[Title('Dashboard')] class extends Component {
     {
         return [
             'submitted' => ['label' => __('Faculty who submitted'), 'filter' => fn ($query) => $query],
-            // The inverse of "submitted": verified faculty on no project filed that year. See facultyIn().
+            // The inverse of "submitted": approved faculty on no project filed that year. See facultyIn().
             'pending' => ['label' => __('Not yet submitted'), 'filter' => fn ($query) => $query],
             'proposal' => ['label' => __('At proposal stage'), 'filter' => fn ($query) => $query->whereIn('status', Submission::PROPOSAL_STAGES)],
             'midyear' => ['label' => __('At mid-year stage'), 'filter' => fn ($query) => $query->where('status', 'Mid-year')],
@@ -179,13 +179,17 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Faculty in one group for the selected year, narrowed to the selected department.
+     * Faculty in one group for the selected year, narrowed to the selected department. "Submitted" and "not yet"
+     * split the same approved faculty, so they always add up to them; an email change waiting to be confirmed
+     * moves no one out of either.
      */
     private function facultyIn(string $group): Builder
     {
-        $query = $group === 'pending'
-            ? User::faculty()->approved()->whereNotNull('email_verified_at')->whereDoesntHave('projects', $this->projectsIn($group))
-            : User::whereHas('projects', $this->projectsIn($group));
+        $query = match ($group) {
+            'submitted' => User::faculty()->approved()->whereHas('projects', $this->projectsIn($group)),
+            'pending' => User::faculty()->approved()->whereDoesntHave('projects', $this->projectsIn($group)),
+            default => User::whereHas('projects', $this->projectsIn($group)),
+        };
 
         return $query->tap($this->inDepartment());
     }
@@ -425,7 +429,7 @@ new #[Title('Dashboard')] class extends Component {
 
             $kpis = [
                 'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed in :range|{1} Across one project in :range|[2,*] Across :count projects in :range', $projects['projects'], ['range' => $scope])],
-                'pending' => ['label' => __('Not yet submitted'), 'note' => __('Verified faculty on no project yet')],
+                'pending' => ['label' => __('Not yet submitted'), 'note' => __('Approved faculty on no project yet')],
                 'proposal' => ['label' => __('At proposal stage'), 'note' => __('Projects with a concept or detailed proposal'), 'swatch' => $proposalSwatches],
                 'midyear' => ['label' => __('At mid-year stage'), 'note' => __('Projects with a mid-year report'), 'swatch' => $bars['Mid-year']],
                 'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],

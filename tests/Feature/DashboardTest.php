@@ -378,6 +378,24 @@ class DashboardTest extends TestCase
         Livewire::withQueryParams(['group' => 'delayed', 'dept' => 'CAS'])->test('pages::dashboard')->assertSee('No projects are late.');
     }
 
+    public function test_the_delayed_tile_sits_beside_the_headline_and_turns_red_only_when_something_is_late(): void
+    {
+        $maria = $this->facultyInDepartment('Maria Santos');
+        $late = $this->submit($maria, 'Late Study', 'Mid-year', ['awaiting_review' => false, 'target_date' => today()->subDay()]);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $delayedTile = '/<a\s+href="[^"]*group=delayed[^"]*"[^>]*class="[^"]*bg-red-50 hover:bg-red-100/';
+
+        $html = Livewire::test('pages::dashboard')
+            ->assertSeeInOrder(['Faculty who submitted', 'Delayed', 'Not yet submitted', 'At proposal stage'])
+            ->assertSeeHtml('text-red-700">1</span>')
+            ->html();
+        $this->assertMatchesRegularExpression($delayedTile, $html);
+
+        // With nothing late the tile is calm like the rest.
+        $late->forceFill(['terminal_uploaded_at' => now()])->save();
+        $this->assertDoesNotMatchRegularExpression($delayedTile, Livewire::test('pages::dashboard')->html());
+    }
+
     public function test_delayed_list_shows_how_to_reach_each_member(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');

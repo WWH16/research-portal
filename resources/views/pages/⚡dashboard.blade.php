@@ -428,13 +428,15 @@ new #[Title('Dashboard')] class extends Component {
             $scope = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
             $paired = count($this->breakdowns) > 1;
 
+            // Delayed sits second, beside the headline, so a late project is seen without scrolling; when any are late
+            // the tile turns pale red with a red number, the one loud mark on the page
             $kpis = [
                 'submitted' => ['label' => __('Faculty who submitted'), 'note' => trans_choice('{0} No projects filed in :range|{1} Across one project in :range|[2,*] Across :count projects in :range', $projects['projects'], ['range' => $scope])],
+                'delayed' => ['label' => __('Delayed'), 'note' => __('Projects past target date, no terminal report'), 'swatch' => $delayedSwatch($counts['delayed']), 'alert' => $counts['delayed'] > 0],
                 'pending' => ['label' => __('Not yet submitted'), 'note' => __('Approved faculty on no project yet')],
                 'proposal' => ['label' => __('At proposal stage'), 'note' => __('Projects with a concept or detailed proposal'), 'swatch' => $proposalSwatches],
                 'midyear' => ['label' => __('At mid-year stage'), 'note' => __('Projects with a mid-year report'), 'swatch' => $bars['Mid-year']],
                 'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
-                'delayed' => ['label' => __('Delayed'), 'note' => __('Projects past target date, no terminal report'), 'swatch' => $delayedSwatch($counts['delayed'])],
             ];
         @endphp
 
@@ -532,7 +534,8 @@ new #[Title('Dashboard')] class extends Component {
                  xl because the sidebar leaves a third too narrow for the bars on smaller screens --}}
             @include('partials.monthly-chart', ['monthly' => $this->monthly, 'heading' => __('Submissions per month'), 'period' => $scope, 'span' => 'lg:col-span-12 xl:col-span-8'])
 
-            {{-- Magnitude comparisons for the selected year: ranked horizontal bars, one hue, value at the tip --}}
+            {{-- Magnitude comparisons for the selected year: ranked horizontal bars in neutral grey, so green means only
+                 "Completed" on this page, value at the tip --}}
             @foreach ($this->breakdowns as $heading => $rows)
                 {{-- Colleges and categories side by side. From xl the colleges sit beside the trend, spaced to match its
                      height, and the categories take the row below in two columns. Below xl the category chart alone
@@ -554,7 +557,7 @@ new #[Title('Dashboard')] class extends Component {
                                 <div class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3 text-sm">
                                     <dt class="truncate text-zinc-800" title="{{ $row['title'] }}">{{ $row['label'] }}</dt>
                                     <dd class="flex items-center gap-2 border-s border-zinc-300 py-0.5">
-                                        <span class="h-4 rounded-e bg-isu-green-600" style="width: {{ $row['count'] ? max(2, $row['count'] / $most * 80) : 0 }}%" aria-hidden="true"></span>
+                                        <span class="h-4 rounded-e bg-zinc-300" style="width: {{ $row['count'] ? max(2, $row['count'] / $most * 80) : 0 }}%" aria-hidden="true"></span>
                                         <span class="font-medium tabular-nums text-zinc-700">{{ $row['count'] }}</span>
                                     </dd>
                                 </div>

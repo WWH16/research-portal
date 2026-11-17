@@ -219,20 +219,17 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Projects filed in the chosen range, how many are completed, and how many of those had the
-     * terminal report in by the target date.
+     * Projects filed in the chosen range, and how many completed ones had the terminal report in by the target
+     * date. How many are completed is the Completed tile's count.
      *
-     * @return array{projects: int, completed: int, onTime: int}
+     * @return array{projects: int, onTime: int}
      */
     #[Computed]
     public function rangeProjects(): array
     {
-        $completed = $this->rangeRows->where('status', 'Completed');
-
         return [
             'projects' => $this->rangeRows->count(),
-            'completed' => $completed->count(),
-            'onTime' => $completed->filter(fn ($project) => $project->completedOnTime())->count(),
+            'onTime' => $this->rangeRows->where('status', 'Completed')->filter(fn ($project) => $project->completedOnTime())->count(),
         ];
     }
 
@@ -436,7 +433,7 @@ new #[Title('Dashboard')] class extends Component {
                 'pending' => ['label' => __('Not yet submitted'), 'note' => __('Approved faculty on no project yet')],
                 'proposal' => ['label' => __('At proposal stage'), 'note' => __('Projects with a concept or detailed proposal'), 'swatch' => $proposalSwatches],
                 'midyear' => ['label' => __('At mid-year stage'), 'note' => __('Projects with a mid-year report'), 'swatch' => $bars['Mid-year']],
-                'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $projects['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
+                'completed' => ['label' => __('Completed'), 'note' => trans_choice('{0} No completed projects yet|{1} :on of 1 project finished on time|[2,*] :on of :count projects finished on time', $counts['completed'], ['on' => $projects['onTime']]), 'swatch' => $bars['Completed']],
             ];
         @endphp
 

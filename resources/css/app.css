@@ -91,13 +91,13 @@
     --radius-cell: calc(var(--radius-xl) - 1px);
 
     /* Project stages, shared by the dashboard charts, stat tiles and swatches: soft shades of one green, light to
-       dark in stage order, so healthy work stays calm and red (Delayed) is the only loud colour. The steps are
-       spaced so Detailed and Mid-year sit furthest apart (2.9:1 between them). Chosen by the user for the soft
-       look, knowing Concept and Detailed fall below 3:1 on white (WCAG 1.4.11); the chart's tooltips and table
-       carry the exact values. Status badges keep the Flux hues in Submission::STATUS_COLORS, since a badge has
-       one green, not four shades. */
-    --color-status-concept: var(--color-isu-green-100);
-    --color-status-detailed: var(--color-isu-green-300);
+       dark in stage order, so healthy work stays calm and red (Delayed) is the only loud colour. The ISU steps are
+       evenly spaced (about 2:1 between neighbours), so no two stages blur together. Chosen by the user for the soft
+       look, knowing Concept falls below 3:1 on white (WCAG 1.4.11); the chart's tooltips and table carry the exact
+       values. Status badges keep the Flux hues in Submission::STATUS_COLORS, since a badge has one green, not four
+       shades. */
+    --color-status-concept: var(--color-isu-green-200);
+    --color-status-detailed: var(--color-isu-green-400);
     --color-status-midyear: var(--color-isu-green-600);
     --color-status-completed: var(--color-isu-green-900);
     --color-status-delayed: var(--color-red-600);

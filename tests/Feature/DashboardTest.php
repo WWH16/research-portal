@@ -350,6 +350,34 @@ class DashboardTest extends TestCase
         $this->assertCount(27, array_filter(explode("\n", $csv)));
     }
 
+    public function test_a_late_project_stays_delayed_into_the_new_year(): void
+    {
+        $lim = $this->facultyInDepartment('Dr Lim');
+        $this->travelTo(now()->setDate(Submission::FIRST_YEAR, 3, 10));
+        $this->submit($lim, 'Last Year Study', 'Mid-year', ['awaiting_review' => false, 'target_date' => now()->setDate(Submission::FIRST_YEAR, 10, 31)]);
+        Department::create(['code' => 'CAS', 'name' => 'College of Arts and Sciences']);
+
+        // New Year's Day: the default range is the new year, which has no projects, yet the late one still counts.
+        $this->travelTo(now()->setDate(Submission::FIRST_YEAR + 1, 1, 1)->startOfDay());
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $page = Livewire::test('pages::dashboard');
+        $this->assertSame(0, $page->instance()->rangeProjects['projects']);
+        $this->assertSame(1, $page->instance()->counts['delayed']);
+
+        // The college filter still applies.
+        $this->assertSame(0, Livewire::withQueryParams(['dept' => 'CAS'])->test('pages::dashboard')->instance()->counts['delayed']);
+
+        Livewire::withQueryParams(['group' => 'delayed'])
+            ->test('pages::dashboard')
+            ->assertSee('Delayed, as of '.today()->format('M j, Y'))
+            ->assertSee('Dr Lim')
+            ->call('export')
+            ->assertFileDownloaded('delayed-'.today()->toDateString().'.csv');
+
+        Livewire::withQueryParams(['group' => 'delayed', 'dept' => 'CAS'])->test('pages::dashboard')->assertSee('No projects are late.');
+    }
+
     public function test_delayed_list_shows_how_to_reach_each_member(): void
     {
         $maria = $this->facultyInDepartment('Maria Santos');

@@ -171,11 +171,12 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * A constraint on a faculty member's projects: the chosen filing dates, narrowed to one group.
+     * A constraint on a faculty member's projects: the chosen filing dates, narrowed to one group. Delayed ignores
+     * the dates: a project late today stays late whenever it was filed, so a new year never hides it.
      */
     private function projectsIn(string $group): Closure
     {
-        return fn ($query) => ($this->groups()[$group]['filter'])($query->tap($this->inRange()));
+        return fn ($query) => ($this->groups()[$group]['filter'])($group === 'delayed' ? $query : $query->tap($this->inRange()));
     }
 
     /**
@@ -294,7 +295,7 @@ new #[Title('Dashboard')] class extends Component {
         $label = $this->groupLabel ?? abort(404);
 
         return response()->csv(
-            Str::slug($label.' '.$this->department.' '.$this->from.' '.$this->to).'.csv',
+            Str::slug($label.' '.$this->department.' '.($this->group === 'delayed' ? today()->toDateString() : $this->from.' '.$this->to)).'.csv',
             [__('Name'), __('Researcher ID'), __('College'), __('Projects')],
             $this->groupQuery()->lazy()->map(fn ($member) => [$member->name, $member->researcher_id, $member->department?->code, $member->projects->pluck('title')->join('; ')]),
         );
@@ -571,7 +572,9 @@ new #[Title('Dashboard')] class extends Component {
         @if ($this->groupLabel)
             @php
                 $faculty = $this->groupFaculty;
-                $where = $department === '' ? $this->rangeLabel : $department.', '.$this->rangeLabel;
+                // Delayed ignores the dates, so its list is as of today
+                $period = $group === 'delayed' ? __('as of :date', ['date' => today()->format('M j, Y')]) : $this->rangeLabel;
+                $where = $department === '' ? $period : $department.', '.$period;
             @endphp
             {{-- Keyed by group, so a newly opened group opens the panel; switching pages leaves it open as it is --}}
             <div id="faculty-list" wire:key="faculty-list-{{ $group }}" x-init="$flux.modal('faculty-list').show()" data-test="faculty-list">
@@ -589,6 +592,8 @@ new #[Title('Dashboard')] class extends Component {
                 {{-- An empty list is one line with an icon: a check when empty is good news --}}
                 @if ($faculty->isEmpty() && $group === 'pending')
                     <x-empty-state inline good icon="check-circle" :heading="__('Every faculty member :where has submitted in :range.', ['where' => $department === '' ? __('in the portal') : __('in :dept', ['dept' => $department]), 'range' => $this->rangeLabel])" class="mt-4" />
+                @elseif ($faculty->isEmpty() && $group === 'delayed')
+                    <x-empty-state inline good icon="check-circle" :heading="__('No projects are late.')" class="mt-4" />
                 @elseif ($faculty->isEmpty())
                     <x-empty-state inline icon="users" :heading="__('No faculty in this group for :range.', ['range' => $this->rangeLabel])" class="mt-4" />
                 @else

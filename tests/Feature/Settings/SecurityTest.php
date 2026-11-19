@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
+use ParagonIE\ConstantTime\Base64UrlSafe;
 use Tests\TestCase;
 
 class SecurityTest extends TestCase
@@ -176,7 +177,7 @@ class SecurityTest extends TestCase
         // The browser checks both against what the passkey was saved under, so they must be exact.
         $this->assertSame(parse_url(config('app.url'), PHP_URL_HOST), $account['rpId']);
         $this->assertDoesNotMatchRegularExpression('~[+/=]~', $account['userId']);
-        $this->assertSame($user->getPasskeyUserHandle(), base64_decode(strtr($account['userId'], '-_', '+/')));
+        $this->assertSame($user->getPasskeyUserHandle(), Base64UrlSafe::decodeNoPadding($account['userId']));
 
         $page->call('confirmDelete', $removed->id)
             ->call('deletePasskey')

@@ -70,12 +70,16 @@
                     @endforeach
 
                     {{-- Hidden from screen readers: the table below carries the same numbers once.
-                         The pointer's spot is kept in --x and --y, so the tooltip rides beside it instead of on a tall bar's top. --}}
+                         The pointer's spot is kept in --x and --y, so the tooltip rides beside it instead of on a tall bar's top.
+                         Escape hides the tooltip until the pointer moves onto another part of the chart, as in monthly-chart. --}}
                     <ol
-                        class="relative grid h-full gap-1"
+                        class="group/chart relative grid h-full gap-1"
                         style="grid-template-columns: repeat({{ $columns }}, minmax(0, 1fr))"
                         aria-hidden="true"
-                        x-data="{ follow(e) { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--x', e.clientX - r.left + 'px'); e.currentTarget.style.setProperty('--y', e.clientY - r.top + 'px') } }"
+                        x-data="{ dismissed: false, follow(e) { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--x', e.clientX - r.left + 'px'); e.currentTarget.style.setProperty('--y', e.clientY - r.top + 'px') } }"
+                        x-bind:data-dismissed="dismissed"
+                        x-on:keydown.escape.window="dismissed = true"
+                        x-on:pointerover="dismissed = false"
                         x-on:pointermove="follow($event)"
                         x-on:pointerdown="follow($event)"
                     >
@@ -90,7 +94,7 @@
                                 @endif
 
                                 {{-- Beside the pointer, on the side facing the middle so it never leaves the card --}}
-                                <div class="pointer-events-none absolute top-(--y) left-(--x) z-10 hidden w-max -translate-y-1/2 rounded-lg border border-line bg-surface px-3 py-2 text-xs group-hover:block pointer-coarse:group-focus:block {{ $loop->index < $columns / 2 ? 'ml-4' : '-ml-4 -translate-x-full' }}">
+                                <div class="pointer-events-none absolute top-(--y) left-(--x) z-10 hidden w-max -translate-y-1/2 rounded-lg border border-line bg-surface px-3 py-2 text-xs group-hover:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $loop->index < $columns / 2 ? 'ml-4' : '-ml-4 -translate-x-full' }}">
                                     <p class="text-zinc-500">{{ $year }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No citations|{1} 1 citation|[2,*] :count citations', $count) }}</p>
                                 </div>

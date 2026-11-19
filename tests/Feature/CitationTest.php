@@ -45,6 +45,18 @@ class CitationTest extends TestCase
         $this->actingAs(User::factory()->create())->get(route('publications.show', $this->paper))->assertForbidden();
     }
 
+    public function test_escape_hides_the_chart_tooltip_until_the_pointer_moves_on(): void
+    {
+        Citation::factory()->for($this->paper)->create(['year' => 2026]);
+        $this->actingAs($this->rivera);
+
+        // WCAG 1.4.13: a hover tooltip must be dismissible without moving the pointer.
+        Livewire::test('pages::publications.show', ['publication' => $this->paper])
+            ->assertSeeHtml('x-on:keydown.escape.window="dismissed = true"')
+            ->assertSeeHtml('x-on:pointerover="dismissed = false"')
+            ->assertSeeHtml('group-data-dismissed/chart:hidden!');
+    }
+
     public function test_the_chart_axis_ticks_at_whole_numbers_with_headroom(): void
     {
         // A peak of 3 gets a unit of headroom and the 5 floor: whole-number ticks 0 to 5, never 2.5.

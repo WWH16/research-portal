@@ -81,13 +81,13 @@
         </div>
     </template>
 
+    {{-- A form, so Enter registers through the browser's own submit, which waits while an IME is still composing the name --}}
     <template x-if="supported && showForm">
-        <div class="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+        <form x-on:submit.prevent="register()" class="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
             <flux:input
                 label="{{ __('Passkey name') }}"
                 x-model="name"
                 placeholder="{{ __('e.g., MacBook Pro, iPhone') }}"
-                x-on:keydown.enter.prevent="register()"
                 x-ref="passkeyNameInput"
                 x-init="$nextTick(() => $refs.passkeyNameInput?.focus())"
             />
@@ -97,8 +97,8 @@
 
             <div class="flex gap-2">
                 <flux:button
+                    type="submit"
                     variant="primary"
-                    x-on:click="register()"
                     x-bind:disabled="loading || !name.trim()"
                 >
                     <span x-show="!loading">{{ __('Register passkey') }}</span>
@@ -111,6 +111,6 @@
                     {{ __('Cancel') }}
                 </flux:button>
             </div>
-        </div>
+        </form>
     </template>
 </div>

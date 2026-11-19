@@ -472,6 +472,8 @@ class GoogleDrivePageTest extends TestCase
 
         // Change account and Disconnect: their buttons stay disabled until the address matches, so Enter can't submit.
         $this->assertSame(2, substr_count($html, 'x-on:keydown.enter='));
+        // An Enter that confirms an IME's characters stays with the IME instead of moving on.
+        $this->assertSame(2, substr_count($html, '! $event.isComposing && $event.keyCode !== 229'));
     }
 
     public function test_the_page_links_to_the_drive_folder(): void

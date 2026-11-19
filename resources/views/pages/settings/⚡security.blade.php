@@ -12,6 +12,8 @@ use Laravel\Fortify\Fortify;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Laravel\Passkeys\Actions\DeletePasskey;
+use Laravel\Passkeys\Passkeys;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 
@@ -104,11 +106,12 @@ new #[Title('Security settings')] class extends Component {
     public function loadPasskeys(): void
     {
         $this->passkeys = auth()->user()->passkeys()
-            ->select(['id', 'name', 'credential', 'created_at', 'last_used_at'])
+            ->select(['id', 'name', 'credential_id', 'credential', 'created_at', 'last_used_at'])
             ->latest()
             ->get()
             ->map(fn ($passkey) => [
                 'id' => $passkey->id,
+                'credential_id' => $passkey->credential_id,
                 'name' => $passkey->name,
                 'authenticator' => $passkey->authenticator,
                 'created_at_diff' => $passkey->created_at->diffForHumans(),
@@ -144,6 +147,22 @@ new #[Title('Security settings')] class extends Component {
 
         $this->closeDeleteModal();
         $this->loadPasskeys();
+        $this->dispatch('passkeys-changed', ids: array_column($this->passkeys, 'credential_id'));
+    }
+
+    /**
+     * The account the member's password manager files this portal's passkeys under, so the page can tell it which
+     * passkeys still work. WebAuthn reads the user handle as unpadded base64url.
+     *
+     * @return array{rpId: string, userId: string}
+     */
+    #[Computed]
+    public function passkeyAccount(): array
+    {
+        return [
+            'rpId' => Passkeys::relyingPartyId(),
+            'userId' => rtrim(strtr(base64_encode(auth()->user()->getPasskeyUserHandle()), '+/', '-_'), '='),
+        ];
     }
 
     /**
@@ -255,7 +274,22 @@ new #[Title('Security settings')] class extends Component {
 
         @if ($canManagePasskeys)
             <x-pages::settings.section :heading="__('Passkeys')" :description="__('Manage your passkeys for passwordless sign-in')">
-                <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
+                {{-- Tells the member's password manager which passkeys still work here, when the page opens and after a
+                     removal, so a removed passkey stops being offered at sign-in. Chrome, Edge and Safari do this; other
+                     browsers skip it. --}}
+                <div
+                    class="flex flex-col w-full mx-auto space-y-6 text-sm"
+                    wire:cloak
+                    x-data="{
+                        sync(ids) {
+                            if (! window.PublicKeyCredential?.signalAllAcceptedCredentials) return;
+                            PublicKeyCredential.signalAllAcceptedCredentials({ ...@js($this->passkeyAccount), allAcceptedCredentialIds: ids })
+                                .catch((error) => console.warn('The password manager was not sent the passkey list.', error));
+                        },
+                    }"
+                    x-init="sync(@js(array_column($passkeys, 'credential_id')))"
+                    x-on:passkeys-changed.window="sync($event.detail.ids)"
+                >
                     <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
                         @forelse ($passkeys as $passkey)
                             <div class="flex items-center justify-between p-4 {{ ! $loop->last ? 'border-b border-zinc-200 dark:border-zinc-700' : '' }}">

@@ -163,6 +163,26 @@ class SecurityTest extends TestCase
         $this->assertTrue(Hash::check('password', $user->refresh()->password));
     }
 
+    public function test_removing_a_passkey_tells_the_password_manager_which_ones_still_work(): void
+    {
+        $user = User::factory()->create();
+        $removed = $user->passkeys()->create(['name' => 'Old phone', 'credential_id' => 'b2xkLXBob25l', 'credential' => []]);
+        $user->passkeys()->create(['name' => 'Laptop', 'credential_id' => 'bGFwdG9w', 'credential' => []]);
+        $this->actingAs($user);
+
+        $page = Livewire::test('pages::settings.security');
+        $account = $page->instance()->passkeyAccount;
+
+        // The browser checks both against what the passkey was saved under, so they must be exact.
+        $this->assertSame(parse_url(config('app.url'), PHP_URL_HOST), $account['rpId']);
+        $this->assertDoesNotMatchRegularExpression('~[+/=]~', $account['userId']);
+        $this->assertSame($user->getPasskeyUserHandle(), base64_decode(strtr($account['userId'], '-_', '+/')));
+
+        $page->call('confirmDelete', $removed->id)
+            ->call('deletePasskey')
+            ->assertDispatched('passkeys-changed', ids: ['bGFwdG9w']);
+    }
+
     public function test_the_setup_key_copy_button_is_named_and_reports_its_result(): void
     {
         $this->actingAs(User::factory()->create());

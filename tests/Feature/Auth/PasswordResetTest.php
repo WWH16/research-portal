@@ -158,7 +158,8 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, QueuedResetPassword::class, function ($notification) {
             $response = $this->get(route('password.reset', $notification->token));
 
-            $response->assertOk();
+            // username, so a password manager updates the saved password for this email instead of adding another.
+            $response->assertOk()->assertSeeHtml('autocomplete="username"');
 
             return true;
         });

@@ -28,7 +28,10 @@ class RegistrationTest extends TestCase
 
         $this->get(route('register'))
             ->assertOk()
-            ->assertSee('College of Computing Studies');
+            ->assertSee('College of Computing Studies')
+            // Password managers save the new password under the email, the account's username.
+            ->assertSeeHtml('autocomplete="username"')
+            ->assertSeeHtml('autocomplete="new-password"');
     }
 
     public function test_create_account_button_shows_a_loading_state_while_submitting(): void

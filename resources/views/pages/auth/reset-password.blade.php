@@ -20,13 +20,14 @@
             <input type="hidden" name="token" value="{{ request()->route('token') }}">
 
             <!-- Email Address -->
+            {{-- username, so password managers update the saved password for this email rather than adding another --}}
             <flux:input
                 name="email"
                 value="{{ request('email') }}"
                 :label="__('Email')"
                 type="email"
                 required
-                autocomplete="email"
+                autocomplete="username"
             />
 
             <!-- Password -->

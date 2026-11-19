@@ -28,13 +28,14 @@
             />
 
             <!-- Email Address -->
+            {{-- username, so password managers save the new password under this email --}}
             <flux:input
                 name="email"
                 :label="__('Email address')"
                 :value="old('email')"
                 type="email"
                 required
-                autocomplete="email"
+                autocomplete="username"
                 placeholder="name_cyn@isu.edu.ph"
             />
 

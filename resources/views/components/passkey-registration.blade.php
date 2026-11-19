@@ -40,7 +40,12 @@
             window.addEventListener('passkeys:ready', () => this.updateSupport(), { once: true });
         },
         async register() {
-            if (!this.name.trim()) return;
+            if (!this.name.trim()) {
+                this.error = @js(__('Enter a name for this passkey.'));
+                this.$refs.passkeyNameInput?.focus();
+
+                return;
+            }
 
             this.loading = true;
             this.error = null;
@@ -93,13 +98,13 @@
             />
             <flux:text class="!mt-1">{{ __('Give this passkey a name to help you identify it later.') }}</flux:text>
 
-            <p x-show="error" x-text="error" x-cloak class="text-sm text-red-600 dark:text-red-400"></p>
+            <p x-show="error" x-text="error" x-cloak role="alert" class="text-sm text-red-600 dark:text-red-400"></p>
 
             <div class="flex gap-2">
                 <flux:button
                     type="submit"
                     variant="primary"
-                    x-bind:disabled="loading || !name.trim()"
+                    x-bind:disabled="loading"
                 >
                     <span x-show="!loading">{{ __('Register passkey') }}</span>
                     <span x-show="loading" x-cloak>{{ __('Registering...') }}</span>

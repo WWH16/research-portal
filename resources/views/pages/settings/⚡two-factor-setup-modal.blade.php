@@ -294,22 +294,24 @@ new class extends Component {
                                         readonly
                                         value="{{ $manualSetupKey }}"
                                         aria-label="{{ __('Setup key') }}"
-                                        class="w-full p-3 bg-transparent outline-none text-stone-900 dark:text-stone-100"
+                                        class="w-full p-3 bg-transparent rounded-s-xl text-stone-900 dark:text-stone-100 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                                     />
 
-                                    <button
-                                        type="button"
-                                        @click="copy()"
-                                        aria-label="{{ __('Copy setup key') }}"
-                                        class="px-3 transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
-                                    >
-                                        <flux:icon.document-duplicate x-show="!copied" variant="outline"></flux:icon>
-                                        <flux:icon.check
-                                            x-show="copied"
-                                            variant="solid"
-                                            class="text-green-500"
-                                        ></flux:icon>
-                                    </button>
+                                    <flux:tooltip :content="__('Copy setup key')" class="flex">
+                                        <button
+                                            type="button"
+                                            @click="copy()"
+                                            aria-label="{{ __('Copy setup key') }}"
+                                            class="flex w-12 items-center justify-center transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
+                                        >
+                                            <flux:icon.document-duplicate x-show="!copied" variant="outline"></flux:icon>
+                                            <flux:icon.check
+                                                x-show="copied"
+                                                variant="solid"
+                                                class="text-green-500"
+                                            ></flux:icon>
+                                        </button>
+                                    </flux:tooltip>
                                 @endempty
                             </div>
                         </div>

@@ -411,11 +411,13 @@ class DashboardTest extends TestCase
             ->assertDontSee('days overdue')
             ->assertSeeHtml("writeText('{$maria->email}')")
             ->assertSeeHtml("message = 'Copied!'")
-            ->assertSeeHtml('aria-label="Copy Maria Santos’s email"')
+            // The button's name matches its tooltip, which shows the address it copies.
+            ->assertSeeHtml("aria-label=\"Copy {$maria->email}\"")
+            ->assertDontSeeHtml("title=\"Copy {$maria->email}\"")
             ->html();
 
         // The bubble is the button's neighbour, not its child, so screen readers read it.
-        $this->assertMatchesRegularExpression('~</button>\s*<span[^>]*role="status"~', $html);
+        $this->assertMatchesRegularExpression('~</button>\s*(<div[^>]*popover[^>]*>.*?</div>\s*)?</ui-tooltip>\s*<span[^>]*role="status"~s', $html);
     }
 
     public function test_the_monthly_chart_keeps_a_year_change_labelled_on_phones(): void

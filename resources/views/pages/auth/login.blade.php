@@ -5,7 +5,7 @@
         <!-- Session Status -->
         <x-auth-session-status :status="session('status') ?? session('signed-out')" />
 
-        <x-passkey-verify />
+        <x-passkey-verify autofill />
 
         {{-- A plain form post, so Alpine drives the loading state: disabling the submit button makes Flux show its spinner.
              pageshow resets it when the browser restores this page from the back/forward cache. --}}
@@ -21,6 +21,7 @@
             @csrf
 
             <!-- Email Address -->
+            {{-- username is what password managers save the account under; webauthn is where they offer saved passkeys --}}
             <flux:input
                 name="email"
                 :label="__('Email address')"
@@ -28,7 +29,7 @@
                 type="email"
                 required
                 autofocus
-                autocomplete="email"
+                autocomplete="username webauthn"
                 placeholder="name_cyn@isu.edu.ph"
             />
 

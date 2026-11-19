@@ -585,7 +585,7 @@ new #[Title('Google Drive')] class extends Component {
                     </div>
                 @else
                     <form wire:submit="changeAccount" class="flex flex-col gap-5" x-data="{ typed: '' }"
-                        x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
+                        x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (! $event.isComposing && $event.keyCode !== 229 && i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
                         <flux:text>{{ __('Until the new account is connected, uploads fail.') }}</flux:text>
 
                         <flux:field>
@@ -633,7 +633,7 @@ new #[Title('Google Drive')] class extends Component {
                         </div>
                     @else
                         <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }"
-                            x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
+                            x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (! $event.isComposing && $event.keyCode !== 229 && i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
                             <flux:text>{{ __('Uploads stop, and files on this account can’t be opened until you connect again.') }}</flux:text>
 
                             <flux:field>

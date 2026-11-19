@@ -70,6 +70,8 @@ class AnnouncementsTest extends TestCase
 
     public function test_an_admin_posts_a_schedule_with_its_memo(): void
     {
+        // Before the fixed deadline below, so it stays in the future whenever the tests run.
+        $this->travelTo('2026-10-29 09:00');
         $disk = $this->fakeDrive();
         $admin = $this->admin();
 
@@ -237,6 +239,7 @@ class AnnouncementsTest extends TestCase
 
     public function test_posting_tells_approved_faculty_in_the_portal_only(): void
     {
+        $this->travelTo('2026-10-29 09:00');
         $this->fakeDrive();
         Mail::fake();
         $faculty = User::factory()->create();
@@ -275,6 +278,7 @@ class AnnouncementsTest extends TestCase
 
     public function test_staff_hear_of_a_new_announcement_and_the_admin_who_posted_it_does_not(): void
     {
+        $this->travelTo('2026-10-29 09:00');
         $this->fakeDrive();
         Notification::fake();
         $staff = User::factory()->create(['role' => 'staff']);

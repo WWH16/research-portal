@@ -49,10 +49,26 @@
     </div>
 
     @if ($kind && $fold)
-        <div id="memo-fold-{{ $announcement->id }}" x-show="open" x-collapse x-cloak class="pt-2">
+        {{-- Fades rather than sliding open, and shows at once when the member asks for reduced motion --}}
+        <div
+            id="memo-fold-{{ $announcement->id }}"
+            x-show="open"
+            x-cloak
+            x-transition:enter="transition-opacity duration-150 ease-out motion-reduce:duration-0"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity duration-150 ease-in motion-reduce:duration-0"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="pt-2"
+        >
             {{-- While Google Drive sends the memo it says so, and if it never comes the memo can still be downloaded. Under
                  the pointer the memo's frame darkens, a hint that it opens larger. --}}
-            <flux:text x-show="loading && ! failed" role="status" data-test="memo-loading">{{ __('Loading the memo…') }}</flux:text>
+            {{-- A grey block the height the memo will take, so the post doesn't jump when it arrives; it pulses only when
+                 the member allows motion --}}
+            <div x-show="loading && ! failed" role="status" class="h-64 rounded-lg border border-line bg-zinc-100 motion-safe:animate-pulse" data-test="memo-loading">
+                <span class="sr-only">{{ __('Loading the memo…') }}</span>
+            </div>
             <div x-show="failed" x-cloak role="alert" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-test="memo-failed">
                 <flux:text>{{ __('The memo could not be shown here.') }}</flux:text>
                 <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="$dispatch('memo-opened')">{{ __('Download memo') }}</flux:button>

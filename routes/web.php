@@ -54,6 +54,8 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('open-work', fn (Request $request) => $request->user()->openWork())->name('open-work');
 
     Route::livewire('announcements', 'pages::announcements.index')->name('announcements.index');
+    Route::livewire('announcements/create', 'pages::announcements.create')->middleware('can:create,'.Announcement::class)->name('announcements.create');
+    Route::livewire('announcements/{announcement}/edit', 'pages::announcements.create')->middleware('can:update,announcement')->name('announcements.edit');
     Route::livewire('notifications', 'pages::notifications.index')->name('notifications.index');
     Route::livewire('drive', 'pages::drive.index')->name('drive.index');
     Route::livewire('drive/projects/{submission}', 'pages::drive.show')->middleware('can:view,submission')->name('drive.show');

@@ -10,6 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -68,6 +69,16 @@ class AnnouncementsTest extends TestCase
         return UploadedFile::fake()->create($name, 10, 'application/pdf');
     }
 
+    /**
+     * The announcement form page, for a new announcement or for editing one.
+     *
+     * @return Testable<mixed>
+     */
+    private function form(User $admin, ?Announcement $announcement = null): Testable
+    {
+        return Livewire::actingAs($admin)->test('pages::announcements.create', $announcement ? ['announcement' => $announcement] : []);
+    }
+
     public function test_an_admin_posts_a_schedule_with_its_memo(): void
     {
         // Before the fixed deadline below, so it stays in the future whenever the tests run.
@@ -75,25 +86,30 @@ class AnnouncementsTest extends TestCase
         $disk = $this->fakeDrive();
         $admin = $this->admin();
 
+        // Post announcement opens the form on its own page.
         Livewire::actingAs($admin)->test('pages::announcements.index')
             ->assertSeeHtml('data-test="post-announcement"')
-            // While the memo uploads or the post saves, the form says so, and Cancel waits with the dialog's other ways out.
+            ->assertSee(route('announcements.create'), false);
+        $this->actingAs($admin)->get(route('announcements.create'))->assertOk()->assertSee('New announcement');
+
+        $form = $this->form($admin)
+            // While the memo uploads or the post saves, the form says so.
             ->assertSeeHtml('data-test="uploading-status"')
             ->assertSee('Stop upload')
             ->assertSeeHtml('data-test="posting-status"')
-            ->assertSee('Posting… This window closes when it is done.')
-            // The deadline field says where a schedule will show, before and after its date.
-            ->assertSee('The announcement stays under Upcoming deadlines until this date, then moves to Past deadlines.')
-            ->call('create')
+            ->assertSee('Posting…')
+            // The deadline field says where a schedule goes once its date has passed.
+            ->assertSee('Schedules only. Moves to Past deadlines after this date.')
             ->set('title', '  Schedule of Submission of Concept Proposals  ')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
             ->set('dueOn', '2026-11-15')
             ->set('memo', $this->memo())
             ->call('save')
-            ->assertHasNoErrors()
-            ->assertSee('Schedule of Submission of Concept Proposals');
+            ->assertHasNoErrors();
 
+        // Back on the list, at the new post.
         $announcement = Announcement::sole();
+        $form->assertRedirect(route('announcements.index', ['show' => $announcement->id]).'#announcement-'.$announcement->id);
         $this->assertSame('Schedule of Submission of Concept Proposals', $announcement->title);
         $this->assertSame('2026-11-15', $announcement->due_on->format('Y-m-d'));
         $this->assertSame('Memorandum No. 12, s. 2026.pdf', $announcement->attachment_name);
@@ -105,29 +121,30 @@ class AnnouncementsTest extends TestCase
     public function test_faculty_cannot_post_edit_or_delete(): void
     {
         $announcement = Announcement::factory()->create();
+        $faculty = User::factory()->create();
 
         // A fresh page for each try, since a refused call leaves the test component unusable.
-        $page = fn () => Livewire::actingAs(User::factory()->create())->test('pages::announcements.index');
+        $page = fn () => Livewire::actingAs($faculty)->test('pages::announcements.index');
 
         $page()->assertDontSeeHtml('data-test="post-announcement"')->assertDontSee('Open actions for');
-        $page()->call('create')->assertForbidden();
-        $page()->call('edit', $announcement->id)->assertForbidden();
         $page()->call('confirmDelete', $announcement->id)->assertForbidden();
-        $page()->set('title', 'Mine')->set('description', 'Mine')->call('save')->assertForbidden();
+        $this->actingAs($faculty)->get(route('announcements.create'))->assertForbidden();
+        $this->get(route('announcements.edit', $announcement))->assertForbidden();
         $this->assertSame(1, Announcement::count());
     }
 
     public function test_editing_replaces_or_removes_the_memo_and_its_file(): void
     {
         $disk = $this->fakeDrive();
-        $page = Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo('first.pdf'))->call('save');
+        $admin = $this->admin();
+        $this->form($admin)->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo('first.pdf'))->call('save');
         $first = Announcement::sole()->attachment_path;
 
-        // The current memo opens in the page's own viewer, to be checked without leaving the form.
-        $page->call('edit', Announcement::sole()->id)
+        // The current memo opens in the form page's own viewer, to be checked without leaving the form.
+        $this->form($admin, Announcement::sole())
             ->assertSee('Current memo: first.pdf')
             ->assertSee('Open memo full screen: first.pdf')
+            ->assertSeeHtml('data-test="memo-viewer"')
             ->set('memo', $this->memo('second.pdf'))
             ->call('save')
             ->assertHasNoErrors();
@@ -136,7 +153,7 @@ class AnnouncementsTest extends TestCase
         $disk->assertExists(Str::after($second, '/'));
         $this->assertSame('second.pdf', Announcement::sole()->attachment_name);
 
-        $page->call('edit', Announcement::sole()->id)->set('removeMemo', true)->call('save')->assertHasNoErrors();
+        $this->form($admin, Announcement::sole())->set('removeMemo', true)->call('save')->assertHasNoErrors();
         $this->assertNull(Announcement::sole()->attachment_path);
         $this->assertNull(Announcement::sole()->attachment_name);
         $disk->assertMissing(Str::after($second, '/'));
@@ -146,13 +163,16 @@ class AnnouncementsTest extends TestCase
     public function test_deleting_removes_the_announcement_and_its_memo(): void
     {
         $disk = $this->fakeDrive();
-        $page = Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Old memo')->set('description', 'No longer needed.')->set('memo', $this->memo())->call('save');
+        $admin = $this->admin();
+        $this->form($admin)->set('title', 'Old memo')->set('description', 'No longer needed.')->set('memo', $this->memo())->call('save');
         $announcement = Announcement::sole();
 
-        $page->call('confirmDelete', $announcement->id)
+        Livewire::actingAs($admin)->test('pages::announcements.index')
+            ->call('confirmDelete', $announcement->id)
             ->assertSee('Delete “Old memo”?')
-            ->assertSee('its memo will be removed from Google Drive')
+            ->assertSee('Memo deleted from Google Drive.')
+            // Cancel holds the focus as the dialog opens, so Enter never deletes by accident.
+            ->assertSeeHtml('autofocus')
             ->call('delete');
 
         $this->assertSame(0, Announcement::count());
@@ -160,26 +180,27 @@ class AnnouncementsTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'announcement.deleted', 'subject_label' => 'Old memo']);
     }
 
-    public function test_edit_and_delete_never_open_their_dialogs_together(): void
+    public function test_edit_opens_the_announcement_on_the_form_page(): void
     {
-        $announcement = Announcement::factory()->create();
+        $announcement = Announcement::factory()->create(['title' => 'Old title']);
+        $admin = $this->admin();
 
-        // Pressed one after the other before the first answers, as on a slow server, only the last dialog stays open.
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('edit', $announcement->id)
-            ->assertDispatched('modal-close', name: 'announcement-delete')
-            ->call('confirmDelete', $announcement->id)
-            ->assertDispatched('modal-close', name: 'announcement-form')
-            ->assertDispatched('modal-show', name: 'announcement-delete');
+        Livewire::actingAs($admin)->test('pages::announcements.index')
+            ->assertSee(route('announcements.edit', $announcement), false);
+
+        $this->actingAs($admin)->get(route('announcements.edit', $announcement))
+            ->assertOk()
+            ->assertSee('Old title')
+            ->assertSee('Save changes');
     }
 
     public function test_a_memo_that_cannot_be_stored_saves_nothing(): void
     {
         // No Google Drive storage account is connected.
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())
+        $this->form($this->admin())->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())
             ->call('save')
-            ->assertHasErrors(['memo']);
+            ->assertHasErrors(['memo'])
+            ->assertSee('Memo not saved. Google Drive is unavailable. Try again later.');
 
         $this->assertSame(0, Announcement::count());
     }
@@ -222,8 +243,7 @@ class AnnouncementsTest extends TestCase
     public function test_members_open_a_memo_under_its_own_name(): void
     {
         $disk = $this->fakeDrive();
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())->call('save');
+        $this->form($this->admin())->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())->call('save');
         $announcement = Announcement::sole();
 
         $this->actingAs(User::factory()->create())->get(route('announcements.memo', $announcement))
@@ -247,8 +267,7 @@ class AnnouncementsTest extends TestCase
         $admin = $this->admin();
         $otherAdmin = $this->admin();
 
-        $page = Livewire::actingAs($admin)->test('pages::announcements.index')
-            ->call('create')
+        $this->form($admin)
             ->set('title', 'Schedule of Submission of Concept Proposals')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
             ->set('dueOn', '2026-11-15')
@@ -285,8 +304,7 @@ class AnnouncementsTest extends TestCase
         $pending = User::factory()->pending()->create(['role' => 'staff']);
         $admin = $this->admin();
 
-        Livewire::actingAs($admin)->test('pages::announcements.index')
-            ->call('create')
+        $this->form($admin)
             ->set('title', 'Schedule of Submission of Concept Proposals')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
             ->set('dueOn', '2026-11-15')
@@ -304,8 +322,7 @@ class AnnouncementsTest extends TestCase
         $this->travelTo('2026-10-29 09:00');
         $faculty = User::factory()->create();
         $admin = $this->admin();
-        $page = Livewire::actingAs($admin)->test('pages::announcements.index')
-            ->call('create')
+        $this->form($admin)
             ->set('title', 'Schedule of Submission of Concept Proposals')
             ->set('description', 'Concept proposals for 2027 are due on the date below.')
             ->set('dueOn', '2026-11-15')
@@ -315,14 +332,12 @@ class AnnouncementsTest extends TestCase
 
         // Saving an edit that changed nothing tells no one, and the announcement isn't marked edited.
         $this->travelTo('2026-11-01 10:00');
-        $page->call('edit', $announcement->id)
-            ->call('save');
+        $this->form($admin, $announcement)->call('save');
         $this->assertSame(1, $faculty->notifications()->count());
         $this->assertStringNotContainsString('edited on', $this->actingAs($faculty)->get(route('announcements.index'))->getContent());
 
         // A moved deadline tells every faculty member, in its own words, with the same link as the post.
-        $this->actingAs($admin);
-        $page->call('edit', $announcement->id)->set('dueOn', '2026-11-20')->call('save');
+        $this->form($admin, $announcement->fresh())->set('dueOn', '2026-11-20')->call('save');
         $notice = $faculty->unreadNotifications()->sole();
         $this->assertSame('App\Notifications\AnnouncementUpdated', $notice->type);
         $this->assertSame('The Research Office has updated “Schedule of Submission of Concept Proposals”. The deadline is November 20, 2026.', $notice->data['message']);
@@ -347,9 +362,9 @@ class AnnouncementsTest extends TestCase
     {
         $faculty = User::factory()->create();
         Announcement::factory()->create(['title' => 'Already seen']);
-        $page = Livewire::actingAs($this->admin())->test('pages::announcements.index');
-        $page->call('create')->set('title', 'First schedule')->set('description', 'Due soon.')->call('save');
-        $page->call('create')->set('title', 'Second schedule')->set('description', 'Due later.')->call('save');
+        $admin = $this->admin();
+        $this->form($admin)->set('title', 'First schedule')->set('description', 'Due soon.')->call('save');
+        $this->form($admin)->set('title', 'Second schedule')->set('description', 'Due later.')->call('save');
         $first = Announcement::firstWhere('title', 'First schedule');
         $other = $faculty->notifications()->create(['id' => Str::uuid(), 'type' => 'App\Notifications\ProjectCompleted', 'data' => ['message' => 'Done.', 'url' => '/']]);
 
@@ -375,11 +390,11 @@ class AnnouncementsTest extends TestCase
     {
         $this->fakeDrive();
         $faculty = User::factory()->create();
-        $page = Livewire::actingAs($this->admin())->test('pages::announcements.index');
-        $page->call('create')->set('title', 'Text only')->set('description', 'Nothing attached.')->call('save');
-        $page->call('create')->set('title', 'With a poster')->set('description', 'See the poster.')
+        $admin = $this->admin();
+        $this->form($admin)->set('title', 'Text only')->set('description', 'Nothing attached.')->call('save');
+        $this->form($admin)->set('title', 'With a poster')->set('description', 'See the poster.')
             ->set('memo', UploadedFile::fake()->create('poster.png', 50, 'image/png'))->call('save');
-        $page->call('create')->set('title', 'With a PDF')->set('description', 'See the memo.')->set('memo', $this->memo())->call('save');
+        $this->form($admin)->set('title', 'With a PDF')->set('description', 'See the memo.')->set('memo', $this->memo())->call('save');
 
         // Only the one without a memo is read by being on screen; the others wait for their memo to be opened, by Show
         // image, Show memo, Open full screen, or downloading it.
@@ -398,8 +413,7 @@ class AnnouncementsTest extends TestCase
         $before = $version();
 
         $this->travel(1)->minute();
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Posted while the page was open')->set('description', 'Read me.')->call('save');
+        $this->form($this->admin())->set('title', 'Posted while the page was open')->set('description', 'Read me.')->call('save');
 
         // The sidebar's check every minute sees the version move, and the page draws the list again, the post marked New.
         $this->assertNotSame($before, $version());
@@ -422,22 +436,57 @@ class AnnouncementsTest extends TestCase
     {
         $faculty = User::factory()->create();
 
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Research Office closed on November 2')->set('description', 'The office reopens on November 3.')->call('save');
+        $this->form($this->admin())->set('title', 'Research Office closed on November 2')->set('description', 'The office reopens on November 3.')->call('save');
 
         $this->assertSame('The Research Office has posted “Research Office closed on November 2”.', $faculty->notifications()->sole()->data['message']);
     }
 
     public function test_the_form_says_what_to_fix(): void
     {
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')
+        $this->form($this->admin())
+            // Each field is checked as the admin leaves it, before Post is pressed.
             ->set('title', '   ')
+            ->assertHasErrors(['title' => 'required'])
+            ->assertHasNoErrors('description')
             ->set('memo', UploadedFile::fake()->create('memo.txt', 10, 'text/plain'))
+            ->assertHasErrors(['memo' => 'mimes'])
+            ->assertSee('Enter a title.')
+            ->assertSee('Use a PDF, a Word file or a JPG, PNG or WebP image.')
+            // Post checks the rest.
             ->call('save')
             ->assertHasErrors(['title' => 'required', 'description' => 'required', 'memo' => 'mimes'])
-            ->assertSee('Enter a title.')
-            ->assertSee('The memo must be a PDF, a Word file or an image (JPG, PNG or WebP).');
+            // A fixed field loses its error as the admin leaves it.
+            ->set('title', 'Fixed title')
+            ->assertHasNoErrors('title');
+
+        $this->assertSame(0, Announcement::count());
+    }
+
+    public function test_a_new_announcement_is_kept_as_a_draft_until_it_is_posted(): void
+    {
+        $admin = $this->admin();
+        $this->form($admin)
+            ->assertDontSeeHtml('data-test="draft-restored"')
+            ->set('title', 'Half written')
+            ->set('description', 'To be continued.')
+            // Typing a new one never calls it restored.
+            ->assertDontSeeHtml('data-test="draft-restored"');
+
+        // Opened again, as after a refresh, the form brings the text back and says so.
+        $this->form($admin)
+            ->assertSet('title', 'Half written')
+            ->assertSet('description', 'To be continued.')
+            ->assertSeeHtml('data-test="draft-restored"')
+            ->call('discardDraft')
+            ->assertSet('title', '')
+            ->assertDontSeeHtml('data-test="draft-restored"');
+        $this->form($admin)->assertSet('title', '');
+
+        // Posting clears it, and editing an announcement never touches it.
+        $this->form($admin)->set('title', 'Posted')->set('description', 'Done.')->call('save');
+        $this->form($admin)->assertSet('title', '');
+        $this->form($admin, Announcement::sole())->set('title', 'Edited');
+        $this->form($admin)->assertSet('title', '')->assertDontSeeHtml('data-test="draft-restored"');
     }
 
     public function test_each_kind_of_memo_previews_its_own_way(): void
@@ -510,8 +559,7 @@ class AnnouncementsTest extends TestCase
     {
         $this->fakeDrive();
         $admin = $this->admin();
-        $page = Livewire::actingAs($admin)->test('pages::announcements.index')
-            ->call('create')->set('title', 'Schedule')->set('description', 'See the poster.')
+        $this->form($admin)->set('title', 'Schedule')->set('description', 'See the poster.')
             ->set('memo', UploadedFile::fake()->create('poster.png', 50, 'image/png'))
             // The form no longer asks for a description.
             ->assertDontSee('Image description')
@@ -526,20 +574,18 @@ class AnnouncementsTest extends TestCase
         $announcement->forceFill(['attachment_alt' => 'Concept proposals are due on November 15, 2026.'])->save();
         $this->get(route('announcements.index'))
             ->assertSee('alt="Concept proposals are due on November 15, 2026. (opens the memo viewer)"', false);
-        $this->actingAs($admin);
-        $page->call('edit', $announcement->id)->set('title', 'Schedule, revised')->call('save');
+        $this->form($admin, $announcement->fresh())->set('title', 'Schedule, revised')->call('save');
         $this->assertSame('Concept proposals are due on November 15, 2026.', $announcement->fresh()->attachment_alt);
 
         // A new memo in its place drops it, since it described the old one.
-        $page->call('edit', $announcement->id)->set('memo', $this->memo())->call('save');
+        $this->form($admin, $announcement->fresh())->set('memo', $this->memo())->call('save');
         $this->assertNull($announcement->fresh()->attachment_alt);
     }
 
     public function test_a_memo_link_naming_its_version_is_kept_by_the_browser(): void
     {
         $this->fakeDrive();
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())->call('save');
+        $this->form($this->admin())->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo())->call('save');
         $announcement = Announcement::sole();
         $this->actingAs(User::factory()->create());
 
@@ -580,12 +626,12 @@ class AnnouncementsTest extends TestCase
         $this->travelTo('2026-10-29 09:00');
         $closed = Announcement::factory()->dueIn(-5)->create();
 
-        Livewire::actingAs($this->admin())->test('pages::announcements.index')
-            ->call('create')->set('title', 'Late schedule')->set('description', 'Due yesterday.')->set('dueOn', '2026-10-28')->call('save')
+        $admin = $this->admin();
+        $this->form($admin)->set('title', 'Late schedule')->set('description', 'Due yesterday.')->set('dueOn', '2026-10-28')
             ->assertHasErrors(['dueOn' => 'after_or_equal'])
-            ->assertSee('The deadline can’t be in the past. Enter today or a later date.')
-            ->set('dueOn', '2026-10-29')->call('save')->assertHasNoErrors()
-            ->call('edit', $closed->id)->set('title', 'Mid-year reports, corrected')->call('save')->assertHasNoErrors();
+            ->assertSee('Enter today or a later date.')
+            ->set('dueOn', '2026-10-29')->call('save')->assertHasNoErrors();
+        $this->form($admin, $closed)->set('title', 'Mid-year reports, corrected')->call('save')->assertHasNoErrors();
 
         $this->assertSame('Mid-year reports, corrected', $closed->fresh()->title);
     }

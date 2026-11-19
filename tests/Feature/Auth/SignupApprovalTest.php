@@ -45,7 +45,8 @@ class SignupApprovalTest extends TestCase
     public function test_the_waiting_page_learns_of_the_decision_without_a_reload(): void
     {
         $user = User::factory()->pending()->create();
-        $this->actingAs($user)->get(route('approval.notice'))->assertSeeHtml('data-test="approval-poll"');
+        // The check runs in the background, so it gives way to anything the member opens.
+        $this->actingAs($user)->get(route('approval.notice'))->assertSeeHtml('data-test="approval-poll"')->assertSeeHtml("priority: 'low'");
         $this->getJson(route('approval.notice'))->assertExactJson(['waiting' => true]);
 
         $user->forceFill(['approved_at' => now()])->save();

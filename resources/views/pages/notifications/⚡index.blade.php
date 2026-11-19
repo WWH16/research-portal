@@ -230,7 +230,7 @@ new #[Title('Notifications')] class extends Component {
     @if ($undo)
         <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="mt-4" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
             <x-slot name="actions">
-                <flux:button size="sm" wire:click="undoDelete">{{ __('Undo') }}</flux:button>
+                <flux:button size="sm" wire:click="undoDelete" class="max-sm:h-11">{{ __('Undo') }}</flux:button>
             </x-slot>
         </flux:callout>
     @endif
@@ -287,7 +287,7 @@ new #[Title('Notifications')] class extends Component {
                                 <span class="size-2 rounded-full bg-isu-gold-700" data-test="unread-dot" aria-hidden="true"></span>
                             @endunless
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :aria-label="__('Open actions for: :message', ['message' => $notification->data['message']])" class="max-sm:size-11" />
+                                <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :tooltip="__('Open actions')" :aria-label="__('Open actions for: :message', ['message' => $notification->data['message']])" class="max-sm:size-11" />
                                 <flux:menu>
                                     <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')" class="max-sm:min-h-11">
                                         {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}
@@ -302,7 +302,7 @@ new #[Title('Notifications')] class extends Component {
         @endforeach
 
         @if ($this->notifications->hasPages())
-            <flux:pagination :paginator="$this->notifications" class="mt-4" />
+            <flux:pagination :paginator="$this->notifications" class="mt-4 max-sm:[&_button]:size-11" />
         @endif
     @endif
 
@@ -318,7 +318,8 @@ new #[Title('Notifications')] class extends Component {
                 <flux:button variant="ghost" size="sm" icon="envelope" wire:click="toggleRead('{{ $notice->id }}')" x-on:click="$flux.modal('notice').close()" class="max-sm:h-11">{{ __('Mark as unread') }}</flux:button>
                 <flux:button variant="ghost" size="sm" icon="trash" wire:click="delete('{{ $notice->id }}')" class="max-sm:h-11">{{ __('Delete') }}</flux:button>
                 <flux:spacer />
-                <flux:button variant="primary" wire:click="open('{{ $notice->id }}')" class="max-sm:h-11">{{ __($action) }}</flux:button>
+                {{-- The focus starts on the notice's own action, so a keyboard user lands inside the dialog --}}
+                <flux:button variant="primary" wire:click="open('{{ $notice->id }}')" class="max-sm:h-11" autofocus>{{ __($action) }}</flux:button>
             </div>
         @endif
     </flux:modal>
@@ -327,10 +328,11 @@ new #[Title('Notifications')] class extends Component {
         <flux:heading size="lg">{{ trans_choice('{1} Delete 1 read notification?|[2,*] Delete :count read notifications?', $this->readCount) }}</flux:heading>
         <flux:text class="mt-2">{{ __('Unread notifications are kept. You can undo this for a few seconds.') }}</flux:text>
         <div class="mt-6 flex justify-end gap-2">
+            {{-- Cancel takes the focus as the dialog opens, so Enter never deletes by accident --}}
             <flux:modal.close>
-                <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
             </flux:modal.close>
-            <flux:button variant="danger" wire:click="deleteAllRead" data-test="confirm-delete-read">{{ __('Delete notifications') }}</flux:button>
+            <flux:button variant="danger" class="max-sm:h-11" wire:click="deleteAllRead" data-test="confirm-delete-read">{{ __('Delete notifications') }}</flux:button>
         </div>
     </flux:modal>
 </section>

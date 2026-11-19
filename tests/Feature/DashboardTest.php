@@ -405,14 +405,17 @@ class DashboardTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        Livewire::withQueryParams(['group' => 'delayed'])
+        $html = Livewire::withQueryParams(['group' => 'delayed'])
             ->test('pages::dashboard')
             ->assertSeeInOrder(['Jose Reyes', 'Just Late Study', 'Maria Santos', 'Late Study'])
             ->assertDontSee('days overdue')
             ->assertSeeHtml("writeText('{$maria->email}')")
             ->assertSeeHtml("message = 'Copied!'")
-            ->assertSeeHtml('role="status"')
-            ->assertSeeHtml('aria-label="Copy Maria Santos’s email"');
+            ->assertSeeHtml('aria-label="Copy Maria Santos’s email"')
+            ->html();
+
+        // The bubble is the button's neighbour, not its child, so screen readers read it.
+        $this->assertMatchesRegularExpression('~</button>\s*<span[^>]*role="status"~', $html);
     }
 
     public function test_the_monthly_chart_keeps_a_year_change_labelled_on_phones(): void

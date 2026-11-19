@@ -609,30 +609,44 @@ new #[Title('Dashboard')] class extends Component {
                                             {{ $member->department?->code ?? __('No college') }}
                                             @if ($group === 'delayed')
                                                 {{-- Delayed work needs a follow-up: one click copies the email, and a small bubble
-                                                     right above the icon confirms it where the admin is already looking --}}
-                                                <button
-                                                    type="button"
-                                                    x-data="{ copied: false, message: '' }"
-                                                    x-on:click="navigator.clipboard.writeText(@js($member->email)).then(
-                                                        () => { copied = true; message = @js(__('Copied!')) },
-                                                        () => { message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
-                                                    ).then(() => setTimeout(() => { copied = false; message = '' }, 1800))"
-                                                    class="relative shrink-0 rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
-                                                    title="{{ __('Copy :email', ['email' => $member->email]) }}"
-                                                    aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
-                                                    data-test="copy-email"
+                                                     right above the icon confirms it where the admin is already looking. The bubble
+                                                     sits beside the button, not in it, since a screen reader may not read a live
+                                                     region inside a button, and it stays in place and fades so the region is there
+                                                     before its message. A second click restarts the bubble's time. --}}
+                                                <span
+                                                    class="relative shrink-0"
+                                                    x-data="{
+                                                        copied: false,
+                                                        message: '',
+                                                        timer: null,
+                                                        copy() {
+                                                            clearTimeout(this.timer);
+                                                            this.message = '';
+                                                            navigator.clipboard.writeText(@js($member->email)).then(
+                                                                () => { this.copied = true; this.message = @js(__('Copied!')) },
+                                                                () => { this.copied = false; this.message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
+                                                            ).then(() => (this.timer = setTimeout(() => { this.copied = false; this.message = '' }, 1800)));
+                                                        },
+                                                    }"
                                                 >
-                                                    <flux:icon.envelope variant="micro" x-show="! copied" />
-                                                    <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
+                                                    <button
+                                                        type="button"
+                                                        x-on:click="copy()"
+                                                        class="relative rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
+                                                        title="{{ __('Copy :email', ['email' => $member->email]) }}"
+                                                        aria-label="{{ __('Copy :name’s email', ['name' => $member->name]) }}"
+                                                        data-test="copy-email"
+                                                    >
+                                                        <flux:icon.envelope variant="micro" x-show="! copied" />
+                                                        <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
+                                                    </button>
                                                     <span
-                                                        x-show="message"
-                                                        x-cloak
-                                                        x-transition.opacity
                                                         x-text="message"
+                                                        x-bind:class="message && 'opacity-100!'"
                                                         role="status"
-                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white shadow-md shadow-zinc-900/20"
+                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md shadow-zinc-900/20 transition-opacity"
                                                     ></span>
-                                                </button>
+                                                </span>
                                             @endif
                                         </p>
                                     </div>

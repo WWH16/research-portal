@@ -16,6 +16,7 @@ use Laravel\Passkeys\Passkeys;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use ParagonIE\ConstantTime\Base64UrlSafe;
 
 new #[Title('Security settings')] class extends Component {
     use PasswordValidationRules;
@@ -161,7 +162,7 @@ new #[Title('Security settings')] class extends Component {
     {
         return [
             'rpId' => Passkeys::relyingPartyId(),
-            'userId' => rtrim(strtr(base64_encode(auth()->user()->getPasskeyUserHandle()), '+/', '-_'), '='),
+            'userId' => Base64UrlSafe::encodeUnpadded(auth()->user()->getPasskeyUserHandle()),
         ];
     }
 

@@ -612,20 +612,18 @@ new #[Title('Dashboard')] class extends Component {
                                                      right above the icon confirms it where the admin is already looking. The bubble
                                                      sits beside the button, not in it, since a screen reader may not read a live
                                                      region inside a button, and it stays in place and fades so the region is there
-                                                     before its message. A second click restarts the bubble's time. --}}
+                                                     before its message. --}}
                                                 <span
                                                     class="relative shrink-0"
                                                     x-data="{
                                                         copied: false,
                                                         message: '',
-                                                        timer: null,
                                                         copy() {
-                                                            clearTimeout(this.timer);
                                                             this.message = '';
                                                             navigator.clipboard.writeText(@js($member->email)).then(
                                                                 () => { this.copied = true; this.message = @js(__('Copied!')) },
                                                                 () => { this.copied = false; this.message = @js(__('Couldn’t copy: :email', ['email' => $member->email])) },
-                                                            ).then(() => (this.timer = setTimeout(() => { this.copied = false; this.message = '' }, 1800)));
+                                                            ).then(() => setTimeout(() => { this.copied = false; this.message = '' }, 1800));
                                                         },
                                                     }"
                                                 >

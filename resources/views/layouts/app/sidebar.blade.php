@@ -28,7 +28,7 @@
             init() { this.timer = setInterval(() => document.hidden || this.idle() || this.refresh(), 60000) },
             destroy() { clearInterval(this.timer) },
             refresh() {
-                fetch(@js(route('open-work')), { headers: { Accept: 'application/json' } })
+                fetch(@js(route('open-work')), { headers: { Accept: 'application/json' }, priority: 'low' })
                     .then(response => {
                         if (response.status === 401) location.reload()
                         return response.ok ? response.json() : null

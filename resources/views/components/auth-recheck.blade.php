@@ -14,7 +14,7 @@
             this.lastActive = Date.now();
         },
         async check() {
-            const response = await fetch(@js(route('approval.notice', absolute: false)), { headers: { Accept: 'application/json' } }).catch(() => null);
+            const response = await fetch(@js(route('approval.notice', absolute: false)), { headers: { Accept: 'application/json' }, priority: 'low' }).catch(() => null);
             if (response?.status === 401 || (response?.ok && ({{ $when }}))) location.reload();
         },
     }"

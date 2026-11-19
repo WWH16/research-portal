@@ -124,6 +124,14 @@ class SidebarBadgesTest extends TestCase
         $this->getJson(route('open-work'))->assertUnauthorized();
     }
 
+    public function test_the_badge_refresh_gives_way_to_what_the_member_opens(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSeeHtml("{ headers: { Accept: 'application/json' }, priority: 'low' }");
+    }
+
     public function test_the_google_drive_link_warns_admins_when_storage_has_a_problem(): void
     {
         $admin = $this->admin();

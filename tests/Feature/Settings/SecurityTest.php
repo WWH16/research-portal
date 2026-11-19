@@ -162,4 +162,17 @@ class SecurityTest extends TestCase
 
         $this->assertTrue(Hash::check('password', $user->refresh()->password));
     }
+
+    public function test_the_setup_key_copy_button_is_named_and_reports_its_result(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::settings.two-factor-setup-modal', ['requiresConfirmation' => true])
+            ->dispatch('start-two-factor-setup')
+            ->assertSeeHtml('aria-label="Setup key"')
+            ->assertSeeHtml('aria-label="Copy setup key"')
+            ->assertSeeHtml('role="status"')
+            ->assertSee('Setup key copied.')
+            ->assertSee('The key could not be copied. Select the key and copy it instead.');
+    }
 }

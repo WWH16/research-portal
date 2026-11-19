@@ -261,47 +261,66 @@ new class extends Component {
                         </span>
                     </div>
 
+                    {{-- The message sits outside the button, since a screen reader may not read a live region inside one. A
+                         copy is announced; a failed one is also shown, so the member knows to copy the key by hand. --}}
                     <div
-                        class="flex items-center space-x-2"
                         x-data="{
                             copied: false,
+                            failed: false,
+                            timer: null,
                             async copy() {
+                                clearTimeout(this.timer);
                                 try {
                                     await navigator.clipboard.writeText('{{ $manualSetupKey }}');
+                                    this.failed = false;
                                     this.copied = true;
-                                    setTimeout(() => this.copied = false, 1500);
+                                    this.timer = setTimeout(() => this.copied = false, 1500);
                                 } catch (e) {
-                                    console.warn('Could not copy to clipboard');
+                                    this.copied = false;
+                                    this.failed = true;
                                 }
                             }
                         }"
                     >
-                        <div class="flex items-stretch w-full border rounded-xl dark:border-stone-700">
-                            @empty($manualSetupKey)
-                                <div class="flex items-center justify-center w-full p-3 bg-stone-100 dark:bg-stone-700">
-                                    <flux:icon.loading variant="mini"/>
-                                </div>
-                            @else
-                                <input
-                                    type="text"
-                                    readonly
-                                    value="{{ $manualSetupKey }}"
-                                    class="w-full p-3 bg-transparent outline-none text-stone-900 dark:text-stone-100"
-                                />
+                        <div class="flex items-center space-x-2">
+                            <div class="flex items-stretch w-full border rounded-xl dark:border-stone-700">
+                                @empty($manualSetupKey)
+                                    <div class="flex items-center justify-center w-full p-3 bg-stone-100 dark:bg-stone-700">
+                                        <flux:icon.loading variant="mini"/>
+                                    </div>
+                                @else
+                                    <input
+                                        type="text"
+                                        readonly
+                                        value="{{ $manualSetupKey }}"
+                                        aria-label="{{ __('Setup key') }}"
+                                        class="w-full p-3 bg-transparent outline-none text-stone-900 dark:text-stone-100"
+                                    />
 
-                                <button
-                                    @click="copy()"
-                                    class="px-3 transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
-                                >
-                                    <flux:icon.document-duplicate x-show="!copied" variant="outline"></flux:icon>
-                                    <flux:icon.check
-                                        x-show="copied"
-                                        variant="solid"
-                                        class="text-green-500"
-                                    ></flux:icon>
-                                </button>
-                            @endempty
+                                    <button
+                                        type="button"
+                                        @click="copy()"
+                                        aria-label="{{ __('Copy setup key') }}"
+                                        class="px-3 transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
+                                    >
+                                        <flux:icon.document-duplicate x-show="!copied" variant="outline"></flux:icon>
+                                        <flux:icon.check
+                                            x-show="copied"
+                                            variant="solid"
+                                            class="text-green-500"
+                                        ></flux:icon>
+                                    </button>
+                                @endempty
+                            </div>
                         </div>
+
+                        <p
+                            role="status"
+                            class="mt-2 text-sm text-red-600"
+                            x-bind:class="{ 'sr-only': ! failed }"
+                            x-text="failed ? @js(__('The key could not be copied. Select the key and copy it instead.')) : (copied ? @js(__('Setup key copied.')) : '')"
+                            data-test="setup-key-status"
+                        ></p>
                     </div>
                 </div>
             @endif

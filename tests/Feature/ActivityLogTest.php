@@ -143,15 +143,20 @@ class ActivityLogTest extends TestCase
         Livewire::test('pages::activity-log.index')
             ->assertSee('Signed in')
             ->assertSee('Capstone')
+            ->assertDontSeeHtml('data-test="active-filters"')
             ->set('group', 'filing')
+            ->assertSee('Type: '.ActivityLog::GROUPS['filing'])
             ->assertSee('Capstone')
             ->assertDontSee('Signed in')
             ->call('clearFilters')
             ->set('user', $maria->id)
-            ->assertSee('Showing activity for')
+            ->assertSee('Member: Maria Santos')
             ->assertSee('Signed in')
             ->assertDontSee('Capstone')
+            ->call('preset', 'week')
+            ->assertSee('Dates: '.now()->subDays(6)->format('M j, Y').' – '.now()->format('M j, Y'))
             ->call('clearFilters')
+            ->assertDontSeeHtml('data-test="active-filters"')
             ->set('search', 'capst')
             ->assertSee('Capstone')
             ->assertDontSee('Signed in')
@@ -300,6 +305,24 @@ class ActivityLogTest extends TestCase
             ->assertDontSee('New activity since you opened the log')
             ->assertSet('paginators.page', 1);
         $this->assertSame(ActivityLog::max('id'), $component->instance()->logs->first()->id);
+    }
+
+    public function test_the_page_buttons_are_named_and_stop_at_each_end(): void
+    {
+        foreach (range(1, 150) as $i) {
+            ActivityLog::record('auth.login', user: $this->admin);
+        }
+        // A button whose own tag carries the disabled attribute, not a class like disabled:opacity-75.
+        $disabled = fn (string $label) => '/<button\b[^>]*\sdisabled(?=[\s>=])[^>]*>(?:(?!<\/button>).)*?'.$label.'/s';
+        $this->actingAs($this->admin);
+
+        $page = Livewire::test('pages::activity-log.index')->assertSee(['Show newer', 'Show older']);
+        $this->assertMatchesRegularExpression($disabled('Show newer'), $page->html());
+        $this->assertDoesNotMatchRegularExpression($disabled('Show older'), $page->html());
+
+        $page->call('nextPage');
+        $this->assertDoesNotMatchRegularExpression($disabled('Show newer'), $page->html());
+        $this->assertMatchesRegularExpression($disabled('Show older'), $page->html());
     }
 
     public function test_a_page_reads_the_log_in_one_query_without_counting_it(): void

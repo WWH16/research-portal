@@ -155,17 +155,7 @@ new #[Title('Activity log')] class extends Component {
     private function filtered(bool $pinned = true): Builder
     {
         $search = trim($this->search);
-        // A half-typed, impossible or hand-edited date in the URL is ignored, and a reversed range is swapped.
-        $date = function (string $value) {
-            $parsed = rescue(fn () => Date::createFromFormat('!Y-m-d', $value), null, false);
-
-            return $parsed && $parsed->format('Y-m-d') === $value ? $parsed : null;
-        };
-        [$from, $to] = [$date($this->from), $date($this->to)];
-
-        if ($from && $to && $from->greaterThan($to)) {
-            [$from, $to] = [$to, $from];
-        }
+        [$from, $to] = $this->range();
 
         return ActivityLog::query()
             ->when($pinned && $this->until !== null, fn ($query) => $query->where('id', '<=', $this->until))
@@ -185,6 +175,24 @@ new #[Title('Activity log')] class extends Component {
     }
 
     /**
+     * The date range as dates, new on each call. A half-typed, impossible or hand-edited date in the URL is ignored,
+     * and a reversed range is swapped.
+     *
+     * @return array{0: \Illuminate\Support\Carbon|null, 1: \Illuminate\Support\Carbon|null}
+     */
+    public function range(): array
+    {
+        $date = function (string $value) {
+            $parsed = rescue(fn () => Date::createFromFormat('!Y-m-d', $value), null, false);
+
+            return $parsed && $parsed->format('Y-m-d') === $value ? $parsed : null;
+        };
+        [$from, $to] = [$date($this->from), $date($this->to)];
+
+        return $from && $to && $from->greaterThan($to) ? [$to, $from] : [$from, $to];
+    }
+
+    /**
      * The member the log is narrowed to, or null when their account has since been deleted.
      */
     #[Computed]
@@ -197,76 +205,98 @@ new #[Title('Activity log')] class extends Component {
 <section class="mx-auto w-full max-w-5xl">
     <x-page-title :subtitle="__('Who did what in the portal, newest first.')">{{ __('Activity log') }}</x-page-title>
 
-    <div class="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <flux:input
-            wire:model.live.debounce.300ms="search"
-            icon="magnifying-glass"
-            :placeholder="__('Search names, titles or email addresses')"
-            :aria-label="__('Search activity')"
-            clearable
-            class="lg:flex-1"
-        />
-
-        <flux:select wire:model.live="group" :aria-label="__('Filter by type of activity')" class="lg:max-w-52">
-            <flux:select.option value="">{{ __('All activity') }}</flux:select.option>
-            @foreach (ActivityLog::GROUPS as $key => $label)
-                <flux:select.option :value="$key">{{ __($label) }}</flux:select.option>
-            @endforeach
-        </flux:select>
-
-        <div class="flex items-center gap-2" data-test="date-range">
-            <flux:input type="date" wire:model.live.debounce.500ms="from" :max="$to ?: null" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
-            <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
-            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from ?: null" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
-
-            <flux:dropdown position="bottom" align="end">
-                <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" />
-                <flux:menu>
-                    <flux:menu.item wire:click="preset('today')">{{ __('Today') }}</flux:menu.item>
-                    <flux:menu.item wire:click="preset('week')">{{ __('Last 7 days') }}</flux:menu.item>
-                    <flux:menu.item wire:click="preset('month')">{{ __('Last 30 days') }}</flux:menu.item>
-                    <flux:menu.separator />
-                    <flux:menu.item wire:click="preset('any')">{{ __('Any time') }}</flux:menu.item>
-                </flux:menu>
-            </flux:dropdown>
+    {{-- Search, then one Filter button that opens every other filter in place. The panel stays open while its fields
+         redraw the log, and what is set shows as chips under the toolbar, each one click to remove --}}
+    <div class="mt-6" x-data="{ filters: false }">
+        {{-- A grid, not flex: with a label, Flux wraps the input in a field that a flex-1 on the input never reaches --}}
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+            <flux:input
+                wire:model.live.debounce.300ms="search"
+                icon="magnifying-glass"
+                :label="__('Search names, titles or emails')"
+                {{-- An example, and Flux hides the clear button only while a placeholder shows --}}
+                :placeholder="__('e.g. Research Office')"
+                clearable
+                class:input="max-sm:h-11"
+            />
+            <flux:button icon="funnel" x-on:click="filters = ! filters" x-bind:aria-expanded="filters" aria-controls="activity-filters" class="max-sm:h-11">{{ __('Filter') }}</flux:button>
         </div>
+
+        <div id="activity-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 lg:grid-cols-[13rem_minmax(0,22rem)_1fr]">
+            <flux:select wire:model.live="group" :label="__('Type of activity')" class="max-sm:h-11">
+                <flux:select.option value="">{{ __('All activity') }}</flux:select.option>
+                @foreach (ActivityLog::GROUPS as $key => $label)
+                    <flux:select.option :value="$key">{{ __($label) }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            {{-- min-w-0 lets the date fields share a phone's width instead of keeping their natural size --}}
+            <div class="grid min-w-0 grid-cols-2 gap-3" data-test="date-range">
+                <flux:input type="date" wire:model.live.debounce.500ms="from" :max="$to ?: null" :label="__('From')" class="min-w-0" class:input="max-sm:h-11" />
+                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from ?: null" :label="__('To')" class="min-w-0" class:input="max-sm:h-11" />
+            </div>
+
+            <div role="group" aria-labelledby="quick-ranges">
+                <flux:label id="quick-ranges">{{ __('Quick range') }}</flux:label>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach (['today' => 'Today', 'week' => 'Last 7 days', 'month' => 'Last 30 days', 'any' => 'Any time'] as $key => $label)
+                        <flux:button size="sm" wire:click="preset('{{ $key }}')" class="max-sm:h-11">{{ __($label) }}</flux:button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        {{-- Each set filter, keyed by the action that removes it --}}
+        @php([$rangeFrom, $rangeTo] = $this->range())
+        @php($chips = array_filter([
+            "\$set('group', '')" => isset(ActivityLog::GROUPS[$group]) ? __('Type: :type', ['type' => __(ActivityLog::GROUPS[$group])]) : null,
+            "preset('any')" => match (true) {
+                $rangeFrom && $rangeTo => __('Dates: :from – :to', ['from' => $rangeFrom->format('M j, Y'), 'to' => $rangeTo->format('M j, Y')]),
+                (bool) $rangeFrom => __('Dates: from :from', ['from' => $rangeFrom->format('M j, Y')]),
+                (bool) $rangeTo => __('Dates: until :to', ['to' => $rangeTo->format('M j, Y')]),
+                default => null,
+            },
+            "\$set('user', null)" => $user ? __('Member: :name', ['name' => $this->person?->name ?? __('a deleted account')]) : null,
+        ]))
+        @if ($chips)
+            <div class="mt-3 flex flex-wrap items-center gap-2" data-test="active-filters">
+                @foreach ($chips as $remove => $chip)
+                    <flux:button size="sm" variant="filled" icon:trailing="x-mark" wire:click="{{ $remove }}" :aria-label="__('Remove filter: :filter', ['filter' => $chip])" class="max-sm:h-11">{{ $chip }}</flux:button>
+                @endforeach
+                <flux:button size="sm" variant="ghost" wire:click="clearFilters" class="max-sm:h-11">{{ __('Clear all') }}</flux:button>
+            </div>
+        @endif
     </div>
-
-    @if ($user)
-        <div class="mt-3 flex items-center gap-2 text-sm text-zinc-600" data-test="person-filter">
-            {{ __('Showing activity for') }}
-            <flux:badge size="sm">
-                {{ $this->person?->name ?? __('a deleted account') }}
-                <flux:badge.close wire:click="$set('user', null)" :aria-label="__('Show everyone')" />
-            </flux:badge>
-        </div>
-    @endif
 
     {{-- The log stays as it was when opened, so new entries never shift the page being read; this says they exist --}}
     @if ($this->hasNew)
         <div class="mt-3 flex items-center gap-3 text-sm text-zinc-600" data-test="new-activity">
             {{ __('New activity since you opened the log.') }}
-            <flux:button size="sm" wire:click="showNew">{{ __('Show new activity') }}</flux:button>
+            <flux:button size="sm" wire:click="showNew" class="max-sm:h-11">{{ __('Show new activity') }}</flux:button>
         </div>
     @endif
 
     @if ($this->logs->isEmpty())
-        <div class="mt-6 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-            @if ($this->logs->currentPage() > 1)
-                <flux:heading>{{ __('This page is past the end of the log') }}</flux:heading>
-                <flux:button variant="ghost" size="sm" class="mt-4" wire:click="resetPage">{{ __('Go to the first page') }}</flux:button>
-            @elseif (trim($search) !== '' || $group || $from || $to || $user)
-                <flux:heading>{{ __('No activity matches these filters') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Try a different search or type of activity, or widen the date range.') }}</flux:text>
-                <flux:button variant="ghost" size="sm" class="mt-4" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
-            @else
-                <flux:heading>{{ __('No activity recorded yet') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Entries appear here as members sign in and make changes in the portal.') }}</flux:text>
-            @endif
-        </div>
+        @if ($this->logs->currentPage() > 1)
+            <x-empty-state icon="queue-list" :heading="__('This page is past the end of the log')" class="mt-6">
+                <flux:button variant="ghost" size="sm" wire:click="resetPage" class="max-sm:h-11">{{ __('Go to the first page') }}</flux:button>
+            </x-empty-state>
+        @elseif (trim($search) !== '' || $group || $from || $to || $user)
+            <x-empty-state icon="funnel" :heading="__('No activity matches these filters')" :text="__('Try a different search or type of activity, or widen the date range.')" class="mt-6">
+                <flux:button variant="ghost" size="sm" wire:click="clearFilters" class="max-sm:h-11">{{ __('Clear filters') }}</flux:button>
+            </x-empty-state>
+        @else
+            <x-empty-state icon="clock" :heading="__('No activity recorded yet')" :text="__('Entries appear here as members sign in and make changes in the portal.')" class="mt-6" />
+        @endif
     @else
-        {{-- Runs open in place through Alpine, so expanding one costs no request and survives filter redraws --}}
-        <flux:table class="mt-4" :paginate="$this->logs" x-data="{ open: {} }">
+        {{-- Runs open in place through Alpine, so expanding one costs no request and survives filter redraws. Framed like
+             the portal's other lists; the first and last cells pad in from the frame, as Flux's bleed tables do. The
+             frame is relative so screen-reader-only text in far columns stays inside it instead of widening a phone's page --}}
+        <flux:table
+            container:class="relative mt-4 overflow-hidden rounded-xl border border-line bg-surface"
+            class="[&_[data-flux-cell]:first-child]:ps-4 [&_[data-flux-cell]:last-child]:pe-4 [&_[data-flux-column]:first-child]:ps-4 [&_[data-flux-column]:last-child]:pe-4"
+            x-data="{ open: {} }"
+        >
             <flux:table.columns>
                 <flux:table.column class="w-36">{{ __('When') }}</flux:table.column>
                 <flux:table.column class="w-48">{{ __('Member') }}</flux:table.column>
@@ -292,7 +322,7 @@ new #[Title('Activity log')] class extends Component {
                         <flux:table.row :key="'run-'.$runId">
                             <flux:table.cell class="tabular-nums text-zinc-800">{{ ActivityLog::runSpan($run) }}</flux:table.cell>
                             <flux:table.cell colspan="3">
-                                <button type="button" x-on:click="open[{{ $runId }}] = ! open[{{ $runId }}]" x-bind:aria-expanded="open[{{ $runId }}] ? 'true' : 'false'" aria-expanded="false" class="flex items-center gap-2 text-zinc-600 hover:text-zinc-800">
+                                <button type="button" x-on:click="open[{{ $runId }}] = ! open[{{ $runId }}]" x-bind:aria-expanded="open[{{ $runId }}] ? 'true' : 'false'" aria-expanded="false" class="flex items-center gap-2 text-zinc-600 hover:text-zinc-800 max-sm:min-h-11">
                                     <flux:icon.chevron-right variant="micro" class="transition-transform motion-reduce:transition-none" x-bind:class="open[{{ $runId }}] && 'rotate-90'" />
                                     {{ ActivityLog::runSummary($run) }}
                                     @if ($continued)
@@ -339,7 +369,9 @@ new #[Title('Activity log')] class extends Component {
                                 @if ($subject = $log->subject())
                                     <p class="truncate text-zinc-800" title="{{ $subject }}">
                                         @if ($url = $log->subjectUrl())
-                                            <a href="{{ $url }}" wire:navigate>{{ $subject }}</a>
+                                            {{-- A box of its own, so on phones it can stand 44px tall and still end in an ellipsis; the
+                                                 underline sits closer than Flux's, inside the one-line box that clips it --}}
+                                            <flux:link :href="$url" wire:navigate class="inline-block max-w-full truncate align-top underline-offset-2! max-sm:min-w-11 max-sm:py-3">{{ $subject }}</flux:link>
                                         @else
                                             {{ $subject }}
                                         @endif
@@ -348,10 +380,10 @@ new #[Title('Activity log')] class extends Component {
 
                                 @php([$change, $note] = [$log->change(), $log->note()])
                                 @if ($change || $note)
-                                    <p class="whitespace-normal break-words text-xs text-zinc-500">
+                                    <p class="whitespace-normal break-words text-sm text-zinc-500">
                                         @if ($change)
                                             {{ $change[0] }}
-                                            <flux:icon.arrow-right variant="micro" class="inline size-3 align-[-2px]" />
+                                            <flux:icon.arrow-right variant="micro" class="inline size-3.5 align-[-3px]" />
                                             <span class="sr-only">{{ __('to') }}</span>
                                             <span class="font-medium text-zinc-700">{{ $change[1] }}</span>
                                             @if ($note)
@@ -363,7 +395,7 @@ new #[Title('Activity log')] class extends Component {
                                 @endif
 
                                 @if ($remarks = $log->remarks())
-                                    <p class="mt-0.5 line-clamp-2 whitespace-normal wrap-anywhere text-xs text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                                    <p class="mt-0.5 line-clamp-2 whitespace-normal wrap-anywhere text-sm text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
                                 @endif
 
                                 @if (! $subject && ! $change && ! $note)
@@ -375,5 +407,12 @@ new #[Title('Activity log')] class extends Component {
                 @endforeach
             </flux:table.rows>
         </flux:table>
+
+        {{-- Named buttons, as Flux's arrows for a log with no page count have no names for screen readers. Newest
+             first, so the previous page holds newer entries --}}
+        <div class="mt-4 flex justify-end gap-2" x-on:click="$el.closest('section').scrollIntoView()">
+            <flux:button size="sm" icon="chevron-left" wire:click="previousPage" :disabled="$this->logs->onFirstPage()" class="max-sm:h-11">{{ __('Show newer') }}</flux:button>
+            <flux:button size="sm" icon:trailing="chevron-right" wire:click="nextPage" :disabled="! $this->logs->hasMorePages()" class="max-sm:h-11">{{ __('Show older') }}</flux:button>
+        </div>
     @endif
 </section>

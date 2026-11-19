@@ -226,9 +226,12 @@ new #[Title('Notifications')] class extends Component {
         </x-slot:actions>
     </x-page-title>
 
-    {{-- Offered for 10 seconds; the deleted notices wait a little longer in the cache, so a late click still works --}}
+    {{-- Offered for 10 seconds; the deleted notices wait a little longer in the cache, so a late click still works. It
+         floats at the foot of the screen, so it shows wherever the member had scrolled to: above the rows' menus (z-10),
+         under the phone sidebar and its backdrop (z-20). Not Flux::toast(): its toasts
+         stay on screen after a move to another page, where Undo would do nothing, and pause on hover past the cache --}}
     @if ($undo)
-        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="mt-4" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
+        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="fixed inset-x-4 bottom-4 z-15 shadow-lg/5 sm:start-auto sm:end-6 sm:bottom-6 sm:w-lg" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
             <x-slot name="actions">
                 <flux:button size="sm" wire:click="undoDelete" class="max-sm:h-11">{{ __('Undo') }}</flux:button>
             </x-slot>
@@ -272,7 +275,8 @@ new #[Title('Notifications')] class extends Component {
                         <flux:icon :icon="$icon" @class(['mt-0.5 size-5 shrink-0', 'text-zinc-400' => $notification->read_at, 'text-isu-green-700' => ! $notification->read_at]) />
 
                         <div class="min-w-0 flex-1">
-                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" class="block text-start no-underline! after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent">
+                            {{-- The subject and message dim if opening takes longer than 150ms, so a slow open still answers the tap --}}
+                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" class="block text-start no-underline! transition-opacity ease-out data-loading:opacity-60 data-loading:delay-150 after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent">
                                 @unless ($notification->read_at)
                                     <span class="sr-only">{{ __('Unread:') }}</span>
                                 @endunless
@@ -282,7 +286,8 @@ new #[Title('Notifications')] class extends Component {
                             <p class="mt-1 text-xs text-zinc-600">{{ $notification->created_at->diffForHumans() }}</p>
                         </div>
 
-                        <div class="absolute end-2 top-2 z-10 flex items-center gap-2">
+                        {{-- On phones the 44px menu starts at the row's top edge, so its dots stay level with the subject --}}
+                        <div class="absolute end-2 top-2 z-10 flex items-center gap-2 max-sm:top-0">
                             @unless ($notification->read_at)
                                 <span class="size-2 rounded-full bg-isu-gold-700" data-test="unread-dot" aria-hidden="true"></span>
                             @endunless
@@ -318,8 +323,9 @@ new #[Title('Notifications')] class extends Component {
                 <flux:button variant="ghost" size="sm" icon="envelope" wire:click="toggleRead('{{ $notice->id }}')" x-on:click="$flux.modal('notice').close()" class="max-sm:h-11">{{ __('Mark as unread') }}</flux:button>
                 <flux:button variant="ghost" size="sm" icon="trash" wire:click="delete('{{ $notice->id }}')" class="max-sm:h-11">{{ __('Delete') }}</flux:button>
                 <flux:spacer />
-                {{-- The focus starts on the notice's own action, so a keyboard user lands inside the dialog --}}
-                <flux:button variant="primary" wire:click="open('{{ $notice->id }}')" class="max-sm:h-11" autofocus>{{ __($action) }}</flux:button>
+                {{-- The focus starts on the notice's own action, so a keyboard user lands inside the dialog. Phones have no
+                     room for all three buttons on one row, so it takes a full-width row of its own --}}
+                <flux:button variant="primary" wire:click="open('{{ $notice->id }}')" class="max-sm:h-11 max-sm:w-full" autofocus>{{ __($action) }}</flux:button>
             </div>
         @endif
     </flux:modal>

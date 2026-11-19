@@ -19,6 +19,13 @@ class AuthenticationTest extends TestCase
         $response->assertDontSee('Sign in with a passkey');
     }
 
+    public function test_the_email_field_offers_saved_passwords_and_passkeys(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSeeHtml('autocomplete="username webauthn"');
+    }
+
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();

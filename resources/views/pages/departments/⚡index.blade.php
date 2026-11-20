@@ -166,7 +166,7 @@ new #[Title('Colleges')] class extends Component {
             <flux:button icon="plus" wire:click="create" class="max-sm:h-11">{{ __('Add the first college') }}</flux:button>
         </x-empty-state>
     @else
-        <flux:table class="mt-4">
+        <flux:table container:class="mt-4 table-frame">
             <flux:table.columns>
                 <flux:table.column class="w-28">{{ __('Code') }}</flux:table.column>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
@@ -184,11 +184,11 @@ new #[Title('Colleges')] class extends Component {
                         <flux:table.cell align="end" class="tabular-nums">{{ $department->submissions_count }}</flux:table.cell>
                         <flux:table.cell>
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Open actions for :name', ['name' => $department->code])" />
+                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :tooltip="__('Open actions')" class="max-sm:size-11" :aria-label="__('Open actions for :name', ['name' => $department->code])" />
 
                                 <flux:menu>
-                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $department->id }})">{{ __('Edit') }}</flux:menu.item>
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $department->id }})">{{ __('Delete') }}</flux:menu.item>
+                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $department->id }})" class="max-sm:min-h-11">{{ __('Edit') }}</flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $department->id }})" class="max-sm:min-h-11">{{ __('Delete') }}</flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>
                         </flux:table.cell>
@@ -202,15 +202,15 @@ new #[Title('Colleges')] class extends Component {
         <form wire:submit="save" class="flex flex-col gap-6">
             <flux:heading size="lg">{{ $editingId ? __('Edit college') : __('New college') }}</flux:heading>
 
-            <flux:input wire:model="code" :label="__('Code')" :description:trailing="__('Short label, like CCS. Letters, numbers, dashes.')" type="text" maxlength="20" class:input="uppercase" required autofocus />
+            <flux:input wire:model="code" :label="__('Code')" :description:trailing="__('Short label, like CCS. Letters, numbers, dashes.')" type="text" maxlength="20" class:input="uppercase max-sm:h-11" required autofocus />
 
-            <flux:input wire:model="name" :label="__('Name')" type="text" maxlength="150" required />
+            <flux:input wire:model="name" :label="__('Name')" type="text" maxlength="150" required class:input="max-sm:h-11" />
 
             <div class="flex justify-end gap-2">
                 <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                    <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="primary" data-test="save-department-button">
+                <flux:button type="submit" variant="primary" data-test="save-department-button" class="max-sm:h-11">
                     {{ $editingId ? __('Save changes') : __('Add college') }}
                 </flux:button>
             </div>
@@ -235,10 +235,10 @@ new #[Title('Colleges')] class extends Component {
 
                 <div class="flex justify-end gap-2">
                     <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @unless ($this->deletingBlocker)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-department-button">{{ __('Delete college') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-department-button" class="max-sm:h-11">{{ __('Delete college') }}</flux:button>
                     @endunless
                 </div>
             </div>

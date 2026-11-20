@@ -202,7 +202,7 @@ new #[Title('Colleges')] class extends Component {
         <form wire:submit="save" class="flex flex-col gap-6">
             <flux:heading size="lg">{{ $editingId ? __('Edit college') : __('New college') }}</flux:heading>
 
-            <flux:input wire:model="code" :label="__('Code')" :description:trailing="__('Short label, like CCS. Letters, numbers, dashes.')" type="text" maxlength="20" class:input="uppercase max-sm:h-11" required autofocus />
+            <flux:input wire:model="code" :label="__('Code')" :description:trailing="__('Short label, like CCS. Letters, numbers, dashes.')" type="text" maxlength="20" class:input="uppercase tracking-wide max-sm:h-11" required autofocus />
 
             <flux:input wire:model="name" :label="__('Name')" type="text" maxlength="150" required class:input="max-sm:h-11" />
 

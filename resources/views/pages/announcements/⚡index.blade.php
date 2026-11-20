@@ -334,7 +334,7 @@ new #[Title('Announcements')] class extends Component {
                                     {{-- After the title, so a screen reader hears it first; the mark goes once it is read. The title
                                          is in ink and a step bolder than the text, not the portal's green heading colour, so the
                                          green on a post is left to mark an open deadline. --}}
-                                    <flux:heading size="lg" level="3" class="text-lg! leading-tight! font-semibold! text-balance wrap-anywhere text-zinc-900!">
+                                    <flux:heading size="lg" level="3" class="text-lg! leading-tight! font-semibold! wrap-anywhere text-zinc-900!">
                                         {{ $announcement->title }}
                                         {{-- Under the pointer, the mark says what clears it --}}
                                         @if ($isNew)

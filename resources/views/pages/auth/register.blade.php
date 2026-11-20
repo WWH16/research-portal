@@ -72,7 +72,7 @@
                     {{ __('Create account') }}
                 </flux:button>
 
-                <p class="text-center text-xs leading-5 text-pretty text-zinc-600 dark:text-zinc-400">
+                <p class="text-center text-xs text-zinc-600 dark:text-zinc-400">
                     {{ __('By creating an account, you agree to the') }}
                     <flux:link :href="route('terms')">{{ __('Terms of Service') }}</flux:link>
                     {{ __('and') }}

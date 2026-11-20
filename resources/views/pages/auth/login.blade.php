@@ -19,43 +19,46 @@
         >
             @csrf
 
-            <!-- Email Address -->
-            {{-- username is what password managers save the account under; webauthn is where they offer saved passkeys --}}
-            <flux:input
-                name="email"
-                :label="__('Email address')"
-                :value="old('email')"
-                type="email"
-                required
-                :autofocus="! $errors->has('email')"
-                autocomplete="username webauthn"
-                placeholder="name_cyn@isu.edu.ph"
-            />
-
-            <!-- Password -->
-            {{-- The reset link shares the label's row in normal flow, so it wraps under the label when text is enlarged
-                 and its tab position matches where it sits on screen. --}}
-            <flux:field>
-                <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <flux:label>{{ __('Password') }}</flux:label>
-
-                    <flux:link class="text-sm relative max-sm:before:absolute max-sm:before:-inset-x-1 max-sm:before:-inset-y-3.5" :href="route('password.request')" wire:navigate>
-                        {{ __('Reset password') }}
-                    </flux:link>
-                </div>
-
+            {{-- The two fields the details are checked against, shaken once together when they are wrong --}}
+            <div class="flex flex-col gap-6" @if ($errors->has('email')) data-shake @endif>
+                <!-- Email Address -->
+                {{-- username is what password managers save the account under; webauthn is where they offer saved passkeys --}}
                 <flux:input
-                    name="password"
-                    type="password"
+                    name="email"
+                    :label="__('Email address')"
+                    :value="old('email')"
+                    type="email"
                     required
-                    :invalid="$errors->has('email')"
-                    :autofocus="$errors->has('email')"
-                    autocomplete="current-password"
-                    viewable
+                    :autofocus="! $errors->has('email')"
+                    autocomplete="username webauthn"
+                    placeholder="name_cyn@isu.edu.ph"
                 />
 
-                <flux:error name="password" />
-            </flux:field>
+                <!-- Password -->
+                {{-- The reset link shares the label's row in normal flow, so it wraps under the label when text is enlarged
+                     and its tab position matches where it sits on screen. --}}
+                <flux:field>
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                        <flux:label>{{ __('Password') }}</flux:label>
+
+                        <flux:link class="text-sm relative max-sm:before:absolute max-sm:before:-inset-x-1 max-sm:before:-inset-y-3.5" :href="route('password.request')" wire:navigate>
+                            {{ __('Reset password') }}
+                        </flux:link>
+                    </div>
+
+                    <flux:input
+                        name="password"
+                        type="password"
+                        required
+                        :invalid="$errors->has('email')"
+                        :autofocus="$errors->has('email')"
+                        autocomplete="current-password"
+                        viewable
+                    />
+
+                    <flux:error name="password" />
+                </flux:field>
+            </div>
 
             <!-- Remember Me -->
             {{-- Spelled out, so the label can stand 44px tall on a phone and the whole row takes the tap --}}

@@ -669,18 +669,20 @@ form[aria-busy='true'] [data-flux-field] {
     }
 }
 
-/* x-code-input: a wrong code turns the six boxes red, and shakes them once for members who allow motion. */
+/* A wrong answer shakes once, for members who allow motion: x-code-input's six boxes after a wrong code, and any
+   [data-shake] group, such as the sign-in fields after wrong details. x-code-input also turns its boxes red. */
 [data-code-input][data-invalid] [data-flux-otp-input] {
     border-color: var(--color-red-600);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-    [data-code-input][data-invalid] [data-flux-otp] {
-        animation: code-shake 320ms ease-out;
+    [data-code-input][data-invalid] [data-flux-otp],
+    [data-shake] {
+        animation: wrong-shake 320ms ease-out;
     }
 }
 
-@keyframes code-shake {
+@keyframes wrong-shake {
     20%,
     60% {
         translate: -0.25rem 0;

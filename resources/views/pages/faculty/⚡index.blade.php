@@ -85,20 +85,25 @@ new #[Title('Faculty publications')] class extends Component {
          content starts at the top --}}
     <flux:heading level="1" class="sr-only">{{ __('Faculty publications') }}</flux:heading>
 
-    <div class="mt-6 flex items-center gap-3">
+    {{-- Labelled search and college, side by side on wider screens; the placeholder is an example, and Flux hides the
+         clear button only while one shows --}}
+    <div class="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-end">
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
-            :placeholder="__('Search name or researcher ID')"
-            :aria-label="__('Search faculty')"
+            :label="__('Search name or researcher ID')"
+            :placeholder="__('e.g. ISU-2026-0001')"
             clearable
-            class="flex-1"
+            class:input="max-sm:h-11"
         />
 
-        {{-- Phones drop the College column, so its filter comes up here beside the search --}}
-        <div class="sm:hidden" data-test="phone-college-filter">
-            <x-college-filter model="college" :value="$college" with-none />
-        </div>
+        <flux:select wire:model.live="college" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
+            <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+            <flux:select.option value="none">{{ __('No college') }}</flux:select.option>
+            @foreach (\App\Models\Department::orderBy('code')->pluck('code') as $code)
+                <flux:select.option :value="$code">{{ $code }}</flux:select.option>
+            @endforeach
+        </flux:select>
     </div>
 
     @if ($this->faculty->isEmpty())
@@ -112,12 +117,10 @@ new #[Title('Faculty publications')] class extends Component {
     @else
         {{-- Each sortable header says which way it sorts, for screen readers as well as by its arrow --}}
         @php($ariaSort = fn (string $column) => $sortBy === $column ? ($sortDirection === 'desc' ? 'descending' : 'ascending') : 'none')
-        <flux:table class="mt-4" :paginate="$this->faculty" data-test="faculty-table">
+        <flux:table container:class="mt-4 table-frame" :paginate="$this->faculty" pagination:class="max-sm:[&_button]:size-11" data-test="faculty-table">
             <flux:table.columns>
                 <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" :aria-sort="$ariaSort('name')" wire:click="sort('name')">{{ __('Name') }}</flux:table.column>
-                <flux:table.column class="max-sm:hidden">
-                    <x-college-filter model="college" :value="$college" with-none />
-                </flux:table.column>
+                <flux:table.column class="max-sm:hidden">{{ __('College') }}</flux:table.column>
                 <flux:table.column align="end" sortable :sorted="$sortBy === 'publications'" :direction="$sortDirection" :aria-sort="$ariaSort('publications')" wire:click="sort('publications')">{{ __('Publications') }}</flux:table.column>
                 <flux:table.column align="end" sortable :sorted="$sortBy === 'citations'" :direction="$sortDirection" :aria-sort="$ariaSort('citations')" wire:click="sort('citations')">{{ __('Citations') }}</flux:table.column>
             </flux:table.columns>

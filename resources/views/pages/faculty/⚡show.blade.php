@@ -102,7 +102,8 @@ new class extends Component {
                 <flux:button :href="route('publications.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11 sm:col-start-2 sm:row-start-1" data-test="add-publication-button">{{ __('Add publication') }}</flux:button>
             @endif
         @else
-            <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
+            {{-- On phones the way back reaches above and below its text, as on a project's page --}}
+            <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1 [&_a]:relative max-sm:[&_a]:before:absolute max-sm:[&_a]:before:-inset-x-1 max-sm:[&_a]:before:-inset-y-3">
                 <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty publications') }}</flux:breadcrumbs.item>
                 <flux:breadcrumbs.item>{{ $user->name }}</flux:breadcrumbs.item>
             </flux:breadcrumbs>

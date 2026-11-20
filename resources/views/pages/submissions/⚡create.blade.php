@@ -660,7 +660,9 @@ new #[Title('Research project')] class extends Component {
                                          dropped file lands on it natively. Alpine only swaps the words to name the file. --}}
                                     @php($prompt = $onFile ? __('Drop a new file here to replace it, or click to choose') : __('Drop the file here, or click to choose'))
                                     <label
-                                        x-data="{ name: '', over: false, prompt: @js($prompt) }"
+                                        x-data="{ name: '', over: false, prompt: @js($prompt), progress: 0 }"
+                                        x-on:livewire-upload-start="progress = 0"
+                                        x-on:livewire-upload-progress="progress = $event.detail.progress"
                                         x-bind:class="over && 'border-isu-green-600! bg-isu-green-50!'"
                                         class="relative mt-3 flex flex-col items-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center transition-colors hover:border-isu-green-600 hover:bg-isu-green-50 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-isu-green-700"
                                         data-test="dropzone-{{ $stage }}"
@@ -679,7 +681,9 @@ new #[Title('Research project')] class extends Component {
                                         />
                                         <flux:icon.arrow-up-tray class="size-5 text-zinc-500" aria-hidden="true" />
                                         <span class="text-sm font-medium break-all text-zinc-800" wire:loading.remove wire:target="documents.{{ $stage }}" x-text="name || prompt">{{ $prompt }}</span>
-                                        <span class="text-sm font-medium break-all text-zinc-800" wire:loading wire:target="documents.{{ $stage }}" x-text="@js(__('Uploading')) + ' ' + name + '…'"></span>
+                                        <span class="text-sm font-medium break-all text-zinc-800" wire:loading wire:target="documents.{{ $stage }}" x-text="@js(__('Uploading')) + ' ' + name + '… ' + progress + '%'"></span>
+                                        {{-- Flux's progress bar, filled as the file goes up --}}
+                                        <flux:progress x-model="progress" wire:loading.block wire:target="documents.{{ $stage }}" :aria-label="__('Upload progress')" class="mt-1 w-full max-w-xs" />
                                         <span id="documents-{{ $stage }}-hint" class="text-xs text-zinc-600">{{ __('PDF or Word, up to :size MB', ['size' => \App\Services\DocumentStorage::maxUploadMb()]) }}</span>
                                     </label>
 

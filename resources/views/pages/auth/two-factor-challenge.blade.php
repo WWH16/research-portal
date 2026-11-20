@@ -7,8 +7,10 @@
                 showRecoveryInput: @js($errors->has('recovery_code')),
                 code: '',
                 recovery_code: '',
+                {{-- The fields sit inside the form's own Alpine scope (formStates), where this scope's x-refs can't reach,
+                     so they are found from the root instead --}}
                 focusOtp() {
-                    this.$nextTick(() => this.$refs.otp?.querySelector('input')?.focus());
+                    this.$nextTick(() => this.$root.querySelector('[data-flux-otp-input]')?.focus());
                 },
                 init() {
                     if (! this.showRecoveryInput) {
@@ -23,7 +25,7 @@
 
                     $nextTick(() => {
                         this.showRecoveryInput
-                            ? this.$refs.recovery_code?.focus()
+                            ? this.$root.querySelector('input[name=recovery_code]')?.focus()
                             : this.focusOtp();
                     });
                 },
@@ -55,7 +57,7 @@
 
                 <div class="space-y-5 text-center">
                     <div x-show="!showRecoveryInput">
-                        <div class="my-5" x-ref="otp">
+                        <div class="my-5">
                             <x-code-input x-model="code" />
                         </div>
                     </div>
@@ -65,7 +67,6 @@
                             <flux:input
                                 type="text"
                                 name="recovery_code"
-                                x-ref="recovery_code"
                                 x-bind:required="showRecoveryInput"
                                 autocomplete="one-time-code"
                                 x-model="recovery_code"

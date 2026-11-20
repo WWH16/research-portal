@@ -629,16 +629,20 @@ new #[Title('Dashboard')] class extends Component {
                                                 >
                                                     {{-- The tooltip opens below, so it never covers the bubble above --}}
                                                     <flux:tooltip :content="__('Copy :email', ['email' => $member->email])" position="bottom">
-                                                        <button
-                                                            type="button"
+                                                        {{-- A stock xs button; the negative margin keeps the small line its height, and on
+                                                             phones an invisible edge grows the tap area to 44px --}}
+                                                        <flux:button
+                                                            size="xs"
+                                                            variant="subtle"
+                                                            square
                                                             x-on:click="copy()"
-                                                            class="relative rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
-                                                            aria-label="{{ __('Copy :email', ['email' => $member->email]) }}"
+                                                            class="-my-1 max-sm:before:absolute max-sm:before:-inset-2.5"
+                                                            :aria-label="__('Copy :email', ['email' => $member->email])"
                                                             data-test="copy-email"
                                                         >
                                                             <flux:icon.envelope variant="micro" x-show="! copied" />
                                                             <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
-                                                        </button>
+                                                        </flux:button>
                                                     </flux:tooltip>
                                                     <span
                                                         x-text="message"

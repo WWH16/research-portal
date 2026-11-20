@@ -64,10 +64,13 @@
         >
             {{-- While Google Drive sends the memo it says so, and if it never comes the memo can still be downloaded. Under
                  the pointer the memo's frame darkens, a hint that it opens larger. --}}
-            {{-- A grey block the height the memo will take, so the post doesn't jump when it arrives; it pulses only when
-                 the member allows motion --}}
-            <div x-show="loading && ! failed" role="status" class="h-64 rounded-lg border border-line bg-zinc-100 motion-safe:animate-pulse" data-test="memo-loading">
-                <span class="sr-only">{{ __('Loading the memo…') }}</span>
+            {{-- A pale block the height the memo will take, so the post doesn't jump when it arrives, saying in words and
+                 with a spinner that the memo is on its way (the spinner holds still when the member asks for less motion) --}}
+            <div x-show="loading && ! failed" role="status" class="grid h-64 place-items-center rounded-lg border border-line bg-zinc-50" data-test="memo-loading">
+                <span class="flex items-center gap-2 text-sm text-zinc-600">
+                    <flux:icon.loading variant="mini" class="motion-reduce:animate-none" />
+                    {{ __('Loading the memo…') }}
+                </span>
             </div>
             <div x-show="failed" x-cloak role="alert" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-test="memo-failed">
                 <flux:text>{{ __('The memo could not be shown here.') }}</flux:text>

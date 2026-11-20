@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Livewire\Attributes\Computed;
@@ -87,7 +88,15 @@ new class extends Component {
     {
         $this->validate();
 
-        $confirmTwoFactorAuthentication(auth()->user(), $this->code);
+        try {
+            $confirmTwoFactorAuthentication(auth()->user(), $this->code);
+        } catch (ValidationException $exception) {
+            // A wrong code is cleared and the focus goes back to the first box, so the member types the current one
+            $this->reset('code');
+            $this->dispatch('code-rejected');
+
+            throw $exception;
+        }
 
         $this->setupComplete = true;
 
@@ -185,23 +194,11 @@ new class extends Component {
 
             @if ($showVerificationStep)
                 <div class="space-y-6">
-                    {{-- A form only so the sixth digit sends the code by itself; Verify shows its spinner for that send too,
-                         as its loading state follows confirmTwoFactor however it is called --}}
-                    <form
-                        wire:submit="confirmTwoFactor"
-                        class="flex flex-col items-center space-y-3 justify-center"
-                        x-data
-                        x-init="$nextTick(() => $el.querySelector('input')?.focus())"
-                    >
-                        <flux:otp
-                            name="code"
-                            wire:model="code"
-                            length="6"
-                            submit="auto"
-                            :label="__('Authentication code')"
-                            label:sr-only
-                            class="mx-auto"
-                        />
+                    {{-- A form only so the sixth digit sends the code by itself. The boxes show checking and a wrong code
+                         (x-code-input), and Verify shows its spinner for the auto send too, as its loading state follows
+                         confirmTwoFactor however it is called. --}}
+                    <form wire:submit="confirmTwoFactor" x-data x-init="$nextTick(() => $el.querySelector('input')?.focus())">
+                        <x-code-input wire:model="code" target="confirmTwoFactor" />
                     </form>
 
                     <div class="flex items-center space-x-3">

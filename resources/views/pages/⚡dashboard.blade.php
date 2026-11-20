@@ -689,7 +689,7 @@ new #[Title('Dashboard')] class extends Component {
                         @endforeach
                     </ul>
 
-                    <flux:pagination :paginator="$faculty" scroll-to="#faculty-list" class="mt-2" />
+                    <flux:pagination :paginator="$faculty" scroll-to="#faculty-list" class="mt-2 max-sm:[&_button]:size-11" />
                 @endif
             </div>
         @endif

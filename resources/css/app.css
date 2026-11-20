@@ -18,18 +18,22 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    /* ISU seal green. 700 is the brand green. */
-    --color-isu-green-50: #edf7f1;
-    --color-isu-green-100: #d3ecdd;
-    --color-isu-green-200: #a8d8bb;
-    --color-isu-green-300: #73bd93;
-    --color-isu-green-400: #3f9c6b;
-    --color-isu-green-500: #1f7f50;
-    --color-isu-green-600: #126b41;
-    --color-isu-green-700: #0b5e36;
-    --color-isu-green-800: #094b2b;
-    --color-isu-green-900: #073a22;
-    --color-isu-green-950: #042414;
+    /* Secondary text (14px) at 1.5, like body text, instead of Tailwind's 1.43, so wrapped lines have room. */
+    --text-sm--line-height: 1.5;
+
+    /* ISU seal green. 700 is the brand green (#0b5e36). Both seal scales are written in OKLCH, each value the exact
+       equivalent of the hex it replaced, so steps read evenly in lightness and mixes stay predictable. */
+    --color-isu-green-50: oklch(96.70% 0.0132 159.92);
+    --color-isu-green-100: oklch(92.06% 0.0332 159.38);
+    --color-isu-green-200: oklch(84.04% 0.0643 158.16);
+    --color-isu-green-300: oklch(73.82% 0.0966 158.04);
+    --color-isu-green-400: oklch(62.37% 0.1160 157.33);
+    --color-isu-green-500: oklch(53.01% 0.1144 156.82);
+    --color-isu-green-600: oklch(46.73% 0.1050 156.65);
+    --color-isu-green-700: oklch(42.55% 0.0993 155.53);
+    --color-isu-green-800: oklch(36.51% 0.0834 155.92);
+    --color-isu-green-900: oklch(30.91% 0.0677 157.30);
+    --color-isu-green-950: oklch(23.17% 0.0489 157.65);
 
     /* Tailwind's green, which Flux uses for success, set to the seal green: one green across the app,
        and its success text and icons keep their contrast on the pale fills (green-600 on green-50 is 6:1). */
@@ -45,18 +49,18 @@
     --color-green-900: var(--color-isu-green-900);
     --color-green-950: var(--color-isu-green-950);
 
-    /* ISU seal gold. 500 is the brand gold. Too light for text on white; use it for borders, fills and highlights. */
-    --color-isu-gold-50: #fefae8;
-    --color-isu-gold-100: #fdf1c3;
-    --color-isu-gold-200: #fbe28a;
-    --color-isu-gold-300: #f8d04d;
-    --color-isu-gold-400: #f5c21f;
-    --color-isu-gold-500: #f2b705;
-    --color-isu-gold-600: #cc9804;
-    --color-isu-gold-700: #9f7406;
-    --color-isu-gold-800: #7d5b0c;
-    --color-isu-gold-900: #664a0f;
-    --color-isu-gold-950: #3a2803;
+    /* ISU seal gold. 500 is the brand gold (#f2b705). Too light for text on white; use it for borders, fills and highlights. */
+    --color-isu-gold-50: oklch(98.34% 0.0240 96.56);
+    --color-isu-gold-100: oklch(95.63% 0.0607 95.13);
+    --color-isu-gold-200: oklch(91.46% 0.1115 94.04);
+    --color-isu-gold-300: oklch(86.92% 0.1509 91.69);
+    --color-isu-gold-400: oklch(83.63% 0.1653 88.66);
+    --color-isu-gold-500: oklch(81.14% 0.1656 84.96);
+    --color-isu-gold-600: oklch(71.00% 0.1451 83.86);
+    --color-isu-gold-700: oklch(58.67% 0.1193 82.25);
+    --color-isu-gold-800: oklch(49.40% 0.0975 81.88);
+    --color-isu-gold-900: oklch(42.87% 0.0811 81.01);
+    --color-isu-gold-950: oklch(29.10% 0.0570 80.83);
 
     /* Neutrals, faintly tinted toward the seal green so grays sit with the brand. */
     --color-zinc-50: oklch(0.985 0.003 160);
@@ -121,6 +125,8 @@
     html {
         color-scheme: light;
         scrollbar-gutter: stable;
+        /* Browsers may skip kerning on small text when left to decide; always apply the font's kerning pairs. */
+        font-kerning: normal;
     }
 
     /* Flux's toast container sits past the right edge on a phone; clip, not hidden, so sticky headers keep working. */
@@ -137,6 +143,18 @@
     h4,
     [data-flux-heading] {
         text-wrap-style: balance;
+    }
+
+    /* Headings set tight, at 1.25, as their size utilities otherwise carry body spacing (Flux's 24px heading sits at
+       1.33). Set through Tailwind's leading variable, so a leading-* class on a heading still wins. */
+    [data-flux-heading] {
+        --tw-leading: 1.25;
+    }
+
+    /* Avatar initials trimmed to their capitals, so the letters sit in the optical centre of the circle rather than a
+       line box whose space above and below them isn't even. */
+    [data-flux-avatar] > span {
+        text-box: trim-both cap alphabetic;
     }
 
     p,
@@ -249,6 +267,11 @@ select:focus[data-flux-control] {
     [data-flux-link]:hover {
         text-decoration-color: var(--color-highlight);
     }
+}
+
+/* A sortable column's whole heading sorts when clicked, padding included, so all of it shows the hand. */
+[data-flux-column][wire\:click] {
+    cursor: pointer;
 }
 
 @media (width < 40rem) {
@@ -552,6 +575,65 @@ select:focus[data-flux-control] {
 .isu-sidebar [data-flux-sidebar-profile] [data-flux-avatar] {
     background-color: var(--color-isu-green-600);
     color: var(--color-white);
+}
+
+/*
+ * Motion, only for members who allow it, and always transitions, so a menu or row closed mid-way turns back from where
+ * it is instead of finishing first.
+ *
+ * Menus grow out of the corner nearest their trigger: a menu below a button on its right opens from its top right.
+ * Flux places the menu from the dropdown's position attribute ("bottom end"), so that attribute names the corner. Scale,
+ * not transform, so Flux's own placement is left alone.
+ *
+ * Rows a disclosure reveals together (a member's projects, earlier history, an activity run) fade in one after
+ * another, 30ms apart and at most eight steps, so a long list never drags. Only elements hidden when the page loads
+ * carry data-stagger, as @starting-style fires the first time an element shows.
+ */
+@media (prefers-reduced-motion: no-preference) {
+    ui-dropdown > [popover] {
+        transform-origin: top left;
+        transition:
+            opacity 120ms ease-out,
+            scale 120ms ease-out,
+            display 120ms allow-discrete,
+            overlay 120ms allow-discrete;
+
+        &:not(:popover-open) {
+            opacity: 0;
+            scale: 0.96;
+        }
+
+        @starting-style {
+            &:popover-open {
+                opacity: 0;
+                scale: 0.96;
+            }
+        }
+    }
+
+    ui-dropdown[position~='end'] > [popover] {
+        transform-origin: top right;
+    }
+
+    ui-dropdown[position~='top'] > [popover] {
+        transform-origin: bottom left;
+    }
+
+    ui-dropdown[position~='top'][position~='end'] > [popover] {
+        transform-origin: bottom right;
+    }
+
+    [data-stagger] {
+        transition:
+            opacity 150ms ease-out,
+            translate 150ms ease-out;
+        transition-delay: calc(min(var(--i, 0), 8) * 30ms);
+
+        @starting-style {
+            opacity: 0;
+            translate: 0 -0.25rem;
+        }
+    }
 }
 
 /* Hide Alpine-controlled elements until Alpine starts, so they never flash on load. */

@@ -47,7 +47,7 @@
         x-on:open-work-stale.window="refresh()">
         {{-- The first Tab stop, out of sight until it has focus: it takes a keyboard user past the sidebar to the page --}}
         <div class="sr-only focus-within:not-sr-only focus-within:fixed focus-within:start-4 focus-within:top-4 focus-within:z-30">
-            <flux:button href="#main-content">{{ __('Skip to main content') }}</flux:button>
+            <flux:button href="#main-content" class="max-sm:h-11">{{ __('Skip to main content') }}</flux:button>
         </div>
 
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}

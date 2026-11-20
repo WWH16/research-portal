@@ -390,7 +390,38 @@ const combobox = (options, id) => ({
     },
 });
 
+// The states every plain-post auth form shows (sign-in, sign-up, password reset and the rest). While it sends,
+// `submitting` disables the submit button, which makes Flux show its spinner, and aria-busy dims and locks the fields
+// (app.css); pageshow resets it when the browser brings the page back from its back/forward cache. A field the server
+// turned down is red with its reason, takes the focus when the page comes back unless another field is set to, and
+// drops the red the moment it is edited. `extra` adds the form's own values, such as the passwords sign-up compares.
+const formStates = (extra = {}) => ({
+    ...extra,
+    submitting: false,
+
+    init() {
+        this.$el.addEventListener('submit', () => (this.submitting = true));
+        window.addEventListener('pageshow', () => (this.submitting = false));
+        this.$el.addEventListener('input', ({ target }) => this.edited(target));
+
+        if (!this.$el.querySelector('[autofocus]')) {
+            this.$nextTick(() => this.$el.querySelector('[aria-invalid="true"]')?.focus());
+        }
+    },
+
+    edited(control) {
+        if (control.getAttribute?.('aria-invalid') !== 'true') {
+            return;
+        }
+
+        control.removeAttribute('aria-invalid');
+        control.removeAttribute('data-invalid');
+        control.closest('[data-flux-field]')?.querySelectorAll('[data-flux-error]').forEach((error) => (error.hidden = true));
+    },
+});
+
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('formStates', formStates);
     window.Alpine.data('combobox', combobox);
     window.Alpine.data('memoViewer', memoViewer);
     window.Alpine.data('memoFold', memoFold);

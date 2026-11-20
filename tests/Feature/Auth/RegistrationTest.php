@@ -37,7 +37,7 @@ class RegistrationTest extends TestCase
     public function test_create_account_button_shows_a_loading_state_while_submitting(): void
     {
         $this->get(route('register'))
-            ->assertSee('x-on:submit="submitting = true"', escape: false)
+            ->assertSee('x-data="formStates', escape: false)
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false);
     }
@@ -105,6 +105,23 @@ class RegistrationTest extends TestCase
         $this->post(route('register.store'), $form('user30@isu.edu.ph'))
             ->assertSessionHasErrors(['email' => 'Too many sign-ups have come from your network. Please try again within the hour.']);
         $this->assertDatabaseMissing('users', ['email' => 'user30@isu.edu.ph']);
+    }
+
+    public function test_a_turned_down_sign_up_marks_the_field_and_leaves_the_focus_to_it(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+
+        $page = $this->from(route('register'))
+            ->followingRedirects()
+            ->post(route('register.store'), ['name' => 'John Doe', 'email' => 'john@gmail.com', 'department_id' => $department->id, 'password' => 'password', 'password_confirmation' => 'password'])
+            ->assertSee('Use your ISU email address, ending in @isu.edu.ph.')
+            ->getContent();
+
+        // Name gives up its autofocus, so formStates puts the focus on the first red field
+        preg_match('~<input[^>]*name="name"[^>]*>~', $page, $name);
+        preg_match('~<input[^>]*name="email"[^>]*>~', $page, $email);
+        $this->assertStringNotContainsString('autofocus', $name[0]);
+        $this->assertStringContainsString('aria-invalid="true"', $email[0]);
     }
 
     public function test_only_isu_email_addresses_can_sign_up(): void

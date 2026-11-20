@@ -7,15 +7,14 @@
 
         <x-passkey-verify autofill />
 
-        {{-- A plain form post, so Alpine drives the loading state: disabling the submit button makes Flux show its spinner.
-             pageshow resets it when the browser restores this page from the back/forward cache. --}}
+        {{-- A plain form post, so formStates (app.js) shows its states: the button's spinner and locked fields while it
+             sends, and a turned-down field red until it is edited. Wrong details mark both fields; the email stays and the
+             focus goes to the password, which comes back empty. --}}
         <form
             method="POST"
             action="{{ route('login.store') }}"
             class="flex flex-col gap-6"
-            x-data="{ submitting: false }"
-            x-on:submit="submitting = true"
-            x-on:pageshow.window="submitting = false"
+            x-data="formStates"
             x-bind:aria-busy="submitting"
         >
             @csrf
@@ -28,7 +27,7 @@
                 :value="old('email')"
                 type="email"
                 required
-                autofocus
+                :autofocus="! $errors->has('email')"
                 autocomplete="username webauthn"
                 placeholder="name_cyn@isu.edu.ph"
             />
@@ -49,6 +48,8 @@
                     name="password"
                     type="password"
                     required
+                    :invalid="$errors->has('email')"
+                    :autofocus="$errors->has('email')"
                     autocomplete="current-password"
                     viewable
                 />

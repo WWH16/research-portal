@@ -656,6 +656,19 @@ select:focus[data-flux-control] {
     }
 }
 
+/* A plain auth form that is sending (formStates sets aria-busy): its fields dim and stop taking the pointer, so the
+   button's spinner is the one thing moving. */
+form[aria-busy='true'] [data-flux-field] {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    form [data-flux-field] {
+        transition: opacity 150ms ease-out;
+    }
+}
+
 /* x-code-input: a wrong code turns the six boxes red, and shakes them once for members who allow motion. */
 [data-code-input][data-invalid] [data-flux-otp-input] {
     border-color: var(--color-red-600);

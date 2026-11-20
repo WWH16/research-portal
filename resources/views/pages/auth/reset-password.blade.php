@@ -10,9 +10,7 @@
             method="POST"
             action="{{ route('password.update') }}"
             class="flex flex-col gap-6"
-            x-data="{ submitting: false, password: '', confirmation: '' }"
-            x-on:submit="submitting = true"
-            x-on:pageshow.window="submitting = false"
+            x-data="formStates({ password: '', confirmation: '' })"
             x-bind:aria-busy="submitting"
         >
             @csrf

@@ -16,8 +16,8 @@
         {{-- An expired or altered link brings the member back here; the resend button below is the way forward --}}
         @if (session('status') == 'verification-link-expired')
             <flux:callout
-                variant="warning"
                 icon="exclamation-triangle"
+                class="pastel"
                 :text="__('That verification link has expired or is no longer valid. Request a new link below.')"
                 data-test="verification-link-expired"
             />

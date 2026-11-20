@@ -81,9 +81,8 @@ new #[Title('Concept reviews')] class extends Component {
             <flux:button :href="route('submissions.index')" wire:navigate class="max-sm:h-11">{{ __('See all submissions') }}</flux:button>
         </x-empty-state>
     @else
-        {{-- The pager shows only once there is a second page, as on Submissions. relative keeps the cells' screen-reader-only
-             text inside the table's scroll area, so on phones it can't widen the whole page --}}
-        <flux:table class="relative mt-6" :paginate="$this->queue->hasPages() ? $this->queue : null">
+        {{-- The pager shows only once there is a second page, as on Submissions; its arrows are 44px on phones --}}
+        <flux:table container:class="mt-6 table-frame" :paginate="$this->queue->hasPages() ? $this->queue : null" pagination:class="max-sm:[&_button]:size-11">
             <flux:table.columns>
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
                 {{-- Phones keep the project and its Review button; the project cell repeats college and wait in short --}}
@@ -102,7 +101,7 @@ new #[Title('Concept reviews')] class extends Component {
                             <p class="text-sm text-zinc-500 sm:hidden">{{ $submission->department->code }} · {{ $submission->updated_at->diffForHumans() }}</p>
                             @if ($submission->concept_path)
                                 {{-- Every row has this link and a Review button, so screen readers also hear which project each one is for --}}
-                                <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" :aria-label="__('Concept proposal for :title, opens in a new tab', ['title' => $title])" class="mt-1 text-sm">
+                                <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" :aria-label="__('Concept proposal for :title, opens in a new tab', ['title' => $title])" class="mt-1 text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center max-sm:gap-1">
                                     {{ __('Concept proposal') }}
                                     <flux:icon.arrow-top-right-on-square variant="micro" class="inline size-3 align-[-1px]" />
                                 </flux:link>

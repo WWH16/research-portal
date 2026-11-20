@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-6">
         <x-auth-header
             :title="__('Confirm password')"
-            :description="__('This is a secure area of the application. Please confirm your password before continuing.')"
+            :description="__('Enter your password again to open this page.')"
         />
 
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -33,7 +33,6 @@
                 type="password"
                 required
                 autocomplete="current-password"
-                :placeholder="__('Password')"
                 viewable
             />
 

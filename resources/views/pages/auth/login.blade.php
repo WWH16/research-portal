@@ -40,7 +40,7 @@
                 <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <flux:label>{{ __('Password') }}</flux:label>
 
-                    <flux:link class="text-sm" :href="route('password.request')" wire:navigate>
+                    <flux:link class="text-sm relative max-sm:before:absolute max-sm:before:-inset-x-1 max-sm:before:-inset-y-3.5" :href="route('password.request')" wire:navigate>
                         {{ __('Reset password') }}
                     </flux:link>
                 </div>
@@ -57,7 +57,11 @@
             </flux:field>
 
             <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
+            {{-- Spelled out, so the label can stand 44px tall on a phone and the whole row takes the tap --}}
+            <flux:field variant="inline" class="max-sm:items-center">
+                <flux:checkbox name="remember" :checked="old('remember')" />
+                <flux:label class="max-sm:min-h-11">{{ __('Remember me') }}</flux:label>
+            </flux:field>
 
             {{-- The reCAPTCHA notice sits with the button, in the same fine print as the sign-up agreement --}}
             <div class="flex flex-col gap-3">
@@ -75,7 +79,7 @@
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
             <span>{{ __('Don’t have an account?') }}</span>
-            <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
+            <flux:link :href="route('register')" wire:navigate class="relative max-sm:before:absolute max-sm:before:-inset-x-1 max-sm:before:-inset-y-3.5">{{ __('Sign up') }}</flux:link>
         </div>
     </div>
 </x-layouts::auth>

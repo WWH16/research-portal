@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -49,5 +50,29 @@ class TwoFactorChallengeTest extends TestCase
         $page = $this->get(route('two-factor.login'))->assertOk()->assertSee('Use an authentication code')->getContent();
 
         $this->assertMatchesRegularExpression('~<button\b[^>]*\btype="button"[^>]*>(?:\s*<[^>]+>)*\s*Use a recovery code~', $page);
+    }
+
+    public function test_a_wrong_code_is_said_once(): void
+    {
+        // A real secret, since the factory's placeholder is too short for the code check
+        $user = User::factory()->withTwoFactor()->create([
+            'two_factor_secret' => encrypt(app(TwoFactorAuthenticationProvider::class)->generateSecretKey()),
+        ]);
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
+
+        $page = $this->from(route('two-factor.login'))
+            ->followingRedirects()
+            ->post(route('two-factor.login.store'), ['code' => '000000'])
+            ->getContent();
+
+        $this->assertSame(1, substr_count($page, __('The provided two factor authentication code was invalid.')));
+
+        $page = $this->from(route('two-factor.login'))
+            ->followingRedirects()
+            ->post(route('two-factor.login.store'), ['recovery_code' => 'not-a-code'])
+            ->getContent();
+
+        $this->assertSame(1, substr_count($page, __('The provided two factor recovery code was invalid.')));
     }
 }

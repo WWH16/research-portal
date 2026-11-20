@@ -32,14 +32,14 @@
             <div x-show="!showRecoveryInput">
                 <x-auth-header
                     :title="__('Authentication code')"
-                    :description="__('Enter the authentication code provided by your authenticator application.')"
+                    :description="__('Enter the 6-digit code from the authenticator app on your phone.')"
                 />
             </div>
 
             <div x-show="showRecoveryInput">
                 <x-auth-header
                     :title="__('Recovery code')"
-                    :description="__('Please confirm access to your account by entering one of your emergency recovery codes.')"
+                    :description="__('Enter one of the recovery codes you saved when you turned on two-factor authentication.')"
                 />
             </div>
 
@@ -53,7 +53,7 @@
                                 x-model="code"
                                 length="6"
                                 name="code"
-                                label="OTP Code"
+                                :label="__('Authentication code')"
                                 label:sr-only
                                 class="mx-auto"
                              />
@@ -69,14 +69,11 @@
                                 x-bind:required="showRecoveryInput"
                                 autocomplete="one-time-code"
                                 x-model="recovery_code"
+                                :aria-label="__('Recovery code')"
                             />
                         </div>
 
-                        @error('recovery_code')
-                            <flux:text color="red">
-                                {{ $message }}
-                            </flux:text>
-                        @enderror
+                        <flux:error name="recovery_code" />
                     </div>
 
                     <flux:button

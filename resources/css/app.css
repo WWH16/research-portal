@@ -238,6 +238,37 @@ select:focus[data-flux-control] {
     }
 }
 
+/* Phones: a password field's show/hide button is 44px like every other control there, and the field keeps its text
+   clear of it. */
+@media (width < 40rem) {
+    [data-flux-input] [x-data='fluxInputViewable'] {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    [data-flux-input]:has([x-data='fluxInputViewable']) > div {
+        padding-inline-end: 0;
+    }
+
+    [data-flux-input]:has([x-data='fluxInputViewable']) > input {
+        padding-inline-end: 2.75rem;
+    }
+
+    [data-flux-otp] input {
+        height: 2.75rem;
+    }
+}
+
+/* Phones: the six boxes of a sign-in code are 44px squares, and six still fit a 320px screen's dialog. Flux sets their
+   width with an important utility, which only an important rule in the same layer can outrank. */
+@layer utilities {
+    @media (width < 40rem) {
+        [data-flux-otp] [data-flux-input] {
+            width: 2.75rem !important;
+        }
+    }
+}
+
 /* Phones: centred dialogs get a 12px gutter, no 320px minimum, and lighter padding. */
 @media (width < 40rem) {
     dialog[data-modal]:not([data-flux-flyout]) {

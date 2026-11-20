@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Reset password')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Reset password')" :description="__('Please enter your new password below')" />
+        <x-auth-header :title="__('Reset password')" :description="__('Choose a new password for your portal account.')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -24,27 +24,31 @@
             <flux:input
                 name="email"
                 value="{{ request('email') }}"
-                :label="__('Email')"
+                :label="__('Email address')"
                 type="email"
                 required
                 autocomplete="username"
             />
 
             <!-- Password -->
-            <flux:input
-                name="password"
-                :label="__('Password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                :placeholder="__('Password')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-                x-model="password"
-            />
+            <div>
+                <flux:input
+                    name="password"
+                    :label="__('New password')"
+                    type="password"
+                    required
+                    autocomplete="new-password"
+                    passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                    viewable
+                    x-model="password"
+                    aria-describedby="password-requirements"
+                />
+
+                <x-password-requirements id="password-requirements" password="password" />
+            </div>
 
             <!-- Confirm Password -->
-            <x-password-confirmation password="password" confirmation="confirmation" name="password_confirmation" x-model="confirmation" :placeholder="__('Confirm password')" />
+            <x-password-confirmation password="password" confirmation="confirmation" name="password_confirmation" x-model="confirmation" />
 
             <div class="flex items-center justify-end">
                 <flux:button type="submit" variant="primary" class="w-full disabled:opacity-100!" x-bind:disabled="submitting" data-test="reset-password-button">

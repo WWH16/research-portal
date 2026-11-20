@@ -29,8 +29,9 @@
                 </p>
             </aside>
 
-            {{-- The form centers in the space above the fine print, which keeps to the bottom edge like the brand panel's footer. --}}
-            <main class="flex flex-col px-6 sm:px-10">
+            {{-- The form centers in the space above the fine print, which keeps to the bottom edge like the brand panel's footer.
+                 On phones every field and button on these pages stands 44px tall for the thumb. --}}
+            <main class="flex flex-col px-6 sm:px-10 max-sm:[&_[data-flux-button]]:h-11 max-sm:[&_input[data-flux-control]]:h-11 max-sm:[&_select[data-flux-control]]:h-11">
                 <div class="mx-auto my-auto flex w-full max-w-sm flex-col gap-8 py-12">
                     <div class="flex items-center gap-3 lg:hidden">
                         <x-app-logo-icon class="size-10" />

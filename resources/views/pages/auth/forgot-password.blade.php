@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Forgot password')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Forgot password')" :description="__('Enter your email to receive a password reset link')" />
+        <x-auth-header :title="__('Forgot password')" :description="__('Enter your email address, and we will send you a link to reset your password.')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -41,9 +41,9 @@
             </div>
         </form>
 
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-400">
+        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600">
             <span>{{ __('Or, return to') }}</span>
-            <flux:link :href="route('login')" wire:navigate>{{ __('sign in') }}</flux:link>
+            <flux:link :href="route('login')" wire:navigate class="relative max-sm:before:absolute max-sm:before:-inset-x-1 max-sm:before:-inset-y-3.5">{{ __('sign in') }}</flux:link>
         </div>
     </div>
 </x-layouts::auth>

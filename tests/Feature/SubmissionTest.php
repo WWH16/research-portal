@@ -49,6 +49,21 @@ class SubmissionTest extends TestCase
         $this->get(route('submissions.create'))->assertOk()->assertSee('Submit proposal')->assertSee('Proponents');
     }
 
+    public function test_proponents_are_picked_from_a_searchable_list_of_verified_faculty(): void
+    {
+        $this->actingAs(User::factory()->create(['name' => 'Navarro']));
+        User::factory()->create(['name' => 'Soriano']);
+        User::factory()->unverified()->create(['name' => 'Unverified Member']);
+        User::factory()->create(['name' => 'Research Office Head', 'role' => 'admin']);
+
+        $this->get(route('submissions.create'))
+            ->assertOk()
+            ->assertSee('role="combobox"', false)
+            ->assertSee('Soriano')
+            ->assertDontSee('Unverified Member')
+            ->assertDontSee('Research Office Head');
+    }
+
     public function test_admins_cannot_open_the_submit_form(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));

@@ -201,6 +201,18 @@ class SecurityTest extends TestCase
             ->assertDispatched('passkeys-changed', ids: ['bGFwdG9w']);
     }
 
+    public function test_the_setup_code_sends_itself_once_all_six_digits_are_in(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::settings.two-factor-setup-modal', ['requiresConfirmation' => true])
+            ->dispatch('start-two-factor-setup')
+            ->call('showVerificationIfNecessary')
+            ->assertSet('showVerificationStep', true)
+            ->assertSeeHtml('wire:submit="confirmTwoFactor"')
+            ->assertSeeHtml('submit="auto"');
+    }
+
     public function test_the_setup_key_copy_button_is_named_and_reports_its_result(): void
     {
         $this->actingAs(User::factory()->create());

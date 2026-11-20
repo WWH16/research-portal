@@ -52,6 +52,18 @@ class TwoFactorChallengeTest extends TestCase
         $this->assertMatchesRegularExpression('~<button\b[^>]*\btype="button"[^>]*>(?:\s*<[^>]+>)*\s*Use a recovery code~', $page);
     }
 
+    public function test_the_code_sends_itself_once_all_six_digits_are_in(): void
+    {
+        $user = User::factory()->withTwoFactor()->create();
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
+
+        $this->get(route('two-factor.login'))
+            ->assertOk()
+            ->assertSee('submit="auto"', false)
+            ->assertSee('x-bind:disabled="submitting"', false);
+    }
+
     public function test_a_wrong_code_is_said_once(): void
     {
         // A real secret, since the factory's placeholder is too short for the code check

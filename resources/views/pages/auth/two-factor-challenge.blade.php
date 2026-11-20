@@ -43,7 +43,16 @@
                 />
             </div>
 
-            <form method="POST" action="{{ route('two-factor.login.store') }}">
+            {{-- The sixth digit sends the code by itself, and Verify turns to a spinner at once, as on the sign-in form. The
+                 first box offers the code a phone or password manager has ready (autocomplete="one-time-code", from Flux). --}}
+            <form
+                method="POST"
+                action="{{ route('two-factor.login.store') }}"
+                x-data="{ submitting: false }"
+                x-on:submit="submitting = true"
+                x-on:pageshow.window="submitting = false"
+                x-bind:aria-busy="submitting"
+            >
                 @csrf
 
                 <div class="space-y-5 text-center">
@@ -52,6 +61,7 @@
                             <flux:otp
                                 x-model="code"
                                 length="6"
+                                submit="auto"
                                 name="code"
                                 :label="__('Authentication code')"
                                 label:sr-only
@@ -79,7 +89,9 @@
                     <flux:button
                         variant="primary"
                         type="submit"
-                        class="w-full"
+                        class="w-full disabled:opacity-100!"
+                        x-bind:disabled="submitting"
+                        data-test="verify-code-button"
                     >
                         {{ __('Verify code') }}
                     </flux:button>

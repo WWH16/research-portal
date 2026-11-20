@@ -36,6 +36,23 @@ class SecurityTest extends TestCase
         $response->assertSee('Enable 2FA');
     }
 
+    public function test_turning_off_two_factor_asks_first_with_cancel_focused(): void
+    {
+        $user = User::factory()->withTwoFactor()->create();
+
+        $html = $this->actingAs($user)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get(route('security.edit'))
+            ->assertOk()
+            ->assertSee('Turn off two-factor authentication?')
+            ->getContent();
+
+        // The page's Disable 2FA button only opens the dialog; the dialog's own button turns it off
+        $this->assertDoesNotMatchRegularExpression('/<button[^>]*wire:click="disable"[^>]*>\s*(<[^>]+>\s*)*Disable 2FA/', $html);
+        $this->assertMatchesRegularExpression('/wire:click="disable"[^>]*data-test="confirm-disable-two-factor"/', $html);
+        $this->assertMatchesRegularExpression('/<button[^>]*autofocus[^>]*>\s*(<[^>]+>\s*)*Cancel/', $html);
+    }
+
     public function test_security_settings_page_asks_for_the_password_first(): void
     {
         $this->actingAs(User::factory()->create())

@@ -154,6 +154,7 @@ new class extends Component {
 <flux:modal
     name="two-factor-setup-modal"
     class="max-w-md md:min-w-md"
+    aria-labelledby="two-factor-setup-heading"
     @close="closeModal"
 >
         <div class="space-y-6">
@@ -177,7 +178,7 @@ new class extends Component {
                 </div>
 
                 <div class="space-y-2 text-center">
-                    <flux:heading size="lg">{{ $this->modalConfig['title'] }}</flux:heading>
+                    <flux:heading size="lg" id="two-factor-setup-heading">{{ $this->modalConfig['title'] }}</flux:heading>
                     <flux:text>{{ $this->modalConfig['description'] }}</flux:text>
                 </div>
             </div>
@@ -193,7 +194,7 @@ new class extends Component {
                             name="code"
                             wire:model="code"
                             length="6"
-                            label="OTP Code"
+                            :label="__('Authentication code')"
                             label:sr-only
                             class="mx-auto"
                         />
@@ -202,7 +203,7 @@ new class extends Component {
                     <div class="flex items-center space-x-3">
                         <flux:button
                             variant="outline"
-                            class="flex-1"
+                            class="flex-1 max-sm:h-11"
                             wire:click="resetVerification"
                         >
                             {{ __('Go back') }}
@@ -210,7 +211,7 @@ new class extends Component {
 
                         <flux:button
                             variant="primary"
-                            class="flex-1"
+                            class="flex-1 max-sm:h-11"
                             wire:click="confirmTwoFactor"
                             x-bind:disabled="$wire.code.length < 6"
                         >
@@ -246,7 +247,7 @@ new class extends Component {
                     <flux:button
                         :disabled="$errors->has('setupData')"
                         variant="primary"
-                        class="w-full"
+                        class="w-full max-sm:h-11"
                         wire:click="showVerificationIfNecessary"
                     >
                         {{ $this->modalConfig['buttonText'] }}
@@ -302,7 +303,7 @@ new class extends Component {
                                         <flux:icon.check
                                             x-show="state === 'copied'"
                                             variant="solid"
-                                            class="text-green-500"
+                                            class="text-isu-green-700"
                                         ></flux:icon>
                                     </button>
                                 </flux:tooltip>

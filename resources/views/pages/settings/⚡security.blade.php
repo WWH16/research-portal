@@ -209,6 +209,7 @@ new #[Title('Security settings')] class extends Component {
                         autocomplete="current-password"
                         viewable
                         class="sm:col-span-2"
+                        class:input="max-sm:h-11"
                     />
                     <flux:input
                         wire:model="password"
@@ -218,8 +219,9 @@ new #[Title('Security settings')] class extends Component {
                         autocomplete="new-password"
                         passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
                         viewable
+                        class:input="max-sm:h-11"
                     />
-                    <x-password-confirmation password="$wire.password" confirmation="$wire.password_confirmation" wire:model="password_confirmation" />
+                    <x-password-confirmation password="$wire.password" confirmation="$wire.password_confirmation" wire:model="password_confirmation" class:input="max-sm:h-11" />
                 </div>
 
                 <x-slot:footer>
@@ -237,29 +239,45 @@ new #[Title('Security settings')] class extends Component {
                     @if ($twoFactorEnabled)
                         <div class="space-y-4">
                             <flux:text>
-                                {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
+                                {{ __('Each time you sign in, you also enter the 6-digit code from the authenticator app on your phone.') }}
                             </flux:text>
 
                             <div class="flex justify-start">
-                                <flux:button
-                                    variant="danger"
-                                    wire:click="disable"
-                                >
-                                    {{ __('Disable 2FA') }}
-                                </flux:button>
+                                <flux:modal.trigger name="disable-two-factor">
+                                    <flux:button variant="danger" class="max-sm:h-11">{{ __('Disable 2FA') }}</flux:button>
+                                </flux:modal.trigger>
                             </div>
+
+                            {{-- Turning it off deletes the app's secret and the recovery codes, so it asks first. Cancel takes
+                                 the focus as the dialog opens, so Enter never turns it off by accident. --}}
+                            <flux:modal name="disable-two-factor" class="w-full sm:w-96" aria-labelledby="disable-two-factor-heading">
+                                <div class="flex flex-col gap-6">
+                                    <div>
+                                        <flux:heading size="lg" id="disable-two-factor-heading">{{ __('Turn off two-factor authentication?') }}</flux:heading>
+                                        <flux:text class="mt-2">{{ __('You will sign in with your password alone. Your recovery codes stop working, and turning it on again means scanning a new QR code.') }}</flux:text>
+                                    </div>
+
+                                    <div class="flex justify-end gap-2">
+                                        <flux:modal.close>
+                                            <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
+                                        </flux:modal.close>
+                                        <flux:button variant="danger" class="max-sm:h-11" wire:click="disable" data-test="confirm-disable-two-factor">{{ __('Turn off') }}</flux:button>
+                                    </div>
+                                </div>
+                            </flux:modal>
 
                             <livewire:pages::settings.two-factor.recovery-codes :$requiresConfirmation />
                         </div>
                     @else
                         <div class="space-y-4">
-                            <flux:text variant="subtle">
-                                {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
+                            <flux:text>
+                                {{ __('Once it is on, each time you sign in you also enter a 6-digit code from an authenticator app on your phone.') }}
                             </flux:text>
 
                             <flux:modal.trigger name="two-factor-setup-modal">
                                 <flux:button
                                     variant="primary"
+                                    class="max-sm:h-11"
                                     wire:click="$dispatch('start-two-factor-setup')"
                                 >
                                     {{ __('Enable 2FA') }}

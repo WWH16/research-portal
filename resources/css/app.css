@@ -129,6 +129,21 @@
         overflow-x: clip;
     }
 
+    /* Headings balance their lines, and paragraphs keep a last word from sitting alone on its line (a widow). The
+       longhand leaves the wrap mode alone, so a truncated heading still stays on one line. */
+    h1,
+    h2,
+    h3,
+    h4,
+    [data-flux-heading] {
+        text-wrap-style: balance;
+    }
+
+    p,
+    dd {
+        text-wrap-style: pretty;
+    }
+
     /* Flux removes a closed toast only when its fade-out reports finishing. A fade cut short, as by moving to another
        page mid-fade, never reports, leaving an invisible toast over the page that swallowed clicks on Save. A faded
        toast lets clicks through to what is under it. */
@@ -177,6 +192,11 @@
 
 .table-frame [data-flux-pagination] {
     padding: 0.75rem 1rem;
+}
+
+/* The pager's "Showing 11 to 20 of 42" and page numbers keep one width per digit, so they don't jiggle page to page. */
+[data-flux-pagination] {
+    font-variant-numeric: tabular-nums;
 }
 
 /* Phones and tablets hide the page title's name, so whatever follows it starts at the top of the page. */
@@ -479,10 +499,12 @@ select:focus[data-flux-control] {
 
 /*
  * Count badges are gold, like other "look here" marks; Flux's soft colors vanish on the green.
- * A full pill echoes the rounded item, and wider padding keeps "99+" off the edges.
+ * A full pill echoes the rounded item, and wider padding keeps "99+" off the edges. Tabular
+ * figures keep the pill one width when a poll changes the count.
  */
 .isu-sidebar [data-flux-navlist-badge] {
     padding-inline: 0.375rem;
+    font-variant-numeric: tabular-nums;
     border-radius: 9999px;
     background-color: var(--color-highlight);
     color: var(--color-isu-green-950);

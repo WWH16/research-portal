@@ -47,5 +47,5 @@
         </span>
     </p>
 
-    <flux:error :name="$name" class="text-center group-not-data-invalid/code:hidden group-data-loading/code:hidden" />
+    <flux:error :name="$name" class="text-center text-balance group-not-data-invalid/code:hidden group-data-loading/code:hidden" />
 </div>

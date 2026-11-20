@@ -297,8 +297,9 @@ select:focus[data-flux-control] {
         padding-inline-end: 2.75rem;
     }
 
-    [data-flux-otp] input {
-        height: 2.75rem;
+    /* Tighter gaps, so six 44px code boxes still fit a 360px phone's dialog. */
+    [data-flux-otp] {
+        gap: 0.375rem;
     }
 
     /* Centred dialogs get a 12px gutter, no 320px minimum, and lighter padding. */
@@ -309,14 +310,31 @@ select:focus[data-flux-control] {
     }
 }
 
-/* Phones: the six boxes of a sign-in code are 44px squares, and six still fit a 320px screen's dialog. Flux sets their
-   width with an important utility, which only an important rule in the same layer can outrank. */
+/* A code's six boxes are 44px squares on every screen, not Flux's narrow 32px by 40px, with digits a step above body
+   text in figures of one width, so the code reads at a glance. Where six don't fit, as in a dialog on a 320px phone,
+   they narrow together, never below 32px. Flux fixes the width with an important utility, which only an important
+   rule in the same layer can outrank. */
 @layer utilities {
-    @media (width < 40rem) {
-        [data-flux-otp] [data-flux-input] {
-            width: 2.75rem !important;
-        }
+    [data-flux-otp] [data-flux-input] {
+        width: auto !important;
     }
+}
+
+[data-flux-otp] {
+    width: 100%;
+    max-width: max-content;
+}
+
+[data-flux-otp] [data-flux-input] {
+    flex: 1 1 0;
+    min-width: 2rem;
+    max-width: 2.75rem;
+}
+
+[data-flux-otp] input {
+    height: 2.75rem;
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Settings tabs: gold marks where you are and where you're pointing. */

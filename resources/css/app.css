@@ -638,6 +638,29 @@ select:focus[data-flux-control] {
     }
 }
 
+/* x-code-input: a wrong code turns the six boxes red, and shakes them once for members who allow motion. */
+[data-code-input][data-invalid] [data-flux-otp-input] {
+    border-color: var(--color-red-600);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-code-input][data-invalid] [data-flux-otp] {
+        animation: code-shake 320ms ease-out;
+    }
+}
+
+@keyframes code-shake {
+    20%,
+    60% {
+        translate: -0.25rem 0;
+    }
+
+    40%,
+    80% {
+        translate: 0.25rem 0;
+    }
+}
+
 /* Hide Alpine-controlled elements until Alpine starts, so they never flash on load. */
 [x-cloak] {
     display: none !important;

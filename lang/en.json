@@ -1,0 +1,4 @@
+{
+    "The provided two factor authentication code was invalid.": "That code didn’t match. Enter the code your authenticator app shows now.",
+    "The provided two factor recovery code was invalid.": "That recovery code didn’t match. Check it against the codes you saved."
+}

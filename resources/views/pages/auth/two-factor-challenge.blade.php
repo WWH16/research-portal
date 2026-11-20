@@ -43,8 +43,8 @@
                 />
             </div>
 
-            {{-- The sixth digit sends the code by itself, and Verify turns to a spinner at once, as on the sign-in form. The
-                 first box offers the code a phone or password manager has ready (autocomplete="one-time-code", from Flux). --}}
+            {{-- The code boxes show checking and a wrong code themselves (x-code-input); Verify turns to a spinner at once,
+                 as on the sign-in form --}}
             <form
                 method="POST"
                 action="{{ route('two-factor.login.store') }}"
@@ -57,16 +57,8 @@
 
                 <div class="space-y-5 text-center">
                     <div x-show="!showRecoveryInput">
-                        <div class="flex items-center justify-center my-5" x-ref="otp">
-                            <flux:otp
-                                x-model="code"
-                                length="6"
-                                submit="auto"
-                                name="code"
-                                :label="__('Authentication code')"
-                                label:sr-only
-                                class="mx-auto"
-                             />
+                        <div class="my-5" x-ref="otp">
+                            <x-code-input x-model="code" />
                         </div>
                     </div>
 

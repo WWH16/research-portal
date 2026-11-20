@@ -78,7 +78,8 @@ class TwoFactorChallengeTest extends TestCase
             ->post(route('two-factor.login.store'), ['code' => '000000'])
             ->getContent();
 
-        $this->assertSame(1, substr_count($page, __('The provided two factor authentication code was invalid.')));
+        $this->assertSame(1, substr_count($page, 'That code didn’t match. Enter the code your authenticator app shows now.'));
+        $this->assertStringContainsString('data-invalid="true"', $page);
 
         $page = $this->from(route('two-factor.login'))
             ->followingRedirects()

@@ -427,35 +427,75 @@ new #[Title('Manage users')] class extends Component {
 }; ?>
 
 <section class="mx-auto w-full max-w-5xl">
-    <x-page-title :subtitle="__('Accounts, roles, and college assignments for portal members.')">{{ __('Manage users') }}</x-page-title>
+    {{-- Adding a member is the page's own action, so it sits in the title row, apart from the filters --}}
+    <x-page-title :subtitle="__('Accounts, roles, and college assignments for portal members.')">
+        {{ __('Manage users') }}
 
-    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-        <flux:input
-            wire:model.live.debounce.300ms="search"
-            icon="magnifying-glass"
-            :placeholder="__('Search name, email, or researcher ID')"
-            :aria-label="__('Search users')"
-            clearable
-            class="sm:flex-1"
-        />
+        <x-slot:actions>
+            <flux:button variant="primary" icon="plus" wire:click="create" class="max-sm:h-11" data-test="new-user-button">
+                {{ __('Add user') }}
+            </flux:button>
+        </x-slot:actions>
+    </x-page-title>
 
-        <flux:select wire:model.live="roleFilter" data-test="role-filter" :aria-label="__('Filter by role')" class="sm:max-w-44">
-            <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
-            <flux:select.option :value="Role::Admin->value">{{ __('Admins') }}</flux:select.option>
-            <flux:select.option :value="Role::Staff->value">{{ __('Staff') }}</flux:select.option>
-            <flux:select.option :value="Role::Faculty->value">{{ __('Faculty') }}</flux:select.option>
-        </flux:select>
+    @php($roles = [Role::Admin->value => __('Admins'), Role::Staff->value => __('Staff'), Role::Faculty->value => __('Faculty')])
+    @php($statuses = ['pending' => __('Pending'), 'approved' => __('Approved'), 'rejected' => __('Rejected')])
 
-        <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="sm:max-w-44">
-            <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
-            <flux:select.option value="pending">{{ __('Pending') }}</flux:select.option>
-            <flux:select.option value="approved">{{ __('Approved') }}</flux:select.option>
-            <flux:select.option value="rejected">{{ __('Rejected') }}</flux:select.option>
-        </flux:select>
+    {{-- Search, then one Filter button that opens every other filter in place, as on the activity log. What is set
+         shows as chips under the toolbar, each one click to remove --}}
+    <div class="mt-6" x-data="{ filters: false }">
+        {{-- A grid, not flex: with a label, Flux wraps the input in a field that a flex-1 on the input never reaches --}}
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+            <flux:input
+                wire:model.live.debounce.300ms="search"
+                icon="magnifying-glass"
+                :label="__('Search name, email, or researcher ID')"
+                {{-- An example, and Flux hides the clear button only while a placeholder shows --}}
+                :placeholder="__('name@isu.edu.ph')"
+                clearable
+                class:input="max-sm:h-11"
+            />
+            <flux:button icon="funnel" x-on:click="filters = ! filters" x-bind:aria-expanded="filters" aria-controls="user-filters" class="max-sm:h-11">{{ __('Filter') }}</flux:button>
+        </div>
 
-        <flux:button variant="primary" icon="plus" wire:click="create" class="shrink-0 max-sm:h-11" data-test="new-user-button">
-            {{ __('Add user') }}
-        </flux:button>
+        <div id="user-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 sm:grid-cols-3">
+            <flux:select wire:model.live="roleFilter" data-test="role-filter" :label="__('Role')" class="max-sm:h-11">
+                <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
+                @foreach ($roles as $value => $label)
+                    <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11">
+                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+                @foreach ($statuses as $value => $label)
+                    <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="college" :label="__('College')" class="max-sm:h-11">
+                <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                <flux:select.option value="none">{{ __('No college') }}</flux:select.option>
+                @foreach ($this->departments as $department)
+                    <flux:select.option :value="$department->code">{{ $department->code }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
+
+        {{-- Each set filter, keyed by the action that removes it --}}
+        @php($chips = array_filter([
+            "\$set('roleFilter', '')" => isset($roles[$roleFilter]) ? __('Role: :role', ['role' => $roles[$roleFilter]]) : null,
+            "\$set('statusFilter', '')" => isset($statuses[$statusFilter]) ? __('Status: :status', ['status' => $statuses[$statusFilter]]) : null,
+            "\$set('college', '')" => $college !== '' ? __('College: :college', ['college' => $college === 'none' ? __('No college') : $college]) : null,
+        ]))
+        @if ($chips)
+            <div class="mt-3 flex flex-wrap items-center gap-2" data-test="active-filters">
+                @foreach ($chips as $remove => $chip)
+                    <flux:button size="sm" variant="filled" icon:trailing="x-mark" wire:click="{{ $remove }}" :aria-label="__('Remove filter: :filter', ['filter' => $chip])" class="max-sm:h-11">{{ $chip }}</flux:button>
+                @endforeach
+                <flux:button size="sm" variant="ghost" wire:click="clearFilters" class="max-sm:h-11">{{ __('Clear all') }}</flux:button>
+            </div>
+        @endif
     </div>
 
     @if ($this->users->isEmpty())
@@ -465,13 +505,13 @@ new #[Title('Manage users')] class extends Component {
             <flux:button variant="ghost" size="sm" class="mt-4" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
         </div>
     @else
-        <flux:table class="mt-4" :paginate="$this->users">
+        {{-- Relative, so the screen-reader-only Actions header stays inside the table instead of widening a phone's
+             page; the page arrows get the 44px phone size --}}
+        <flux:table class="mt-4" :paginate="$this->users" container:class="relative" pagination:class="max-sm:[&_button]:size-11">
             <flux:table.columns>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
                 <flux:table.column class="max-md:hidden">{{ __('Researcher ID') }}</flux:table.column>
-                <flux:table.column data-test="college-column">
-                    <x-college-filter model="college" :value="$college" :codes="$this->departments->pluck('code')" with-none />
-                </flux:table.column>
+                <flux:table.column data-test="college-column">{{ __('College') }}</flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>
                 <flux:table.column class="w-0"><span class="sr-only">{{ __('Actions') }}</span></flux:table.column>
             </flux:table.columns>

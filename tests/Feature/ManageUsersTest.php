@@ -85,21 +85,26 @@ class ManageUsersTest extends TestCase
 
         Livewire::test('pages::users.index')
             ->assertSeeHtml('data-test="college-column"')
+            ->assertDontSeeHtml('data-test="active-filters"')
             ->set('college', 'CBM')
+            ->assertSee('College: CBM')
             ->assertSee('Jose Reyes')
             ->assertDontSee('Maria Santos')
             ->assertDontSee('Ana Unassigned')
             ->set('college', 'none')
+            ->assertSee('College: No college')
             ->assertSee('Ana Unassigned')
             ->assertSee('Research Office') // admins have no college either
             ->assertDontSee('Jose Reyes')
             ->set('roleFilter', 'faculty')
+            ->assertSee('Role: Faculty')
             ->assertSee('Ana Unassigned')
             ->assertDontSee('Research Office')
             ->set('search', 'Nobody')
             ->assertSee('No users match these filters')
             ->call('clearFilters')
             ->assertSet('college', '')
+            ->assertDontSeeHtml('data-test="active-filters"')
             ->assertSee('Maria Santos')
             ->assertSee('Jose Reyes');
 

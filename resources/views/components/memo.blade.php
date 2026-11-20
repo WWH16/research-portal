@@ -64,14 +64,11 @@
         >
             {{-- While Google Drive sends the memo it says so, and if it never comes the memo can still be downloaded. Under
                  the pointer the memo's frame darkens, a hint that it opens larger. --}}
-            {{-- A pale block the height the memo will take, so the post doesn't jump when it arrives, saying in words and
-                 with a spinner that the memo is on its way (the spinner holds still when the member asks for less motion) --}}
-            <div x-show="loading && ! failed" role="status" class="grid h-64 place-items-center rounded-lg border border-line bg-zinc-50" data-test="memo-loading">
-                <span class="flex items-center gap-2 text-sm text-zinc-600">
-                    <flux:icon.loading variant="mini" class="motion-reduce:animate-none" />
-                    {{ __('Loading the memo…') }}
-                </span>
-            </div>
+            {{-- Flux's skeleton the height the memo will take, so the post doesn't jump when it arrives; its shimmer and
+                 the words say the memo is on its way --}}
+            <flux:skeleton x-show="loading && ! failed" animate="shimmer" role="status" class="grid h-64 w-full place-items-center rounded-lg" data-test="memo-loading">
+                <span class="relative z-20 text-sm text-zinc-600">{{ __('Loading the memo…') }}</span>
+            </flux:skeleton>
             <div x-show="failed" x-cloak role="alert" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-test="memo-failed">
                 <flux:text>{{ __('The memo could not be shown here.') }}</flux:text>
                 <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="$dispatch('memo-opened')">{{ __('Download memo') }}</flux:button>

@@ -720,6 +720,15 @@ ui-dropdown > [popover] {
     box-shadow: var(--shadow-floating);
 }
 
+/* Flux's skeletons shimmer or pulse with no reduced-motion fallback; for members who ask for less motion they hold
+   still, and the grey shape alone says something is on its way. */
+@media (prefers-reduced-motion: reduce) {
+    [data-flux-skeleton],
+    [data-flux-skeleton]::before {
+        animation: none;
+    }
+}
+
 /* Hide Alpine-controlled elements until Alpine starts, so they never flash on load. */
 [x-cloak] {
     display: none !important;

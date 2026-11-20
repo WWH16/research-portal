@@ -228,9 +228,10 @@ new class extends Component {
                 <div class="flex justify-center">
                     <div class="relative w-64 overflow-hidden border rounded-lg border-stone-200 dark:border-stone-700 aspect-square">
                         @empty($qrCodeSvg)
-                            <div class="absolute inset-0 flex items-center justify-center bg-white dark:bg-stone-700 animate-pulse">
-                                <flux:icon.loading/>
-                            </div>
+                            {{-- Flux's skeleton holds the QR code's place while it loads --}}
+                            <flux:skeleton animate="shimmer" role="status" class="absolute inset-0 h-full w-full rounded-none">
+                                <span class="sr-only">{{ __('Loading the QR code…') }}</span>
+                            </flux:skeleton>
                         @else
                             <div x-data class="flex items-center justify-center h-full p-4">
                                 <div
@@ -279,12 +280,12 @@ new class extends Component {
                             }
                         }"
                     >
-                        {{-- A stock Flux field and button joined as one group; the key loads with the QR code, so the field
-                             shows a spinner until it arrives --}}
-                        <flux:input.group>
-                            @empty($manualSetupKey)
-                                <flux:input readonly :aria-label="__('Setup key')" icon:trailing="loading" class:input="max-sm:h-11" />
-                            @else
+                        {{-- A stock Flux field and button joined as one group. The key loads with the QR code, so until then
+                             a skeleton the field's size holds its place. --}}
+                        @empty($manualSetupKey)
+                            <flux:skeleton animate="shimmer" class="h-10 w-full rounded-lg max-sm:h-11" />
+                        @else
+                            <flux:input.group>
                                 <flux:input readonly :value="$manualSetupKey" :aria-label="__('Setup key')" class:input="font-mono max-sm:h-11" />
 
                                 <flux:tooltip :content="__('Copy setup key')">
@@ -293,8 +294,8 @@ new class extends Component {
                                         <flux:icon.check variant="mini" x-show="state === 'copied'" x-cloak class="text-isu-green-700" />
                                     </flux:button>
                                 </flux:tooltip>
-                            @endempty
-                        </flux:input.group>
+                            </flux:input.group>
+                        @endempty
 
                         <p
                             role="status"

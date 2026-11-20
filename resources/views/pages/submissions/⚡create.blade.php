@@ -477,7 +477,7 @@ new #[Title('Research project')] class extends Component {
             <flux:breadcrumbs.item>{{ $submission ? __('Edit') : __('New proposal') }}</flux:breadcrumbs.item>
         </flux:breadcrumbs>
         {{-- For screen readers only: the breadcrumb already names the page --}}
-        <flux:heading level="1" class="sr-only">{{ $submission ? __('Edit Project') : __('Submit Proposal') }}</flux:heading>
+        <flux:heading level="1" class="sr-only">{{ $submission ? __('Edit project') : __('Submit proposal') }}</flux:heading>
     </header>
 
     @unless ($this->department)
@@ -505,7 +505,7 @@ new #[Title('Research project')] class extends Component {
         class="mt-8 flex flex-col gap-6"
     >
         {{-- The cursor starts in Title only on a new proposal; an edit opens without a field picked --}}
-        <flux:input wire:model="title" :label="__('Title')" type="text" required :autofocus="! $submission" />
+        <flux:input wire:model="title" :label="__('Title')" type="text" required :autofocus="! $submission" class:input="max-sm:h-11" />
 
         <flux:textarea wire:model="abstract" :label="__('Abstract')" rows="6" required />
 
@@ -514,14 +514,14 @@ new #[Title('Research project')] class extends Component {
         <div class="grid gap-x-4 gap-y-6 sm:grid-cols-12">
             {{-- A real, selectable blank option instead of Flux's disabled placeholder: after a re-render the browser
                  can't show a disabled option, so it showed the first real one while nothing was chosen. --}}
-            <flux:select wire:model="category_id" :label="__('Category')" required field:class="sm:col-span-6">
+            <flux:select wire:model="category_id" :label="__('Category')" required field:class="sm:col-span-6" class="max-sm:h-11">
                 <flux:select.option value="">{{ __('Select category') }}</flux:select.option>
                 @foreach ($this->categories as $category)
                     <flux:select.option :value="$category->id">{{ $category->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:input wire:model="designation" :label="__('Designation')" :badge="__('Optional')" type="text" maxlength="100" field:class="sm:col-span-6" />
+            <flux:input wire:model="designation" :label="__('Designation')" :badge="__('Optional')" type="text" maxlength="100" field:class="sm:col-span-6" class:input="max-sm:h-11" />
 
             {{-- Full width, and a box that grows to fit, so a long college name shows in full on phones too rather than
                  cut off in a field that can't scroll --}}
@@ -534,7 +534,7 @@ new #[Title('Research project')] class extends Component {
                 field:class="sm:col-span-12"
             >{{ $this->department ? $this->department->name.' ('.$this->department->code.')' : __('Not assigned') }}</flux:textarea>
 
-            <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" field:class="sm:col-span-6" />
+            <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" field:class="sm:col-span-6" class:input="max-sm:h-11" />
             <flux:input
                 wire:model="target_date"
                 :label="__('Completion date')"
@@ -543,6 +543,7 @@ new #[Title('Research project')] class extends Component {
                 :required="! $submission"
                 :disabled="(bool) $submission"
                 field:class="sm:col-span-6"
+                class:input="max-sm:h-11"
             />
 
             @if ($submission)
@@ -567,16 +568,16 @@ new #[Title('Research project')] class extends Component {
                 @foreach ($proponents as $index => $row)
                     <div class="{{ $columns }} items-start max-sm:border-b max-sm:border-line max-sm:pb-3" wire:key="proponent-{{ $index }}" data-test="proponent-row">
                         <div class="sm:col-span-2">
-                            <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" :aria-label="__('Study no.')" />
+                            <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" :aria-label="__('Study no.')" class:input="max-sm:h-11" />
                         </div>
 
                         <div class="min-w-0 max-sm:order-last max-sm:col-span-3 sm:col-span-7">
                             {{-- A string name marks a row for someone not in the portal, as isNamed() reads it --}}
                             @if (is_string($row['name'] ?? null))
-                                <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" autocomplete="off" :placeholder="__('Full name, as in the proposal')" :aria-label="__('Full name')" data-test="proponent-name" />
+                                <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" autocomplete="off" :placeholder="__('e.g. Juan Dela Cruz')" :aria-label="__('Full name')" data-test="proponent-name" class:input="max-sm:h-11" />
                                 <flux:text size="sm" class="mt-1">{{ __('Not in the portal') }}</flux:text>
                             @else
-                                <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')">
+                                <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')" class="max-sm:h-11">
                                     <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
                                     @foreach ($this->faculty as $member)
                                         <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
@@ -586,7 +587,7 @@ new #[Title('Research project')] class extends Component {
                         </div>
 
                         <div class="sm:col-span-2">
-                            <flux:select wire:model="proponents.{{ $index }}.role" :aria-label="__('Role')">
+                            <flux:select wire:model="proponents.{{ $index }}.role" :aria-label="__('Role')" class="max-sm:h-11">
                                 @foreach (Proponent::ROLES as $role)
                                     <flux:select.option :value="$role">{{ __($role) }}</flux:select.option>
                                 @endforeach
@@ -651,7 +652,7 @@ new #[Title('Research project')] class extends Component {
                             @if ($onFile)
                                 <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                                     <span class="text-zinc-600">{{ __('On file') }}</span>
-                                    <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm">{{ __('Open current file') }}</flux:link>
+                                    <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">{{ __('Open current file') }}</flux:link>
                                     @if ($open)
                                         <flux:button size="sm" variant="ghost" icon="arrow-path" x-show="! replacing" x-on:click="replacing = true" aria-controls="dropzone-wrap-{{ $stage }}" class="max-sm:h-11" data-test="replace-{{ $stage }}">{{ __('Replace file') }}</flux:button>
                                     @endif
@@ -727,22 +728,21 @@ new #[Title('Research project')] class extends Component {
                     <p class="mt-2">{{ __('Submitting it again counts the same project twice. Check with your co-proponents first.') }}</p>
                 </flux:callout.text>
                 <x-slot name="actions">
-                    <flux:button size="sm" :href="$this->backUrl" wire:navigate>{{ __('Cancel') }}</flux:button>
-                    <flux:button size="sm" variant="ghost" wire:click="submitAnyway" data-test="submit-anyway-button">{{ __('Submit proposal anyway') }}</flux:button>
+                    <flux:button size="sm" :href="$this->backUrl" wire:navigate class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
+                    <flux:button size="sm" variant="ghost" wire:click="submitAnyway" data-test="submit-anyway-button" class="max-sm:h-11">{{ __('Submit proposal anyway') }}</flux:button>
                 </x-slot>
             </flux:callout>
         @endif
 
         <div class="flex items-center justify-end gap-3 border-t border-line pt-6">
-            <flux:button :href="$this->backUrl" variant="ghost" wire:navigate>
+            <flux:button :href="$this->backUrl" variant="ghost" wire:navigate class="max-sm:h-11">
                 {{ __('Cancel') }}
             </flux:button>
 
             <flux:error name="department" class="me-auto" />
 
-            {{-- Flux drops its built-in spinner when a :disabled binding is present, so turn it back on; skipped when
-                 there's no college, because Flux shows the spinner on any disabled submit button. --}}
-            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save,documents" :disabled="! $this->department" :loading="(bool) $this->department" data-test="submit-proposal-button">
+            {{-- Always clickable: with no college, the error beside it says why, as the callout above does --}}
+            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save,documents" class="max-sm:h-11" data-test="submit-proposal-button">
                 {{ $submission ? __('Save changes') : __('Submit proposal') }}
             </flux:button>
         </div>

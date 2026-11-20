@@ -46,7 +46,7 @@ class SubmissionTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit Proposal')->assertSee('Proponents');
+        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit proposal')->assertSee('Proponents');
     }
 
     public function test_admins_cannot_open_the_submit_form(): void
@@ -117,8 +117,8 @@ class SubmissionTest extends TestCase
         $component = $this->fillProject(Livewire::test('pages::submissions.create'))
             ->assertSee('Your account has no college yet');
 
-        // A disabled submit button would otherwise show a spinner that never stops.
-        $this->assertStringNotContainsString('data-flux-loading-indicator', $this->submitButton($component->html()));
+        // Submit stays clickable; the error beside it says why nothing was filed.
+        $this->assertDoesNotMatchRegularExpression('/<button[^>]*\sdisabled(?=[\s>=])/', $this->submitButton($component->html()));
 
         $component
             ->call('save')
@@ -512,7 +512,7 @@ class SubmissionTest extends TestCase
         $this->actingAs($navarro);
 
         Livewire::test('pages::submissions.create', ['submission' => $project])
-            ->assertSee('Edit Project')
+            ->assertSee('Edit project')
             ->assertSeeHtml('data-test="back-to-submissions"')
             ->assertSeeHtml('href="'.route('submissions.index').'"')
             ->assertSet('title', 'Maria Proposal')

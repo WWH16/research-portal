@@ -64,6 +64,19 @@ class TwoFactorChallengeTest extends TestCase
             ->assertSee('x-bind:disabled="submitting"', false);
     }
 
+    public function test_the_first_code_box_takes_the_focus_on_arrival(): void
+    {
+        $user = User::factory()->withTwoFactor()->create();
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
+
+        // Found from the root: the boxes sit inside the form's own Alpine scope, where an x-ref on the page can't reach
+        $this->get(route('two-factor.login'))
+            ->assertOk()
+            ->assertSee("this.\$root.querySelector('[data-flux-otp-input]')?.focus()", false)
+            ->assertDontSee('$refs.otp', false);
+    }
+
     public function test_a_wrong_code_is_said_once(): void
     {
         // A real secret, since the factory's placeholder is too short for the code check

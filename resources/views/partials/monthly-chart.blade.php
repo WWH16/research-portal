@@ -105,7 +105,7 @@
                                 @endif
 
                                 {{-- Sits just above the bar's top, where the pointer is, not at the top of the whole column --}}
-                                <div class="absolute z-10 mb-1.5 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg shadow-zinc-900/10 group-hover:block group-focus-visible:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $tooltipSide }}" style="bottom: {{ $height }}%" aria-hidden="true" data-test="month-tooltip">
+                                <div class="absolute z-10 mb-1.5 hidden w-max rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-floating group-hover:block group-focus-visible:block pointer-coarse:group-focus:block group-data-dismissed/chart:hidden! {{ $tooltipSide }}" style="bottom: {{ $height }}%" aria-hidden="true" data-test="month-tooltip">
                                     <p class="text-zinc-500">{{ $label }}</p>
                                     <p class="font-semibold text-zinc-900">{{ trans_choice('{0} No projects|{1} One project|[2,*] :count projects', $month['total']) }}</p>
                                     @if ($month['total'] > 0)

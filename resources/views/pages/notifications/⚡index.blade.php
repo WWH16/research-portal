@@ -231,7 +231,7 @@ new #[Title('Notifications')] class extends Component {
          under the phone sidebar and its backdrop (z-20). Not Flux::toast(): its toasts
          stay on screen after a move to another page, where Undo would do nothing, and pause on hover past the cache --}}
     @if ($undo)
-        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="fixed inset-x-4 bottom-4 z-15 shadow-lg/5 sm:start-auto sm:end-6 sm:bottom-6 sm:w-lg" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
+        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="fixed inset-x-4 bottom-4 z-15 shadow-overlay sm:start-auto sm:end-6 sm:bottom-6 sm:w-lg" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
             <x-slot name="actions">
                 <flux:button size="sm" wire:click="undoDelete" class="max-sm:h-11">{{ __('Undo') }}</flux:button>
             </x-slot>

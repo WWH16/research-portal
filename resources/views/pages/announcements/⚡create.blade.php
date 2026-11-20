@@ -210,7 +210,7 @@ new #[Title('Announcement')] class extends Component {
         x-on:submit.capture="uploading && ($event.preventDefault(), $event.stopImmediatePropagation())"
         class="mt-8 flex flex-col gap-6"
     >
-        <flux:input wire:model.live.blur="title" :label="__('Title')" maxlength="255" required :autofocus="! $announcement" :placeholder="__('Schedule of Submission of Concept Proposals')" />
+        <flux:input wire:model.live.blur="title" :label="__('Title')" maxlength="255" required :autofocus="! $announcement" :placeholder="__('e.g. Schedule of Submission of Concept Proposals')" class:input="max-sm:h-11" />
 
         <flux:textarea wire:model.live.blur="description" :label="__('Message')" rows="8" maxlength="5000" required />
 
@@ -221,6 +221,7 @@ new #[Title('Announcement')] class extends Component {
             :label="__('Submission deadline')"
             :badge="__('Optional')"
             :description="__('Schedules only. Moves to Past deadlines after this date.')"
+            class:input="max-sm:h-11"
         />
 
         <div>
@@ -229,6 +230,7 @@ new #[Title('Announcement')] class extends Component {
                 type="file"
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp"
                 :label="__('Memo')"
+                class="max-sm:[&_[data-flux-button]]:h-11"
                 :badge="__('Optional')"
                 :description="__('PDF, Word, JPG, PNG or WebP, up to :size MB. Old .doc files download only.', ['size' => \App\Services\DocumentStorage::maxUploadMb()])"
             />
@@ -240,7 +242,11 @@ new #[Title('Announcement')] class extends Component {
                     @else
                         <x-memo :announcement="$announcement" :label="__('Current memo: :name', ['name' => $announcement->attachment_name])" :fold="false" />
 
-                        <flux:checkbox wire:model.live="removeMemo" :label="__('Remove the memo')" />
+                        {{-- Spelled out, so the label can stand 44px tall on a phone and the whole row takes the tap --}}
+                        <flux:field variant="inline" class="max-sm:items-center">
+                            <flux:checkbox wire:model.live="removeMemo" />
+                            <flux:label class="max-sm:min-h-11">{{ __('Remove the memo') }}</flux:label>
+                        </flux:field>
                     @endif
                 </div>
             @endif

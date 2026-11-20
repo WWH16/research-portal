@@ -323,8 +323,8 @@ new #[Title('Announcements')] class extends Component {
                                             {{-- 44px on a phone, a comfortable thumb target --}}
                                             <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" class="-me-2 max-sm:size-11" :tooltip="__('Open actions')" :aria-label="__('Open actions for :title', ['title' => $announcement->title])" />
                                             <flux:menu>
-                                                <flux:menu.item icon="pencil-square" :href="route('announcements.edit', $announcement)" wire:navigate>{{ __('Edit') }}</flux:menu.item>
-                                                <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $announcement->id }})">{{ __('Delete') }}</flux:menu.item>
+                                                <flux:menu.item icon="pencil-square" :href="route('announcements.edit', $announcement)" wire:navigate class="max-sm:min-h-11">{{ __('Edit') }}</flux:menu.item>
+                                                <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $announcement->id }})" class="max-sm:min-h-11">{{ __('Delete') }}</flux:menu.item>
                                             </flux:menu>
                                         </flux:dropdown>
                                     @endcan
@@ -388,7 +388,7 @@ new #[Title('Announcements')] class extends Component {
                     </ul>
 
                     @if ($section !== 'upcoming' && $list->hasPages())
-                        <flux:pagination :paginator="$list" class="mt-4" />
+                        <flux:pagination :paginator="$list" class="mt-4 max-sm:[&_button]:size-11" />
                     @endif
                 </section>
             @endforeach

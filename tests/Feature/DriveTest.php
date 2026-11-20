@@ -428,7 +428,12 @@ class DriveTest extends TestCase
             ->assertDontSee('MARIA DELA PAZ SANTOS')
             ->assertSee('2 projects')
             ->set('search', 'mining')
-            ->assertSee('1 project');
+            ->assertSee('1 project')
+            // A search that finds nothing offers its own way back.
+            ->set('search', 'no such title')
+            ->assertSee('Clear search')
+            ->set('search', '')
+            ->assertSee('2 projects');
     }
 
     private function staff(): User

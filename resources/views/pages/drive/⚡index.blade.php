@@ -79,25 +79,33 @@ new #[Title('Research Drive')] class extends Component {
     <x-page-title :subtitle="$this->office ? __('Documents for every project, filed under its college.') : __('Documents for the projects you filed or are a proponent on.')">
         {{ __('Research Drive') }}
 
-        <x-slot:actions class="gap-3 max-sm:w-full">
+        {{-- Labelled fields, so the row lines up on the fields' bottom edge --}}
+        <x-slot:actions class="items-end! gap-3 max-sm:w-full">
             @unless ($browsingFolders)
                 @if ($this->projects->isNotEmpty())
-                    <flux:text class="text-sm tabular-nums max-sm:order-2">{{ trans_choice('{1} 1 project|[2,*] :count projects', $this->projects->count()) }}</flux:text>
+                    <flux:text class="pb-2.5 text-sm tabular-nums max-sm:order-2 max-sm:pb-3">{{ trans_choice('{1} 1 project|[2,*] :count projects', $this->projects->count()) }}</flux:text>
                 @endif
-                <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search titles')" :aria-label="__('Search titles')" class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none" clearable />
+                {{-- Wrapped, as a label puts Flux's field around the input and the layout classes must reach the field.
+                     The placeholder is an example, and Flux hides the clear button only while one shows --}}
+                <div class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none">
+                    <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" clearable />
+                </div>
             @endunless
 
-            <flux:select wire:model.live="year" :aria-label="__('Year')" class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
-                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
-                @foreach (Submission::years() as $option)
-                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-                @endforeach
-            </flux:select>
+            <div class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36">
+                <flux:select wire:model.live="year" :label="__('Year')" class="max-sm:h-11" data-test="drive-year-select">
+                    <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+                    @foreach (Submission::years() as $option)
+                        <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
         </x-slot:actions>
     </x-page-title>
 
     @if ($this->folder)
-        <flux:breadcrumbs class="mt-4 min-w-0 flex-wrap gap-y-1">
+        {{-- On phones the way back reaches above and below its text, as on a project's page --}}
+        <flux:breadcrumbs class="mt-4 min-w-0 flex-wrap gap-y-1 [&_a]:relative max-sm:[&_a]:before:absolute max-sm:[&_a]:before:-inset-x-1 max-sm:[&_a]:before:-inset-y-3">
             <flux:breadcrumbs.item :href="route('drive.index', array_filter(['year' => $year]))" wire:navigate>{{ __('Research Drive') }}</flux:breadcrumbs.item>
             <flux:breadcrumbs.item>{{ $this->folder->code }}</flux:breadcrumbs.item>
         </flux:breadcrumbs>
@@ -112,7 +120,7 @@ new #[Title('Research Drive')] class extends Component {
             @endif
         </x-empty-state>
     @elseif ($browsingFolders)
-        <flux:table class="mt-4" data-test="college-folders">
+        <flux:table container:class="mt-4 table-frame" data-test="college-folders">
             <flux:table.columns>
                 <flux:table.column>{{ __('College') }}</flux:table.column>
                 <flux:table.column align="end">{{ $year !== '' ? __('Projects in :year', ['year' => $year]) : __('Projects') }}</flux:table.column>
@@ -140,7 +148,9 @@ new #[Title('Research Drive')] class extends Component {
     @else
         @if ($this->projects->isEmpty())
             @if (trim($search) !== '')
-                <x-empty-state icon="magnifying-glass" :heading="__('No projects match “:term”.', ['term' => trim($search)])" :text="__('Try fewer words, or another year.')" class="mt-6" />
+                <x-empty-state icon="magnifying-glass" :heading="__('No projects match “:term”.', ['term' => trim($search)])" :text="__('Try fewer words, or another year.')" class="mt-6">
+                    <flux:button wire:click="$set('search', '')" class="max-sm:h-11">{{ __('Clear search') }}</flux:button>
+                </x-empty-state>
             @elseif ($this->folder)
                 <x-empty-state icon="folder-open" :heading="__('No projects yet')" :text="$year !== '' ? __(':college has no projects filed for :year.', ['college' => $this->folder->code, 'year' => $year]) : __(':college has no projects filed yet.', ['college' => $this->folder->code])" class="mt-6" />
             @else
@@ -149,7 +159,7 @@ new #[Title('Research Drive')] class extends Component {
                 </x-empty-state>
             @endif
         @else
-            <flux:table class="mt-4">
+            <flux:table container:class="mt-4 table-frame">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Project') }}</flux:table.column>
                     <flux:table.column class="max-sm:hidden">{{ $this->office ? __('Filed by') : __('My role') }}</flux:table.column>

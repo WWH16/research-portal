@@ -16,7 +16,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    /* "Instrument Sans fallback" is Arial resized to Instrument Sans's measurements, built by the font plugin with
+       fontaine, so text keeps its place while the real font loads instead of reflowing when it arrives. */
+    --font-sans: 'Instrument Sans', 'Instrument Sans fallback', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
     /* Secondary text (14px) at 1.5, like body text, instead of Tailwind's 1.43, so wrapped lines have room. */
     --text-sm--line-height: 1.5;

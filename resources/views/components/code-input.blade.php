@@ -2,7 +2,8 @@
     A six-digit code in six boxes, for two-factor sign-in and for confirming two-factor setup. Every state shows in place:
     - Typing: the boxes as typed. The first box offers a code the phone or password manager has ready, and the sixth
       digit (or a pasted code) sends it by itself.
-    - Checking: the boxes dim and "Checking the code…" shows with a spinner until the answer comes.
+    - Checking: the boxes dim and lock until the answer comes. The form's own button carries the one spinner, so this
+      shows none; screen readers hear "Checking the code…".
     - Wrong: the boxes turn red and shake once, with the reason under them.
     - Typing again: the red clears at once. The server's next answer sets the state again.
     The states are attributes on the wrapper (data-loading, data-invalid), so a Livewire render always has the last word.
@@ -39,12 +40,10 @@
         class="transition-opacity group-data-loading/code:pointer-events-none group-data-loading/code:opacity-60 motion-reduce:transition-none"
     />
 
-    {{-- The live region is always there, so a screen reader hears the line when it appears --}}
-    <p role="status" class="text-sm text-zinc-600">
-        <span class="hidden items-center gap-2 group-data-loading/code:mt-3 group-data-loading/code:flex">
-            <flux:icon.loading variant="micro" />
-            {{ __('Checking the code…') }}
-        </span>
+    {{-- For screen readers only: the button's spinner is the visible sign. The live region is always there, so the line
+         is heard when it appears. --}}
+    <p role="status" class="sr-only">
+        <span class="hidden group-data-loading/code:inline">{{ __('Checking the code…') }}</span>
     </p>
 
     <flux:error :name="$name" class="text-center text-balance group-not-data-invalid/code:hidden group-data-loading/code:hidden" />

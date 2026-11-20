@@ -196,6 +196,7 @@ new #[Title('Announcement')] class extends Component {
         wire:submit="save"
         x-data="{
             uploading: 0,
+            progress: 0,
             clearError(field) {
                 field.closest('[data-flux-field]')?.querySelector('[data-flux-error]')?.replaceChildren();
                 field.removeAttribute('data-invalid');
@@ -203,7 +204,8 @@ new #[Title('Announcement')] class extends Component {
             },
         }"
         x-on:input="clearError($event.target)"
-        x-on:livewire-upload-start="uploading++"
+        x-on:livewire-upload-start="uploading++; progress = 0"
+        x-on:livewire-upload-progress="progress = $event.detail.progress"
         x-on:livewire-upload-finish="uploading--"
         x-on:livewire-upload-error="uploading--"
         x-on:livewire-upload-cancel="uploading--"
@@ -257,7 +259,8 @@ new #[Title('Announcement')] class extends Component {
             @endif
 
             <div x-show="uploading" x-cloak class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" data-test="uploading-status">
-                <flux:text size="sm" role="status">{{ __('Uploading memo…') }}</flux:text>
+                <flux:text size="sm" role="status" class="tabular-nums">{{ __('Uploading memo…') }} <span x-text="progress + '%'"></span></flux:text>
+                <flux:progress x-model="progress" :aria-label="__('Upload progress')" class="w-40" />
                 <flux:button size="xs" variant="ghost" class="max-sm:h-11" x-on:click="$wire.cancelUpload('memo')">{{ __('Stop upload') }}</flux:button>
             </div>
         </div>

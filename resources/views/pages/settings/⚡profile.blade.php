@@ -261,7 +261,7 @@ new #[Title('My profile')] class extends Component {
                     @endif
 
                     <flux:error name="photo" class="mt-2" />
-                    <p class="mt-2 text-sm font-medium text-red-500" role="alert" x-show="error" x-text="error"></p>
+                    <p class="mt-2 text-sm font-medium text-red-600" role="alert" x-show="error" x-text="error"></p>
 
                     <flux:modal name="adjust-photo" class="w-full sm:w-[26rem]" aria-labelledby="adjust-photo-heading" x-on:close="release()">
                         <div class="flex flex-col gap-6">
@@ -289,18 +289,18 @@ new #[Title('My profile')] class extends Component {
                             <div class="grid gap-2">
                                 <div class="flex items-center gap-3">
                                     <label for="photo-zoom" class="text-sm font-medium text-zinc-800">{{ __('Zoom') }}</label>
-                                    <input id="photo-zoom" type="range" min="1" max="3" step="0.01" :value="zoom" x-on:input="setZoom(+$event.target.value)" class="w-full accent-accent" />
+                                    <input id="photo-zoom" type="range" min="1" max="3" step="0.01" :value="zoom" x-on:input="setZoom(+$event.target.value)" class="w-full accent-accent max-sm:h-11" />
                                 </div>
 
                                 <flux:text class="text-sm" x-show="small">{{ __('This photo is small and may look blurry.') }}</flux:text>
-                                <p class="text-sm font-medium text-red-500" role="alert" x-show="error" x-text="error"></p>
+                                <p class="text-sm font-medium text-red-600" role="alert" x-show="error" x-text="error"></p>
                             </div>
 
                             <div class="flex justify-end gap-2">
                                 <flux:modal.close>
-                                    <flux:button variant="ghost" x-bind:disabled="saving">{{ __('Cancel') }}</flux:button>
+                                    <flux:button variant="ghost" class="max-sm:h-11" x-bind:disabled="saving">{{ __('Cancel') }}</flux:button>
                                 </flux:modal.close>
-                                <flux:button variant="primary" x-on:click="save()" x-bind:disabled="saving || ! stage" x-bind:class="saving && 'disabled:opacity-100!'" data-test="save-photo-button">
+                                <flux:button variant="primary" class="max-sm:h-11" x-on:click="save()" x-bind:disabled="saving || ! stage" x-bind:class="saving && 'disabled:opacity-100!'" data-test="save-photo-button">
                                     <flux:icon.loading x-show="saving" class="size-4" />
                                     <span x-text="saving ? @js(__('Saving…')) : @js(__('Save photo'))">{{ __('Save photo') }}</span>
                                 </flux:button>
@@ -325,9 +325,9 @@ new #[Title('My profile')] class extends Component {
 
                             <div class="flex justify-end gap-2">
                                 <flux:modal.close>
-                                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                    <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                                 </flux:modal.close>
-                                <flux:button variant="danger" wire:click="removePhoto" data-test="confirm-remove-photo-button">
+                                <flux:button variant="danger" class="max-sm:h-11" wire:click="removePhoto" data-test="confirm-remove-photo-button">
                                     {{ __('Remove photo') }}
                                 </flux:button>
                             </div>
@@ -358,22 +358,22 @@ new #[Title('My profile')] class extends Component {
         <form wire:submit="updateProfileInformation">
             <x-pages::settings.section :heading="__('Contact details')" :description="__('How the Research Office reaches you.')">
                 <div class="grid gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="name" :label="__('Full name')" type="text" required autocomplete="name" class="sm:col-span-2" />
+                    <flux:input wire:model="name" :label="__('Full name')" type="text" required autocomplete="name" class="sm:col-span-2" class:input="max-sm:h-11" />
 
                     <div class="min-w-0">
-                        <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+                        <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" class:input="max-sm:h-11" />
 
                         @if ($this->hasUnverifiedEmail)
                             <flux:text class="mt-3">
                                 {{ __('Your email address is unverified.') }}
 
-                                <flux:link class="text-sm cursor-pointer" wire:click.prevent="resendVerificationNotification">
+                                <flux:link class="text-sm cursor-pointer max-sm:inline-block max-sm:py-3" wire:click.prevent="resendVerificationNotification">
                                     {{ __('Resend verification email') }}
                                 </flux:link>
                             </flux:text>
 
                             @if (session('status') === 'verification-link-sent')
-                                <flux:text class="mt-2 font-medium !text-green-600">
+                                <flux:text class="mt-2 font-medium text-isu-green-800!">
                                     {{ __('A new verification link has been sent to your email address.') }}
                                 </flux:text>
                             @endif
@@ -381,11 +381,11 @@ new #[Title('My profile')] class extends Component {
 
                         {{-- Only while the address is being changed: a new one moves where reset links go --}}
                         <div x-show="$wire.email.trim() !== @js($user->email)" x-cloak class="mt-4">
-                            <flux:input wire:model="current_password" :label="__('Current password')" :description:trailing="__('Needed to change your email address.')" type="password" autocomplete="current-password" viewable data-test="email-change-password" />
+                            <flux:input wire:model="current_password" :label="__('Current password')" :description:trailing="__('Needed to change your email address.')" type="password" autocomplete="current-password" viewable data-test="email-change-password" class:input="max-sm:h-11" />
                         </div>
                     </div>
 
-                    <flux:input wire:model="mobile" :label="__('Mobile')" :badge="__('Optional')" type="tel" maxlength="20" autocomplete="tel" />
+                    <flux:input wire:model="mobile" :label="__('Mobile')" :badge="__('Optional')" type="tel" maxlength="20" autocomplete="tel" class:input="max-sm:h-11" />
                 </div>
 
                 <x-slot:footer>
@@ -402,7 +402,11 @@ new #[Title('My profile')] class extends Component {
             <x-pages::settings.section :heading="__('Email me about')" :description="__('Notices always show in the portal. These choose which also come by email. Account and Google Drive notices always do.')">
                 <div class="flex flex-col gap-4" data-test="email-preferences">
                     @foreach (User::EMAIL_KINDS as $kind => $label)
-                        <flux:switch wire:model.live="emailMe.{{ $kind }}" :label="__($label)" align="left" />
+                        {{-- Spelled out, so the label can stand 44px tall on a phone and the whole row takes the tap --}}
+                        <flux:field variant="inline" class="max-sm:items-center">
+                            <flux:switch wire:model.live="emailMe.{{ $kind }}" />
+                            <flux:label class="max-sm:min-h-11">{{ __($label) }}</flux:label>
+                        </flux:field>
                     @endforeach
                 </div>
             </x-pages::settings.section>

@@ -4,8 +4,8 @@
 
     <div class="border-b border-line lg:mt-4">
         <flux:navbar class="settings-tabs -mb-px" scrollable aria-label="{{ __('My profile') }}">
-            <flux:navbar.item :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>{{ __('My profile') }}</flux:navbar.item>
-            <flux:navbar.item :href="route('security.edit')" :current="request()->routeIs('security.edit')" wire:navigate>{{ __('Security') }}</flux:navbar.item>
+            <flux:navbar.item :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate class="max-sm:h-11">{{ __('My profile') }}</flux:navbar.item>
+            <flux:navbar.item :href="route('security.edit')" :current="request()->routeIs('security.edit')" wire:navigate class="max-sm:h-11">{{ __('Security') }}</flux:navbar.item>
         </flux:navbar>
     </div>
 

@@ -10,9 +10,7 @@
             method="POST"
             action="{{ route('password.email') }}"
             class="flex flex-col gap-6"
-            x-data="{ submitting: false }"
-            x-on:submit="submitting = true"
-            x-on:pageshow.window="submitting = false"
+            x-data="formStates"
             x-bind:aria-busy="submitting"
         >
             @csrf

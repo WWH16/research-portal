@@ -23,7 +23,7 @@ class PasswordConfirmationTest extends TestCase
     {
         $this->actingAs(User::factory()->create())
             ->get(route('password.confirm'))
-            ->assertSee('x-on:submit="submitting = true"', escape: false)
+            ->assertSee('x-data="formStates', escape: false)
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false);
     }

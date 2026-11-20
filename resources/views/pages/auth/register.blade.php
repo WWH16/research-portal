@@ -5,14 +5,13 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        {{-- Same loading pattern as the login form: disabling the submit button makes Flux show its spinner. --}}
+        {{-- Same states as the login form (formStates): the button's spinner and locked fields while it sends, and after a
+             turned-down sign-up the focus on the first red field, which clears as soon as it is edited. --}}
         <form
             method="POST"
             action="{{ route('register.store') }}"
             class="flex flex-col gap-6"
-            x-data="{ submitting: false, password: '', confirmation: '' }"
-            x-on:submit="submitting = true"
-            x-on:pageshow.window="submitting = false"
+            x-data="formStates({ password: '', confirmation: '' })"
             x-bind:aria-busy="submitting"
         >
             @csrf
@@ -23,7 +22,7 @@
                 :value="old('name')"
                 type="text"
                 required
-                autofocus
+                :autofocus="! $errors->any()"
                 autocomplete="name"
             />
 

@@ -48,9 +48,7 @@
             <form
                 method="POST"
                 action="{{ route('two-factor.login.store') }}"
-                x-data="{ submitting: false }"
-                x-on:submit="submitting = true"
-                x-on:pageshow.window="submitting = false"
+                x-data="formStates"
                 x-bind:aria-busy="submitting"
             >
                 @csrf

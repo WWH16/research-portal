@@ -304,62 +304,87 @@ new #[Title('Submissions')] class extends Component {
 
 {{-- Same width as the Research Drive, so moving between the two lists doesn't shift the page --}}
 <section class="mx-auto w-full max-w-5xl">
-    <x-page-title :subtitle="$this->monitoring ? __('Every project filed across the portal.') : __('Projects you filed or are a proponent on.')">{{ __('Submissions') }}</x-page-title>
+    {{-- Filing a proposal is the page's own action, so it sits in the title row, apart from the filters --}}
+    <x-page-title :subtitle="$this->monitoring ? __('Every project filed across the portal.') : __('Projects you filed or are a proponent on.')">
+        {{ __('Submissions') }}
+
+        @unless ($this->monitoring)
+            <x-slot:actions>
+                <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate class="max-sm:h-11">{{ __('Create proposal') }}</flux:button>
+            </x-slot:actions>
+        @endunless
+    </x-page-title>
 
     {{-- Filters and results redraw together; opening the dates dialog redraws only the dates island below.
-         The filters drop Flux's shadow and darker bottom edge so they sit quieter than the table they narrow. --}}
+         Search, then one Filter button that opens every other filter in place, as on the activity log. What is set shows
+         as chips under the toolbar, each one click to remove --}}
     @island(name: 'list', always: true)
-    <div class="mt-6 flex flex-wrap items-center gap-3 [&_[data-flux-control]]:border-b-zinc-200 [&_[data-flux-control]]:shadow-none">
-        @if ($this->monitoring)
-            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search titles or faculty')" :aria-label="__('Search titles or faculty')" class="min-w-48 flex-1" />
-        @endif
+    @php
+        $statuses = ['proposal' => __('At proposal stage'), 'revision' => __('Concept needs revision'), 'delayed' => __('Delayed')]
+            + ($this->monitoring ? ['presented' => __('Presented in-house'), 'not-presented' => __('Not presented in-house')] : [])
+            + collect(Submission::STATUSES)->mapWithKeys(fn ($status) => [$status => __($status)])->all();
+    @endphp
+    <div class="mt-6" x-data="{ filters: false }">
+        <div class="flex flex-wrap items-end gap-3">
+            @if ($this->monitoring)
+                {{-- Wrapped, as a label puts Flux's field around the input and the layout classes must reach the field.
+                     The placeholder is an example, and Flux hides the clear button only while one shows --}}
+                <div class="min-w-48 flex-1 max-sm:basis-full">
+                    <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles or faculty')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" clearable />
+                </div>
+            @endif
 
-        {{-- On phones the two filters share one row at half width each, instead of two uneven rows --}}
-        <div class="flex gap-3 max-sm:w-full">
-            <flux:select wire:model.live="statusFilter" :aria-label="__('Filter by status')" class="max-w-48 max-sm:max-w-none max-sm:flex-1" data-test="status-filter">
+            <flux:button icon="funnel" x-on:click="filters = ! filters" x-bind:aria-expanded="filters" aria-controls="submission-filters" class="max-sm:h-11">{{ __('Filter') }}</flux:button>
+
+            {{-- The count sits with the filters it answers; the pager below only appears once there is a second page --}}
+            @if ($this->submissions->isNotEmpty())
+                <flux:text class="pb-2.5 text-sm tabular-nums sm:ms-auto max-sm:pb-3" data-test="results-count">
+                    {{ trans_choice('{1} 1 project|[2,*] :count projects', $this->submissions->total()) }}
+                </flux:text>
+            @endif
+
+            @if ($this->monitoring)
+                <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:ms-auto max-sm:h-11">
+                    {{ __('Export CSV') }}
+                </flux:button>
+            @endif
+        </div>
+
+        <div id="submission-filters" x-show="filters" x-cloak @class(['mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4', 'sm:grid-cols-3' => $this->monitoring, 'sm:grid-cols-2' => ! $this->monitoring])>
+            <flux:select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11" data-test="status-filter">
                 <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
-                <flux:select.option value="proposal">{{ __('At proposal stage') }}</flux:select.option>
-                <flux:select.option value="revision">{{ __('Concept needs revision') }}</flux:select.option>
-                <flux:select.option value="delayed">{{ __('Delayed') }}</flux:select.option>
-                @if ($this->monitoring)
-                    <flux:select.option value="presented">{{ __('Presented in-house') }}</flux:select.option>
-                    <flux:select.option value="not-presented">{{ __('Not presented in-house') }}</flux:select.option>
-                @endif
-                @foreach (Submission::STATUSES as $option)
-                    <flux:select.option :value="$option">{{ __($option) }}</flux:select.option>
+                @foreach ($statuses as $value => $label)
+                    <flux:select.option :value="$value">{{ $label }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="yearFilter" :aria-label="__('Filter by year')" class="max-w-36 max-sm:max-w-none max-sm:flex-1">
+            <flux:select wire:model.live="yearFilter" :label="__('Year')" class="max-sm:h-11">
                 <flux:select.option value="">{{ __('All years') }}</flux:select.option>
                 @foreach (Submission::years() as $option)
                     <flux:select.option :value="$option">{{ $option }}</flux:select.option>
                 @endforeach
             </flux:select>
+
+            @if ($this->monitoring)
+                <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
+                    <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                    @foreach ($this->collegeCodes as $code)
+                        <flux:select.option :value="$code">{{ $code }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            @endif
         </div>
 
-        {{-- The count sits with the filters it answers; the pager below only appears once there is a second page --}}
-        @if ($this->submissions->isNotEmpty())
-            <flux:text class="text-sm tabular-nums sm:ms-auto" data-test="results-count">
-                {{ trans_choice('{1} 1 project|[2,*] :count projects', $this->submissions->total()) }}
-            </flux:text>
-        @endif
-
-        @if ($this->monitoring)
-            {{-- Phones drop the College column, so its filter comes up here beside the count --}}
-            <div class="sm:hidden" data-test="phone-college-filter">
-                <x-college-filter model="department" :value="$department" :codes="$this->collegeCodes" />
-            </div>
-
-            <flux:button icon="arrow-down-tray" wire:click="export" :disabled="$this->submissions->isEmpty()" data-test="export-submissions-button" class="max-sm:ms-auto max-sm:h-11">
-                {{ __('Export CSV') }}
-            </flux:button>
-        @else
-            {{-- Takes the count's place at the end of the row when there is no count --}}
-            <flux:button :href="route('submissions.create')" variant="primary" icon="plus" wire:navigate @class(['max-sm:h-11 max-sm:w-full', 'sm:ms-auto' => $this->submissions->isEmpty()])>
-                {{ __('Create proposal') }}
-            </flux:button>
-        @endif
+        {{-- Each set filter, keyed by the action that removes it. A block, not @php(...): Blade would read an inline one
+             through to the next @endphp further down --}}
+        @php
+            $chips = array_filter([
+                "\$set('statusFilter', '')" => isset($statuses[$statusFilter]) ? __('Status: :status', ['status' => $statuses[$statusFilter]]) : null,
+                "\$set('yearFilter', '')" => $yearFilter !== '' ? __('Year: :year', ['year' => $yearFilter]) : null,
+                "\$set('department', '')" => $department !== '' ? __('College: :college', ['college' => $department]) : null,
+            ]);
+        @endphp
+        <x-filter-chips :chips="$chips" />
     </div>
 
     @if ($this->submissions->isEmpty())
@@ -378,16 +403,13 @@ new #[Title('Submissions')] class extends Component {
             </x-empty-state>
         @endif
     @else
-        {{-- Every cell starts at the top, so each row reads across one line from the title. relative anchors the cells'
-             screen-reader-only text to the table, inside its scroll area, so on phones it can't widen the whole page. Columns sit
-             a little closer than Flux's default, so the seven of them fit a laptop screen with the document pills on one line --}}
-        <flux:table class="relative mt-4 [&_td]:align-top [&_td+td]:ps-1 [&_th+th]:ps-1" :paginate="$this->submissions->hasPages() ? $this->submissions : null">
+        {{-- Every cell starts at the top, so each row reads across one line from the title. Columns sit a little closer than
+             Flux's default, so the seven of them fit a laptop screen with the document pills on one line --}}
+        <flux:table container:class="mt-4 table-frame" class="[&_td]:align-top [&_td+td]:ps-1 [&_th+th]:ps-1" :paginate="$this->submissions->hasPages() ? $this->submissions : null" pagination:class="max-sm:[&_button]:size-11">
             <flux:table.columns>
                 <flux:table.column>{{ __('Project') }}</flux:table.column>
                 @if ($this->monitoring)
-                    <flux:table.column class="max-sm:hidden" data-test="department-column">
-                        <x-college-filter model="department" :value="$department" :codes="$this->collegeCodes" />
-                    </flux:table.column>
+                    <flux:table.column class="max-sm:hidden" data-test="department-column">{{ __('College') }}</flux:table.column>
                 @endif
                 {{-- Phones keep the project and its actions; the project cell repeats status, college and due date in short --}}
                 <flux:table.column class="max-sm:hidden">{{ __('Year') }}</flux:table.column>
@@ -424,11 +446,12 @@ new #[Title('Submissions')] class extends Component {
                     @endphp
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="max-w-sm whitespace-normal sm:min-w-64">
-                            <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline">{{ $title }}</a>
+                            {{-- On phones the padding grows the tap area to 44px and the negative margin keeps the row as it was --}}
+                            <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:-my-3 max-sm:py-3">{{ $title }}</a>
                             <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->unique(fn ($row) => $row->personKey())->map->shortName()->join(', ') }}</p>
                             {{-- All four documents in stage order: a filled pill opens one on file, a dashed one is still to come, so
                                  every row shows the same sequence, on one line from tablet width up. Phones set them two by two at
-                                 equal widths, 36px tall, so the pairs line up and each is easy to tap. A filled pill carries a small
+                                 equal widths, 44px tall, so the pairs line up and each is easy to tap. A filled pill carries a small
                                  open-in-new-tab icon, the one the portal's other document links use, so it reads as something to open.
                                  Screen readers hear the full document name and which project it is for. A tooltip names the full
                                  document; on phones it is a block, so the pill keeps its cell width --}}
@@ -438,10 +461,10 @@ new #[Title('Submissions')] class extends Component {
                                         <flux:tooltip :content="$submission->{$stage.'_path'} ? __('Open the :document in a new tab', ['document' => Str::lower(__($label))]) : __(':document: not uploaded yet', ['document' => __($label)])" class="max-sm:block">
                                             @if ($submission->{$stage.'_path'})
                                                 <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
-                                                    <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-9 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon.arrow-top-right-on-square variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
+                                                    <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-11 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon.arrow-top-right-on-square variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
                                                 </a>
                                             @else
-                                                <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500 max-sm:h-9 max-sm:w-full max-sm:justify-center">
+                                                <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500 max-sm:h-11 max-sm:w-full max-sm:justify-center">
                                                     {{ Str::before(__($label), ' ') }}<span class="sr-only">{{ __(': not uploaded yet') }}</span>
                                                 </span>
                                             @endif
@@ -542,17 +565,17 @@ new #[Title('Submissions')] class extends Component {
                     </div>
 
                     <div class="grid gap-6 sm:grid-cols-2">
-                        <flux:input wire:model="start_date" :label="__('Starting date')" type="date" required />
-                        <flux:input wire:model="target_date" :label="__('Completion date')" type="date" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required />
+                        <flux:input wire:model="start_date" :label="__('Starting date')" type="date" required class:input="max-sm:h-11" />
+                        <flux:input wire:model="target_date" :label="__('Completion date')" type="date" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required class:input="max-sm:h-11" />
                     </div>
 
                     <flux:text class="text-sm">{{ __('For an extension or a correction. The faculty on this project will be notified of the new dates. The status and review list stay as they are.') }}</flux:text>
 
                     <div class="flex justify-end gap-2">
                         <flux:modal.close>
-                            <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                            <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
                         </flux:modal.close>
-                        <flux:button type="submit" variant="primary" data-test="save-dates-button">{{ __('Save dates') }}</flux:button>
+                        <flux:button type="submit" variant="primary" data-test="save-dates-button" class="max-sm:h-11">{{ __('Save dates') }}</flux:button>
                     </div>
                 </form>
             @endif

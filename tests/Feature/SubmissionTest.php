@@ -72,8 +72,8 @@ class SubmissionTest extends TestCase
             ->assertSee($maria->shortName())
             ->assertSee($jose->shortName())
             ->assertSeeHtml('data-test="department-column"')
-            // Phones hide the College column, so its filter stands beside the count instead.
-            ->assertSeeHtml('data-test="phone-college-filter"')
+            // The college filter sits in the Filter panel, on every screen size.
+            ->assertSeeHtml('data-test="college-filter"')
             ->assertDontSee(route('submissions.create'), escape: false);
     }
 
@@ -88,7 +88,7 @@ class SubmissionTest extends TestCase
             ->assertSee('Maria Proposal')
             ->assertDontSee('Jose Proposal')
             ->assertDontSeeHtml('data-test="department-column"')
-            ->assertDontSeeHtml('data-test="phone-college-filter"')
+            ->assertDontSeeHtml('data-test="college-filter"')
             ->assertSee(route('submissions.create'), escape: false);
     }
 

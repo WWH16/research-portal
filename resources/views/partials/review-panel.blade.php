@@ -11,7 +11,8 @@
             [$color, $icon, $heading, $text] = match ($review) {
                 'pending' => ['zinc', 'document-arrow-up', null, ($uploaded ? __('Uploaded :date.', ['date' => $uploaded->format('M j, Y, g:i A')]).' ' : '').__('Open it, then pass it or return it for revision. The detailed proposal stays locked until it passes.')],
                 'passed' => ['green', 'check-circle', __('Concept proposal passed'), __('The proponents can upload the detailed proposal. A replaced concept proposal stays passed.')],
-                default => ['amber', 'arrow-uturn-left', __('Returned for revision'), __('Waiting for the proponents to upload a corrected concept proposal.')],
+                // No Flux colour: the pastel class below, as Flux's amber text fell under 4.5:1 on its own fill
+                default => [null, 'arrow-uturn-left', __('Returned for revision'), __('Waiting for the proponents to upload a corrected concept proposal.')],
             };
         @endphp
         <div class="flex flex-col gap-6">
@@ -27,10 +28,11 @@
 
             {{-- A waiting review reads neutral, apart from the green of a pass and the amber of a return. The document opens
                  from here, beside the line that says to open it, and leaves the panel's one primary button to the decision. --}}
-            <flux:callout :color="$color" :icon="$icon" :heading="$heading" :text="$text" :data-test="$review === 'pending' ? 'review-to-check' : 'review-nothing-new'">
+            <flux:callout :color="$color" :class="$review === 'returned' ? 'pastel' : null" :icon="$icon" :heading="$heading" :text="$text" :data-test="$review === 'pending' ? 'review-to-check' : 'review-nothing-new'">
                 @if ($this->reviewing->concept_path)
                     <x-slot name="actions">
-                        <flux:button size="sm" variant="outline" :href="route('submissions.document', [$this->reviewing, 'concept'])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11">
+                        {{-- The focus starts here, so a keyboard user lands inside the panel on its first step --}}
+                        <flux:button size="sm" variant="outline" :href="route('submissions.document', [$this->reviewing, 'concept'])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11" autofocus>
                             {{ __('Open concept proposal') }}
                         </flux:button>
                     </x-slot>
@@ -101,7 +103,7 @@
                 <flux:separator variant="subtle" />
 
                 <div x-data="{ decision: '' }" wire:key="decision-{{ $this->reviewing->id }}" class="grid gap-4">
-                    <flux:radio.group x-model="decision" variant="segmented" :label="__('Your decision')" data-test="review-decision" class="*:transition-colors *:not-data-checked:hover:bg-white/60 dark:*:not-data-checked:hover:bg-white/10">
+                    <flux:radio.group x-model="decision" variant="segmented" :label="__('Your decision')" data-test="review-decision" class="*:transition-colors *:not-data-checked:hover:bg-white/60 dark:*:not-data-checked:hover:bg-white/10 max-sm:h-12 max-sm:*:h-11">
                         <flux:radio value="passed" icon="check" :label="__('Pass')" />
                         <flux:radio value="returned" icon="arrow-uturn-left" :label="__('Return for revision')" />
                     </flux:radio.group>

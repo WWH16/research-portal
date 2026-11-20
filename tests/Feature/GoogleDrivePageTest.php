@@ -444,7 +444,7 @@ class GoogleDrivePageTest extends TestCase
         Livewire::test('pages::google-drive.index')
             ->call('loadUsage')
             ->assertSet('usage', false)
-            ->assertSee('Storage use unavailable right now.')
+            ->assertSee('Storage use unavailable. Reload the page to try again.')
             ->assertDontSeeHtml('data-test="drive-usage"');
     }
 
@@ -470,8 +470,10 @@ class GoogleDrivePageTest extends TestCase
 
         $html = Livewire::test('pages::google-drive.index')->set('step', 2)->html();
 
-        // Change account and Disconnect: their buttons stay disabled until the address matches, so Enter can't submit.
+        // Change account and Disconnect: Enter moves on until the button, so a half-filled form isn't sent early.
         $this->assertSame(2, substr_count($html, 'x-on:keydown.enter='));
+        // Their buttons stay clickable; the server says what doesn't match.
+        $this->assertStringNotContainsString('x-bind:disabled', $html);
         // An Enter that confirms an IME's characters stays with the IME instead of moving on.
         $this->assertSame(2, substr_count($html, '! $event.isComposing && $event.keyCode !== 229'));
     }

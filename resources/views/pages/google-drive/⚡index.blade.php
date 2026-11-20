@@ -345,13 +345,13 @@ new #[Title('Google Drive')] class extends Component {
 
             <x-slot name="actions" class="flex-wrap">
                 {{-- A link, so Flux shows no spinner itself: this one runs until the next page opens, and resets on Back --}}
-                <flux:button variant="primary" :href="route('google-drive.connect')" data-test="connect-drive-button"
+                <flux:button variant="primary" :href="route('google-drive.connect')" class="max-sm:h-11" data-test="connect-drive-button"
                     x-data="{ busy: false }" x-on:click="busy = true" x-on:pageshow.window="busy = false" x-bind:class="busy && 'pointer-events-none opacity-75'" x-bind:aria-disabled="busy">
                     <flux:icon.loading class="hidden" x-bind:class="{ hidden: ! busy }" variant="micro" />
                     {{ __('Connect Google Drive') }}
                 </flux:button>
                 <flux:modal.trigger name="drive-change">
-                    <flux:button variant="ghost">{{ __('Change account') }}</flux:button>
+                    <flux:button variant="ghost" class="max-sm:h-11">{{ __('Change account') }}</flux:button>
                 </flux:modal.trigger>
             </x-slot>
         </flux:callout>
@@ -373,9 +373,9 @@ new #[Title('Google Drive')] class extends Component {
 
                 <form wire:submit="saveAccount" class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start">
                     <div class="sm:flex-1">
-                        <flux:input wire:model="email" type="email" :label="__('Google account')" :placeholder="__('name@gmail.com')" autocomplete="off" />
+                        <flux:input wire:model="email" type="email" :label="__('Google account')" :placeholder="__('name@gmail.com')" autocomplete="off" class:input="max-sm:h-11" />
                     </div>
-                    <flux:button type="submit" variant="primary" class="sm:mt-6" data-test="save-account-button">{{ __('Save account') }}</flux:button>
+                    <flux:button type="submit" variant="primary" class="max-sm:h-11 sm:mt-6" data-test="save-account-button">{{ __('Save account') }}</flux:button>
                 </form>
             @else
                 <flux:heading size="lg" level="2">{{ __('Connected as :email', ['email' => $this->connection->email]) }}</flux:heading>
@@ -390,12 +390,12 @@ new #[Title('Google Drive')] class extends Component {
                      not connected and the callout above offers Connect again. --}}
                 <div class="mt-4 flex flex-wrap gap-2">
                     {{-- Opens for whoever is signed in to Google as the storage account; anyone else sees no access --}}
-                    <flux:button :href="'https://drive.google.com/drive/folders/'.$this->connection->folder_id" target="_blank" icon:trailing="arrow-top-right-on-square">{{ __('Open folder in Google Drive') }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:button>
+                    <flux:button :href="'https://drive.google.com/drive/folders/'.$this->connection->folder_id" target="_blank" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11">{{ __('Open folder in Google Drive') }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:button>
                     <flux:modal.trigger name="drive-disconnect">
-                        <flux:button variant="danger">{{ __('Disconnect Google Drive') }}</flux:button>
+                        <flux:button variant="danger" class="max-sm:h-11">{{ __('Disconnect Google Drive') }}</flux:button>
                     </flux:modal.trigger>
                     <flux:modal.trigger name="drive-change">
-                        <flux:button variant="ghost">{{ __('Change account') }}</flux:button>
+                        <flux:button variant="ghost" class="max-sm:h-11">{{ __('Change account') }}</flux:button>
                     </flux:modal.trigger>
                 </div>
             @endif
@@ -422,7 +422,7 @@ new #[Title('Google Drive')] class extends Component {
             @if ($usage === null)
                 <flux:text class="mt-1">{{ __('Checking storage…') }}</flux:text>
             @elseif ($usage === false)
-                <flux:text class="mt-1">{{ __('Storage use unavailable right now.') }}</flux:text>
+                <flux:text class="mt-1">{{ __('Storage use unavailable. Reload the page to try again.') }}</flux:text>
             @else
                 @php($storage = $this->storage)
                 <div class="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1" data-test="drive-usage">
@@ -496,7 +496,7 @@ new #[Title('Google Drive')] class extends Component {
                             <flux:table.cell variant="strong" class="whitespace-normal wrap-anywhere">
                                 {{ str($row['account']->email)->before('@') }}<wbr>{{ str($row['account']->email)->after('@')->prepend('@') }}
                                 <flux:text size="sm" class="font-normal">{{ $row['account']->retired_at ? __('Earlier') : __('Current') }}</flux:text>
-                                <flux:text size="sm" class="font-normal md:hidden">{{ __('Documents: :documents, memos: :memos, photos: :photos', ['documents' => $row['documents'], 'memos' => $row['memos'], 'photos' => $row['photos']]) }}</flux:text>
+                                <flux:text class="font-normal md:hidden">{{ __('Documents: :documents, memos: :memos, photos: :photos', ['documents' => $row['documents'], 'memos' => $row['memos'], 'photos' => $row['photos']]) }}</flux:text>
                             </flux:table.cell>
                             <flux:table.cell>
                                 {{-- The fix sits beside the status it fixes, on every row that needs one. Each button names its
@@ -508,10 +508,22 @@ new #[Title('Google Drive')] class extends Component {
                                         <flux:badge size="sm" color="red">{{ __('Not connected') }}</flux:badge>
                                     @endif
                                     @if ($row['account']->retired_at && ! $row['files'])
-                                        <flux:button size="sm" variant="danger" class="max-sm:h-11" wire:click="removeEarlier({{ $row['account']->id }})"
-                                            wire:confirm="{{ __('Remove :email? It holds no files. The portal gives up its Google access.', ['email' => $row['account']->email]) }}"
-                                            :aria-label="__('Remove :email', ['email' => $row['account']->email])"
-                                            data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
+                                        {{-- The portal's own dialog, not the browser's: it names the account, says Remove account
+                                             on the red button, and starts on Cancel --}}
+                                        <flux:modal.trigger :name="'drive-remove-'.$row['account']->id">
+                                            <flux:button size="sm" variant="danger" class="max-sm:h-11" :aria-label="__('Remove :email', ['email' => $row['account']->email])"
+                                                data-test="remove-earlier-button">{{ __('Remove') }}</flux:button>
+                                        </flux:modal.trigger>
+                                        <flux:modal :name="'drive-remove-'.$row['account']->id" class="w-full sm:w-[30rem]">
+                                            <flux:heading size="lg" class="wrap-anywhere">{{ __('Remove :email?', ['email' => $row['account']->email]) }}</flux:heading>
+                                            <flux:text class="mt-2">{{ __('It holds no files. The portal gives up its Google access.') }}</flux:text>
+                                            <div class="mt-6 flex justify-end gap-2">
+                                                <flux:modal.close>
+                                                    <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
+                                                </flux:modal.close>
+                                                <flux:button variant="danger" class="max-sm:h-11" wire:click="removeEarlier({{ $row['account']->id }})">{{ __('Remove account') }}</flux:button>
+                                            </div>
+                                        </flux:modal>
                                     @elseif (! $row['account']->isConnected())
                                         @php($verb = $row['account']->retired_at ? __('Reconnect') : __('Connect'))
                                         <flux:button size="sm" class="max-sm:h-11" :href="route('google-drive.connect', ['account' => $row['account']->id])" :aria-label="$verb.' '.$row['account']->email"
@@ -536,7 +548,7 @@ new #[Title('Google Drive')] class extends Component {
         <div class="mt-8 border-t border-line pt-6" data-test="drive-recent">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <flux:heading size="lg" level="2">{{ __('Recent changes') }}</flux:heading>
-                <flux:link :href="route('activity-log.index', ['group' => 'drive'])" wire:navigate class="text-sm">{{ __('View all') }}</flux:link>
+                <flux:link :href="route('activity-log.index', ['group' => 'drive'])" wire:navigate class="text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">{{ __('View all') }}</flux:link>
             </div>
 
             <ul class="mt-2 divide-y divide-line">
@@ -558,9 +570,9 @@ new #[Title('Google Drive')] class extends Component {
     @endif
     {{--
         Danger zone, like GitHub's and DigitalOcean's: step one says what happens, with real numbers; step two asks for
-        the current account typed out, which keeps the button disabled until it matches, and the admin's password.
-        The server checks both again. Closing a dialog starts it over. Enter in a field moves to the next one and then
-        to the button, which a disabled button would otherwise swallow; Enter on the button submits as usual.
+        the current account typed out and the admin's password. The button stays clickable, and the server says what
+        doesn't match. Closing a dialog starts it over. Enter in a field moves to the next one, so a half-filled form
+        isn't sent early; Enter on the button submits as usual.
     --}}
     @if ($this->connection)
         <flux:modal name="drive-change" wire:close="resetConfirmation" class="w-full sm:w-[30rem]" aria-labelledby="drive-change-heading">
@@ -579,30 +591,31 @@ new #[Title('Google Drive')] class extends Component {
 
                     <div class="flex justify-end gap-2">
                         <flux:modal.close>
-                            <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                            {{-- Cancel takes the focus as the dialog opens, so Enter never moves on by accident --}}
+                            <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                         </flux:modal.close>
-                        <flux:button variant="danger" wire:click="$set('step', 2)" data-test="change-understood-button">{{ __('Go to confirmation') }}</flux:button>
+                        <flux:button variant="danger" wire:click="$set('step', 2)" class="max-sm:h-11" data-test="change-understood-button">{{ __('Go to confirmation') }}</flux:button>
                     </div>
                 @else
-                    <form wire:submit="changeAccount" class="flex flex-col gap-5" x-data="{ typed: '' }"
+                    <form wire:submit="changeAccount" class="flex flex-col gap-5"
                         x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (! $event.isComposing && $event.keyCode !== 229 && i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
                         <flux:text>{{ __('Until the new account is connected, uploads fail.') }}</flux:text>
 
                         <flux:field>
                             <flux:label>{{ __('Current account') }}</flux:label>
                             <flux:description>{{ __('Type') }} <strong class="rounded bg-zinc-200 px-1.5 py-0.5 font-medium text-zinc-900 select-all">{{ $this->connection->email }}</strong> {{ __('to confirm.') }}</flux:description>
-                            <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()" autocomplete="off" autofocus />
+                            <flux:input wire:model="confirmEmail" autocomplete="off" autofocus class:input="max-sm:h-11" />
                             <flux:error name="confirmEmail" />
                         </flux:field>
-                        <flux:input wire:model="newEmail" type="email" :label="__('New Google account')" autocomplete="off" />
-                        <flux:input wire:model="newEmail_confirmation" type="email" :label="__('Type the new account again')" autocomplete="off" />
-                        <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable />
+                        <flux:input wire:model="newEmail" type="email" :label="__('New Google account')" autocomplete="off" class:input="max-sm:h-11" />
+                        <flux:input wire:model="newEmail_confirmation" type="email" :label="__('Type the new account again')" autocomplete="off" class:input="max-sm:h-11" />
+                        <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable class:input="max-sm:h-11" />
 
                         <div class="flex justify-end gap-2">
                             <flux:modal.close>
-                                <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
                             </flux:modal.close>
-                            <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="change-account-button">
+                            <flux:button type="submit" variant="danger" :loading="false" class="max-sm:h-11" data-test="change-account-button">
                                 <flux:icon.loading wire:loading wire:target="changeAccount" variant="micro" />
                                 {{ __('Change account') }}
                             </flux:button>
@@ -627,28 +640,28 @@ new #[Title('Google Drive')] class extends Component {
 
                         <div class="flex justify-end gap-2">
                             <flux:modal.close>
-                                <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                             </flux:modal.close>
-                            <flux:button variant="danger" wire:click="$set('step', 2)" data-test="disconnect-understood-button">{{ __('Go to confirmation') }}</flux:button>
+                            <flux:button variant="danger" wire:click="$set('step', 2)" class="max-sm:h-11" data-test="disconnect-understood-button">{{ __('Go to confirmation') }}</flux:button>
                         </div>
                     @else
-                        <form wire:submit="disconnect" class="flex flex-col gap-5" x-data="{ typed: '' }"
+                        <form wire:submit="disconnect" class="flex flex-col gap-5"
                             x-on:keydown.enter="const fields = [...$el.querySelectorAll('input, [type=submit]')], i = fields.indexOf($event.target); if (! $event.isComposing && $event.keyCode !== 229 && i >= 0 && fields[i + 1]) { $event.preventDefault(); fields[i + 1].focus() }">
                             <flux:text>{{ __('Uploads stop, and files on this account can’t be opened until you connect again.') }}</flux:text>
 
                             <flux:field>
                                 <flux:label>{{ __('Current account') }}</flux:label>
                                 <flux:description>{{ __('Type') }} <strong class="rounded bg-zinc-200 px-1.5 py-0.5 font-medium text-zinc-900 select-all">{{ $this->connection->email }}</strong> {{ __('to confirm.') }}</flux:description>
-                                <flux:input wire:model="confirmEmail" x-on:input="typed = $event.target.value.trim().toLowerCase()" autocomplete="off" autofocus />
+                                <flux:input wire:model="confirmEmail" autocomplete="off" autofocus class:input="max-sm:h-11" />
                                 <flux:error name="confirmEmail" />
                             </flux:field>
-                            <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable />
+                            <flux:input wire:model="password" type="password" :label="__('Your portal password')" autocomplete="current-password" viewable class:input="max-sm:h-11" />
 
                             <div class="flex justify-end gap-2">
                                 <flux:modal.close>
-                                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                    <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
                                 </flux:modal.close>
-                                <flux:button type="submit" variant="danger" :loading="false" x-bind:disabled="typed !== @js($this->connection->email)" data-test="disconnect-drive-button">
+                                <flux:button type="submit" variant="danger" :loading="false" class="max-sm:h-11" data-test="disconnect-drive-button">
                                     <flux:icon.loading wire:loading wire:target="disconnect" variant="micro" />
                                     {{ __('Disconnect Google Drive') }}
                                 </flux:button>

@@ -35,7 +35,7 @@
         :placeholder="$placeholder"
         :aria-label="$attributes->get('aria-label')"
         :invalid="$errors->has($model)"
-        icon:trailing="chevrons-up-down"
+        icon:trailing="chevron-up-down"
         class:input="max-sm:h-11"
     />
 

@@ -474,7 +474,7 @@ new #[Title('Google Drive')] class extends Component {
     @if ($this->accounts->isNotEmpty())
         <div class="mt-8 border-t border-line pt-6" data-test="drive-accounts">
             <flux:heading size="lg" level="2" id="drive-accounts-heading">{{ __('Storage accounts') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Files stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
+            <flux:text class="mt-1 max-w-[75ch]">{{ __('Files stay on the account that saved them. Don’t delete these Google accounts or their “:folder” folders.', ['folder' => GoogleDrive::FOLDER]) }}</flux:text>
 
             {{-- Emails wrap rather than widen the table. Phones keep the account and its status; the account cell repeats the counts in short --}}
             <flux:table class="mt-3 w-full" aria-labelledby="drive-accounts-heading">

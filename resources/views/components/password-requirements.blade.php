@@ -24,14 +24,14 @@
 @endphp
 
 {{-- Each mark sits in a box one line tall, so it stays beside the first line when the text wraps. --}}
-<ul {{ $attributes->class('mt-2 text-xs leading-5 text-zinc-500') }}>
+<ul {{ $attributes->class('mt-2 text-xs text-zinc-500') }}>
     @foreach ($checks as $label => $check)
         <li
             class="flex items-start gap-2"
             x-data="{ get met() { return {{ $check }} } }"
             x-bind:class="met && 'text-isu-green-700'"
         >
-            <span class="flex h-5 w-3.5 shrink-0 items-center justify-center">
+            <span class="flex h-4 w-3.5 shrink-0 items-center justify-center">
                 <flux:icon.check variant="micro" class="size-3.5" x-show="met" x-cloak />
                 <span class="size-1.5 rounded-full bg-current opacity-50" x-show="! met"></span>
             </span>

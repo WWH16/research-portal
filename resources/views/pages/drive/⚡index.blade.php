@@ -169,7 +169,7 @@ new #[Title('Research Drive')] class extends Component {
                             <flux:table.cell class="max-w-sm max-sm:whitespace-normal">
                                 <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="flex min-w-0 items-center gap-3 font-medium text-zinc-800 hover:underline max-sm:-my-3 max-sm:py-3">
                                     <flux:icon.folder variant="mini" class="shrink-0 text-isu-green-700" />
-                                    <span class="max-sm:line-clamp-2 sm:truncate">{{ $title }}</span>
+                                    <span class="max-sm:line-clamp-2 sm:truncate" wire:transition.navigate="project-{{ $submission->id }}">{{ $title }}</span>
                                 </a>
                             </flux:table.cell>
                             <flux:table.cell class="max-sm:hidden">

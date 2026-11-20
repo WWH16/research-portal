@@ -201,8 +201,11 @@ class NotificationsTest extends TestCase
             ->assertSee('isu_seal-128.png')
             ->assertDontSee('Showing 1 to');
 
+        // Every row carries the dot and data-read decides whether it shows, so a click can flip it before the server answers.
         $page = $this->get(route('notifications.index'))->getContent();
-        $this->assertSame(1, substr_count($page, 'data-test="unread-dot"'));
+        $this->assertSame(1, substr_count($page, 'data-read="false"'));
+        $this->assertSame(1, substr_count($page, 'data-read="true"'));
+        $this->assertSame(2, substr_count($page, 'data-test="unread-dot"'));
     }
 
     public function test_replacing_a_passed_concept_or_uploading_a_later_document_tells_no_admin(): void

@@ -673,7 +673,7 @@ new #[Title('Dashboard')] class extends Component {
                                 @if ($group !== 'pending')
                                     <ul id="projects-{{ $member->id }}" x-show="open" x-cloak class="mt-2 grid gap-1.5 border-s border-line ps-3">
                                         @foreach ($member->projects as $project)
-                                            <li>
+                                            <li data-stagger style="--i: {{ $loop->index }}">
                                                 <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
                                             </li>
                                         @endforeach
@@ -767,7 +767,7 @@ new #[Title('Dashboard')] class extends Component {
                             <li class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1 text-sm">
                                     {{-- On phones the target runs down over the line below, to 44px without reaching "View all" above --}}
-                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate class="relative block font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:top-0 max-sm:before:-bottom-6">{{ $submission->displayTitle() }}</a>
+                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate wire:transition.navigate="project-{{ $submission->id }}" class="relative block font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:top-0 max-sm:before:-bottom-6">{{ $submission->displayTitle() }}</a>
                                     <p class="mt-0.5 tabular-nums text-zinc-500">
                                         {{ $submission->category->name }}.
                                         <span @class(['whitespace-nowrap', 'font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('F j, Y')]) : __('No schedule yet') }}</span>

@@ -10,12 +10,6 @@
     --shadow-memo-page: 0 1px 2px oklch(20% 0.01 160 / 0.08), 0 0 0 1px oklch(30% 0.01 160 / 0.06);
 }
 
-/* The poster's initials, trimmed to their capitals, so flex centres the letters themselves rather than a line box whose
-   space above and below the capitals isn't even. */
-[data-test="announcement"] [data-flux-avatar] > span {
-    text-box: trim-both cap alphabetic;
-}
-
 /* docx-preview draws Word pages on its own grey backdrop with a heavy halo; sit them on the viewer's pale ground instead. */
 [data-memo-pages] .docx-wrapper {
     background: transparent;

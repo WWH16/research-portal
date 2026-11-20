@@ -324,7 +324,7 @@ new #[Title('Activity log')] class extends Component {
 
                         {{-- Indented to line up under the summary, past its chevron, so they read as the run's own rows --}}
                         @foreach ($run as $log)
-                            <flux:table.row :key="$log->id" x-show="open[{{ $runId }}]" x-cloak>
+                            <flux:table.row :key="$log->id" x-show="open[{{ $runId }}]" x-cloak data-stagger style="--i: {{ $loop->index }}">
                                 <flux:table.cell class="tabular-nums">{{ $log->created_at->format('g:i A') }}</flux:table.cell>
                                 <flux:table.cell class="ps-9">@include('pages.activity-log.member', ['log' => $log])</flux:table.cell>
                                 <flux:table.cell>{{ Str::ucfirst($log->summary()) }}</flux:table.cell>

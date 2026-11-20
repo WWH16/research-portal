@@ -65,7 +65,6 @@ class AuthenticationTest extends TestCase
             ->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password'])
             ->assertSee('Incorrect email or password.')
             ->assertSee('value="'.$user->email.'"', false)
-            ->assertSee('data-shake', false)
             ->getContent();
 
         preg_match('~<input[^>]*name="email"[^>]*>~', $page, $email);

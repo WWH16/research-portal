@@ -258,14 +258,7 @@ new #[Title('Activity log')] class extends Component {
             },
             "\$set('user', null)" => $user ? __('Member: :name', ['name' => $this->person?->name ?? __('a deleted account')]) : null,
         ]))
-        @if ($chips)
-            <div class="mt-3 flex flex-wrap items-center gap-2" data-test="active-filters">
-                @foreach ($chips as $remove => $chip)
-                    <flux:button size="sm" variant="filled" icon:trailing="x-mark" wire:click="{{ $remove }}" :aria-label="__('Remove filter: :filter', ['filter' => $chip])" class="max-sm:h-11">{{ $chip }}</flux:button>
-                @endforeach
-                <flux:button size="sm" variant="ghost" wire:click="clearFilters" class="max-sm:h-11">{{ __('Clear all') }}</flux:button>
-            </div>
-        @endif
+        <x-filter-chips :chips="$chips" />
     </div>
 
     {{-- The log stays as it was when opened, so new entries never shift the page being read; this says they exist --}}
@@ -289,14 +282,8 @@ new #[Title('Activity log')] class extends Component {
             <x-empty-state icon="clock" :heading="__('No activity recorded yet')" :text="__('Entries appear here as members sign in and make changes in the portal.')" class="mt-6" />
         @endif
     @else
-        {{-- Runs open in place through Alpine, so expanding one costs no request and survives filter redraws. Framed like
-             the portal's other lists; the first and last cells pad in from the frame, as Flux's bleed tables do. The
-             frame is relative so screen-reader-only text in far columns stays inside it instead of widening a phone's page --}}
-        <flux:table
-            container:class="relative mt-4 overflow-hidden rounded-xl border border-line bg-surface"
-            class="[&_[data-flux-cell]:first-child]:ps-4 [&_[data-flux-cell]:last-child]:pe-4 [&_[data-flux-column]:first-child]:ps-4 [&_[data-flux-column]:last-child]:pe-4"
-            x-data="{ open: {} }"
-        >
+        {{-- Runs open in place through Alpine, so expanding one costs no request and survives filter redraws --}}
+        <flux:table container:class="mt-4 table-frame" x-data="{ open: {} }">
             <flux:table.columns>
                 <flux:table.column class="w-36">{{ __('When') }}</flux:table.column>
                 <flux:table.column class="w-48">{{ __('Member') }}</flux:table.column>

@@ -97,7 +97,7 @@ new class extends Component {
 
 <div class="mx-auto w-full max-w-6xl">
     <header class="grid gap-x-6 gap-y-4 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
+        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1 [&_a]:relative max-sm:[&_a]:before:absolute max-sm:[&_a]:before:-inset-x-1 max-sm:[&_a]:before:-inset-y-3">
             @if ($office)
                 <flux:breadcrumbs.item :href="route('faculty.index')" wire:navigate>{{ __('Faculty publications') }}</flux:breadcrumbs.item>
                 @if ($owner)
@@ -138,7 +138,7 @@ new class extends Component {
             </div>
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Publication date') }}</dt>
-                <dd class="{{ $value }} tabular-nums">{{ $publication->published_on->format('M j, Y') }}</dd>
+                <dd class="{{ $value }} tabular-nums">{{ $publication->published_on->format('F j, Y') }}</dd>
             </div>
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('Journal or proceedings') }}</dt>
@@ -161,14 +161,14 @@ new class extends Component {
             @endif
             <div class="{{ $row }}">
                 <dt class="{{ $label }}">{{ __('DOI or link') }}</dt>
-                <dd class="{{ $value }}"><flux:link :href="$publication->link" target="_blank" rel="noopener noreferrer">{{ $publication->link }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link></dd>
+                <dd class="{{ $value }}"><flux:link :href="$publication->link" target="_blank" rel="noopener noreferrer" class="relative max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:-inset-y-3.5">{{ $publication->link }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link></dd>
             </div>
             @if ($publication->submission)
                 <div class="{{ $row }}">
                     <dt class="{{ $label }}">{{ __('Research project') }}</dt>
                     <dd class="{{ $value }}">
                         @can('view', $publication->submission)
-                            <flux:link :href="route('drive.show', $publication->submission)" wire:navigate>{{ $publication->submission->title }}</flux:link>
+                            <flux:link :href="route('drive.show', $publication->submission)" wire:navigate class="relative max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:-inset-y-3.5">{{ $publication->submission->title }}</flux:link>
                         @else
                             {{ $publication->submission->title }}
                         @endcan
@@ -206,7 +206,7 @@ new class extends Component {
             @if ($canEdit)
                 {{-- The link gets the room: the year and button share the next row until the screen is wide enough for one row --}}
                 <form wire:submit="addCitation" class="mt-3 grid gap-3 sm:grid-cols-[11rem_auto_minmax(0,1fr)] sm:items-start lg:grid-cols-[minmax(0,1fr)_11rem_auto]" data-test="add-citation-form">
-                    <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required class="sm:col-span-3 lg:col-span-1" class:input="max-sm:h-11" />
+                    <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required field:class="sm:col-span-3 lg:col-span-1" class:input="max-sm:h-11" />
                     <flux:select wire:model="year" :label="__('Citing paper’s year')" class="max-sm:h-11">
                         @foreach (range(now()->year, $first) as $option)
                             <flux:select.option :value="$option">{{ $option }}</flux:select.option>
@@ -223,12 +223,12 @@ new class extends Component {
                 <div x-data="{ removing: { id: null, link: '' } }">
                     <ul class="mt-4 divide-y divide-line border-y border-line" data-test="citations">
                         @foreach ($citations as $citation)
-                            <li class="flex items-center gap-4 py-3" wire:key="citation-{{ $citation->id }}">
+                            <li class="flex items-center gap-4 py-3 max-sm:py-0" wire:key="citation-{{ $citation->id }}">
                                 <span class="w-12 shrink-0 text-sm font-medium tabular-nums text-zinc-800">{{ $citation->year }}</span>
                                 {{-- The bare DOI, or the address without its https://, tells the rows apart; the full link shows on hover --}}
-                                <flux:link :href="$citation->link" :title="$citation->link" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 text-sm wrap-anywhere">{{ preg_replace('~^https?://(?:www\.)?(?:doi\.org/)?~i', '', $citation->link) }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
+                                <flux:link :href="$citation->link" :title="$citation->link" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 text-sm wrap-anywhere max-sm:py-3">{{ preg_replace('~^https?://(?:www\.)?(?:doi\.org/)?~i', '', $citation->link) }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
                                 @if ($canEdit)
-                                    <flux:button size="sm" variant="ghost" icon="trash" :aria-label="__('Remove citing paper')" class="max-sm:size-11 text-zinc-400! hover:text-red-600!"
+                                    <flux:button size="sm" variant="ghost" icon="trash" :aria-label="__('Remove citing paper')" class="max-sm:size-11 text-zinc-500! hover:text-red-600!"
                                         x-on:click="removing = { id: {{ $citation->id }}, link: {{ Js::from($citation->link) }} }; $dispatch('modal-show', { name: 'citation-remove' })" />
                                 @endif
                             </li>
@@ -247,16 +247,17 @@ new class extends Component {
                     @endif
 
                     @if ($canEdit)
-                        <flux:modal name="citation-remove" class="w-full sm:w-96">
+                        <flux:modal name="citation-remove" class="w-full sm:w-96" aria-labelledby="citation-remove-heading">
                             <div class="flex flex-col gap-6">
                                 <div>
-                                    <flux:heading size="lg">{{ __('Remove this citing paper?') }}</flux:heading>
+                                    <flux:heading size="lg" id="citation-remove-heading">{{ __('Remove this citing paper?') }}</flux:heading>
                                     <flux:text class="mt-2 wrap-anywhere" x-text="removing.link"></flux:text>
                                 </div>
                                 <div class="flex justify-end gap-2">
-                                    <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
+                                    {{-- Cancel takes the focus as the dialog opens, so Enter never removes by accident --}}
+                                    <flux:modal.close><flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button></flux:modal.close>
                                     {{-- Disabled while the request runs, so a double click can't remove twice. Its row is gone afterwards, so focus moves to the heading --}}
-                                    <flux:button variant="danger" wire:loading.attr="disabled" wire:target="removeCitation"
+                                    <flux:button variant="danger" class="max-sm:h-11" wire:loading.attr="disabled" wire:target="removeCitation"
                                         x-on:click="$wire.removeCitation(removing.id).then(() => document.getElementById('citing-heading')?.focus())">{{ __('Remove citing paper') }}</flux:button>
                                 </div>
                             </div>

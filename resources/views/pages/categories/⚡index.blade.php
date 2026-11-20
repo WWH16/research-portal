@@ -142,7 +142,7 @@ new #[Title('Categories')] class extends Component {
             <flux:button icon="plus" wire:click="create" class="max-sm:h-11">{{ __('Add the first category') }}</flux:button>
         </x-empty-state>
     @else
-        <flux:table class="mt-4">
+        <flux:table container:class="mt-4 table-frame">
             <flux:table.columns>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
                 <flux:table.column align="end">{{ __('Submissions') }}</flux:table.column>
@@ -156,11 +156,11 @@ new #[Title('Categories')] class extends Component {
                         <flux:table.cell align="end" class="tabular-nums">{{ $record->submissions_count }}</flux:table.cell>
                         <flux:table.cell>
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Open actions for :name', ['name' => $record->name])" />
+                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :tooltip="__('Open actions')" class="max-sm:size-11" :aria-label="__('Open actions for :name', ['name' => $record->name])" />
 
                                 <flux:menu>
-                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $record->id }})">{{ __('Edit') }}</flux:menu.item>
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $record->id }})">{{ __('Delete') }}</flux:menu.item>
+                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $record->id }})" class="max-sm:min-h-11">{{ __('Edit') }}</flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $record->id }})" class="max-sm:min-h-11">{{ __('Delete') }}</flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>
                         </flux:table.cell>
@@ -174,13 +174,13 @@ new #[Title('Categories')] class extends Component {
         <form wire:submit="save" class="flex flex-col gap-6">
             <flux:heading size="lg">{{ $editingId ? __('Edit category') : __('New category') }}</flux:heading>
 
-            <flux:input wire:model="name" :label="__('Name')" type="text" maxlength="50" required autofocus />
+            <flux:input wire:model="name" :label="__('Name')" type="text" maxlength="50" required autofocus class:input="max-sm:h-11" />
 
             <div class="flex justify-end gap-2">
                 <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                    <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="primary" data-test="save-named-record-button">
+                <flux:button type="submit" variant="primary" data-test="save-named-record-button" class="max-sm:h-11">
                     {{ $editingId ? __('Save changes') : __('Add category') }}
                 </flux:button>
             </div>
@@ -205,10 +205,10 @@ new #[Title('Categories')] class extends Component {
 
                 <div class="flex justify-end gap-2">
                     <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @if ($this->deleting->submissions_count === 0)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-named-record-button">{{ __('Delete category') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-named-record-button" class="max-sm:h-11">{{ __('Delete category') }}</flux:button>
                     @endif
                 </div>
             </div>

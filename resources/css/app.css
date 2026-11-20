@@ -160,6 +160,32 @@
     padding-block: 0.5rem;
 }
 
+/* A list table in a visible frame, set on its container: <flux:table container:class="table-frame">. The first and
+   last cells pad in from the border and the pager sits inside it. Relative, so screen-reader-only text in a far column
+   stays inside the frame instead of widening a phone's page. */
+.table-frame {
+    @apply relative overflow-hidden rounded-xl border border-line bg-surface;
+}
+
+.table-frame :is([data-flux-column], [data-flux-cell]):first-child {
+    padding-inline-start: 1rem;
+}
+
+.table-frame :is([data-flux-column], [data-flux-cell]):last-child {
+    padding-inline-end: 1rem;
+}
+
+.table-frame [data-flux-pagination] {
+    padding: 0.75rem 1rem;
+}
+
+/* A sortable column's heading is a button: 44px tall on phones, like every other control there. */
+@media (width < 40rem) {
+    [data-flux-column] button {
+        min-height: 2.75rem;
+    }
+}
+
 /* Phones and tablets hide the page title's name, so whatever follows it starts at the top of the page. */
 [data-page-title] + * {
     @apply max-lg:mt-0;

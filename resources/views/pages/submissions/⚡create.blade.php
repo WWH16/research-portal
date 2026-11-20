@@ -447,7 +447,7 @@ new #[Title('Research project')] class extends Component {
     #[Computed]
     public function faculty(): Collection
     {
-        // ponytail: one plain select of every verified faculty member; switch to a searchable picker past a few hundred.
+        // Every verified faculty member, for the searchable proponent picker.
         return User::where(fn ($query) => $query->faculty()->approved()->whereNotNull('email_verified_at'))
             ->orWhereIn('id', $this->submission?->proponents()->pluck('user_id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
@@ -577,12 +577,7 @@ new #[Title('Research project')] class extends Component {
                                 <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" autocomplete="off" :placeholder="__('e.g. Juan Dela Cruz')" :aria-label="__('Full name')" data-test="proponent-name" class:input="max-sm:h-11" />
                                 <flux:text size="sm" class="mt-1">{{ __('Not in the portal') }}</flux:text>
                             @else
-                                <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')" class="max-sm:h-11">
-                                    <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
-                                    @foreach ($this->faculty as $member)
-                                        <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
-                                    @endforeach
-                                </flux:select>
+                                <x-combobox wire:model="proponents.{{ $index }}.user_id" :options="$this->faculty->pluck('name', 'id')" :aria-label="__('Faculty')" :placeholder="__('Select faculty')" />
                             @endif
                         </div>
 

@@ -298,7 +298,100 @@ const memoFold = (url, kind, pageLabel) => ({
     },
 });
 
+// The searchable picker in components/combobox. `value` is the picked option's value, which wire:model reads through
+// x-modelable; `query` is the text in the box. Focusing shows the whole list with the current pick active; typing
+// narrows it to options holding every word typed. Leaving the box puts the picked name back, or clears the pick when
+// the box was emptied.
+const combobox = (options, id) => ({
+    options,
+    id,
+    value: '',
+    query: '',
+    open: false,
+    typed: false,
+    active: -1,
+
+    init() {
+        this.query = this.label();
+        this.$watch('value', () => (this.query = this.label()));
+    },
+
+    label() {
+        return this.options.find((option) => option.value === String(this.value ?? ''))?.label ?? '';
+    },
+
+    get matches() {
+        const words = this.typed ? this.query.toLocaleLowerCase().split(/\s+/).filter(Boolean) : [];
+
+        return this.options.filter((option) => words.every((word) => option.label.toLocaleLowerCase().includes(word)));
+    },
+
+    get activeId() {
+        return this.open && this.matches[this.active] ? `${this.id}-${this.active}` : null;
+    },
+
+    show() {
+        this.open = true;
+        this.typed = false;
+        this.active = Math.max(0, this.matches.findIndex((option) => option.value === String(this.value ?? '')));
+        this.reveal();
+    },
+
+    type() {
+        this.open = true;
+        this.typed = true;
+        this.active = 0;
+    },
+
+    move(step) {
+        if (!this.open) {
+            return this.show();
+        }
+
+        const count = this.matches.length;
+        this.active = count ? (this.active + step + count) % count : -1;
+        this.reveal();
+    },
+
+    reveal() {
+        this.$nextTick(() => this.activeId && document.getElementById(this.activeId)?.scrollIntoView({ block: 'nearest' }));
+    },
+
+    pick(option) {
+        this.value = option.value;
+        this.query = option.label;
+        this.open = false;
+    },
+
+    enter(event) {
+        if (this.open && this.matches[this.active]) {
+            event.preventDefault();
+            this.pick(this.matches[this.active]);
+        }
+    },
+
+    // Escape closes the list first, and only a second press reaches whatever holds the picker.
+    escape(event) {
+        if (this.open) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.close();
+        }
+    },
+
+    close() {
+        this.open = false;
+
+        if (this.query.trim() === '') {
+            this.value = '';
+        }
+
+        this.query = this.label();
+    },
+});
+
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('combobox', combobox);
     window.Alpine.data('memoViewer', memoViewer);
     window.Alpine.data('memoFold', memoFold);
     window.Alpine.data('avatarCropper', avatarCropper);

@@ -10,6 +10,8 @@ use App\Models\Publication;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Js;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -32,6 +34,26 @@ class PublicationTest extends TestCase
         $this->travelTo(now()->setDate(2026, 10, 9));
         $this->rivera = User::factory()->create(['name' => 'Rivera']);
         $this->soriano = User::factory()->create(['name' => 'Soriano']);
+    }
+
+    public function test_co_authors_are_picked_from_a_searchable_list_without_yourself(): void
+    {
+        $this->actingAs($this->rivera);
+
+        Livewire::test('pages::publications.create')
+            ->assertDontSeeHtml('role="combobox"')
+            ->call('addAuthor')
+            ->assertSeeHtml('role="combobox"')
+            ->assertSeeHtml($this->asOption(['value' => (string) $this->soriano->id, 'label' => 'Soriano']))
+            ->assertDontSeeHtml($this->asOption(['label' => 'Rivera']));
+    }
+
+    /**
+     * One combobox option as the page writes it through @js, which escapes its quotes.
+     */
+    private function asOption(array $option): string
+    {
+        return trim(Str::between((string) Js::from($option), "JSON.parse('", "')"), '{}');
     }
 
     public function test_a_doi_typed_any_way_is_stored_in_one_form(): void

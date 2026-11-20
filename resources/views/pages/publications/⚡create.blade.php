@@ -235,7 +235,7 @@ new class extends Component {
     #[Computed]
     public function faculty(): Collection
     {
-        // ponytail: one plain select of every verified faculty member, as on the project form; switch to a searchable picker past a few hundred.
+        // Every verified faculty member, for the searchable author picker, as on the project form.
         return User::where(fn ($query) => $query->faculty()->approved()->whereNotNull('email_verified_at'))
             ->orWhereIn('id', $this->publication?->faculty()->pluck('users.id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
@@ -285,12 +285,7 @@ new class extends Component {
                         @elseif ($field === 'name')
                             <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('e.g. Juan Dela T. Cruz')" type="text" maxlength="100" class:input="max-sm:h-11" />
                         @else
-                            <flux:select wire:model="authorRows.{{ $index }}.user_id" :aria-label="__('Author')" class="max-sm:h-11">
-                                <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
-                                @foreach ($this->faculty->except(Auth::id()) as $member)
-                                    <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
+                            <x-combobox wire:model="authorRows.{{ $index }}.user_id" :options="$this->faculty->except(Auth::id())->pluck('name', 'id')" :aria-label="__('Author')" :placeholder="__('Select faculty')" />
                         @endif
 
                         <div class="flex">

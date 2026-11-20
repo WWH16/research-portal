@@ -23,6 +23,29 @@
     /* Secondary text (14px) at 1.5, like body text, instead of Tailwind's 1.43, so wrapped lines have room. */
     --text-sm--line-height: 1.5;
 
+    /*
+     * One shadow scale for the whole portal, by what a surface does rather than how big its shadow is. Each is soft and
+     * tinted with the neutrals' green: a tight contact shadow under the edge plus a wide, faint one, never over 0.08
+     * opacity in total, so a surface lifts without looking stuck on. Borders still draw the edge; shadows only lift.
+     * - shadow-control: inputs, buttons and cards that sit in the page.
+     * - shadow-raised: a resting panel that stands a little off the page, such as a memo page or a key card.
+     * - shadow-floating: anything over the page that it still shows around: menus, option lists, tooltips.
+     * - shadow-overlay: what takes over the page: dialogs, flyouts, toasts, the Undo bar.
+     * Tailwind's sizes point at the same four, so Flux's own shadow-xs, shadow-lg and the rest follow the scale too.
+     * Use these names; don't write an arbitrary shadow or a shadow colour.
+     */
+    --shadow-control: 0 1px 2px oklch(25% 0.02 160 / 0.05);
+    --shadow-raised: 0 1px 2px oklch(25% 0.02 160 / 0.03), 0 2px 6px oklch(25% 0.02 160 / 0.03);
+    --shadow-floating: 0 1px 2px oklch(25% 0.02 160 / 0.03), 0 4px 14px oklch(25% 0.02 160 / 0.045);
+    --shadow-overlay: 0 2px 4px oklch(25% 0.02 160 / 0.025), 0 6px 28px oklch(25% 0.02 160 / 0.05);
+    --shadow-2xs: var(--shadow-control);
+    --shadow-xs: var(--shadow-control);
+    --shadow-sm: var(--shadow-raised);
+    --shadow-md: var(--shadow-floating);
+    --shadow-lg: var(--shadow-overlay);
+    --shadow-xl: var(--shadow-overlay);
+    --shadow-2xl: var(--shadow-overlay);
+
     /* ISU seal green. 700 is the brand green (#0b5e36). Both seal scales are written in OKLCH, each value the exact
        equivalent of the hex it replaced, so steps read evenly in lightness and mixes stay predictable. */
     --color-isu-green-50: oklch(96.70% 0.0132 159.92);
@@ -690,6 +713,11 @@ form[aria-busy='true'] [data-flux-field] {
     80% {
         translate: 0.25rem 0;
     }
+}
+
+/* Flux's menus (dropdowns, the user menu) float over the page, but Flux gives them a control's shadow. */
+ui-dropdown > [popover] {
+    box-shadow: var(--shadow-floating);
 }
 
 /* Hide Alpine-controlled elements until Alpine starts, so they never flash on load. */

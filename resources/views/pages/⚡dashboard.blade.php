@@ -644,7 +644,7 @@ new #[Title('Dashboard')] class extends Component {
                                                         x-text="message"
                                                         x-bind:class="message && 'opacity-100! ease-out!'"
                                                         role="status"
-                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md shadow-zinc-900/20 transition-opacity duration-150 ease-in"
+                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-floating transition-opacity duration-150 ease-in"
                                                     ></span>
                                                 </span>
                                             @endif

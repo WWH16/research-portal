@@ -279,37 +279,22 @@ new class extends Component {
                             }
                         }"
                     >
-                        <div class="flex items-stretch w-full border rounded-xl dark:border-stone-700">
+                        {{-- A stock Flux field and button joined as one group; the key loads with the QR code, so the field
+                             shows a spinner until it arrives --}}
+                        <flux:input.group>
                             @empty($manualSetupKey)
-                                <div class="flex items-center justify-center w-full p-3 bg-stone-100 dark:bg-stone-700">
-                                    <flux:icon.loading variant="mini"/>
-                                </div>
+                                <flux:input readonly :aria-label="__('Setup key')" icon:trailing="loading" class:input="max-sm:h-11" />
                             @else
-                                <input
-                                    type="text"
-                                    readonly
-                                    value="{{ $manualSetupKey }}"
-                                    aria-label="{{ __('Setup key') }}"
-                                    class="w-full p-3 bg-transparent rounded-s-xl text-stone-900 dark:text-stone-100 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-                                />
+                                <flux:input readonly :value="$manualSetupKey" :aria-label="__('Setup key')" class:input="font-mono max-sm:h-11" />
 
-                                <flux:tooltip :content="__('Copy setup key')" class="flex">
-                                    <button
-                                        type="button"
-                                        @click="copy()"
-                                        aria-label="{{ __('Copy setup key') }}"
-                                        class="flex w-12 items-center justify-center transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
-                                    >
-                                        <flux:icon.document-duplicate x-show="state !== 'copied'" variant="outline"></flux:icon>
-                                        <flux:icon.check
-                                            x-show="state === 'copied'"
-                                            variant="solid"
-                                            class="text-isu-green-700"
-                                        ></flux:icon>
-                                    </button>
+                                <flux:tooltip :content="__('Copy setup key')">
+                                    <flux:button square x-on:click="copy()" :aria-label="__('Copy setup key')" class="max-sm:size-11">
+                                        <flux:icon.document-duplicate variant="mini" x-show="state !== 'copied'" />
+                                        <flux:icon.check variant="mini" x-show="state === 'copied'" x-cloak class="text-isu-green-700" />
+                                    </flux:button>
                                 </flux:tooltip>
                             @endempty
-                        </div>
+                        </flux:input.group>
 
                         <p
                             role="status"

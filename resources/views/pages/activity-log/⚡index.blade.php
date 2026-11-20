@@ -309,8 +309,8 @@ new #[Title('Activity log')] class extends Component {
                         <flux:table.row :key="'run-'.$runId">
                             <flux:table.cell class="tabular-nums text-zinc-800">{{ ActivityLog::runSpan($run) }}</flux:table.cell>
                             <flux:table.cell colspan="3">
-                                <button type="button" x-on:click="open[{{ $runId }}] = ! open[{{ $runId }}]" x-bind:aria-expanded="open[{{ $runId }}] ? 'true' : 'false'" aria-expanded="false" class="flex items-center gap-2 text-zinc-600 hover:text-zinc-800 max-sm:min-h-11">
-                                    <flux:icon.chevron-right variant="micro" class="transition-transform motion-reduce:transition-none" x-bind:class="open[{{ $runId }}] && 'rotate-90'" />
+                                {{-- A stock ghost button, left-aligned; a long summary wraps on a phone instead of running off --}}
+                                <flux:button variant="ghost" size="sm" align="start" icon="chevron-right" icon:variant="micro" icon:class="transition-transform in-aria-expanded:rotate-90 motion-reduce:transition-none" x-on:click="open[{{ $runId }}] = ! open[{{ $runId }}]" x-bind:aria-expanded="open[{{ $runId }}] ? 'true' : 'false'" aria-expanded="false" class="-ms-2 h-auto! min-h-8 whitespace-normal! text-start max-sm:min-h-11">
                                     {{ ActivityLog::runSummary($run) }}
                                     @if ($continued)
                                         <span class="text-zinc-500">· {{ __('continued from the previous page') }}</span>
@@ -318,7 +318,7 @@ new #[Title('Activity log')] class extends Component {
                                     @if ($continues)
                                         <span class="text-zinc-500">· {{ __('continues on the next page') }}</span>
                                     @endif
-                                </button>
+                                </flux:button>
                             </flux:table.cell>
                         </flux:table.row>
 

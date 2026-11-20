@@ -206,11 +206,10 @@ new #[Title('Research Drive')] class extends Component {
                     @endforeach
                 </ol>
                 @if ($history->count() > 5)
-                    <button type="button" x-on:click="all = ! all" x-bind:aria-expanded="all ? 'true' : 'false'" aria-expanded="false" aria-controls="history-entries" class="mt-3 flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-800 max-sm:min-h-11" data-test="drive-history-toggle">
-                        <flux:icon.chevron-down variant="micro" class="transition-transform motion-reduce:transition-none" x-bind:class="all && 'rotate-180'" />
+                    <flux:button variant="ghost" size="sm" icon="chevron-down" icon:variant="micro" icon:class="transition-transform in-aria-expanded:rotate-180 motion-reduce:transition-none" x-on:click="all = ! all" x-bind:aria-expanded="all ? 'true' : 'false'" aria-expanded="false" aria-controls="history-entries" class="mt-3 -ms-2 max-sm:h-11" data-test="drive-history-toggle">
                         <span x-show="! all">{{ trans_choice('{1} Show 1 earlier entry|[2,*] Show :count earlier entries', $history->count() - 5) }}</span>
                         <span x-show="all" x-cloak>{{ __('Show fewer') }}</span>
-                    </button>
+                    </flux:button>
                 @endif
             </div>
         @endif

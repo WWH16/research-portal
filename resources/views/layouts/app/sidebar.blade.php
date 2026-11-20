@@ -162,9 +162,10 @@
                 </flux:sidebar.nav>
             @endif
 
-            {{-- A column, so the menu button still stretches the full width as it did straight inside the sidebar --}}
-            <div class="sticky -bottom-4 z-10 -mx-2 -mb-4 flex shrink-0 flex-col bg-isu-green-800 px-2 pt-2 pb-4">
-                <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            {{-- A column, so the menu button still stretches the full width as it did straight inside the sidebar. Wide
+                 screens only: phones and tablets have the account menu in the top bar, so the drawer doesn't repeat it. --}}
+            <div class="sticky -bottom-4 z-10 -mx-2 -mb-4 hidden shrink-0 flex-col bg-isu-green-800 px-2 pt-2 pb-4 lg:flex">
+                <x-desktop-user-menu :name="auth()->user()->name" />
             </div>
         </flux:sidebar>
 
@@ -178,7 +179,7 @@
             </div>
 
             {{-- The sidebar's brand is tucked away on phones, so the seal shows here instead, once, and leads home --}}
-            <flux:brand :href="route('dashboard')" wire:navigate :aria-label="__('Dashboard')" class="ms-1 h-11! rounded-md outline-accent focus-visible:outline-2 focus-visible:outline-offset-2" data-test="phone-brand">
+            <flux:brand :href="route('dashboard')" wire:navigate :aria-label="__('Dashboard')" class="ms-1 h-11! min-w-11 justify-center rounded-md outline-accent focus-visible:outline-2 focus-visible:outline-offset-2" data-test="phone-brand">
                 <x-slot name="logo" class="size-8">
                     <x-app-logo-icon class="size-8" />
                 </x-slot>
@@ -215,7 +216,7 @@
                     <flux:menu.separator />
 
                     <flux:menu.radio.group>
-                        <flux:menu.item :href="route('profile.edit')" icon="user-circle" wire:navigate>
+                        <flux:menu.item :href="route('profile.edit')" icon="user-circle" wire:navigate class="max-sm:min-h-11">
                             {{ __('My profile') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>
@@ -228,7 +229,7 @@
                             as="button"
                             type="submit"
                             icon="arrow-right-start-on-rectangle"
-                            class="w-full cursor-pointer"
+                            class="w-full cursor-pointer max-sm:min-h-11"
                             data-test="logout-button"
                         >
                             {{ __('Sign out') }}

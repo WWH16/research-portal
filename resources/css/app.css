@@ -364,6 +364,15 @@ select:focus[data-flux-control] {
     height: 2.25rem;
 }
 
+/* In the phone and tablet drawer, the brand, links, fold headings and close button stand 44px tall for the thumb. */
+.isu-sidebar[data-flux-sidebar-on-mobile] :is([data-flux-sidebar-brand], [data-flux-sidebar-item], ui-disclosure[data-flux-sidebar-group] > button, [data-flux-sidebar-collapse] button) {
+    min-height: 2.75rem;
+}
+
+.isu-sidebar[data-flux-sidebar-on-mobile] [data-flux-sidebar-collapse] button {
+    min-width: 2.75rem;
+}
+
 .isu-sidebar ui-disclosure[data-flux-sidebar-group] > button span {
     font-size: 0.75rem;
     font-weight: 600;

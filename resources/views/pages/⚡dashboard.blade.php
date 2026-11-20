@@ -490,16 +490,14 @@ new #[Title('Dashboard')] class extends Component {
 
                     {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
                          the quick-range button share the first row, so the two dates get the whole second row and show in full.
-                         Each field is wrapped, as a label puts Flux's field around it and the layout classes must reach the field --}}
+                         field:class puts the layout classes on the field Flux wraps around each labelled control --}}
                     <div class="flex w-full flex-wrap items-end gap-3 sm:w-auto">
-                        <div class="min-w-0 flex-1 sm:w-40 sm:flex-none">
-                            <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" data-test="department-select">
-                                <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
-                                @foreach (Department::orderBy('code')->pluck('code') as $option)
-                                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
-                        </div>
+                        <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
+                            <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                            @foreach (Department::orderBy('code')->pluck('code') as $option)
+                                <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
 
                         <flux:dropdown position="bottom" align="end">
                             <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" class="max-sm:size-11" />
@@ -514,12 +512,8 @@ new #[Title('Dashboard')] class extends Component {
 
                         <div class="flex w-full items-end gap-2 sm:w-auto" data-test="date-range">
                             {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                            <div class="min-w-0 flex-1 sm:w-40 sm:flex-none">
-                                <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" />
-                            </div>
-                            <div class="min-w-0 flex-1 sm:w-40 sm:flex-none">
-                                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" />
-                            </div>
+                            <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
+                            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
                         </div>
                     </div>
                 </div>

@@ -179,13 +179,6 @@
     padding: 0.75rem 1rem;
 }
 
-/* A sortable column's heading is a button: 44px tall on phones, like every other control there. */
-@media (width < 40rem) {
-    [data-flux-column] button {
-        min-height: 2.75rem;
-    }
-}
-
 /* Phones and tablets hide the page title's name, so whatever follows it starts at the top of the page. */
 [data-page-title] + * {
     @apply max-lg:mt-0;
@@ -238,9 +231,14 @@ select:focus[data-flux-control] {
     }
 }
 
-/* Phones: a password field's show/hide button is 44px like every other control there, and the field keeps its text
-   clear of it. */
 @media (width < 40rem) {
+    /* A sortable column's heading is a button: 44px tall, like every other control on a phone. */
+    [data-flux-column] button {
+        min-height: 2.75rem;
+    }
+
+    /* A password field's show/hide button is 44px like every other control there, and the field keeps its text clear
+       of it. */
     [data-flux-input] [x-data='fluxInputViewable'] {
         width: 2.75rem;
         height: 2.75rem;
@@ -257,6 +255,13 @@ select:focus[data-flux-control] {
     [data-flux-otp] input {
         height: 2.75rem;
     }
+
+    /* Centred dialogs get a 12px gutter, no 320px minimum, and lighter padding. */
+    dialog[data-modal]:not([data-flux-flyout]) {
+        min-width: 0;
+        max-width: calc(100% - 1.5rem);
+        padding: 1.25rem;
+    }
 }
 
 /* Phones: the six boxes of a sign-in code are 44px squares, and six still fit a 320px screen's dialog. Flux sets their
@@ -266,15 +271,6 @@ select:focus[data-flux-control] {
         [data-flux-otp] [data-flux-input] {
             width: 2.75rem !important;
         }
-    }
-}
-
-/* Phones: centred dialogs get a 12px gutter, no 320px minimum, and lighter padding. */
-@media (width < 40rem) {
-    dialog[data-modal]:not([data-flux-flyout]) {
-        min-width: 0;
-        max-width: calc(100% - 1.5rem);
-        padding: 1.25rem;
     }
 }
 

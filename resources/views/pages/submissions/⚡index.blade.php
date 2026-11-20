@@ -327,11 +327,9 @@ new #[Title('Submissions')] class extends Component {
     <div class="mt-6" x-data="{ filters: false }">
         <div class="flex flex-wrap items-end gap-3">
             @if ($this->monitoring)
-                {{-- Wrapped, as a label puts Flux's field around the input and the layout classes must reach the field.
-                     The placeholder is an example, and Flux hides the clear button only while one shows --}}
-                <div class="min-w-48 flex-1 max-sm:basis-full">
-                    <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles or faculty')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" clearable />
-                </div>
+                {{-- field:class puts the layout classes on the field Flux wraps around a labelled input. The placeholder is
+                     an example, and Flux hides the clear button only while one shows --}}
+                <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles or faculty')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" field:class="min-w-48 flex-1 max-sm:basis-full" clearable />
             @endif
 
             <flux:button icon="funnel" x-on:click="filters = ! filters" x-bind:aria-expanded="filters" aria-controls="submission-filters" class="max-sm:h-11">{{ __('Filter') }}</flux:button>

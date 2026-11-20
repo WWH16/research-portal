@@ -85,21 +85,17 @@ new #[Title('Research Drive')] class extends Component {
                 @if ($this->projects->isNotEmpty())
                     <flux:text class="pb-2.5 text-sm tabular-nums max-sm:order-2 max-sm:pb-3">{{ trans_choice('{1} 1 project|[2,*] :count projects', $this->projects->count()) }}</flux:text>
                 @endif
-                {{-- Wrapped, as a label puts Flux's field around the input and the layout classes must reach the field.
-                     The placeholder is an example, and Flux hides the clear button only while one shows --}}
-                <div class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none">
-                    <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" clearable />
-                </div>
+                {{-- field:class puts the layout classes on the field Flux wraps around a labelled input. The placeholder is
+                     an example, and Flux hides the clear button only while one shows --}}
+                <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none" clearable />
             @endunless
 
-            <div class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36">
-                <flux:select wire:model.live="year" :label="__('Year')" class="max-sm:h-11" data-test="drive-year-select">
-                    <flux:select.option value="">{{ __('All years') }}</flux:select.option>
-                    @foreach (Submission::years() as $option)
-                        <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-            </div>
+            <flux:select wire:model.live="year" :label="__('Year')" class="max-sm:h-11" field:class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
+                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+                @foreach (Submission::years() as $option)
+                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                @endforeach
+            </flux:select>
         </x-slot:actions>
     </x-page-title>
 

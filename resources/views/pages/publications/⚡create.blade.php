@@ -251,7 +251,8 @@ new class extends Component {
 <section class="mx-auto w-full max-w-4xl">
     {{-- The same breadcrumb as the publication page, which an edit came from and a new one goes to --}}
     <header class="grid gap-4 border-b border-line pb-6">
-        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1">
+        {{-- On phones each link's tap area reaches above and below its text, as on a Research Drive project --}}
+        <flux:breadcrumbs class="min-w-0 flex-wrap gap-y-1 [&_a]:relative max-sm:[&_a]:before:absolute max-sm:[&_a]:before:-inset-x-1 max-sm:[&_a]:before:-inset-y-3">
             <flux:breadcrumbs.item :href="route('faculty.show', Auth::user())" wire:navigate>{{ __('My publications') }}</flux:breadcrumbs.item>
             @if ($publication)
                 <flux:breadcrumbs.item :href="route('publications.show', $publication)" wire:navigate>{{ str($publication->title)->limit(40) }}</flux:breadcrumbs.item>
@@ -267,7 +268,7 @@ new class extends Component {
     {{-- Ordered like a citation: what the paper is, who wrote it, where it came out, then the optional extras.
          Each group is a fieldset with a larger legend, so the sections read before the fields inside them. --}}
     <form wire:submit="save" class="mt-8 flex flex-col gap-8">
-        <flux:input wire:model="title" :label="__('Title')" type="text" maxlength="255" required autofocus />
+        <flux:input wire:model="title" :label="__('Title')" type="text" maxlength="255" required autofocus class:input="max-sm:h-11" />
 
         <flux:fieldset class="border-t border-line pt-8">
             <flux:legend class="text-lg!">{{ __('Authors') }}</flux:legend>
@@ -280,11 +281,11 @@ new class extends Component {
                     <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2" wire:key="author-{{ $index }}-{{ $field }}" data-test="author-row">
                         {{-- Your own row is fixed, so you can't drop yourself or pick someone else in your place; the arrows move it --}}
                         @if ($you)
-                            <flux:input :value="__(':name (you)', ['name' => Auth::user()->name])" :aria-label="__('Author')" disabled data-test="author-you" />
+                            <flux:input :value="__(':name (you)', ['name' => Auth::user()->name])" :aria-label="__('Author')" disabled data-test="author-you" class:input="max-sm:h-11" />
                         @elseif ($field === 'name')
-                            <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('Full name, for example Juan Dela T. Cruz')" type="text" maxlength="100" />
+                            <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('e.g. Juan Dela T. Cruz')" type="text" maxlength="100" class:input="max-sm:h-11" />
                         @else
-                            <flux:select wire:model="authorRows.{{ $index }}.user_id" :aria-label="__('Author')">
+                            <flux:select wire:model="authorRows.{{ $index }}.user_id" :aria-label="__('Author')" class="max-sm:h-11">
                                 <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
                                 @foreach ($this->faculty->except(Auth::id()) as $member)
                                     <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
@@ -293,9 +294,9 @@ new class extends Component {
                         @endif
 
                         <div class="flex">
-                            <flux:button variant="ghost" icon="arrow-up" wire:click="moveAuthor({{ $index }}, {{ $index - 1 }})" :aria-label="__('Move up')" :tooltip="__('Move up')" :disabled="$loop->first" />
-                            <flux:button variant="ghost" icon="arrow-down" wire:click="moveAuthor({{ $index }}, {{ $index + 1 }})" :aria-label="__('Move down')" :tooltip="__('Move down')" :disabled="$loop->last" />
-                            <flux:button variant="ghost" icon="x-mark" wire:click="removeAuthor({{ $index }})" :aria-label="__('Remove author')" :tooltip="__('Remove author')" :disabled="$you" />
+                            <flux:button variant="ghost" icon="arrow-up" wire:click="moveAuthor({{ $index }}, {{ $index - 1 }})" :aria-label="__('Move up')" :tooltip="__('Move up')" :disabled="$loop->first" class="max-sm:size-11" />
+                            <flux:button variant="ghost" icon="arrow-down" wire:click="moveAuthor({{ $index }}, {{ $index + 1 }})" :aria-label="__('Move down')" :tooltip="__('Move down')" :disabled="$loop->last" class="max-sm:size-11" />
+                            <flux:button variant="ghost" icon="x-mark" wire:click="removeAuthor({{ $index }})" :aria-label="__('Remove author')" :tooltip="__('Remove author')" :disabled="$you" class="max-sm:size-11" />
                         </div>
                     </div>
                     <flux:error name="authorRows.{{ $index }}.{{ $field }}" />
@@ -306,8 +307,8 @@ new class extends Component {
             <flux:error name="authorRows" :deep="false" class="mt-2" />
 
             <div class="mt-3 flex flex-wrap gap-2">
-                <flux:button size="sm" icon="plus" wire:click="addAuthor">{{ __('Add co-author') }}</flux:button>
-                <flux:button size="sm" icon="plus" wire:click="addAuthor(true)">{{ __('Add co-author outside the portal') }}</flux:button>
+                <flux:button size="sm" icon="plus" wire:click="addAuthor" class="max-sm:h-11">{{ __('Add co-author') }}</flux:button>
+                <flux:button size="sm" icon="plus" wire:click="addAuthor(true)" class="max-sm:h-11">{{ __('Add co-author outside the portal') }}</flux:button>
             </div>
         </flux:fieldset>
 
@@ -315,18 +316,18 @@ new class extends Component {
             <flux:legend class="text-lg!">{{ __('Where it was published') }}</flux:legend>
 
             <div class="grid gap-6 sm:grid-cols-3">
-                <flux:input wire:model="journal" :label="__('Journal or proceedings')" type="text" maxlength="255" required field:class="sm:col-span-3" />
+                <flux:input wire:model="journal" :label="__('Journal or proceedings')" type="text" maxlength="255" required field:class="sm:col-span-3" class:input="max-sm:h-11" />
 
-                <flux:input wire:model="volume" :label="__('Volume')" :badge="__('Optional')" :placeholder="__('e.g. 12')" type="text" maxlength="50" />
-                <flux:input wire:model="issue" :label="__('Issue')" :badge="__('Optional')" :placeholder="__('e.g. 3')" type="text" maxlength="50" />
-                <flux:input wire:model="pages" :label="__('Pages')" :badge="__('Optional')" :placeholder="__('e.g. 45–60')" type="text" maxlength="50" />
+                <flux:input wire:model="volume" :label="__('Volume')" :badge="__('Optional')" :placeholder="__('e.g. 12')" type="text" maxlength="50" class:input="max-sm:h-11" />
+                <flux:input wire:model="issue" :label="__('Issue')" :badge="__('Optional')" :placeholder="__('e.g. 3')" type="text" maxlength="50" class:input="max-sm:h-11" />
+                <flux:input wire:model="pages" :label="__('Pages')" :badge="__('Optional')" :placeholder="__('e.g. 45–60')" type="text" maxlength="50" class:input="max-sm:h-11" />
 
-                <flux:input wire:model="published_on" :label="__('Publication date')" :description:trailing="__('Day unknown? Pick the 1st.')" type="date" :max="today()->toDateString()" required />
-                <flux:input wire:model="link" :label="__('DOI or link')" :description:trailing="__('The DOI is usually on the paper’s first page.')" :placeholder="__('e.g. https://doi.org/10.1000/xyz123')" type="text" maxlength="500" required field:class="sm:col-span-2" />
+                <flux:input wire:model="published_on" :label="__('Publication date')" type="date" :max="today()->toDateString()" required class:input="max-sm:h-11" />
+                <flux:input wire:model="link" :label="__('DOI or link')" :placeholder="__('e.g. https://doi.org/10.1000/xyz123')" type="text" maxlength="500" required field:class="sm:col-span-2" class:input="max-sm:h-11" />
 
-                <flux:checkbox.group wire:model="indexed_in" variant="pills" :label="__('Indexed in')" :badge="__('Optional')" :description:trailing="__('Check the journal’s website if you’re not sure.')" field:class="sm:col-span-3" data-test="indexed-in">
+                <flux:checkbox.group wire:model="indexed_in" variant="pills" :label="__('Indexed in')" :badge="__('Optional')" field:class="sm:col-span-3" data-test="indexed-in">
                     @foreach (Publication::INDEXES as $key => $label)
-                        <flux:checkbox :value="$key" :label="__($label)" />
+                        <flux:checkbox :value="$key" :label="__($label)" class="max-sm:h-11" />
                     @endforeach
                 </flux:checkbox.group>
             </div>
@@ -337,7 +338,7 @@ new class extends Component {
 
             <flux:textarea wire:model="description" :label="__('Description')" :description:trailing="__('The abstract or a short summary.')" rows="4" required />
 
-            <flux:select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')">
+            <flux:select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')" class="max-sm:h-11">
                 <flux:select.option value="">{{ __('No project') }}</flux:select.option>
                 @foreach ($this->projects as $project)
                     <flux:select.option :value="$project->id">{{ $project->title }} ({{ $project->year }})</flux:select.option>
@@ -348,12 +349,12 @@ new class extends Component {
         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6">
             @if ($publication)
                 <flux:modal.trigger name="publication-delete">
-                    <flux:button variant="ghost" icon="trash" class="me-auto" data-test="delete-publication-button">{{ __('Delete publication') }}</flux:button>
+                    <flux:button variant="ghost" icon="trash" class="me-auto max-sm:h-11" data-test="delete-publication-button">{{ __('Delete publication') }}</flux:button>
                 </flux:modal.trigger>
             @endif
 
-            <flux:button :href="$publication ? route('publications.show', $publication) : route('faculty.show', Auth::user())" variant="ghost" wire:navigate>{{ __('Cancel') }}</flux:button>
-            <flux:button type="submit" variant="primary" data-test="save-publication-button">{{ $publication ? __('Save changes') : __('Add publication') }}</flux:button>
+            <flux:button :href="$publication ? route('publications.show', $publication) : route('faculty.show', Auth::user())" variant="ghost" wire:navigate class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
+            <flux:button type="submit" variant="primary" data-test="save-publication-button" class="max-sm:h-11">{{ $publication ? __('Save changes') : __('Add publication') }}</flux:button>
         </div>
     </form>
 
@@ -361,7 +362,7 @@ new class extends Component {
         <flux:modal name="publication-delete" class="w-full sm:w-96" aria-labelledby="publication-delete-heading">
             <div class="flex flex-col gap-6">
                 <div>
-                    <flux:heading size="lg" id="publication-delete-heading">{{ __('Delete this publication?') }}</flux:heading>
+                    <flux:heading size="lg" id="publication-delete-heading">{{ __('Delete “:title”?', ['title' => str($publication->title)->limit(60)]) }}</flux:heading>
                     <flux:text class="mt-2">
                         {{ trans_choice('{0} It is removed from every co-author’s profile. This can’t be undone.|{1} Its 1 citing paper is deleted with it, and it is removed from every co-author’s profile. This can’t be undone.|[2,*] Its :count citing papers are deleted with it, and it is removed from every co-author’s profile. This can’t be undone.', $publication->citations()->count()) }}
                     </flux:text>
@@ -369,9 +370,9 @@ new class extends Component {
 
                 <div class="flex justify-end gap-2">
                     <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
-                    <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-publication">{{ __('Delete publication') }}</flux:button>
+                    <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-publication" class="max-sm:h-11">{{ __('Delete publication') }}</flux:button>
                 </div>
             </div>
         </flux:modal>

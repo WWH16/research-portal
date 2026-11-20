@@ -568,7 +568,7 @@ class DashboardTest extends TestCase
             ->assertSee('Concept needs revision')
             ->assertSee('What to fix: Add a methodology section.')
             ->assertSee('Late Study')
-            ->assertSee('Target date '.today()->subWeek()->format('M j, Y').' has passed')
+            ->assertSee('Target date '.today()->subWeek()->format('F j, Y').' has passed')
             ->assertSee('Maria Proposal')
             ->assertDontSee('Jose Proposal')
             ->assertDontSee('data-test="waiting-tile"', escape: false)
@@ -587,7 +587,7 @@ class DashboardTest extends TestCase
         $this->actingAs($maria);
 
         $this->get(route('dashboard'))
-            ->assertSee('Welcome, MD Santos.')
+            ->assertSee('Welcome, Maria Dela Santos.')
             // One line instead of an empty panel, and a zero delayed count stays gray
             ->assertSee('Nothing needs your attention.')
             ->assertDontSee('Needs your attention')
@@ -596,7 +596,7 @@ class DashboardTest extends TestCase
             // Underscores read as spaces, and each project shows when it is due
             ->assertSee('Sentiment Analysis Study')
             ->assertDontSee('Sentiment_Analysis_Study')
-            ->assertSee('Due '.$due->format('M j, Y'))
+            ->assertSee('Due '.$due->format('F j, Y'))
             // Two projects in one month: the axis tops out at 3, above the tallest bar
             ->assertSeeHtml('<span class="-my-2">3</span>')
             ->assertSee('Show as table');

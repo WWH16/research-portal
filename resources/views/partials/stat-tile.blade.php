@@ -33,5 +33,6 @@
 
     <span class="mt-2 text-3xl font-semibold tabular-nums {{ ($alert ?? false) ? 'text-red-700' : 'text-zinc-900' }}">{{ number_format($value) }}</span>
 
-    <span class="mt-1 text-sm text-zinc-500 group-hover:text-zinc-700">{{ $note }}</span>
+    {{-- zinc-600, so the note keeps 4.5:1 on the Delayed tile's red tint too --}}
+    <span class="mt-1 text-sm text-zinc-600 group-hover:text-zinc-700">{{ $note }}</span>
 </a>

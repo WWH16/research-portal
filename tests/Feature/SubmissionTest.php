@@ -1062,7 +1062,7 @@ class SubmissionTest extends TestCase
             ->assertSee('Mid-year progress report: not uploaded yet')
             ->assertSeeText('Due '.today()->subDays(14)->format('M j, Y'));
 
-        $this->actingAs($maria)->get(route('dashboard'))->assertOk()->assertSee('Target date '.today()->subDay()->format('M j, Y').' has passed');
+        $this->actingAs($maria)->get(route('dashboard'))->assertOk()->assertSee('Target date '.today()->subDay()->format('F j, Y').' has passed');
     }
 
     public function test_admins_search_by_faculty_and_year(): void

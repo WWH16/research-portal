@@ -415,7 +415,7 @@ new #[Title('Dashboard')] class extends Component {
 @endphp
 
 <section class="mx-auto w-full max-w-6xl">
-    <x-page-title :subtitle="__('Welcome, :name.', ['name' => auth()->user()->shortName()])">{{ __('Dashboard') }}</x-page-title>
+    <x-page-title :subtitle="__('Welcome, :name.', ['name' => auth()->user()->displayName()])">{{ __('Dashboard') }}</x-page-title>
 
     @if ($this->office)
         @php
@@ -485,18 +485,21 @@ new #[Title('Dashboard')] class extends Component {
         <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12" wire:loading.delay.class="[&>:not(section)]:opacity-60 [&_[data-test=summary-tiles]]:opacity-60" wire:target="department,from,to,preset">
             {{-- Faculty progress, with the filters beside its heading: they narrow the counts and charts below --}}
             <section class="lg:col-span-12" aria-labelledby="progress-heading">
-                <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-end justify-between gap-4">
                     <flux:heading size="lg" level="2" id="progress-heading" class="text-xl!">{{ __('Faculty progress') }}</flux:heading>
 
                     {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
-                         the quick-range button share the first row, so the two dates get the whole second row and show in full --}}
-                    <div class="flex w-full flex-wrap gap-3 sm:w-auto">
-                        <flux:select wire:model.live="department" :aria-label="__('College')" class="min-w-0 flex-1 max-sm:h-11 sm:w-40 sm:flex-none" data-test="department-select">
-                            <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
-                            @foreach (Department::orderBy('code')->pluck('code') as $option)
-                                <flux:select.option :value="$option">{{ $option }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
+                         the quick-range button share the first row, so the two dates get the whole second row and show in full.
+                         Each field is wrapped, as a label puts Flux's field around it and the layout classes must reach the field --}}
+                    <div class="flex w-full flex-wrap items-end gap-3 sm:w-auto">
+                        <div class="min-w-0 flex-1 sm:w-40 sm:flex-none">
+                            <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" data-test="department-select">
+                                <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                                @foreach (Department::orderBy('code')->pluck('code') as $option)
+                                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        </div>
 
                         <flux:dropdown position="bottom" align="end">
                             <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" class="max-sm:size-11" />
@@ -509,11 +512,14 @@ new #[Title('Dashboard')] class extends Component {
                             </flux:menu>
                         </flux:dropdown>
 
-                        <div class="flex w-full items-center gap-2 sm:w-auto" data-test="date-range">
+                        <div class="flex w-full items-end gap-2 sm:w-auto" data-test="date-range">
                             {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                            <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :aria-label="__('From')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
-                            <span class="text-sm text-zinc-500" aria-hidden="true">–</span>
-                            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :aria-label="__('To')" class="min-w-0 flex-1 sm:w-40 sm:flex-none" class:input="max-sm:h-11" />
+                            <div class="min-w-0 flex-1 sm:w-40 sm:flex-none">
+                                <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" />
+                            </div>
+                            <div class="min-w-0 flex-1 sm:w-40 sm:flex-none">
+                                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -726,7 +732,7 @@ new #[Title('Dashboard')] class extends Component {
                                 @endif
                             </div>
                             @if ($submission->isDelayed())
-                                <p class="mt-1 text-sm text-zinc-600">{{ __('Target date :date has passed. Upload the terminal report when it’s ready.', ['date' => $submission->target_date->format('M j, Y')]) }}</p>
+                                <p class="mt-1 text-sm text-zinc-600">{{ __('Target date :date has passed. Upload the terminal report when it’s ready.', ['date' => $submission->target_date->format('F j, Y')]) }}</p>
                             @endif
                             @if ($submission->conceptReview() === 'returned')
                                 <p class="mt-1 text-sm text-amber-800 wrap-anywhere">{{ __('What to fix: :remarks', ['remarks' => $submission->remarks]) }}</p>
@@ -770,7 +776,7 @@ new #[Title('Dashboard')] class extends Component {
                                     <a href="{{ route('drive.show', $submission) }}" wire:navigate class="relative block font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:top-0 max-sm:before:-bottom-6">{{ $submission->displayTitle() }}</a>
                                     <p class="mt-0.5 tabular-nums text-zinc-500">
                                         {{ $submission->category->name }}.
-                                        <span @class(['whitespace-nowrap', 'font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('M j, Y')]) : __('No schedule yet') }}</span>
+                                        <span @class(['whitespace-nowrap', 'font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('F j, Y')]) : __('No schedule yet') }}</span>
                                     </p>
                                 </div>
                                 @include('partials.project-status', ['class' => 'items-end', 'timing' => true])

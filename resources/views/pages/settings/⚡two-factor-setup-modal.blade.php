@@ -185,7 +185,10 @@ new class extends Component {
 
             @if ($showVerificationStep)
                 <div class="space-y-6">
-                    <div
+                    {{-- A form only so the sixth digit sends the code by itself; Verify shows its spinner for that send too,
+                         as its loading state follows confirmTwoFactor however it is called --}}
+                    <form
+                        wire:submit="confirmTwoFactor"
                         class="flex flex-col items-center space-y-3 justify-center"
                         x-data
                         x-init="$nextTick(() => $el.querySelector('input')?.focus())"
@@ -194,11 +197,12 @@ new class extends Component {
                             name="code"
                             wire:model="code"
                             length="6"
+                            submit="auto"
                             :label="__('Authentication code')"
                             label:sr-only
                             class="mx-auto"
                         />
-                    </div>
+                    </form>
 
                     <div class="flex items-center space-x-3">
                         <flux:button

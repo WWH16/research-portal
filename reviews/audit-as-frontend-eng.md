@@ -22,7 +22,7 @@ Check the Livewire 4 + Flux + Tailwind 4 UI against twenty typography, layout an
 
 ## Verdict: APPROVE WITH CHANGES
 
-The first round fixed four gaps. The second round did the terms first left alone, wherever there was a screen for them. Font fallback metrics need a dev dependency and still wait for the owner's decision.
+The first round fixed four gaps. The second round did the terms first left alone, wherever there was a screen for them. Font fallback metrics were added once the owner agreed to the dev package.
 
 ## Critical Issues (Must Fix)
 
@@ -36,7 +36,7 @@ None.
 | 2 | Tabular numbers | `app.css` | The sidebar badges change in place on each poll, and the pager's "Showing 11 to 20 of 42" changes on each page. Proportional digits make both change width. | `font-variant-numeric: tabular-nums` on `.isu-sidebar [data-flux-navlist-badge]` and `[data-flux-pagination]`. Tables, stat tiles and charts already had it. | Done |
 | 3 | Tracking | `pages/departments/⚡index.blade.php` | The college code input forces `uppercase`. All-caps text set at normal spacing looks cramped. | `tracking-wide` on that input. | Done |
 | 4 | Leading | `layouts/legal.blade.php`, `pages/auth/{login,register,forgot-password}.blade.php` | The legal title was set at a line height of 1.0, the lead paragraph at 1.78, the body at 1.75 and the section headings at 1.4. The 12px reCAPTCHA notice on the sign-in pages was at 1.67. | Title 1.1, lead paragraph and body 1.6, section headings 1.25. The notice drops `leading-5` and falls back to the `text-xs` default of 1.33. | Done |
-| 5 | Layout shift, x-height | `vite.config.js`, `app.css` | Instrument Sans loads with `font-display: swap` and no metric-matched fallback. On a cold load, text reflows when the font arrives, because the system font's x-height and widths differ. The font plugin can build an `Instrument Sans fallback` face with `size-adjust`, but only with the optional `fontaine` package installed. | `npm i -D fontaine`, then point `--font-sans` at `var(--font-instrument-sans)` so the fallback face is used. The fonts are self-hosted and preloaded, so the shift is short and happens only on a first visit. | Needs owner's OK (adds a dev package) |
+| 5 | Layout shift, x-height | `vite.config.js`, `app.css` | Instrument Sans loads with `font-display: swap` and no metric-matched fallback. On a cold load, text reflows when the font arrives, because the system font's x-height and widths differ. The font plugin can build an `Instrument Sans fallback` face with `size-adjust`, but only with the optional `fontaine` package installed. | Added `fontaine` as a dev package. The font plugin now builds an `Instrument Sans fallback` face (Arial with `size-adjust` 103.76% and matching ascent and descent), and `--font-sans` lists it right after Instrument Sans. It is build-time only and adds about 200 bytes of CSS, with no download. | Done |
 
 ## Second Round: The Terms First Left Alone
 
@@ -58,6 +58,7 @@ The owner asked for the terms first marked "not applicable" to be done too, and 
 | Interruptible animation | All new motion | Menus and staggered rows use transitions, which reverse from where they are when interrupted. | Done |
 | Shared element transition | Project title, from the Submissions list, the Research Drive list and the dashboard into the project page | Uses Livewire 4's built-in `wire:transition.navigate="project-{id}"`, so the title morphs into the project page's heading on `wire:navigate`. Livewire skips it for reduced motion. | Done |
 | Safe area | None | The viewport has no `viewport-fit=cover`, so browsers keep every page inside the safe area already. Turning on edge-to-edge would mean padding every Flux edge element (sidebar, header, flyouts, toasts) for no gain. | Not done: no screen needs it |
+| Optimistic update (codes) | Two-factor code at sign-in, and the code that confirms two-factor setup | Flux's code input already offers the code a phone or password manager has ready (`autocomplete="one-time-code"` on the first box). Both screens now turn on Flux's `submit="auto"`, so the sixth digit, or a pasted or autofilled code, sends at once. Verify shows its spinner straight away. The setup code sits in a `wire:submit` form so it can send itself. | Done |
 | Progressive disclosure | Already in use | Admin sidebar folds, activity-log runs, memo folds, per-member project lists, earlier history, the review flyout. The optional publication fields (volume, issue, pages) stay visible, because hiding citation details would leave records incomplete. | No change |
 
 ## Render Path Analysis

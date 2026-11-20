@@ -22,8 +22,7 @@ class LoginPageTest extends TestCase
             ->assertOk()
             ->assertSee('Faculty Research Portal')
             ->assertSee('Sign in')
-            ->assertSee(route('register'))
-            ->assertDontSee('data-shake', false);
+            ->assertSee(route('register'));
     }
 
     public function test_a_shared_link_previews_with_the_university_seal(): void

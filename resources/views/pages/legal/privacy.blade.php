@@ -1,6 +1,6 @@
 <x-layouts::legal
     :title="__('Privacy Policy')"
-    updated="October 28, 2026"
+    updated="November 20, 2026"
     :summary="__('The Faculty Research Portal keeps the records ISU Cauayan needs to track faculty research, from concept proposal to terminal report. This page explains what it keeps, why, who can see it, and how to reach the Research Office about it.')"
 >
     <h2 id="who-we-are">{{ __('Who runs the portal') }}</h2>
@@ -28,8 +28,8 @@
 
     <h2 id="where-it-is-stored">{{ __('Where it is stored') }}</h2>
     <ul>
-        <li><strong>{{ __('Laravel Cloud') }}</strong> {{ __('hosts the portal, its database, and profile photos, and backs up the database daily.') }}</li>
-        <li><strong>{{ __('Google Drive') }}</strong> {{ __('holds uploaded project documents, in a private folder of the Research Office’s Google account. The folder is shared with no one. Documents open only through the portal, after it checks that you may see them.') }}</li>
+        <li><strong>{{ __('Laravel Cloud') }}</strong> {{ __('hosts the portal and its database, and backs up the database daily.') }}</li>
+        <li><strong>{{ __('Google Drive') }}</strong> {{ __('holds uploaded files, which are project documents, announcement memos, and profile photos, in a private folder of the Research Office’s Google account. The folder is shared with no one. Files open only through the portal, after it checks that you may see them.') }}</li>
         <li><strong>{{ __('Gmail') }}</strong> {{ __('sends the portal’s emails, such as verification links, password resets, and review notices, from the Research Office’s account.') }}</li>
     </ul>
 

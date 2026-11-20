@@ -17,7 +17,8 @@
                     </span>
                 </a>
 
-                <flux:link :href="auth()->check() ? route('dashboard') : route('login')" class="text-sm">
+                {{-- One line, so the portal's name wraps instead; a 44px tap area on phones --}}
+                <flux:link :href="auth()->check() ? route('dashboard') : route('login')" class="relative shrink-0 text-sm whitespace-nowrap max-sm:before:absolute max-sm:before:-inset-x-1 max-sm:before:-inset-y-3.5">
                     {{ auth()->check() ? __('Return to the portal') : __('Sign in') }}
                 </flux:link>
             </div>

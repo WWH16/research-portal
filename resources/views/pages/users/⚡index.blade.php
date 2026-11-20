@@ -488,26 +488,15 @@ new #[Title('Manage users')] class extends Component {
             "\$set('statusFilter', '')" => isset($statuses[$statusFilter]) ? __('Status: :status', ['status' => $statuses[$statusFilter]]) : null,
             "\$set('college', '')" => $college !== '' ? __('College: :college', ['college' => $college === 'none' ? __('No college') : $college]) : null,
         ]))
-        @if ($chips)
-            <div class="mt-3 flex flex-wrap items-center gap-2" data-test="active-filters">
-                @foreach ($chips as $remove => $chip)
-                    <flux:button size="sm" variant="filled" icon:trailing="x-mark" wire:click="{{ $remove }}" :aria-label="__('Remove filter: :filter', ['filter' => $chip])" class="max-sm:h-11">{{ $chip }}</flux:button>
-                @endforeach
-                <flux:button size="sm" variant="ghost" wire:click="clearFilters" class="max-sm:h-11">{{ __('Clear all') }}</flux:button>
-            </div>
-        @endif
+        <x-filter-chips :chips="$chips" />
     </div>
 
     @if ($this->users->isEmpty())
-        <div class="mt-6 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-            <flux:heading>{{ __('No users match these filters') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Try a different name or email, or show every role and college.') }}</flux:text>
-            <flux:button variant="ghost" size="sm" class="mt-4" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
-        </div>
+        <x-empty-state icon="users" :heading="__('No users match these filters')" :text="__('Try a different name or email, or show every role and college.')" class="mt-6">
+            <flux:button wire:click="clearFilters" class="max-sm:h-11">{{ __('Clear filters') }}</flux:button>
+        </x-empty-state>
     @else
-        {{-- Relative, so the screen-reader-only Actions header stays inside the table instead of widening a phone's
-             page; the page arrows get the 44px phone size --}}
-        <flux:table class="mt-4" :paginate="$this->users" container:class="relative" pagination:class="max-sm:[&_button]:size-11">
+        <flux:table container:class="mt-4 table-frame" :paginate="$this->users" pagination:class="max-sm:[&_button]:size-11">
             <flux:table.columns>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
                 <flux:table.column class="max-md:hidden">{{ __('Researcher ID') }}</flux:table.column>
@@ -553,18 +542,18 @@ new #[Title('Manage users')] class extends Component {
                         </flux:table.cell>
                         <flux:table.cell>
                             <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :aria-label="__('Open actions for :name', ['name' => $user->name])" />
+                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" :tooltip="__('Open actions')" :aria-label="__('Open actions for :name', ['name' => $user->name])" class="max-sm:size-11" />
 
                                 <flux:menu>
                                     @unless ($user->isApproved())
-                                        <flux:menu.item icon="check-circle" wire:click="approve({{ $user->id }})">{{ __('Approve') }}</flux:menu.item>
+                                        <flux:menu.item icon="check-circle" wire:click="approve({{ $user->id }})" class="max-sm:min-h-11">{{ __('Approve') }}</flux:menu.item>
                                     @endunless
                                     @unless ($user->isApproved() || $user->isRejected())
-                                        <flux:menu.item icon="x-circle" variant="danger" wire:click="confirmReject({{ $user->id }})">{{ __('Reject') }}</flux:menu.item>
+                                        <flux:menu.item icon="x-circle" variant="danger" wire:click="confirmReject({{ $user->id }})" class="max-sm:min-h-11">{{ __('Reject') }}</flux:menu.item>
                                     @endunless
-                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $user->id }})">{{ __('Edit') }}</flux:menu.item>
-                                    <flux:menu.item icon="clipboard-document-list" :href="route('activity-log.index', ['user' => $user->id])" wire:navigate>{{ __('View activity') }}</flux:menu.item>
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $user->id }})">{{ __('Delete') }}</flux:menu.item>
+                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $user->id }})" class="max-sm:min-h-11">{{ __('Edit') }}</flux:menu.item>
+                                    <flux:menu.item icon="clipboard-document-list" :href="route('activity-log.index', ['user' => $user->id])" wire:navigate class="max-sm:min-h-11">{{ __('View activity') }}</flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $user->id }})" class="max-sm:min-h-11">{{ __('Delete') }}</flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>
                         </flux:table.cell>
@@ -586,17 +575,17 @@ new #[Title('Manage users')] class extends Component {
                 </flux:text>
             </div>
 
-            <flux:input wire:model="name" :label="__('Full name')" type="text" maxlength="255" required autofocus autocomplete="off" />
+            <flux:input wire:model="name" :label="__('Full name')" type="text" maxlength="255" required autofocus autocomplete="off" class:input="max-sm:h-11" />
 
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:input wire:model="email" :label="__('Email')" type="email" maxlength="255" required autocomplete="off" />
-                <flux:input wire:model="mobile" :label="__('Mobile')" :badge="__('Optional')" type="tel" maxlength="20" autocomplete="off" />
+                <flux:input wire:model="email" :label="__('Email')" type="email" maxlength="255" required autocomplete="off" class:input="max-sm:h-11" />
+                <flux:input wire:model="mobile" :label="__('Mobile')" :badge="__('Optional')" type="tel" maxlength="20" autocomplete="off" class:input="max-sm:h-11" />
             </div>
 
             <div class="grid gap-6 sm:grid-cols-2">
                 {{-- Only faculty file projects under a college, so the Research Office's accounts have none --}}
                 @if ($role === Role::Faculty->value)
-                    <flux:select wire:model="department_id" :label="__('College')">
+                    <flux:select wire:model="department_id" :label="__('College')" class="max-sm:h-11">
                         {{-- A real, selectable option so users without a department show it and admins can clear one. --}}
                         <flux:select.option value="">{{ __('No college') }}</flux:select.option>
                         @foreach ($this->departments as $department)
@@ -605,7 +594,7 @@ new #[Title('Manage users')] class extends Component {
                     </flux:select>
                 @endif
 
-                <flux:select wire:model.live="role" :label="__('Role')" :disabled="$this->editingSelf || $this->editing?->isFaculty()">
+                <flux:select wire:model.live="role" :label="__('Role')" class="max-sm:h-11" :disabled="$this->editingSelf || $this->editing?->isFaculty()">
                     @foreach ($this->roles as $option)
                         <flux:select.option :value="$option->value">{{ __($option->name) }}</flux:select.option>
                     @endforeach
@@ -627,13 +616,14 @@ new #[Title('Manage users')] class extends Component {
                 autocomplete="new-password"
                 viewable
                 :required="! $editingId"
+                class:input="max-sm:h-11"
             />
 
             <div class="flex justify-end gap-2">
                 <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                    <flux:button variant="ghost" class="max-sm:h-11">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="primary" data-test="save-user-button">
+                <flux:button type="submit" variant="primary" data-test="save-user-button" class="max-sm:h-11">
                     {{ $editingId ? __('Save changes') : __('Add user') }}
                 </flux:button>
             </div>
@@ -650,15 +640,15 @@ new #[Title('Manage users')] class extends Component {
 
                 <div class="flex justify-end gap-2">
                     <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
-                    <flux:button variant="danger" wire:click="reject" data-test="reject-user-button">{{ __('Reject sign-up') }}</flux:button>
+                    <flux:button variant="danger" wire:click="reject" data-test="reject-user-button" class="max-sm:h-11">{{ __('Reject sign-up') }}</flux:button>
                 </div>
             </div>
         @endif
     </flux:modal>
 
-    <flux:modal name="user-delete"wire:close="$set('deletingId', null, false)" class="w-full sm:w-96" aria-labelledby="user-delete-heading">
+    <flux:modal name="user-delete" wire:close="$set('deletingId', null, false)" class="w-full sm:w-96" aria-labelledby="user-delete-heading">
         @if ($this->deleting)
             <div class="flex flex-col gap-6">
                 <div>
@@ -673,10 +663,10 @@ new #[Title('Manage users')] class extends Component {
 
                 <div class="flex justify-end gap-2">
                     <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost" class="max-sm:h-11" autofocus>{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     @unless ($this->deletingBlocker)
-                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button">{{ __('Delete user') }}</flux:button>
+                        <flux:button variant="danger" wire:click="delete" data-test="delete-user-button" class="max-sm:h-11">{{ __('Delete user') }}</flux:button>
                     @endunless
                 </div>
             </div>

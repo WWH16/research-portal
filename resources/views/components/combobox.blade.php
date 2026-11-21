@@ -39,7 +39,7 @@
         class:input="max-sm:h-11"
     />
 
-    <ul id="{{ $id }}" role="listbox" x-ref="list" x-show="open" x-cloak class="absolute inset-x-0 top-full z-10 mt-1 max-h-60 overflow-y-auto overscroll-contain rounded-lg border border-zinc-200 bg-white p-1 shadow-floating">
+    <ul id="{{ $id }}" role="listbox" x-show="open" x-cloak class="absolute inset-x-0 top-full z-10 mt-1 max-h-60 overflow-y-auto overscroll-contain rounded-lg border border-zinc-200 bg-white p-1 shadow-floating">
         <template x-for="(option, index) in matches" x-bind:key="option.value">
             <li
                 x-bind:id="`${id}-${index}`"

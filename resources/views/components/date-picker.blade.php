@@ -6,22 +6,18 @@
     name opens a month grid for jumping across a year. Today and Clear sit at the foot (Clear only when the date is
     optional). Days outside min and max can't be picked.
     The value is a Y-m-d string, as the browser's date field gives, so the server reads it unchanged. Bind it with
-    wire:model (with any modifiers). `min` and `max` take Y-m-d strings; `x-bind:min` and `x-bind:max` take Alpine
-    expressions, for a limit that follows another field.
+    wire:model (with any modifiers). `min` and `max` take Y-m-d strings; `x-bind:min` takes an Alpine expression, for a
+    start that follows another field.
     Usage: <x-date-picker wire:model="target_date" :label="__('Completion date')" :min="$start" class:input="max-sm:h-11" />
 --}}
-@props(['label' => null, 'badge' => null, 'description' => null, 'placeholder' => null, 'min' => null, 'max' => null, 'disabled' => false, 'required' => false])
+@props(['label' => null, 'min' => null, 'max' => null, 'disabled' => false, 'required' => false])
 
 @php
     $model = $attributes->wire('model')->value();
     $id = 'date-'.md5($model ?: $label ?: 'date');
     $invalid = $errors->has((string) $model);
-    $limits = collect(['x-bind:min' => 'x-bind:data-min', 'x-bind:max' => 'x-bind:data-max'])
-        ->filter(fn ($to, $from) => $attributes->has($from))
-        ->mapWithKeys(fn ($to, $from) => [$to => $attributes->get($from)])
-        ->all();
     // One bag for the field: Blade forwards only a bag named $attributes inside a component tag.
-    $field = $attributes->except(['class:input', 'field:class', 'x-bind:min', 'x-bind:max', 'aria-label'])
+    $field = $attributes->except(['class:input', 'field:class', 'x-bind:min', 'aria-label'])
         ->merge([
             'x-data' => 'datePicker('.Js::from($id).', '.Js::from($required).')',
             'x-modelable' => 'value',
@@ -29,18 +25,14 @@
             'data-min' => $min,
             'data-max' => $max,
             'data-resync' => true,
-            ...$limits,
+            ...($attributes->has('x-bind:min') ? ['x-bind:data-min' => $attributes->get('x-bind:min')] : []),
         ], escape: false)
         ->class($attributes->get('field:class'));
 @endphp
 
 <flux:field :attributes="$field">
     @if ($label)
-        <flux:label :badge="$badge" id="{{ $id }}-label" x-on:click="$refs.button.focus()">{{ $label }}</flux:label>
-    @endif
-
-    @if ($description)
-        <flux:description>{{ $description }}</flux:description>
+        <flux:label id="{{ $id }}-label" x-on:click="$refs.button.focus()">{{ $label }}</flux:label>
     @endif
 
     {{-- min-w-0: the field lays out as a grid, and without it this cell would keep the full text's width --}}
@@ -59,13 +51,12 @@
             data-flux-control
             class="{{ Flux::classes('relative block h-10 w-full rounded-lg border border-zinc-200 border-b-zinc-300/80 bg-white py-2 ps-3 pe-10 text-start text-base text-zinc-700 shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-75 disabled:shadow-none data-invalid:border-red-500 sm:text-sm')->add($attributes->get('class:input')) }}"
         >
-            <span id="{{ $id }}-value" wire:ignore class="block truncate tabular-nums" x-text="display || @js($placeholder ?? __('Choose a date'))" x-bind:class="! display && 'text-zinc-500'"></span>
+            <span id="{{ $id }}-value" wire:ignore class="block truncate tabular-nums" x-text="display || @js(__('Choose a date'))" x-bind:class="! display && 'text-zinc-500'"></span>
             <flux:icon.calendar-days variant="mini" class="pointer-events-none absolute inset-y-0 end-2 my-auto text-zinc-400" />
         </button>
 
         {{-- Drawn by Alpine alone, so a Livewire redraw leaves it be (wire:ignore) --}}
         <div
-            x-ref="calendar"
             id="{{ $id }}-calendar"
             popover="manual"
             role="dialog"

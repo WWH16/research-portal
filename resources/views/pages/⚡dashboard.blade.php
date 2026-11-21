@@ -80,11 +80,16 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Quick picks for the date range.
+     * Quick picks for the date range. A quarter (q1 to q4) is this year's, up to today when it is still running; one
+     * that hasn't started yet is never offered, and asking for it anyway gives today alone.
      */
     public function preset(string $key): void
     {
         [$from, $to] = match ($key) {
+            'q1', 'q2', 'q3', 'q4' => [
+                $start = now()->startOfYear()->addQuarters((int) $key[1] - 1)->min(today()),
+                $start->endOfQuarter()->min(today()),
+            ],
             'last-year' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
             'last-12-months' => [now()->subMonths(11)->startOfMonth(), today()],
             default => [now()->startOfYear(), today()],
@@ -504,6 +509,13 @@ new #[Title('Dashboard')] class extends Component {
                             <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" class="max-sm:size-11" />
                             <flux:menu>
                                 <flux:menu.item wire:click="preset('this-year')" class="max-sm:h-11">{{ __('This year') }}</flux:menu.item>
+                                {{-- This year's quarters that have started --}}
+                                @foreach (range(1, now()->quarter) as $quarter)
+                                    <flux:menu.item wire:click="preset('q{{ $quarter }}')" class="max-sm:h-11" data-test="quarter-{{ $quarter }}">
+                                        {{ __('Q:number (:from – :to)', ['number' => $quarter, 'from' => now()->startOfYear()->addMonths($quarter * 3 - 3)->format('M'), 'to' => now()->startOfYear()->addMonths($quarter * 3 - 1)->format('M')]) }}
+                                    </flux:menu.item>
+                                @endforeach
+                                <flux:menu.separator />
                                 @if (now()->year > Submission::FIRST_YEAR)
                                     <flux:menu.item wire:click="preset('last-year')" class="max-sm:h-11">{{ __('Last year') }}</flux:menu.item>
                                 @endif

@@ -569,8 +569,8 @@ new #[Title('Submissions')] class extends Component {
                     </div>
 
                     <div class="grid gap-6 sm:grid-cols-2">
-                        <flux:input wire:model="start_date" :label="__('Starting date')" type="date" required class:input="max-sm:h-11" />
-                        <flux:input wire:model="target_date" :label="__('Completion date')" type="date" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required class:input="max-sm:h-11" />
+                        <x-date-picker wire:model="start_date" :label="__('Starting date')" required class:input="max-sm:h-11" />
+                        <x-date-picker wire:model="target_date" :label="__('Completion date')" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required class:input="max-sm:h-11" />
                     </div>
 
                     <flux:text class="text-sm">{{ __('For an extension or a correction. The faculty on this project will be notified of the new dates. The status and review list stay as they are.') }}</flux:text>

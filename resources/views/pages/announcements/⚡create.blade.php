@@ -216,9 +216,8 @@ new #[Title('Announcement')] class extends Component {
 
         <flux:textarea wire:model.live.blur="description" :label="__('Message')" rows="8" maxlength="5000" required />
 
-        <flux:input
+        <x-date-picker
             wire:model.live.blur="dueOn"
-            type="date"
             :min="$announcement ? null : today()->format('Y-m-d')"
             :label="__('Submission deadline')"
             :badge="__('Optional')"

@@ -454,10 +454,10 @@ document.addEventListener('livewire:init', () => {
     window.Livewire.hook('morph.added', ({ el }) => skipBrowserCheck(el));
     window.Livewire.hook('morph.updated', ({ el }) => skipBrowserCheck(el));
 
-    // A redrawn dropdown list fills its text and options in again (see listbox).
+    // A redrawn dropdown list or date picker fills its text in again (see listbox and datePicker).
     window.Livewire.hook('morph.updated', ({ el }) => {
-        const select = el.closest?.('[data-select]');
-        select?._x_dataStack && window.Alpine.$data(select).tick++;
+        const field = el.closest?.('[data-select], [data-resync]');
+        field?._x_dataStack && window.Alpine.$data(field).tick++;
     });
 });
 
@@ -634,7 +634,245 @@ const listbox = (id, placeholder) => ({
     },
 });
 
+// The date picker in components/date-picker. `value` is a Y-m-d string, which wire:model reads through x-modelable;
+// `cursor` is the day the keyboard is on, which also sets the month shown. Dates are built at local midnight and
+// written back as Y-m-d by hand, so no time zone shifts a day. min and max are read from the field's data-min and
+// data-max each time, so a limit bound to another field (x-bind:min) always holds.
+const pad = (number) => String(number).padStart(2, '0');
+const toIso = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const fromIso = (iso) => {
+    const [year, month, day] = String(iso ?? '').split('-').map(Number);
+    return year && month && day ? new Date(year, month - 1, day) : null;
+};
+const addDays = (date, days) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+const addMonths = (date, months) => {
+    const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
+    const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    return new Date(target.getFullYear(), target.getMonth(), Math.min(date.getDate(), last));
+};
+
+const datePicker = (id, required) => ({
+    id,
+    required,
+    tick: 0,
+    value: '',
+    open: false,
+    view: 'days',
+    cursor: toIso(new Date()),
+
+    // Kept here, because Alpine looks $refs and $root up from the element a handler ran on, and a day button can be
+    // gone by then: moving to another month redraws the grid.
+    init() {
+        this.field = this.$el;
+        this.trigger = this.$refs.button;
+        this.calendar = this.$refs.calendar;
+    },
+
+    get min() {
+        return this.tick >= 0 ? this.field.dataset.min || null : null;
+    },
+
+    get max() {
+        return this.tick >= 0 ? this.field.dataset.max || null : null;
+    },
+
+    get display() {
+        const date = this.tick >= 0 ? fromIso(this.value) : null;
+        return date ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+    },
+
+    get viewMonth() {
+        return fromIso(this.cursor).getMonth();
+    },
+
+    get year() {
+        return fromIso(this.cursor).getFullYear();
+    },
+
+    get monthLabel() {
+        return fromIso(this.cursor).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    },
+
+    get weekdays() {
+        const sunday = new Date(2023, 0, 1);
+        return [...Array(7)].map((_, index) => {
+            const day = addDays(sunday, index);
+            return { short: day.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2), long: day.toLocaleDateString('en-US', { weekday: 'long' }) };
+        });
+    },
+
+    get months() {
+        return [...Array(12)].map((_, index) => ({ index, label: new Date(2023, index, 1).toLocaleDateString('en-US', { month: 'short' }) }));
+    },
+
+    outOfRange(iso) {
+        return Boolean((this.min && iso < this.min) || (this.max && iso > this.max));
+    },
+
+    get todayAllowed() {
+        return !this.outOfRange(toIso(new Date()));
+    },
+
+    // Six weeks from the Sunday on or before the 1st, so the grid keeps its height from month to month.
+    get weeks() {
+        const shown = fromIso(this.cursor);
+        const first = new Date(shown.getFullYear(), shown.getMonth(), 1);
+        const start = addDays(first, -first.getDay());
+        const today = toIso(new Date());
+
+        return [...Array(6)].map((_, week) =>
+            [...Array(7)].map((_, weekday) => {
+                const date = addDays(start, week * 7 + weekday);
+                const iso = toIso(date);
+
+                return {
+                    iso,
+                    number: date.getDate(),
+                    inMonth: date.getMonth() === shown.getMonth(),
+                    today: iso === today,
+                    out: this.outOfRange(iso),
+                    label: date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + (iso === this.value ? ', selected' : ''),
+                };
+            }),
+        );
+    },
+
+    show() {
+        if (this.trigger.disabled) {
+            return;
+        }
+
+        const start = this.value || toIso(new Date());
+        this.cursor = this.min && start < this.min ? this.min : this.max && start > this.max ? this.max : start;
+        this.view = 'days';
+        this.open = true;
+        this.calendar.showPopover();
+        this.place = this.place ?? this.placeCalendar.bind(this);
+        this.place();
+        window.addEventListener('scroll', this.place, true);
+        window.addEventListener('resize', this.place);
+        this.focusCursor();
+    },
+
+    close(refocus = false) {
+        this.open = false;
+        this.calendar.matches(':popover-open') && this.calendar.hidePopover();
+        window.removeEventListener('scroll', this.place, true);
+        window.removeEventListener('resize', this.place);
+        refocus && this.trigger.focus();
+    },
+
+    // Under the field from its left edge, kept on screen, or over the field when there's no room below.
+    placeCalendar() {
+        const field = this.trigger.getBoundingClientRect();
+        const calendar = this.calendar;
+        const below = window.innerHeight - field.bottom;
+        const above = below < calendar.offsetHeight + 8 && field.top > below;
+        const left = Math.max(8, Math.min(field.left, window.innerWidth - calendar.offsetWidth - 8));
+
+        Object.assign(calendar.style, {
+            left: `${left}px`,
+            top: above ? `${field.top - calendar.offsetHeight - 4}px` : `${field.bottom + 4}px`,
+        });
+    },
+
+    // After Alpine has drawn the month the cursor is in: a new month's days are only there a tick after the change.
+    focusCursor() {
+        this.$nextTick(() => setTimeout(() => this.calendar.querySelector(`[data-iso="${this.cursor}"]`)?.focus()));
+    },
+
+    // The keyboard stops at min and max, so Enter always lands on a day that can be picked.
+    moveTo(date) {
+        const iso = toIso(date);
+        this.cursor = this.min && iso < this.min ? this.min : this.max && iso > this.max ? this.max : iso;
+        this.focusCursor();
+    },
+
+    step(direction) {
+        const shown = fromIso(this.cursor);
+        this.cursor = toIso(this.view === 'days' ? addMonths(shown, direction) : addMonths(shown, direction * 12));
+    },
+
+    chooseMonth(index) {
+        const shown = fromIso(this.cursor);
+        this.cursor = toIso(addMonths(shown, index - shown.getMonth()));
+        this.view = 'days';
+        this.focusCursor();
+    },
+
+    pick(day) {
+        if (day.out) {
+            return;
+        }
+
+        this.value = day.iso;
+        this.close(true);
+        this.trigger.dispatchEvent(new Event('change', { bubbles: true }));
+    },
+
+    pickToday() {
+        const today = toIso(new Date());
+        this.outOfRange(today) || this.pick({ iso: today, out: false });
+    },
+
+    clear() {
+        this.value = '';
+        this.close(true);
+        this.trigger.dispatchEvent(new Event('change', { bubbles: true }));
+    },
+
+    key(event, day) {
+        const date = fromIso(day.iso);
+        const moves = {
+            ArrowLeft: () => addDays(date, -1),
+            ArrowRight: () => addDays(date, 1),
+            ArrowUp: () => addDays(date, -7),
+            ArrowDown: () => addDays(date, 7),
+            Home: () => addDays(date, -date.getDay()),
+            End: () => addDays(date, 6 - date.getDay()),
+            PageUp: () => addMonths(date, event.shiftKey ? -12 : -1),
+            PageDown: () => addMonths(date, event.shiftKey ? 12 : 1),
+        };
+
+        if (moves[event.key]) {
+            event.preventDefault();
+            this.moveTo(moves[event.key]());
+        } else if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.pick(day);
+        }
+    },
+
+    // A modal dialog: Tab stays inside it, and Escape closes it alone, not a dialog around the field.
+    trap(event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            this.close(true);
+
+            return;
+        }
+
+        if (event.key !== 'Tab') {
+            return;
+        }
+
+        const stops = [...this.calendar.querySelectorAll('button:not([disabled]):not([tabindex="-1"])')].filter((stop) => stop.offsetParent !== null);
+        const first = stops[0];
+        const last = stops[stops.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    },
+});
+
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('datePicker', datePicker);
     window.Alpine.data('listbox', listbox);
     window.Alpine.data('formStates', formStates);
     window.Alpine.data('combobox', combobox);

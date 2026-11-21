@@ -289,7 +289,7 @@ new #[Title('My profile')] class extends Component {
                             <div class="grid gap-2">
                                 <div class="flex items-center gap-3">
                                     <label for="photo-zoom" class="text-sm font-medium text-zinc-800">{{ __('Zoom') }}</label>
-                                    <input id="photo-zoom" type="range" min="1" max="3" step="0.01" :value="zoom" x-on:input="setZoom(+$event.target.value)" class="w-full accent-accent max-sm:h-11" />
+                                    <input id="photo-zoom" type="range" min="1" max="3" step="0.01" :value="zoom" x-on:input="setZoom(+$event.target.value)" x-bind:style="{ '--fill': ((zoom - 1) / 2) * 100 + '%' }" class="w-full max-sm:h-11" />
                                 </div>
 
                                 <flux:text class="text-sm" x-show="small">{{ __('This photo is small and may look blurry.') }}</flux:text>

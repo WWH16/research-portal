@@ -740,6 +740,18 @@ ui-dropdown > [popover] {
     }
 }
 
+/* Number fields without the browser's own up/down arrows, which draw in its look, not Flux's; phones still open the
+   number keypad, and the arrow keys still step the value. */
+input[type='number'] {
+    appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
 /* Hide Alpine-controlled elements until Alpine starts, so they never flash on load. */
 [x-cloak] {
     display: none !important;

@@ -226,7 +226,9 @@ new class extends Component {
                             <li class="flex items-center gap-4 py-3 max-sm:py-0" wire:key="citation-{{ $citation->id }}">
                                 <span class="w-12 shrink-0 text-sm font-medium tabular-nums text-zinc-800">{{ $citation->year }}</span>
                                 {{-- The bare DOI, or the address without its https://, tells the rows apart; the full link shows on hover --}}
-                                <flux:link :href="$citation->link" :title="$citation->link" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 text-sm wrap-anywhere max-sm:py-3">{{ preg_replace('~^https?://(?:www\.)?(?:doi\.org/)?~i', '', $citation->link) }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
+                                <flux:tooltip :content="$citation->link" class="block min-w-0 flex-1">
+                                    <flux:link :href="$citation->link" target="_blank" rel="noopener noreferrer" class="block text-sm wrap-anywhere max-sm:py-3">{{ preg_replace('~^https?://(?:www\.)?(?:doi\.org/)?~i', '', $citation->link) }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
+                                </flux:tooltip>
                                 @if ($canEdit)
                                     <flux:button size="sm" variant="ghost" icon="trash" :aria-label="__('Remove citing paper')" class="max-sm:size-11 text-zinc-500! hover:text-red-600!"
                                         x-on:click="removing = { id: {{ $citation->id }}, link: {{ Js::from($citation->link) }} }; $dispatch('modal-show', { name: 'citation-remove' })" />

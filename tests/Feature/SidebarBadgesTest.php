@@ -57,7 +57,7 @@ class SidebarBadgesTest extends TestCase
 
         $this->actingAs($this->admin())
             ->get(route('dashboard'))
-            ->assertSeeHtml('title="2 concept proposals to review"')
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('2 concept proposals to review', false)
             ->assertSeeHtml('<span class="sr-only" x-show="toReview" x-text="reviewLabel">2 concept proposals to review</span>')
             ->assertSeeHtml('data-test="sidebar-toggle-dot"');
     }
@@ -69,7 +69,7 @@ class SidebarBadgesTest extends TestCase
 
         $this->actingAs($this->admin())
             ->get(route('dashboard'))
-            ->assertSeeHtml('title="2 sign-ups to approve"')
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('2 sign-ups to approve', false)
             ->assertSeeHtml('<span class="sr-only">2 sign-ups to approve</span>')
             ->assertSeeHtml('href="'.route('users.index', ['status' => 'pending']).'"');
     }
@@ -150,7 +150,7 @@ class SidebarBadgesTest extends TestCase
 
         // The link carries a red "!" with the reason, and its group opens so the warning is in view.
         $this->actingAs($admin)->get(route('dashboard'))
-            ->assertSeeHtml('title="Google Drive office@isu.edu.ph is disconnected, so documents can’t be uploaded or opened."')
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('Google Drive office@isu.edu.ph is disconnected, so documents can’t be uploaded or opened.', false)
             ->assertSeeHtml('x-show="driveIssue"')
             ->assertSeeInOrder(['data-test="system-nav"', 'open'], false);
 
@@ -175,7 +175,7 @@ class SidebarBadgesTest extends TestCase
 
         $this->actingAs($this->admin())
             ->get(route('dashboard'))
-            ->assertSeeHtml('title="100 concept proposals to review"')
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('100 concept proposals to review', false)
             ->assertSeeHtml('data-flux-navlist-badge>99+</span>')
             ->assertDontSeeHtml('data-flux-navlist-badge>100</span>');
     }
@@ -212,7 +212,7 @@ class SidebarBadgesTest extends TestCase
         $html = $this->actingAs($this->maria)
             ->get(route('dashboard'))
             ->assertSeeHtml('data-tone="revision"')
-            ->assertSeeHtml('title="1 project needs revision"')
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('1 project needs revision', false)
             ->assertSeeHtml('<span class="sr-only">1 project needs revision</span>')
             ->assertDontSee('concept proposal to review')
             ->getContent();

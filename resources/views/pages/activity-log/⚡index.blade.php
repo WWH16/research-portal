@@ -354,15 +354,17 @@ new #[Title('Activity log')] class extends Component {
 
                             <flux:table.cell>
                                 @if ($subject = $log->subject())
-                                    <p class="truncate text-zinc-800" title="{{ $subject }}">
-                                        @if ($url = $log->subjectUrl())
-                                            {{-- A box of its own, so on phones it can stand 44px tall and still end in an ellipsis; the
-                                                 underline sits closer than Flux's, inside the one-line box that clips it --}}
-                                            <flux:link :href="$url" wire:navigate class="inline-block max-w-full truncate align-top underline-offset-2! max-sm:min-w-11 max-sm:py-3">{{ $subject }}</flux:link>
-                                        @else
-                                            {{ $subject }}
-                                        @endif
-                                    </p>
+                                    <flux:tooltip :content="$subject" class="block min-w-0">
+                                        <p class="truncate text-zinc-800">
+                                            @if ($url = $log->subjectUrl())
+                                                {{-- A box of its own, so on phones it can stand 44px tall and still end in an ellipsis; the
+                                                     underline sits closer than Flux's, inside the one-line box that clips it --}}
+                                                <flux:link :href="$url" wire:navigate class="inline-block max-w-full truncate align-top underline-offset-2! max-sm:min-w-11 max-sm:py-3">{{ $subject }}</flux:link>
+                                            @else
+                                                {{ $subject }}
+                                            @endif
+                                        </p>
+                                    </flux:tooltip>
                                 @endif
 
                                 @php([$change, $note] = [$log->change(), $log->note()])
@@ -382,7 +384,7 @@ new #[Title('Activity log')] class extends Component {
                                 @endif
 
                                 @if ($remarks = $log->remarks())
-                                    <p class="mt-0.5 line-clamp-2 whitespace-normal wrap-anywhere text-sm text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                                    <flux:tooltip :content="$remarks" class="block min-w-0"><p class="mt-0.5 line-clamp-2 whitespace-normal wrap-anywhere text-sm text-zinc-600">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p></flux:tooltip>
                                 @endif
 
                                 @if (! $subject && ! $change && ! $note)

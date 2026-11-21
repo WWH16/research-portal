@@ -72,7 +72,7 @@ class ReviewsTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']))
             ->get(route('reviews.index'))
-            ->assertSee('title="Solar Dryer Study"', escape: false)
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('Solar Dryer Study', false)
             ->assertDontSee('Solar_Dryer_Study')
             ->assertSee('MDP Santos')
             ->assertDontSee('MARIA DELA PAZ SANTOS')

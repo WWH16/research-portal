@@ -444,7 +444,7 @@ class NotificationsTest extends TestCase
 
         $this->get(route('dashboard'))
             ->assertSeeHtml('data-test="notifications-nav"')
-            ->assertSeeHtml('title="2 unread notifications"');
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('2 unread notifications', false);
 
         Livewire::test('pages::notifications.index')
             ->call('markAllRead')

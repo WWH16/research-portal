@@ -489,8 +489,9 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:heading size="lg" level="2" id="progress-heading" class="text-xl!">{{ __('Faculty progress') }}</flux:heading>
 
                     {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
-                         the quick-range button share the first row, so the two dates get the whole second row and show in full.
-                         field:class puts the layout classes on the field Flux wraps around each labelled control --}}
+                         the quick-range button share the first row, and each date gets a full row of its own, as a written-out
+                         date ("September 30, 2026") doesn't fit half a phone. On computers each date field is wide enough for
+                         the longest one. field:class puts the layout classes on the field Flux wraps around each labelled control --}}
                     <div class="flex w-full flex-wrap items-end gap-3 sm:w-auto">
                         <x-select wire:model.live="department" :label="__('College')" class="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
                             <x-select.option value="">{{ __('All colleges') }}</x-select.option>
@@ -510,10 +511,10 @@ new #[Title('Dashboard')] class extends Component {
                             </flux:menu>
                         </flux:dropdown>
 
-                        <div class="flex w-full items-end gap-2 sm:w-auto" data-test="date-range">
+                        <div class="grid w-full gap-3 sm:flex sm:w-auto sm:items-end sm:gap-2" data-test="date-range">
                             {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                            <x-date-picker wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
-                            <x-date-picker wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
+                            <x-date-picker wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" field:class="min-w-0 sm:w-48" />
+                            <x-date-picker wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" field:class="min-w-0 sm:w-48" />
                         </div>
                     </div>
                 </div>

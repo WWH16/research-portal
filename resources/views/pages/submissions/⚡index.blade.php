@@ -568,7 +568,8 @@ new #[Title('Submissions')] class extends Component {
                         <flux:tooltip :content="$this->dating->displayTitle()" class="block min-w-0"><flux:text class="mt-1 line-clamp-2 [overflow-wrap:anywhere]">{{ $this->dating->displayTitle() }}</flux:text></flux:tooltip>
                     </div>
 
-                    <div class="grid gap-6 sm:grid-cols-2">
+                    {{-- One above the other: the dialog is too narrow for two dates in full side by side --}}
+                    <div class="grid gap-4">
                         <x-date-picker wire:model="start_date" :label="__('Starting date')" required class:input="max-sm:h-11" />
                         <x-date-picker wire:model="target_date" :label="__('Completion date')" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required class:input="max-sm:h-11" />
                     </div>

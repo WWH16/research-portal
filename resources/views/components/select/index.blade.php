@@ -40,7 +40,8 @@
         <input type="hidden" name="{{ $name }}" x-bind:value="value">
     @endif
 
-    <div class="relative">
+    {{-- min-w-0: the field lays out as a grid, and without it this cell would keep the full text's width --}}
+    <div class="relative min-w-0">
         <button
             type="button"
             x-ref="button"
@@ -57,7 +58,7 @@
             data-flux-control
             {{ $attributes->only('class')->class('relative block h-10 w-full rounded-lg border border-zinc-200 border-b-zinc-300/80 bg-white py-2 ps-3 pe-10 text-start text-base text-zinc-700 shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-75 disabled:shadow-none data-invalid:border-red-500 sm:text-sm') }}
         >
-            <span id="{{ $id }}-value" class="block truncate" x-text="label || placeholder" x-bind:class="! label && 'text-zinc-500'"></span>
+            <span id="{{ $id }}-value" wire:ignore class="block truncate" x-text="label || placeholder" x-bind:class="! label && 'text-zinc-500'"></span>
             <flux:icon.chevron-up-down variant="mini" class="pointer-events-none absolute inset-y-0 end-2 my-auto text-zinc-400" />
         </button>
 

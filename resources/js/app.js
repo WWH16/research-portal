@@ -454,9 +454,10 @@ document.addEventListener('livewire:init', () => {
     window.Livewire.hook('morph.added', ({ el }) => skipBrowserCheck(el));
     window.Livewire.hook('morph.updated', ({ el }) => skipBrowserCheck(el));
 
-    // A redrawn dropdown list or date picker fills its text in again (see listbox and datePicker).
+    // A redrawn dropdown list or date picker fills its options' ids and ticks in again (see listbox and datePicker).
+    // The field's own text is wire:ignore, so Alpine alone writes it.
     window.Livewire.hook('morph.updated', ({ el }) => {
-        const field = el.closest?.('[data-select], [data-resync]');
+        const field = (el.nodeType === Node.TEXT_NODE ? el.parentElement : el)?.closest?.('[data-select], [data-resync]');
         field?._x_dataStack && window.Alpine.$data(field).tick++;
     });
 });
@@ -469,6 +470,8 @@ document.addEventListener('livewire:init', () => {
 const listbox = (id, placeholder) => ({
     id,
     placeholder,
+    // Declared here, as Alpine writes a property no scope has yet onto the outermost one, which every field shares
+    field: null,
     tick: 0,
     value: '',
     open: false,
@@ -476,8 +479,13 @@ const listbox = (id, placeholder) => ({
     typed: '',
     typedAt: 0,
 
+    // The field's own parts are found inside the field itself. Not $refs: Alpine looks those up from the element a
+    // binding runs on (an option Livewire is redrawing can be detached), and init() runs before the children's x-refs
+    // exist, when $refs can answer with another field's list.
     init() {
-        const preset = this.$refs.list.querySelector('[data-selected]');
+        this.field = this.$el;
+
+        const preset = this.list.querySelector('[data-selected]');
 
         if (preset && (this.value === '' || this.value === null)) {
             this.value = preset.dataset.value;
@@ -486,8 +494,16 @@ const listbox = (id, placeholder) => ({
         this.place = this.place.bind(this);
     },
 
+    get list() {
+        return this.field.querySelector('[role="listbox"]');
+    },
+
+    get trigger() {
+        return this.field.querySelector('button[role="combobox"]');
+    },
+
     options() {
-        return [...this.$refs.list.querySelectorAll('[role="option"]')];
+        return [...this.list.querySelectorAll('[role="option"]')];
     },
 
     indexOf(value) {
@@ -515,13 +531,13 @@ const listbox = (id, placeholder) => ({
     },
 
     show(at = null) {
-        if (this.$refs.button.disabled) {
+        if (this.trigger.disabled) {
             return;
         }
 
         this.open = true;
         this.active = at ?? Math.max(0, this.indexOf(this.value));
-        this.$refs.list.showPopover();
+        this.list.showPopover();
         this.place();
         this.reveal();
         window.addEventListener('scroll', this.place, true);
@@ -530,16 +546,16 @@ const listbox = (id, placeholder) => ({
 
     close(refocus = false) {
         this.open = false;
-        this.$refs.list.matches(':popover-open') && this.$refs.list.hidePopover();
+        this.list.matches(':popover-open') && this.list.hidePopover();
         window.removeEventListener('scroll', this.place, true);
         window.removeEventListener('resize', this.place);
-        refocus && this.$refs.button.focus();
+        refocus && this.trigger.focus();
     },
 
     // Under the field at its width, or over it when the list wouldn't fit below.
     place() {
-        const field = this.$refs.button.getBoundingClientRect();
-        const list = this.$refs.list;
+        const field = this.trigger.getBoundingClientRect();
+        const list = this.list;
         const below = window.innerHeight - field.bottom;
         const above = below < list.offsetHeight + 8 && field.top > below;
 
@@ -563,7 +579,7 @@ const listbox = (id, placeholder) => ({
     pick(value) {
         this.value = value;
         this.close(true);
-        this.$refs.button.dispatchEvent(new Event('change', { bubbles: true }));
+        this.trigger.dispatchEvent(new Event('change', { bubbles: true }));
     },
 
     pickActive() {
@@ -654,18 +670,28 @@ const addMonths = (date, months) => {
 const datePicker = (id, required) => ({
     id,
     required,
+    // Declared here, as Alpine writes a property no scope has yet onto the outermost one, which every field shares
+    field: null,
+    place: null,
     tick: 0,
     value: '',
     open: false,
     view: 'days',
     cursor: toIso(new Date()),
 
-    // Kept here, because Alpine looks $refs and $root up from the element a handler ran on, and a day button can be
-    // gone by then: moving to another month redraws the grid.
+    // The field's own parts are found inside the field itself. Not $refs or $root: Alpine looks those up from the
+    // element a handler ran on (moving to another month redraws the grid, so a day button can be gone by then), and
+    // init() runs before the children's x-refs exist.
     init() {
         this.field = this.$el;
-        this.trigger = this.$refs.button;
-        this.calendar = this.$refs.calendar;
+    },
+
+    get trigger() {
+        return this.field.querySelector('button[aria-haspopup="dialog"]');
+    },
+
+    get calendar() {
+        return this.field.querySelector('[role="dialog"]');
     },
 
     get min() {

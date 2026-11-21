@@ -21,7 +21,7 @@
 {{ __('Visit the portal') }}<br>
 [{{ config('app.url') }}]({{ config('app.url') }})
 
-{{ __('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela') }}<br>
+{{ __('2nd Flr., Administration Bldg, San Fermin, Cauayan City, Isabela 3305 Philippines') }}<br>
 © {{ now()->year }} {{ __('Isabela State University') }}
 </x-mail::footer>
 </x-slot:footer>

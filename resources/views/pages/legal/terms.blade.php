@@ -1,6 +1,6 @@
 <x-layouts::legal
     :title="__('Terms of Service')"
-    updated="October 28, 2026"
+    updated="November 21, 2026"
     :summary="__('These terms are the rules for using the Faculty Research Portal of Isabela State University – Cauayan Campus. By signing up or signing in, you agree to them.')"
 >
     <h2 id="who-may-use">{{ __('Who may use the portal') }}</h2>
@@ -38,5 +38,5 @@
     <p>{{ __('How the portal handles your personal information is explained in the') }} <a href="{{ route('privacy') }}">{{ __('Privacy Policy') }}</a>.</p>
 
     <h2 id="changes">{{ __('Changes and contact') }}</h2>
-    <p>{{ __('If these terms change, the new version is posted here with a new date. Questions go to the Research Office:') }} <a href="mailto:isucyn.facultyresearchportal@gmail.com">isucyn.facultyresearchportal@gmail.com</a></p>
+    <p>{{ __('If these terms change, the new version is posted here with a new date. Questions go to the Research Office:') }} <a href="mailto:research.portal_cyn@isu.edu.ph">research.portal_cyn@isu.edu.ph</a></p>
 </x-layouts::legal>

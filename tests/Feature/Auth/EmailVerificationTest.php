@@ -58,7 +58,7 @@ class EmailVerificationTest extends TestCase
         $this->assertMatchesRegularExpression('/Please confirm that <strong[^>]*>'.preg_quote($user->email, '/').'<\/strong> is your email address to activate your Faculty Research Portal account\./', $html);
         $this->assertStringContainsString('This link expires in 24 hours.', $html);
         $this->assertMatchesRegularExpression('/<a href="mailto:'.preg_quote(config('mail.from.address'), '/').'"[^>]*>Contact the Research Office<\/a>/', $html);
-        $this->assertStringContainsString('18 Dacanay, Brgy. San Fermin, Cauayan City, Isabela', $html);
+        $this->assertStringContainsString('2nd Flr., Administration Bldg, San Fermin, Cauayan City, Isabela 3305 Philippines', $html);
         $this->assertStringNotContainsString('Button not working?', $html);
         $this->assertStringContainsString('Isabela State University', $html);
         $this->assertStringNotContainsString('All rights reserved', $html);

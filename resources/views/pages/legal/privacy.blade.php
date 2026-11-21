@@ -1,6 +1,6 @@
 <x-layouts::legal
     :title="__('Privacy Policy')"
-    updated="November 20, 2026"
+    updated="November 21, 2026"
     :summary="__('The Faculty Research Portal keeps the records ISU Cauayan needs to track faculty research, from concept proposal to terminal report. This page explains what it keeps, why, who can see it, and how to reach the Research Office about it.')"
 >
     <h2 id="who-we-are">{{ __('Who runs the portal') }}</h2>
@@ -49,7 +49,7 @@
     <h2 id="contact">{{ __('Contact') }}</h2>
     <p>
         {{ __('Research Office, Isabela State University – Cauayan Campus:') }}
-        <a href="mailto:isucyn.facultyresearchportal@gmail.com">isucyn.facultyresearchportal@gmail.com</a>
+        <a href="mailto:research.portal_cyn@isu.edu.ph">research.portal_cyn@isu.edu.ph</a>
     </p>
     <p>{{ __('If this policy changes, the new version is posted here with a new date. See also the') }} <a href="{{ route('terms') }}">{{ __('Terms of Service') }}</a>.</p>
 </x-layouts::legal>

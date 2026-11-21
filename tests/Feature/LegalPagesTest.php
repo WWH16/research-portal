@@ -16,7 +16,7 @@ class LegalPagesTest extends TestCase
             ->assertOk()
             ->assertSee('Privacy Policy')
             ->assertSee('Data Privacy Act of 2012')
-            ->assertSee('isucyn.facultyresearchportal@gmail.com')
+            ->assertSee('research.portal_cyn@isu.edu.ph')
             ->assertSee(route('terms'));
     }
 

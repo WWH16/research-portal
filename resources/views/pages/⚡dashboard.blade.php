@@ -80,14 +80,13 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Quick picks for the date range. A quarter (q1 to q4) is this year's, up to today when it is still running; one
-     * that hasn't started yet is never offered, and asking for it anyway gives today alone.
+     * Quick picks for the date range. A quarter (q1 to q4) is this year's, up to today when it is still running.
      */
     public function preset(string $key): void
     {
         [$from, $to] = match ($key) {
             'q1', 'q2', 'q3', 'q4' => [
-                $start = now()->startOfYear()->addQuarters((int) $key[1] - 1)->min(today()),
+                $start = now()->startOfYear()->addQuarters((int) $key[1] - 1),
                 $start->endOfQuarter()->min(today()),
             ],
             'last-year' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
@@ -512,7 +511,7 @@ new #[Title('Dashboard')] class extends Component {
                                 {{-- This year's quarters that have started --}}
                                 @foreach (range(1, now()->quarter) as $quarter)
                                     <flux:menu.item wire:click="preset('q{{ $quarter }}')" class="max-sm:h-11" data-test="quarter-{{ $quarter }}">
-                                        {{ __('Q:number (:from – :to)', ['number' => $quarter, 'from' => now()->startOfYear()->addMonths($quarter * 3 - 3)->format('M'), 'to' => now()->startOfYear()->addMonths($quarter * 3 - 1)->format('M')]) }}
+                                        {{ __('Q:number (:months)', ['number' => $quarter, 'months' => ['Jan – Mar', 'Apr – Jun', 'Jul – Sep', 'Oct – Dec'][$quarter - 1]]) }}
                                     </flux:menu.item>
                                 @endforeach
                                 <flux:menu.separator />

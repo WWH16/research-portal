@@ -72,7 +72,7 @@
             aria-label="{{ $label ? __('Choose :label', ['label' => Str::lower($label)]) : __('Choose a date') }}"
             x-on:keydown="trap($event)"
             wire:ignore
-            class="listbox-popover inset-auto m-0 w-[19.5rem] rounded-xl border border-zinc-200 bg-white p-3 text-zinc-800 shadow-floating"
+            class="listbox-popover inset-auto m-0 w-[21rem] max-w-[calc(100vw-1rem)] rounded-xl border border-zinc-200 bg-white p-3 text-zinc-800 shadow-floating"
         >
             <div class="flex items-center justify-between gap-2">
                 <flux:button size="sm" variant="ghost" square icon="chevron-left" x-on:click="step(-1)" class="max-sm:size-11">
@@ -99,7 +99,7 @@
                     <template x-for="week in weeks" x-bind:key="week[0].iso">
                         <tr>
                             <template x-for="day in week" x-bind:key="day.iso">
-                                <td role="gridcell" class="p-0.5" x-bind:aria-selected="day.iso === value">
+                                <td role="gridcell" class="p-0.5 max-sm:p-0" x-bind:aria-selected="day.iso === value">
                                     <button
                                         type="button"
                                         x-bind:data-iso="day.iso"

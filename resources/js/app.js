@@ -663,9 +663,10 @@ const addMonths = (date, months) => {
     return new Date(target.getFullYear(), target.getMonth(), Math.min(date.getDate(), last));
 };
 
-const datePicker = (id, required) => ({
+const datePicker = (id, required, short = false) => ({
     id,
     required,
+    short,
     // Declared here, as Alpine writes a property no scope has yet onto the outermost one, which every field shares
     field: null,
     stopFloating: null,
@@ -700,7 +701,7 @@ const datePicker = (id, required) => ({
 
     get display() {
         const date = this.tick >= 0 ? fromIso(this.value) : null;
-        return date ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+        return date ? date.toLocaleDateString('en-US', { month: this.short ? 'short' : 'long', day: 'numeric', year: 'numeric' }) : '';
     },
 
     get viewMonth() {

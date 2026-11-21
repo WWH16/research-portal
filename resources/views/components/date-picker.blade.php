@@ -72,13 +72,13 @@
             aria-label="{{ $label ? __('Choose :label', ['label' => Str::lower($label)]) : __('Choose a date') }}"
             x-on:keydown="trap($event)"
             wire:ignore
-            class="listbox-popover inset-auto m-0 w-[21rem] max-w-[calc(100vw-1rem)] rounded-xl border border-zinc-200 bg-white p-3 text-zinc-800 shadow-floating"
+            class="listbox-popover inset-auto m-0 w-[16.75rem] max-w-[calc(100vw-1rem)] rounded-xl border border-zinc-200 bg-white p-2 text-zinc-800 shadow-floating max-sm:w-[20.25rem]"
         >
             <div class="flex items-center justify-between gap-2">
                 <flux:button size="sm" variant="ghost" square icon="chevron-left" x-on:click="step(-1)" class="max-sm:size-11">
                     <span class="sr-only" x-text="view === 'days' ? @js(__('Previous month')) : @js(__('Previous year'))">{{ __('Previous month') }}</span>
                 </flux:button>
-                <flux:button size="sm" variant="ghost" x-on:click="view = view === 'days' ? 'months' : 'days'" x-bind:aria-expanded="view === 'months'" class="font-semibold max-sm:h-11">
+                <flux:button size="sm" variant="ghost" x-on:click="view = view === 'days' ? 'months' : 'days'" x-bind:aria-expanded="view === 'months'" class="text-sm font-semibold max-sm:h-11">
                     <span x-text="view === 'days' ? monthLabel : year" aria-live="polite"></span>
                     <span class="sr-only" x-text="view === 'days' ? @js(__(', choose a month')) : @js(__(', back to the days'))"></span>
                 </flux:button>
@@ -87,11 +87,11 @@
                 </flux:button>
             </div>
 
-            <table x-show="view === 'days'" role="grid" x-bind:aria-label="monthLabel" class="mt-2 w-full table-fixed border-collapse text-center text-sm">
+            <table x-show="view === 'days'" role="grid" x-bind:aria-label="monthLabel" class="mt-1 w-full table-fixed border-collapse text-center text-[0.8125rem]">
                 <thead>
                     <tr>
                         <template x-for="day in weekdays" x-bind:key="day.short">
-                            <th scope="col" class="pb-1 text-xs font-medium text-zinc-500" x-bind:abbr="day.long" x-text="day.short"></th>
+                            <th scope="col" class="pb-0.5 text-xs font-medium text-zinc-500" x-bind:abbr="day.long" x-text="day.short"></th>
                         </template>
                     </tr>
                 </thead>
@@ -117,7 +117,7 @@
                                             'text-zinc-300 line-through cursor-default': day.out,
                                             'ring-1 ring-inset ring-isu-green-600': day.today && day.iso !== value,
                                         }"
-                                        class="mx-auto grid size-10 place-items-center rounded-lg tabular-nums focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent max-sm:size-11"
+                                        class="mx-auto grid size-8 place-items-center rounded-md tabular-nums focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent max-sm:size-11"
                                     ></button>
                                 </td>
                             </template>
@@ -126,7 +126,7 @@
                 </tbody>
             </table>
 
-            <div x-show="view === 'months'" x-cloak class="mt-2 grid grid-cols-3 gap-1">
+            <div x-show="view === 'months'" x-cloak class="mt-1 grid grid-cols-3 gap-1">
                 <template x-for="month in months" x-bind:key="month.index">
                     <button
                         type="button"
@@ -134,12 +134,12 @@
                         x-text="month.label"
                         x-bind:aria-pressed="month.index === viewMonth"
                         x-bind:class="month.index === viewMonth ? 'bg-accent text-accent-foreground font-semibold' : 'hover:bg-zinc-100'"
-                        class="h-10 rounded-lg text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent max-sm:h-11"
+                        class="h-8 rounded-md text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent max-sm:h-11"
                     ></button>
                 </template>
             </div>
 
-            <div class="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
+            <div class="mt-1.5 flex items-center justify-between gap-2 border-t border-line pt-1.5">
                 <flux:button size="sm" variant="ghost" x-on:click="pickToday()" x-bind:disabled="! todayAllowed" class="max-sm:h-11">{{ __('Today') }}</flux:button>
                 @unless ($required)
                     <flux:button size="sm" variant="ghost" x-on:click="clear()" x-bind:disabled="! value" class="max-sm:h-11">{{ __('Clear') }}</flux:button>

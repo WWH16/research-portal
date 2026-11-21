@@ -420,6 +420,26 @@ const formStates = (extra = {}) => ({
     },
 });
 
+// Every form is checked on the server, which shows each reason in Flux's red style beside its field, with the focus
+// moved there. So forms skip the browser's own check, whose bubbles ("Please fill out this field.") would show first in
+// a different look. Set on every form when a page loads, after a wire:navigate, and whenever Livewire adds or redraws
+// a form, since a redraw takes the attribute back to the server's markup.
+const skipBrowserCheck = (root) => {
+    if (root instanceof HTMLFormElement) {
+        root.noValidate = true;
+    }
+
+    root.querySelectorAll?.('form').forEach((form) => (form.noValidate = true));
+};
+
+skipBrowserCheck(document);
+document.addEventListener('DOMContentLoaded', () => skipBrowserCheck(document));
+document.addEventListener('livewire:navigated', () => skipBrowserCheck(document));
+document.addEventListener('livewire:init', () => {
+    window.Livewire.hook('morph.added', ({ el }) => skipBrowserCheck(el));
+    window.Livewire.hook('morph.updated', ({ el }) => skipBrowserCheck(el));
+});
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('formStates', formStates);
     window.Alpine.data('combobox', combobox);

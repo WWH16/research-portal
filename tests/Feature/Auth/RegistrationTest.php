@@ -34,6 +34,21 @@ class RegistrationTest extends TestCase
             ->assertSeeHtml('autocomplete="new-password"');
     }
 
+    public function test_the_college_dropdown_is_flux_styled_and_posts_like_a_select(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+
+        // Flux's own styled list is Pro: x-select opens a Flux-styled list and posts the pick in a hidden field
+        $this->get(route('register'))
+            ->assertOk()
+            ->assertSeeHtml('role="combobox"')
+            ->assertSeeHtml('role="listbox"')
+            ->assertSeeHtml('<input type="hidden" name="department_id"')
+            ->assertSeeHtml('data-value="'.$department->id.'"')
+            ->assertSee('Choose your college')
+            ->assertDontSeeHtml('<select');
+    }
+
     public function test_create_account_button_shows_a_loading_state_while_submitting(): void
     {
         $this->get(route('register'))

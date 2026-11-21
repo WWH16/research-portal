@@ -232,8 +232,8 @@ new #[Title('Activity log')] class extends Component {
 
             {{-- min-w-0 lets the date fields share a phone's width instead of keeping their natural size --}}
             <div class="grid min-w-0 grid-cols-2 gap-3" data-test="date-range">
-                <flux:input type="date" wire:model.live.debounce.500ms="from" :max="$to ?: null" :label="__('From')" class="min-w-0" class:input="max-sm:h-11" />
-                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from ?: null" :label="__('To')" class="min-w-0" class:input="max-sm:h-11" />
+                <x-date-picker wire:model.live.debounce.500ms="from" :max="$to ?: null" :label="__('From')" class="min-w-0" class:input="max-sm:h-11" />
+                <x-date-picker wire:model.live.debounce.500ms="to" :min="$from ?: null" :label="__('To')" class="min-w-0" class:input="max-sm:h-11" />
             </div>
 
             <div role="group" aria-labelledby="quick-ranges">

@@ -534,11 +534,10 @@ new #[Title('Research project')] class extends Component {
                 field:class="sm:col-span-12"
             >{{ $this->department ? $this->department->name.' ('.$this->department->code.')' : __('Not assigned') }}</flux:textarea>
 
-            <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" field:class="sm:col-span-6" class:input="max-sm:h-11" />
-            <flux:input
+            <x-date-picker wire:model="start_date" :label="__('Starting date')" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" field:class="sm:col-span-6" class:input="max-sm:h-11" />
+            <x-date-picker
                 wire:model="target_date"
                 :label="__('Completion date')"
-                type="date"
                 x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)"
                 :required="! $submission"
                 :disabled="(bool) $submission"

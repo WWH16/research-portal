@@ -67,6 +67,21 @@ class SubmissionTest extends TestCase
             ->assertDontSee('Research Office Head');
     }
 
+    public function test_project_dates_use_the_flux_styled_date_picker_with_their_limits(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        // Flux's date picker is Pro: x-date-picker opens a Flux-styled calendar, kept to today and later for the start
+        // and to the day after the start for the completion date
+        $this->get(route('submissions.create'))
+            ->assertOk()
+            ->assertSeeHtml('aria-haspopup="dialog"')
+            ->assertSeeHtml('role="grid"')
+            ->assertSeeHtml('data-min="'.today()->toDateString().'"')
+            ->assertSeeHtml('x-bind:data-min="$wire.start_date &&')
+            ->assertDontSeeHtml('type="date"');
+    }
+
     public function test_admins_cannot_open_the_submit_form(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));

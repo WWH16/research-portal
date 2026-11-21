@@ -317,7 +317,7 @@ new class extends Component {
                 <flux:input wire:model="issue" :label="__('Issue')" :badge="__('Optional')" :placeholder="__('e.g. 3')" type="text" maxlength="50" class:input="max-sm:h-11" />
                 <flux:input wire:model="pages" :label="__('Pages')" :badge="__('Optional')" :placeholder="__('e.g. 45–60')" type="text" maxlength="50" class:input="max-sm:h-11" />
 
-                <flux:input wire:model="published_on" :label="__('Publication date')" type="date" :max="today()->toDateString()" required class:input="max-sm:h-11" />
+                <x-date-picker wire:model="published_on" :label="__('Publication date')" :max="today()->toDateString()" required class:input="max-sm:h-11" />
                 <flux:input wire:model="link" :label="__('DOI or link')" :placeholder="__('e.g. https://doi.org/10.1000/xyz123')" type="text" maxlength="500" required field:class="sm:col-span-2" class:input="max-sm:h-11" />
 
                 <flux:checkbox.group wire:model="indexed_in" variant="pills" :label="__('Indexed in')" :badge="__('Optional')" field:class="sm:col-span-3" data-test="indexed-in">

@@ -512,8 +512,8 @@ new #[Title('Dashboard')] class extends Component {
 
                         <div class="flex w-full items-end gap-2 sm:w-auto" data-test="date-range">
                             {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                            <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
-                            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
+                            <x-date-picker wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
+                            <x-date-picker wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
                         </div>
                     </div>
                 </div>

@@ -170,6 +170,25 @@ class DashboardTest extends TestCase
             ->assertSet('from', now()->subMonths(11)->startOfMonth()->toDateString());
     }
 
+    public function test_quick_range_offers_this_years_quarters_so_far(): void
+    {
+        $this->travelTo(Date::create(Submission::FIRST_YEAR + 1, 8, 15));
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $year = now()->year;
+
+        $dashboard = Livewire::test('pages::dashboard')
+            ->assertSee('Q1 (Jan – Mar)')
+            ->assertSee('Q3 (Jul – Sep)')
+            ->assertDontSee('Q4 (Oct – Dec)');
+
+        $dashboard->call('preset', 'q1')->assertSet('from', "{$year}-01-01")->assertSet('to', "{$year}-03-31");
+        $this->assertSame("Jan 1 – Mar 31, {$year}", $dashboard->instance()->rangeLabel);
+
+        // The running quarter stops at today, and one that hasn't started gives today alone.
+        $dashboard->call('preset', 'q3')->assertSet('from', "{$year}-07-01")->assertSet('to', "{$year}-08-15");
+        $dashboard->call('preset', 'q4')->assertSet('from', "{$year}-08-15")->assertSet('to', "{$year}-08-15");
+    }
+
     public function test_admins_open_the_faculty_behind_a_count_and_export_it(): void
     {
         $navarro = $this->facultyInDepartment('Navarro');

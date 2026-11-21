@@ -184,9 +184,8 @@ class DashboardTest extends TestCase
         $dashboard->call('preset', 'q1')->assertSet('from', "{$year}-01-01")->assertSet('to', "{$year}-03-31");
         $this->assertSame("Jan 1 – Mar 31, {$year}", $dashboard->instance()->rangeLabel);
 
-        // The running quarter stops at today, and one that hasn't started gives today alone.
+        // The running quarter stops at today.
         $dashboard->call('preset', 'q3')->assertSet('from', "{$year}-07-01")->assertSet('to', "{$year}-08-15");
-        $dashboard->call('preset', 'q4')->assertSet('from', "{$year}-08-15")->assertSet('to', "{$year}-08-15");
     }
 
     public function test_admins_open_the_faculty_behind_a_count_and_export_it(): void

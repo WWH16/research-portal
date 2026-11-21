@@ -97,13 +97,13 @@ new #[Title('Faculty publications')] class extends Component {
             class:input="max-sm:h-11"
         />
 
-        <flux:select wire:model.live="college" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
-            <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
-            <flux:select.option value="none">{{ __('No college') }}</flux:select.option>
+        <x-select wire:model.live="college" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
+            <x-select.option value="">{{ __('All colleges') }}</x-select.option>
+            <x-select.option value="none">{{ __('No college') }}</x-select.option>
             @foreach (\App\Models\Department::orderBy('code')->pluck('code') as $code)
-                <flux:select.option :value="$code">{{ $code }}</flux:select.option>
+                <x-select.option :value="$code">{{ $code }}</x-select.option>
             @endforeach
-        </flux:select>
+        </x-select>
     </div>
 
     @if ($this->faculty->isEmpty())

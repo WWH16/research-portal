@@ -90,12 +90,12 @@ new #[Title('Research Drive')] class extends Component {
                 <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none" clearable />
             @endunless
 
-            <flux:select wire:model.live="year" :label="__('Year')" class="max-sm:h-11" field:class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
-                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+            <x-select wire:model.live="year" :label="__('Year')" class="max-sm:h-11" field:class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
+                <x-select.option value="">{{ __('All years') }}</x-select.option>
                 @foreach (Submission::years() as $option)
-                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                    <x-select.option :value="$option">{{ $option }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
         </x-slot:actions>
     </x-page-title>
 

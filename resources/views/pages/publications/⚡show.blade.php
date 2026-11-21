@@ -207,11 +207,11 @@ new class extends Component {
                 {{-- The link gets the room: the year and button share the next row until the screen is wide enough for one row --}}
                 <form wire:submit="addCitation" class="mt-3 grid gap-3 sm:grid-cols-[11rem_auto_minmax(0,1fr)] sm:items-start lg:grid-cols-[minmax(0,1fr)_11rem_auto]" data-test="add-citation-form">
                     <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required field:class="sm:col-span-3 lg:col-span-1" class:input="max-sm:h-11" />
-                    <flux:select wire:model="year" :label="__('Citing paper’s year')" class="max-sm:h-11">
+                    <x-select wire:model="year" :label="__('Citing paper’s year')" class="max-sm:h-11">
                         @foreach (range(now()->year, $first) as $option)
-                            <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                            <x-select.option :value="$option">{{ $option }}</x-select.option>
                         @endforeach
-                    </flux:select>
+                    </x-select>
                     <flux:button type="submit" variant="primary" icon="plus" class="sm:mt-6 max-sm:h-11">{{ __('Add citing paper') }}</flux:button>
                 </form>
             @endif

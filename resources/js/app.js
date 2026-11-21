@@ -453,9 +453,189 @@ document.addEventListener('livewire:navigated', () => skipBrowserCheck(document)
 document.addEventListener('livewire:init', () => {
     window.Livewire.hook('morph.added', ({ el }) => skipBrowserCheck(el));
     window.Livewire.hook('morph.updated', ({ el }) => skipBrowserCheck(el));
+
+    // A redrawn dropdown list fills its text and options in again (see listbox).
+    window.Livewire.hook('morph.updated', ({ el }) => {
+        const select = el.closest?.('[data-select]');
+        select?._x_dataStack && window.Alpine.$data(select).tick++;
+    });
+});
+
+// The dropdown list in components/select. `value` is the picked option's value, which wire:model reads through
+// x-modelable; `active` is the option the keyboard or pointer is on while the list is open. The options are the
+// component's own <li role="option"> elements, read from the page, so Livewire can redraw them freely. A Livewire
+// redraw puts the server's markup back over what Alpine filled in (the field's text, the options' ids and ticks), so
+// each redraw bumps `tick`, which every one of those reads, and Alpine fills them in again.
+const listbox = (id, placeholder) => ({
+    id,
+    placeholder,
+    tick: 0,
+    value: '',
+    open: false,
+    active: -1,
+    typed: '',
+    typedAt: 0,
+
+    init() {
+        const preset = this.$refs.list.querySelector('[data-selected]');
+
+        if (preset && (this.value === '' || this.value === null)) {
+            this.value = preset.dataset.value;
+        }
+
+        this.place = this.place.bind(this);
+    },
+
+    options() {
+        return [...this.$refs.list.querySelectorAll('[role="option"]')];
+    },
+
+    indexOf(value) {
+        return this.options().findIndex((option) => option.dataset.value === String(value ?? ''));
+    },
+
+    get label() {
+        return this.tick >= 0 ? (this.options()[this.indexOf(this.value)]?.textContent.trim() ?? '') : '';
+    },
+
+    optionId(option) {
+        return this.tick >= 0 ? `${this.id}-${this.options().indexOf(option)}` : null;
+    },
+
+    isActive(option) {
+        return this.tick >= 0 && this.open && this.options().indexOf(option) === this.active;
+    },
+
+    isPicked(option) {
+        return this.tick >= 0 && String(this.value ?? '') === option.dataset.value;
+    },
+
+    highlight(option) {
+        this.active = this.options().indexOf(option);
+    },
+
+    show(at = null) {
+        if (this.$refs.button.disabled) {
+            return;
+        }
+
+        this.open = true;
+        this.active = at ?? Math.max(0, this.indexOf(this.value));
+        this.$refs.list.showPopover();
+        this.place();
+        this.reveal();
+        window.addEventListener('scroll', this.place, true);
+        window.addEventListener('resize', this.place);
+    },
+
+    close(refocus = false) {
+        this.open = false;
+        this.$refs.list.matches(':popover-open') && this.$refs.list.hidePopover();
+        window.removeEventListener('scroll', this.place, true);
+        window.removeEventListener('resize', this.place);
+        refocus && this.$refs.button.focus();
+    },
+
+    // Under the field at its width, or over it when the list wouldn't fit below.
+    place() {
+        const field = this.$refs.button.getBoundingClientRect();
+        const list = this.$refs.list;
+        const below = window.innerHeight - field.bottom;
+        const above = below < list.offsetHeight + 8 && field.top > below;
+
+        Object.assign(list.style, {
+            left: `${field.left}px`,
+            width: `${field.width}px`,
+            top: above ? `${field.top - list.offsetHeight - 4}px` : `${field.bottom + 4}px`,
+        });
+    },
+
+    reveal() {
+        this.$nextTick(() => this.options()[this.active]?.scrollIntoView({ block: 'nearest' }));
+    },
+
+    move(step) {
+        const count = this.options().length;
+        this.active = count ? Math.min(count - 1, Math.max(0, this.active + step)) : -1;
+        this.reveal();
+    },
+
+    pick(value) {
+        this.value = value;
+        this.close(true);
+        this.$refs.button.dispatchEvent(new Event('change', { bubbles: true }));
+    },
+
+    pickActive() {
+        const option = this.options()[this.active];
+        option ? this.pick(option.dataset.value) : this.close(true);
+    },
+
+    // Letters typed within a moment of each other spell the start of an option; the same letter again moves on to
+    // the next option that starts with it.
+    typeAhead(letter) {
+        const now = Date.now();
+        this.typed = (now - this.typedAt > 700 ? '' : this.typed) + letter.toLowerCase();
+        this.typedAt = now;
+
+        const options = this.options();
+        const from = this.typed.length === 1 ? this.active + 1 : this.active;
+        const match = [...options.slice(from), ...options.slice(0, from)].find((option) => option.textContent.trim().toLowerCase().startsWith(this.typed));
+
+        if (match) {
+            this.active = options.indexOf(match);
+            this.reveal();
+        }
+    },
+
+    keydown(event) {
+        const { key } = event;
+        const letter = key.length === 1 && key !== ' ' && !event.ctrlKey && !event.metaKey && !event.altKey;
+
+        if (!this.open) {
+            if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(key)) {
+                event.preventDefault();
+                this.show();
+            } else if (key === 'Home' || key === 'End') {
+                event.preventDefault();
+                this.show(key === 'Home' ? 0 : this.options().length - 1);
+            } else if (letter) {
+                event.preventDefault();
+                this.show();
+                this.typeAhead(key);
+            }
+
+            return;
+        }
+
+        const moves = { ArrowDown: 1, ArrowUp: -1, PageDown: 10, PageUp: -10 };
+
+        if (key in moves) {
+            event.preventDefault();
+            event.altKey ? this.pickActive() : this.move(moves[key]);
+        } else if (key === 'Home' || key === 'End') {
+            event.preventDefault();
+            this.active = key === 'Home' ? 0 : this.options().length - 1;
+            this.reveal();
+        } else if (key === 'Enter' || key === ' ') {
+            event.preventDefault();
+            this.pickActive();
+        } else if (key === 'Escape') {
+            // Only the list closes; a dialog around it stays open
+            event.preventDefault();
+            event.stopPropagation();
+            this.close(true);
+        } else if (key === 'Tab') {
+            this.close();
+        } else if (letter) {
+            event.preventDefault();
+            this.typeAhead(key);
+        }
+    },
 });
 
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('listbox', listbox);
     window.Alpine.data('formStates', formStates);
     window.Alpine.data('combobox', combobox);
     window.Alpine.data('memoViewer', memoViewer);

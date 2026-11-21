@@ -39,11 +39,11 @@
             />
 
             <!-- College -->
-            <flux:select name="department_id" :label="__('College')" :placeholder="__('Choose your college')" required>
+            <x-select name="department_id" :label="__('College')" :placeholder="__('Choose your college')" required>
                 @foreach ($departments as $department)
-                    <flux:select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->name }}</flux:select.option>
+                    <x-select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->name }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
             <!-- Password -->
             <div>

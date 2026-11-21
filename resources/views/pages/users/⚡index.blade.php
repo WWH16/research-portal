@@ -459,27 +459,27 @@ new #[Title('Manage users')] class extends Component {
         </div>
 
         <div id="user-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 sm:grid-cols-3">
-            <flux:select wire:model.live="roleFilter" data-test="role-filter" :label="__('Role')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
+            <x-select wire:model.live="roleFilter" data-test="role-filter" :label="__('Role')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('All roles') }}</x-select.option>
                 @foreach ($roles as $value => $label)
-                    <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+                    <x-select.option :value="$value">{{ $label }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
-            <flux:select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+            <x-select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('All statuses') }}</x-select.option>
                 @foreach ($statuses as $value => $label)
-                    <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+                    <x-select.option :value="$value">{{ $label }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
-            <flux:select wire:model.live="college" :label="__('College')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
-                <flux:select.option value="none">{{ __('No college') }}</flux:select.option>
+            <x-select wire:model.live="college" :label="__('College')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('All colleges') }}</x-select.option>
+                <x-select.option value="none">{{ __('No college') }}</x-select.option>
                 @foreach ($this->departments as $department)
-                    <flux:select.option :value="$department->code">{{ $department->code }}</flux:select.option>
+                    <x-select.option :value="$department->code">{{ $department->code }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
         </div>
 
         {{-- Each set filter, keyed by the action that removes it --}}
@@ -585,20 +585,20 @@ new #[Title('Manage users')] class extends Component {
             <div class="grid gap-6 sm:grid-cols-2">
                 {{-- Only faculty file projects under a college, so the Research Office's accounts have none --}}
                 @if ($role === Role::Faculty->value)
-                    <flux:select wire:model="department_id" :label="__('College')" class="max-sm:h-11">
+                    <x-select wire:model="department_id" :label="__('College')" class="max-sm:h-11">
                         {{-- A real, selectable option so users without a department show it and admins can clear one. --}}
-                        <flux:select.option value="">{{ __('No college') }}</flux:select.option>
+                        <x-select.option value="">{{ __('No college') }}</x-select.option>
                         @foreach ($this->departments as $department)
-                            <flux:select.option :value="$department->id">{{ $department->code }}</flux:select.option>
+                            <x-select.option :value="$department->id">{{ $department->code }}</x-select.option>
                         @endforeach
-                    </flux:select>
+                    </x-select>
                 @endif
 
-                <flux:select wire:model.live="role" :label="__('Role')" class="max-sm:h-11" :disabled="$this->editingSelf || $this->editing?->isFaculty()">
+                <x-select wire:model.live="role" :label="__('Role')" class="max-sm:h-11" :disabled="$this->editingSelf || $this->editing?->isFaculty()">
                     @foreach ($this->roles as $option)
-                        <flux:select.option :value="$option->value">{{ __($option->name) }}</flux:select.option>
+                        <x-select.option :value="$option->value">{{ __($option->name) }}</x-select.option>
                     @endforeach
-                </flux:select>
+                </x-select>
 
                 {{-- Its own grid row under the Role column, so College and Role stay level above it. An admin editing themself has no College beside it. --}}
                 @if ($this->editingSelf)

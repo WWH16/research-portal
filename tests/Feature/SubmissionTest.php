@@ -61,7 +61,7 @@ class SubmissionTest extends TestCase
 
         $this->get(route('submissions.create'))
             ->assertOk()
-            ->assertSee('role="combobox"', false)
+            ->assertSee('data-test="combobox"', false)
             ->assertSee('Soriano')
             ->assertDontSee('Unverified Member')
             ->assertDontSee('Research Office Head');
@@ -409,7 +409,7 @@ class SubmissionTest extends TestCase
 
         // A disabled placeholder can't stay shown after a re-render, so the blank choice must be a real option.
         Livewire::test('pages::submissions.create')
-            ->assertSeeHtml('>Select category</option>')
+            ->assertSeeHtml('role="option"')->assertSeeHtml('data-value=""')->assertSee('Select category')
             ->assertDontSeeHtml('class="placeholder"')
             ->set('category_id', '')
             ->set('proponents.0.user_id', '')

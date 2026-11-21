@@ -223,12 +223,12 @@ new #[Title('Activity log')] class extends Component {
         </div>
 
         <div id="activity-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 lg:grid-cols-[13rem_minmax(0,22rem)_1fr]">
-            <flux:select wire:model.live="group" :label="__('Type of activity')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('All activity') }}</flux:select.option>
+            <x-select wire:model.live="group" :label="__('Type of activity')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('All activity') }}</x-select.option>
                 @foreach (ActivityLog::GROUPS as $key => $label)
-                    <flux:select.option :value="$key">{{ __($label) }}</flux:select.option>
+                    <x-select.option :value="$key">{{ __($label) }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
             {{-- min-w-0 lets the date fields share a phone's width instead of keeping their natural size --}}
             <div class="grid min-w-0 grid-cols-2 gap-3" data-test="date-range">

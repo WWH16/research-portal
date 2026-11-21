@@ -422,7 +422,7 @@ class DriveTest extends TestCase
 
         Livewire::withQueryParams(['college' => 'CCSICT'])
             ->test('pages::drive.index')
-            ->assertSee('title="Mining Student Feedback"', escape: false)
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('Mining Student Feedback', false)
             ->assertDontSee('Mining_Student_Feedback')
             ->assertSee('MDP Santos')
             ->assertDontSee('MARIA DELA PAZ SANTOS')

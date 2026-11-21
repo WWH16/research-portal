@@ -26,7 +26,9 @@
             <flux:icon :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', default => 'document' }" variant="mini" class="text-zinc-500" />
         </span>
         <div class="min-w-0 grow basis-40">
-            <flux:text class="truncate font-medium text-zinc-800" :title="$name">{{ $label ?? $name }}</flux:text>
+            <flux:tooltip :content="$name" class="block min-w-0">
+                <flux:text class="truncate font-medium text-zinc-800">{{ $label ?? $name }}</flux:text>
+            </flux:tooltip>
             <flux:text size="sm">{{ match ($kind) { 'image' => __('Image'), 'pdf' => __('PDF'), default => __('Word document') } }}</flux:text>
         </div>
         <div class="flex flex-wrap gap-2">

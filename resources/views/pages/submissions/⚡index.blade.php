@@ -445,7 +445,7 @@ new #[Title('Submissions')] class extends Component {
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="max-w-sm whitespace-normal sm:min-w-64">
                             {{-- On phones the padding grows the tap area to 44px and the negative margin keeps the row as it was --}}
-                            <a href="{{ route('drive.show', $submission) }}" wire:navigate wire:transition.navigate="project-{{ $submission->id }}" title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:-my-3 max-sm:py-3">{{ $title }}</a>
+                            <flux:tooltip :content="$title" class="block min-w-0"><a href="{{ route('drive.show', $submission) }}" wire:navigate wire:transition.navigate="project-{{ $submission->id }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:-my-3 max-sm:py-3">{{ $title }}</a></flux:tooltip>
                             <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->unique(fn ($row) => $row->personKey())->map->shortName()->join(', ') }}</p>
                             {{-- All four documents in stage order: a filled pill opens one on file, a dashed one is still to come, so
                                  every row shows the same sequence, on one line from tablet width up. Phones set them two by two at
@@ -559,7 +559,7 @@ new #[Title('Submissions')] class extends Component {
                 <form wire:submit="saveDates" class="flex flex-col gap-6">
                     <div>
                         <flux:heading size="lg" id="project-dates-heading">{{ __('Change dates') }}</flux:heading>
-                        <flux:text class="mt-1 line-clamp-2 [overflow-wrap:anywhere]" title="{{ $this->dating->displayTitle() }}">{{ $this->dating->displayTitle() }}</flux:text>
+                        <flux:tooltip :content="$this->dating->displayTitle()" class="block min-w-0"><flux:text class="mt-1 line-clamp-2 [overflow-wrap:anywhere]">{{ $this->dating->displayTitle() }}</flux:text></flux:tooltip>
                     </div>
 
                     <div class="grid gap-6 sm:grid-cols-2">

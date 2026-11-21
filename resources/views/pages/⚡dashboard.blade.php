@@ -552,7 +552,7 @@ new #[Title('Dashboard')] class extends Component {
                         <dl @class(['mt-5 grid gap-3', 'xl:grid-cols-2 xl:gap-x-10' => $below, 'xl:gap-5' => $paired && ! $below])>
                             @foreach ($rows as $row)
                                 <div class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3 text-sm">
-                                    <dt class="truncate text-zinc-800" title="{{ $row['title'] }}">{{ $row['label'] }}</dt>
+                                    <dt class="min-w-0 text-zinc-800"><flux:tooltip :content="$row['title']" class="block"><span class="block truncate">{{ $row['label'] }}</span></flux:tooltip></dt>
                                     <dd class="flex items-center gap-2 border-s border-zinc-300 py-0.5">
                                         <span class="h-4 rounded-e bg-isu-green-300" style="width: {{ $row['count'] ? max(2, $row['count'] / $most * 80) : 0 }}%" aria-hidden="true"></span>
                                         <span class="font-medium tabular-nums text-zinc-700">{{ $row['count'] }}</span>

@@ -63,7 +63,6 @@
         </button>
 
         <ul
-            x-ref="list"
             id="{{ $id }}-list"
             popover="manual"
             role="listbox"

@@ -425,20 +425,11 @@ const clearWhenEdited = ({ target }) => {
 document.addEventListener('input', clearWhenEdited);
 document.addEventListener('change', clearWhenEdited);
 
-// A range slider's filled share (--fill in app.css) follows its handle as it moves.
-const fillRange = (slider) => {
-    const min = Number(slider.min || 0);
-    const max = Number(slider.max || 100);
-    slider.style.setProperty('--fill', `${((Number(slider.value) - min) / (max - min || 1)) * 100}%`);
-};
-
-document.addEventListener('input', ({ target }) => target.matches?.('input[type="range"]') && fillRange(target));
-document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('input[type="range"]').forEach(fillRange));
-
 // Every form is checked on the server, which shows each reason in Flux's red style beside its field, with the focus
 // moved there. So forms skip the browser's own check, whose bubbles ("Please fill out this field.") would show first in
 // a different look. Set on every form when a page loads, after a wire:navigate, and whenever Livewire adds or redraws
-// a form, since a redraw takes the attribute back to the server's markup.
+// a form, since a redraw takes the attribute back to the server's markup. app.js loads as a module, which runs once the
+// page is read, so the first call finds every form.
 const skipBrowserCheck = (root) => {
     if (root instanceof HTMLFormElement) {
         root.noValidate = true;
@@ -448,19 +439,41 @@ const skipBrowserCheck = (root) => {
 };
 
 skipBrowserCheck(document);
-document.addEventListener('DOMContentLoaded', () => skipBrowserCheck(document));
 document.addEventListener('livewire:navigated', () => skipBrowserCheck(document));
 document.addEventListener('livewire:init', () => {
     window.Livewire.hook('morph.added', ({ el }) => skipBrowserCheck(el));
-    window.Livewire.hook('morph.updated', ({ el }) => skipBrowserCheck(el));
 
-    // A redrawn dropdown list or date picker fills its options' ids and ticks in again (see listbox and datePicker).
-    // The field's own text is wire:ignore, so Alpine alone writes it.
+    // A redrawn dropdown list or date picker also fills its options' ids and ticks in again (see listbox and
+    // datePicker). The field's own text is wire:ignore, so Alpine alone writes it.
     window.Livewire.hook('morph.updated', ({ el }) => {
+        skipBrowserCheck(el);
+
         const field = (el.nodeType === Node.TEXT_NODE ? el.parentElement : el)?.closest?.('[data-select], [data-resync]');
         field?._x_dataStack && window.Alpine.$data(field).tick++;
     });
 });
+
+// Floats a popover panel under its field, or over it when it wouldn't fit below, kept on screen, and keeps it there
+// while the page scrolls or resizes. `matchWidth` gives the panel the field's width. Returns the call that stops it.
+const floatUnder = (trigger, panel, matchWidth = false) => {
+    const place = () => {
+        const field = trigger.getBoundingClientRect();
+        matchWidth && (panel.style.width = `${field.width}px`);
+        const below = window.innerHeight - field.bottom;
+        const above = below < panel.offsetHeight + 8 && field.top > below;
+        panel.style.left = `${Math.max(8, Math.min(field.left, window.innerWidth - panel.offsetWidth - 8))}px`;
+        panel.style.top = above ? `${field.top - panel.offsetHeight - 4}px` : `${field.bottom + 4}px`;
+    };
+
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+
+    return () => {
+        window.removeEventListener('scroll', place, true);
+        window.removeEventListener('resize', place);
+    };
+};
 
 // The dropdown list in components/select. `value` is the picked option's value, which wire:model reads through
 // x-modelable; `active` is the option the keyboard or pointer is on while the list is open. The options are the
@@ -472,6 +485,7 @@ const listbox = (id, placeholder) => ({
     placeholder,
     // Declared here, as Alpine writes a property no scope has yet onto the outermost one, which every field shares
     field: null,
+    stopFloating: null,
     tick: 0,
     value: '',
     open: false,
@@ -490,8 +504,6 @@ const listbox = (id, placeholder) => ({
         if (preset && (this.value === '' || this.value === null)) {
             this.value = preset.dataset.value;
         }
-
-        this.place = this.place.bind(this);
     },
 
     get list() {
@@ -538,32 +550,16 @@ const listbox = (id, placeholder) => ({
         this.open = true;
         this.active = at ?? Math.max(0, this.indexOf(this.value));
         this.list.showPopover();
-        this.place();
+        this.stopFloating = floatUnder(this.trigger, this.list, true);
         this.reveal();
-        window.addEventListener('scroll', this.place, true);
-        window.addEventListener('resize', this.place);
     },
 
     close(refocus = false) {
         this.open = false;
         this.list.matches(':popover-open') && this.list.hidePopover();
-        window.removeEventListener('scroll', this.place, true);
-        window.removeEventListener('resize', this.place);
+        this.stopFloating?.();
+        this.stopFloating = null;
         refocus && this.trigger.focus();
-    },
-
-    // Under the field at its width, or over it when the list wouldn't fit below.
-    place() {
-        const field = this.trigger.getBoundingClientRect();
-        const list = this.list;
-        const below = window.innerHeight - field.bottom;
-        const above = below < list.offsetHeight + 8 && field.top > below;
-
-        Object.assign(list.style, {
-            left: `${field.left}px`,
-            width: `${field.width}px`,
-            top: above ? `${field.top - list.offsetHeight - 4}px` : `${field.bottom + 4}px`,
-        });
     },
 
     reveal() {
@@ -672,7 +668,7 @@ const datePicker = (id, required) => ({
     required,
     // Declared here, as Alpine writes a property no scope has yet onto the outermost one, which every field shares
     field: null,
-    place: null,
+    stopFloating: null,
     tick: 0,
     value: '',
     open: false,
@@ -773,33 +769,16 @@ const datePicker = (id, required) => ({
         this.view = 'days';
         this.open = true;
         this.calendar.showPopover();
-        this.place = this.place ?? this.placeCalendar.bind(this);
-        this.place();
-        window.addEventListener('scroll', this.place, true);
-        window.addEventListener('resize', this.place);
+        this.stopFloating = floatUnder(this.trigger, this.calendar);
         this.focusCursor();
     },
 
     close(refocus = false) {
         this.open = false;
         this.calendar.matches(':popover-open') && this.calendar.hidePopover();
-        window.removeEventListener('scroll', this.place, true);
-        window.removeEventListener('resize', this.place);
+        this.stopFloating?.();
+        this.stopFloating = null;
         refocus && this.trigger.focus();
-    },
-
-    // Under the field from its left edge, kept on screen, or over the field when there's no room below.
-    placeCalendar() {
-        const field = this.trigger.getBoundingClientRect();
-        const calendar = this.calendar;
-        const below = window.innerHeight - field.bottom;
-        const above = below < calendar.offsetHeight + 8 && field.top > below;
-        const left = Math.max(8, Math.min(field.left, window.innerWidth - calendar.offsetWidth - 8));
-
-        Object.assign(calendar.style, {
-            left: `${left}px`,
-            top: above ? `${field.top - calendar.offsetHeight - 4}px` : `${field.bottom + 4}px`,
-        });
     },
 
     // After Alpine has drawn the month the cursor is in: a new month's days are only there a tick after the change.
@@ -837,14 +816,11 @@ const datePicker = (id, required) => ({
     },
 
     pickToday() {
-        const today = toIso(new Date());
-        this.outOfRange(today) || this.pick({ iso: today, out: false });
+        this.pick({ iso: toIso(new Date()), out: !this.todayAllowed });
     },
 
     clear() {
-        this.value = '';
-        this.close(true);
-        this.trigger.dispatchEvent(new Event('change', { bubbles: true }));
+        this.pick({ iso: '', out: false });
     },
 
     key(event, day) {

@@ -689,6 +689,16 @@ select:focus[data-flux-control] {
             translate: 0 -0.25rem;
         }
     }
+
+    /* A sending form's fields fade to their dimmed look (below) */
+    form [data-flux-field] {
+        transition: opacity 150ms ease-out;
+    }
+
+    /* A wrong code's six boxes shake once (below) */
+    [data-code-input][data-invalid] [data-flux-otp] {
+        animation: code-shake 320ms ease-out;
+    }
 }
 
 /* A plain auth form that is sending (formStates sets aria-busy): its fields dim and stop taking the pointer, so the
@@ -698,21 +708,9 @@ form[aria-busy='true'] [data-flux-field] {
     opacity: 0.6;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    form [data-flux-field] {
-        transition: opacity 150ms ease-out;
-    }
-}
-
 /* x-code-input: a wrong code turns the six boxes red, and shakes them once for members who allow motion. */
 [data-code-input][data-invalid] [data-flux-otp-input] {
     border-color: var(--color-red-600);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    [data-code-input][data-invalid] [data-flux-otp] {
-        animation: code-shake 320ms ease-out;
-    }
 }
 
 @keyframes code-shake {
@@ -755,7 +753,7 @@ input[type='number']::-webkit-outer-spin-button {
 
 /* Range sliders in Flux's look, not the browser's (Flux's own slider is Pro): a thin rounded track filled in the accent
    colour up to the handle, and a white handle with a 1px line and the control shadow, ringed in the accent on keyboard
-   focus. The filled share is --fill, which app.js keeps in step as the slider moves (or a page binds it). */
+   focus. The filled share is --fill, which the page binds to the slider's value. */
 input[type='range'] {
     --fill: 50%;
     appearance: none;

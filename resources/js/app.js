@@ -425,6 +425,16 @@ const clearWhenEdited = ({ target }) => {
 document.addEventListener('input', clearWhenEdited);
 document.addEventListener('change', clearWhenEdited);
 
+// A range slider's filled share (--fill in app.css) follows its handle as it moves.
+const fillRange = (slider) => {
+    const min = Number(slider.min || 0);
+    const max = Number(slider.max || 100);
+    slider.style.setProperty('--fill', `${((Number(slider.value) - min) / (max - min || 1)) * 100}%`);
+};
+
+document.addEventListener('input', ({ target }) => target.matches?.('input[type="range"]') && fillRange(target));
+document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('input[type="range"]').forEach(fillRange));
+
 // Every form is checked on the server, which shows each reason in Flux's red style beside its field, with the focus
 // moved there. So forms skip the browser's own check, whose bubbles ("Please fill out this field.") would show first in
 // a different look. Set on every form when a page loads, after a wire:navigate, and whenever Livewire adds or redraws

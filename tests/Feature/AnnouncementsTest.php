@@ -95,6 +95,9 @@ class AnnouncementsTest extends TestCase
         $form = $this->form($admin)
             // While the memo uploads or the post saves, the form says so.
             ->assertSeeHtml('data-test="uploading-status"')
+            // Livewire's upload progress fills Flux's progress bar, with the percentage beside it
+            ->assertSeeHtml('x-on:livewire-upload-progress="progress = $event.detail.progress"')
+            ->assertSeeHtml('data-flux-progress')
             ->assertSee('Stop upload')
             ->assertSeeHtml('data-test="posting-status"')
             ->assertSee('Posting…')

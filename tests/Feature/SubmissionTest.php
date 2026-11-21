@@ -46,7 +46,10 @@ class SubmissionTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit proposal')->assertSee('Proponents');
+        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit proposal')->assertSee('Proponents')
+            // The document drop zone fills Flux's progress bar from Livewire's upload progress
+            ->assertSee('x-on:livewire-upload-progress="progress = $event.detail.progress"', false)
+            ->assertSee('data-flux-progress', false);
     }
 
     public function test_proponents_are_picked_from_a_searchable_list_of_verified_faculty(): void

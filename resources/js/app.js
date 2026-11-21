@@ -393,8 +393,9 @@ const combobox = (options, id) => ({
 // The states every plain-post auth form shows (sign-in, sign-up, password reset and the rest). While it sends,
 // `submitting` disables the submit button, which makes Flux show its spinner, and aria-busy dims and locks the fields
 // (app.css); pageshow resets it when the browser brings the page back from its back/forward cache. A field the server
-// turned down is red with its reason, takes the focus when the page comes back unless another field is set to, and
-// drops the red the moment it is edited. `extra` adds the form's own values, such as the passwords sign-up compares.
+// turned down is red with its reason and takes the focus when the page comes back unless another field is set to; it
+// drops the red the moment it is edited, as every form does (clearWhenEdited below). `extra` adds the form's own
+// values, such as the passwords sign-up compares.
 const formStates = (extra = {}) => ({
     ...extra,
     submitting: false,
@@ -402,23 +403,27 @@ const formStates = (extra = {}) => ({
     init() {
         this.$el.addEventListener('submit', () => (this.submitting = true));
         window.addEventListener('pageshow', () => (this.submitting = false));
-        this.$el.addEventListener('input', ({ target }) => this.edited(target));
 
         if (!this.$el.querySelector('[autofocus]')) {
             this.$nextTick(() => this.$el.querySelector('[aria-invalid="true"]')?.focus());
         }
     },
-
-    edited(control) {
-        if (control.getAttribute?.('aria-invalid') !== 'true') {
-            return;
-        }
-
-        control.removeAttribute('aria-invalid');
-        control.removeAttribute('data-invalid');
-        control.closest('[data-flux-field]')?.querySelectorAll('[data-flux-error]').forEach((error) => (error.hidden = true));
-    },
 });
+
+// A field the server turned down drops its red and its reason the moment it is edited, on every form (Livewire or a
+// plain post), rather than staying red until the next save. The server's next answer sets it again if still wrong.
+const clearWhenEdited = ({ target }) => {
+    if (target.getAttribute?.('aria-invalid') !== 'true') {
+        return;
+    }
+
+    target.removeAttribute('aria-invalid');
+    target.removeAttribute('data-invalid');
+    target.closest('[data-flux-field]')?.querySelectorAll('[data-flux-error]').forEach((error) => (error.hidden = true));
+};
+
+document.addEventListener('input', clearWhenEdited);
+document.addEventListener('change', clearWhenEdited);
 
 // Every form is checked on the server, which shows each reason in Flux's red style beside its field, with the focus
 // moved there. So forms skip the browser's own check, whose bubbles ("Please fill out this field.") would show first in

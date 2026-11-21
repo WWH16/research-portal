@@ -139,6 +139,25 @@ class DriveTest extends TestCase
         Livewire::withQueryParams(['year' => (string) now()->year])->test('pages::drive.index')->assertSeeInOrder(['CCSICT', '1 project']);
     }
 
+    public function test_a_pdf_or_word_document_opens_in_the_portals_viewer_and_an_old_doc_still_downloads(): void
+    {
+        $this->smart->update(['concept_path' => 'drive-1/submissions/concept.docx', 'midyear_path' => 'drive-1/submissions/report.doc']);
+
+        $page = $this->actingAs($this->torres)->get(route('drive.show', $this->smart))->assertOk()
+            // The viewer sits in the app layout once, for every page
+            ->assertSeeHtml('data-test="memo-viewer"')
+            ->getContent();
+
+        $this->assertSame(['name' => 'smart-researchtrack-detailed.pdf', 'url' => route('submissions.document', [$this->smart, 'detailed']), 'kind' => 'pdf', 'alt' => '', 'link' => route('drive.show', $this->smart)], $this->smart->documentViewer('detailed'));
+        $this->assertSame('docx', $this->smart->documentViewer('concept')['kind']);
+        $this->assertNull($this->smart->documentViewer('midyear'));
+        $this->assertNull($this->smart->documentViewer('terminal'));
+
+        // Two files open in the viewer; the .doc keeps its plain link, which downloads
+        $this->assertSame(2, substr_count($page, "\$dispatch('memo-viewer'"));
+        $this->assertStringContainsString(route('submissions.document', [$this->smart, 'midyear']), $page);
+    }
+
     public function test_project_page_shows_studies_roles_colleges_and_documents(): void
     {
         $this->fakeDrive();

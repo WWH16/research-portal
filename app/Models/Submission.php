@@ -318,6 +318,38 @@ class Submission extends Model
     }
 
     /**
+     * The file name a stage's document downloads under: the project's title and the stage, with the file's own
+     * extension.
+     */
+    public function documentName(string $stage): string
+    {
+        return Str::slug($this->title.' '.$stage).'.'.pathinfo((string) $this->{$stage.'_path'}, PATHINFO_EXTENSION);
+    }
+
+    /**
+     * What the portal's file viewer needs to show a stage's document (see components/opens-in-viewer), or null when
+     * there is none or it is an old .doc, which only downloads. Share passes on the project's page.
+     *
+     * @return array{name: string, url: string, kind: string, alt: string, link: string}|null
+     */
+    public function documentViewer(string $stage): ?array
+    {
+        $kind = match (Str::lower(pathinfo((string) $this->{$stage.'_path'}, PATHINFO_EXTENSION))) {
+            'pdf' => 'pdf',
+            'docx' => 'docx',
+            default => null,
+        };
+
+        return $kind ? [
+            'name' => $this->documentName($stage),
+            'url' => route('submissions.document', [$this, $stage]),
+            'kind' => $kind,
+            'alt' => '',
+            'link' => route('drive.show', $this),
+        ] : null;
+    }
+
+    /**
      * When each document was uploaded, keyed by stage. Each time is asked of Google Drive once and then kept, see
      * DocumentStorage::uploadedAt(); a page asking more than once reads it once per request. A file missing from
      * Google Drive the first time it is asked is left out.

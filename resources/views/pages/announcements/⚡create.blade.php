@@ -276,5 +276,4 @@ new #[Title('Announcement')] class extends Component {
         </div>
     </form>
 
-    <x-memo-viewer />
 </section>

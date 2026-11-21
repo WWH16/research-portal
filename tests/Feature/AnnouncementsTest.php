@@ -143,11 +143,10 @@ class AnnouncementsTest extends TestCase
         $this->form($admin)->set('title', 'Memo')->set('description', 'Read the memo.')->set('memo', $this->memo('first.pdf'))->call('save');
         $first = Announcement::sole()->attachment_path;
 
-        // The current memo opens in the form page's own viewer, to be checked without leaving the form.
+        // The current memo opens in the portal's viewer, to be checked without leaving the form.
         $this->form($admin, Announcement::sole())
             ->assertSee('Current memo: first.pdf')
             ->assertSee('Open memo full screen: first.pdf')
-            ->assertSeeHtml('data-test="memo-viewer"')
             ->set('memo', $this->memo('second.pdf'))
             ->call('save')
             ->assertHasNoErrors();

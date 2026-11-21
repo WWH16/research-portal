@@ -101,10 +101,13 @@ new #[Title('Concept reviews')] class extends Component {
                             <p class="text-sm text-zinc-500 sm:hidden">{{ $submission->department->code }} · {{ $submission->updated_at->diffForHumans() }}</p>
                             @if ($submission->concept_path)
                                 {{-- Every row has this link and a Review button, so screen readers also hear which project each one is for --}}
-                                <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" :aria-label="__('Concept proposal for :title, opens in a new tab', ['title' => $title])" class="mt-1 text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center max-sm:gap-1">
-                                    {{ __('Concept proposal') }}
-                                    <flux:icon.arrow-top-right-on-square variant="micro" class="inline size-3 align-[-1px]" />
-                                </flux:link>
+                                @php($viewer = $submission->documentViewer('concept'))
+                                <x-opens-in-viewer :viewer="$viewer">
+                                    <flux:link :href="route('submissions.document', [$submission, 'concept'])" target="_blank" rel="noopener" :aria-label="$viewer ? __('Concept proposal for :title', ['title' => $title]) : __('Concept proposal for :title, opens in a new tab', ['title' => $title])" class="mt-1 text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center max-sm:gap-1">
+                                        {{ __('Concept proposal') }}
+                                        <flux:icon :icon="$viewer ? 'arrows-pointing-out' : 'arrow-top-right-on-square'" variant="micro" class="inline size-3 align-[-1px]" />
+                                    </flux:link>
+                                </x-opens-in-viewer>
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="max-sm:hidden">{{ $submission->department->code }}</flux:table.cell>

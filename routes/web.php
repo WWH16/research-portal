@@ -15,7 +15,6 @@ use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Laravel\Fortify\Http\Controllers\PasswordResetLinkController;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
@@ -75,7 +74,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('submissions/{submission}/documents/{stage}', function (Submission $submission, string $stage) {
         $path = $submission->{$stage.'_path'} ?? abort(404);
 
-        return app(DocumentStorage::class)->respond($path, Str::slug($submission->title.' '.$stage).'.'.pathinfo($path, PATHINFO_EXTENSION));
+        return app(DocumentStorage::class)->respond($path, $submission->documentName($stage));
     })->whereIn('stage', array_keys(Submission::DOCUMENTS))->middleware('can:view,submission')->name('submissions.document');
 
     // Profile photos sit on the same private Google Drive, so any signed-in member's page shows them through here.

@@ -61,7 +61,7 @@ class ReviewsTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']))
             ->get(route('reviews.index'))
             ->assertSeeHtml('aria-label="Review Solar Dryer Study"')
-            ->assertSeeHtml('aria-label="Concept proposal for Solar Dryer Study, opens in a new tab"');
+            ->assertSeeHtml('aria-label="Concept proposal for Solar Dryer Study"');
     }
 
     public function test_rows_read_like_the_submissions_list(): void

@@ -257,6 +257,9 @@
         {{ $slot }}
 
         @persist('toast')
+            {{-- The full-screen file viewer, for memos and project documents alike --}}
+            <x-memo-viewer />
+
             <flux:toast.group>
                 <flux:toast />
             </flux:toast.group>

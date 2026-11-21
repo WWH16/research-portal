@@ -514,12 +514,12 @@ new #[Title('Research project')] class extends Component {
         <div class="grid gap-x-4 gap-y-6 sm:grid-cols-12">
             {{-- A real, selectable blank option instead of Flux's disabled placeholder: after a re-render the browser
                  can't show a disabled option, so it showed the first real one while nothing was chosen. --}}
-            <flux:select wire:model="category_id" :label="__('Category')" required field:class="sm:col-span-6" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('Select category') }}</flux:select.option>
+            <x-select wire:model="category_id" :label="__('Category')" required field:class="sm:col-span-6" class="max-sm:h-11">
+                <x-select.option value="">{{ __('Select category') }}</x-select.option>
                 @foreach ($this->categories as $category)
-                    <flux:select.option :value="$category->id">{{ $category->name }}</flux:select.option>
+                    <x-select.option :value="$category->id">{{ $category->name }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
             <flux:input wire:model="designation" :label="__('Designation')" :badge="__('Optional')" type="text" maxlength="100" field:class="sm:col-span-6" class:input="max-sm:h-11" />
 
@@ -582,11 +582,11 @@ new #[Title('Research project')] class extends Component {
                         </div>
 
                         <div class="sm:col-span-2">
-                            <flux:select wire:model="proponents.{{ $index }}.role" :aria-label="__('Role')" class="max-sm:h-11">
+                            <x-select wire:model="proponents.{{ $index }}.role" :aria-label="__('Role')" class="max-sm:h-11">
                                 @foreach (Proponent::ROLES as $role)
-                                    <flux:select.option :value="$role">{{ __($role) }}</flux:select.option>
+                                    <x-select.option :value="$role">{{ __($role) }}</x-select.option>
                                 @endforeach
-                            </flux:select>
+                            </x-select>
                         </div>
 
                         <div class="justify-self-end sm:col-span-1">

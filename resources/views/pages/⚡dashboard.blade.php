@@ -492,12 +492,12 @@ new #[Title('Dashboard')] class extends Component {
                          the quick-range button share the first row, so the two dates get the whole second row and show in full.
                          field:class puts the layout classes on the field Flux wraps around each labelled control --}}
                     <div class="flex w-full flex-wrap items-end gap-3 sm:w-auto">
-                        <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
-                            <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                        <x-select wire:model.live="department" :label="__('College')" class="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
+                            <x-select.option value="">{{ __('All colleges') }}</x-select.option>
                             @foreach (Department::orderBy('code')->pluck('code') as $option)
-                                <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                                <x-select.option :value="$option">{{ $option }}</x-select.option>
                             @endforeach
-                        </flux:select>
+                        </x-select>
 
                         <flux:dropdown position="bottom" align="end">
                             <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" class="max-sm:size-11" />

@@ -333,12 +333,12 @@ new class extends Component {
 
             <flux:textarea wire:model="description" :label="__('Description')" :description:trailing="__('The abstract or a short summary.')" rows="4" required />
 
-            <flux:select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('No project') }}</flux:select.option>
+            <x-select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('No project') }}</x-select.option>
                 @foreach ($this->projects as $project)
-                    <flux:select.option :value="$project->id">{{ $project->title }} ({{ $project->year }})</flux:select.option>
+                    <x-select.option :value="$project->id">{{ $project->title }} ({{ $project->year }})</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
         </flux:fieldset>
 
         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6">

@@ -181,7 +181,7 @@ class ManageUsersTest extends TestCase
             ->assertDontSee($faculty->name);
 
         $this->assertMatchesRegularExpression(
-            '/data-test="role-filter"(?:(?!<\/select>).)*?<option[^>]*value="staff"/s',
+            '/data-test="role-filter"(?:(?!<\/ul>).)*?role="option"[^>]*data-value="staff"/s',
             $component->html(),
         );
 

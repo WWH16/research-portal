@@ -41,9 +41,10 @@ class PublicationTest extends TestCase
         $this->actingAs($this->rivera);
 
         Livewire::test('pages::publications.create')
-            ->assertDontSeeHtml('role="combobox"')
+            // The faculty picker, not the form's dropdowns (which share the combobox role)
+            ->assertDontSeeHtml('data-test="combobox"')
             ->call('addAuthor')
-            ->assertSeeHtml('role="combobox"')
+            ->assertSeeHtml('data-test="combobox"')
             ->assertSeeHtml($this->asOption(['value' => (string) $this->soriano->id, 'label' => 'Soriano']))
             ->assertDontSeeHtml($this->asOption(['label' => 'Rivera']));
     }

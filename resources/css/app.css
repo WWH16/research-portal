@@ -644,7 +644,8 @@ select:focus[data-flux-control] {
  * carry data-stagger, as @starting-style fires the first time an element shows.
  */
 @media (prefers-reduced-motion: no-preference) {
-    ui-dropdown > [popover] {
+    ui-dropdown > [popover],
+    .listbox-popover {
         transform-origin: top left;
         transition:
             opacity 120ms ease-out,

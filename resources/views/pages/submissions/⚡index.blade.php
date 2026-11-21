@@ -349,27 +349,27 @@ new #[Title('Submissions')] class extends Component {
         </div>
 
         <div id="submission-filters" x-show="filters" x-cloak @class(['mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4', 'sm:grid-cols-3' => $this->monitoring, 'sm:grid-cols-2' => ! $this->monitoring])>
-            <flux:select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11" data-test="status-filter">
-                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+            <x-select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11" data-test="status-filter">
+                <x-select.option value="">{{ __('All statuses') }}</x-select.option>
                 @foreach ($statuses as $value => $label)
-                    <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+                    <x-select.option :value="$value">{{ $label }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
-            <flux:select wire:model.live="yearFilter" :label="__('Year')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+            <x-select wire:model.live="yearFilter" :label="__('Year')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('All years') }}</x-select.option>
                 @foreach (Submission::years() as $option)
-                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                    <x-select.option :value="$option">{{ $option }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
             @if ($this->monitoring)
-                <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
-                    <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                <x-select wire:model.live="department" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
+                    <x-select.option value="">{{ __('All colleges') }}</x-select.option>
                     @foreach ($this->collegeCodes as $code)
-                        <flux:select.option :value="$code">{{ $code }}</flux:select.option>
+                        <x-select.option :value="$code">{{ $code }}</x-select.option>
                     @endforeach
-                </flux:select>
+                </x-select>
             @endif
         </div>
 

@@ -456,11 +456,14 @@ new #[Title('Submissions')] class extends Component {
                             <ul class="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:gap-1" aria-label="{{ __('Documents') }}">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
                                     <li>
-                                        <flux:tooltip :content="$submission->{$stage.'_path'} ? __('Open the :document in a new tab', ['document' => Str::lower(__($label))]) : __(':document: not uploaded yet', ['document' => __($label)])" class="max-sm:block">
+                                        @php($viewer = $submission->documentViewer($stage))
+                                        <flux:tooltip :content="$submission->{$stage.'_path'} ? ($viewer ? __('Open the :document', ['document' => Str::lower(__($label))]) : __('Open the :document in a new tab', ['document' => Str::lower(__($label))])) : __(':document: not uploaded yet', ['document' => __($label)])" class="max-sm:block">
                                             @if ($submission->{$stage.'_path'})
-                                                <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
-                                                    <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-11 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon.arrow-top-right-on-square variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
+                                                <x-opens-in-viewer :viewer="$viewer">
+                                                <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ $viewer ? __(':document for :title', ['document' => __($label), 'title' => $submission->title]) : __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
+                                                    <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-11 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon :icon="$viewer ? 'arrows-pointing-out' : 'arrow-top-right-on-square'" variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
                                                 </a>
+                                                </x-opens-in-viewer>
                                             @else
                                                 <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500 max-sm:h-11 max-sm:w-full max-sm:justify-center">
                                                     {{ Str::before(__($label), ' ') }}<span class="sr-only">{{ __(': not uploaded yet') }}</span>

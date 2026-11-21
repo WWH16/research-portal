@@ -647,7 +647,9 @@ new #[Title('Research project')] class extends Component {
                             @if ($onFile)
                                 <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                                     <span class="text-zinc-600">{{ __('On file') }}</span>
-                                    <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">{{ __('Open current file') }}</flux:link>
+                                    <x-opens-in-viewer :viewer="$submission->documentViewer($stage)">
+                                        <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">{{ __('Open current file') }}</flux:link>
+                                    </x-opens-in-viewer>
                                     @if ($open)
                                         <flux:button size="sm" variant="ghost" icon="arrow-path" x-show="! replacing" x-on:click="replacing = true" aria-controls="dropzone-wrap-{{ $stage }}" class="max-sm:h-11" data-test="replace-{{ $stage }}">{{ __('Replace file') }}</flux:button>
                                     @endif

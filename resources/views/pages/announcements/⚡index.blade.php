@@ -395,7 +395,6 @@ new #[Title('Announcements')] class extends Component {
         </div>
     </div>
 
-    <x-memo-viewer />
 
     @can('create', App\Models\Announcement::class)
         {{-- Closing forgets the announcement without a request, so later actions don't reload it --}}

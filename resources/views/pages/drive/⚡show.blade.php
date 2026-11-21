@@ -146,7 +146,10 @@ new #[Title('Research Drive')] class extends Component {
                         </p>
                     </div>
                     @if ($path)
-                        <flux:button :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11 max-sm:px-4">{{ __('Open file') }}</flux:button>
+                        @php($viewer = $project->documentViewer($stage))
+                        <x-opens-in-viewer :viewer="$viewer">
+                            <flux:button :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" :icon:trailing="$viewer ? 'arrows-pointing-out' : 'arrow-top-right-on-square'" class="max-sm:h-11 max-sm:px-4">{{ __('Open file') }}</flux:button>
+                        </x-opens-in-viewer>
                     @endif
                 </li>
             @endforeach

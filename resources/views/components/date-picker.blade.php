@@ -7,10 +7,10 @@
     optional). Days outside min and max can't be picked.
     The value is a Y-m-d string, as the browser's date field gives, so the server reads it unchanged. Bind it with
     wire:model (with any modifiers). `min` and `max` take Y-m-d strings; `x-bind:min` takes an Alpine expression, for a
-    start that follows another field.
+    start that follows another field. `short` writes the month short ("Nov 21, 2026"), for a narrow filter field.
     Usage: <x-date-picker wire:model="target_date" :label="__('Completion date')" :min="$start" class:input="max-sm:h-11" />
 --}}
-@props(['label' => null, 'min' => null, 'max' => null, 'disabled' => false, 'required' => false])
+@props(['label' => null, 'placeholder' => null, 'min' => null, 'max' => null, 'disabled' => false, 'required' => false, 'short' => false])
 
 @php
     $model = $attributes->wire('model')->value();
@@ -19,7 +19,7 @@
     // One bag for the field: Blade forwards only a bag named $attributes inside a component tag.
     $field = $attributes->except(['class:input', 'field:class', 'x-bind:min', 'aria-label'])
         ->merge([
-            'x-data' => 'datePicker('.Js::from($id).', '.Js::from($required).')',
+            'x-data' => 'datePicker('.Js::from($id).', '.Js::from($required).', '.Js::from($short).')',
             'x-modelable' => 'value',
             'x-on:click.outside' => 'open && close()',
             'data-min' => $min,
@@ -51,7 +51,7 @@
             data-flux-control
             class="{{ Flux::classes('relative block h-10 w-full rounded-lg border border-zinc-200 border-b-zinc-300/80 bg-white py-2 ps-3 pe-10 text-start text-base text-zinc-700 shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-75 disabled:shadow-none data-invalid:border-red-500 sm:text-sm')->add($attributes->get('class:input')) }}"
         >
-            <span id="{{ $id }}-value" wire:ignore class="block truncate tabular-nums" x-text="display || @js(__('Choose a date'))" x-bind:class="! display && 'text-zinc-500'"></span>
+            <span id="{{ $id }}-value" wire:ignore class="block truncate tabular-nums" x-text="display || @js($placeholder ?? __('Choose a date'))" x-bind:class="! display && 'text-zinc-500'"></span>
             <flux:icon.calendar-days variant="mini" class="pointer-events-none absolute inset-y-0 end-2 my-auto text-zinc-400" />
         </button>
 

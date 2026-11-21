@@ -222,7 +222,7 @@ new #[Title('Activity log')] class extends Component {
             <flux:button icon="funnel" x-on:click="filters = ! filters" x-bind:aria-expanded="filters" aria-controls="activity-filters" class="max-sm:h-11">{{ __('Filter') }}</flux:button>
         </div>
 
-        <div id="activity-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 lg:grid-cols-[13rem_minmax(0,26rem)_1fr]">
+        <div id="activity-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 lg:grid-cols-[13rem_auto_1fr]">
             <x-select wire:model.live="group" :label="__('Type of activity')" class="max-sm:h-11">
                 <x-select.option value="">{{ __('All activity') }}</x-select.option>
                 @foreach (ActivityLog::GROUPS as $key => $label)
@@ -230,10 +230,10 @@ new #[Title('Activity log')] class extends Component {
                 @endforeach
             </x-select>
 
-            {{-- Side by side once each has room for a written-out date ("September 30, 2026"); stacked on phones --}}
-            <div class="grid min-w-0 gap-3 sm:grid-cols-2" data-test="date-range">
-                <x-date-picker wire:model.live.debounce.500ms="from" :max="$to ?: null" :label="__('From')" class="min-w-0" class:input="max-sm:h-11" />
-                <x-date-picker wire:model.live.debounce.500ms="to" :min="$from ?: null" :label="__('To')" class="min-w-0" class:input="max-sm:h-11" />
+            {{-- Stacked on phones; side by side on computers, each just wide enough for a short date ("Sep 30, 2026") --}}
+            <div class="grid min-w-0 gap-3 sm:grid-cols-[repeat(2,9rem)]" data-test="date-range">
+                <x-date-picker wire:model.live.debounce.500ms="from" :max="$to ?: null" :label="__('From')" :placeholder="__('Any date')" short class="min-w-0" class:input="max-sm:h-11" />
+                <x-date-picker wire:model.live.debounce.500ms="to" :min="$from ?: null" :label="__('To')" :placeholder="__('Any date')" short class="min-w-0" class:input="max-sm:h-11" />
             </div>
 
             <div role="group" aria-labelledby="quick-ranges">

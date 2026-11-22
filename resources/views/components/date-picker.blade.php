@@ -47,6 +47,7 @@
             x-on:click="open ? close() : show()"
             x-on:keydown.arrow-down.prevent="show()"
             @disabled($disabled)
+            @if ($required) aria-required="true" @endif
             @if ($invalid) aria-invalid="true" data-invalid @endif
             data-flux-control
             class="{{ Flux::classes('relative block h-10 w-full rounded-lg border border-zinc-200 border-b-zinc-300/80 bg-white py-2 ps-3 pe-10 text-start text-base text-zinc-700 shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-75 disabled:shadow-none data-invalid:border-red-500 sm:text-sm')->add($attributes->get('class:input')) }}"

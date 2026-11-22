@@ -567,21 +567,21 @@ new #[Title('Research project')] class extends Component {
                 @foreach ($proponents as $index => $row)
                     <div class="{{ $columns }} items-start max-sm:border-b max-sm:border-line max-sm:pb-3" wire:key="proponent-{{ $index }}" data-test="proponent-row">
                         <div class="sm:col-span-2">
-                            <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" :aria-label="__('Study no.')" class:input="max-sm:h-11" />
+                            <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" required :aria-label="__('Study no.')" class:input="max-sm:h-11" />
                         </div>
 
                         <div class="min-w-0 max-sm:order-last max-sm:col-span-3 sm:col-span-7">
                             {{-- A string name marks a row for someone not in the portal, as isNamed() reads it --}}
                             @if (is_string($row['name'] ?? null))
-                                <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" autocomplete="off" :placeholder="__('e.g. Juan Dela Cruz')" :aria-label="__('Full name')" data-test="proponent-name" class:input="max-sm:h-11" />
+                                <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" required autocomplete="off" :placeholder="__('e.g. Juan Dela Cruz')" :aria-label="__('Full name')" data-test="proponent-name" class:input="max-sm:h-11" />
                                 <flux:text size="sm" class="mt-1">{{ __('Not in the portal') }}</flux:text>
                             @else
-                                <x-combobox wire:model="proponents.{{ $index }}.user_id" :options="$this->faculty->pluck('name', 'id')" :aria-label="__('Faculty')" :placeholder="__('Select faculty')" />
+                                <x-combobox wire:model="proponents.{{ $index }}.user_id" required :options="$this->faculty->pluck('name', 'id')" :aria-label="__('Faculty')" :placeholder="__('Select faculty')" />
                             @endif
                         </div>
 
                         <div class="sm:col-span-2">
-                            <x-select wire:model="proponents.{{ $index }}.role" :aria-label="__('Role')" class="max-sm:h-11">
+                            <x-select wire:model="proponents.{{ $index }}.role" required :aria-label="__('Role')" class="max-sm:h-11">
                                 @foreach (Proponent::ROLES as $role)
                                     <x-select.option :value="$role">{{ __($role) }}</x-select.option>
                                 @endforeach

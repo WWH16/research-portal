@@ -425,6 +425,49 @@ const clearWhenEdited = ({ target }) => {
 document.addEventListener('input', clearWhenEdited);
 document.addEventListener('change', clearWhenEdited);
 
+// Enter in a form's text field moves on to the next field the form still needs, and sends the form only once none is
+// left, so a half-filled form isn't sent early. A field it needs is marked required (a hand-built picker says so with
+// aria-required) and is shown and enabled; a picker's value is its Alpine model, not its text. Enter that a control
+// already used (a list's pick, a calendar's day), an IME's Enter, and Enter with a modifier keep their own meaning. With
+// only the current field empty, the form is sent, so the server names what is missing.
+const isEmpty = (field) => {
+    const picker = field.closest('[x-modelable]');
+    const value = picker ? window.Alpine.$data(picker).value : field.value;
+
+    return String(value ?? '').trim() === '';
+};
+
+document.addEventListener('keydown', (event) => {
+    const field = event.target;
+
+    if (event.key !== 'Enter' || event.defaultPrevented || event.isComposing || event.keyCode === 229) {
+        return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !(field instanceof HTMLInputElement) || !field.form) {
+        return;
+    }
+
+    if (['checkbox', 'radio', 'file', 'submit', 'button', 'reset', 'image'].includes(field.type) || field.closest('[data-flux-otp]')) {
+        return;
+    }
+
+    const fields = [
+        ...field.form.querySelectorAll(
+            ':is(input, textarea)[required]:not(:disabled, [type=hidden], [type=file], [type=checkbox], [type=radio]), button[aria-required="true"]:not(:disabled)',
+        ),
+    ].filter((other) => other.checkVisibility());
+    // The first empty one after this field, then any left empty before it
+    const after = fields.filter((other) => field.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const before = fields.filter((other) => field.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_PRECEDING);
+    const next = [...after, ...before].find(isEmpty);
+
+    if (next) {
+        event.preventDefault();
+        next.focus();
+    }
+});
+
 // Every form is checked on the server, which shows each reason in Flux's red style beside its field, with the focus
 // moved there. So forms skip the browser's own check, whose bubbles ("Please fill out this field.") would show first in
 // a different look. Set on every form when a page loads, after a wire:navigate, and whenever Livewire adds or redraws

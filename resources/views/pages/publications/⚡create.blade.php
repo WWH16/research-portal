@@ -283,9 +283,9 @@ new class extends Component {
                         @if ($you)
                             <flux:input :value="__(':name (you)', ['name' => Auth::user()->name])" :aria-label="__('Author')" disabled data-test="author-you" class:input="max-sm:h-11" />
                         @elseif ($field === 'name')
-                            <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('e.g. Juan Dela T. Cruz')" type="text" maxlength="100" class:input="max-sm:h-11" />
+                            <flux:input wire:model="authorRows.{{ $index }}.name" required :aria-label="__('Author outside the portal')" :placeholder="__('e.g. Juan Dela T. Cruz')" type="text" maxlength="100" class:input="max-sm:h-11" />
                         @else
-                            <x-combobox wire:model="authorRows.{{ $index }}.user_id" :options="$this->faculty->except(Auth::id())->pluck('name', 'id')" :aria-label="__('Author')" :placeholder="__('Select faculty')" />
+                            <x-combobox wire:model="authorRows.{{ $index }}.user_id" required :options="$this->faculty->except(Auth::id())->pluck('name', 'id')" :aria-label="__('Author')" :placeholder="__('Select faculty')" />
                         @endif
 
                         <div class="flex">

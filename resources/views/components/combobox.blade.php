@@ -34,6 +34,7 @@
         autocomplete="off"
         :placeholder="$placeholder"
         :aria-label="$attributes->get('aria-label')"
+        :required="$attributes->has('required')"
         :invalid="$errors->has($model)"
         icon:trailing="chevron-up-down"
         class:input="max-sm:h-11"

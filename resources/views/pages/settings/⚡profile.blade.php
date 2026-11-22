@@ -381,7 +381,7 @@ new #[Title('My profile')] class extends Component {
 
                         {{-- Only while the address is being changed: a new one moves where reset links go --}}
                         <div x-show="$wire.email.trim() !== @js($user->email)" x-cloak class="mt-4">
-                            <flux:input wire:model="current_password" :label="__('Current password')" :description:trailing="__('Needed to change your email address.')" type="password" autocomplete="current-password" viewable data-test="email-change-password" class:input="max-sm:h-11" />
+                            <flux:input wire:model="current_password" :label="__('Current password')" :description:trailing="__('Needed to change your email address.')" type="password" autocomplete="current-password" viewable required data-test="email-change-password" class:input="max-sm:h-11" />
                         </div>
                     </div>
 

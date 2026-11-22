@@ -470,12 +470,20 @@ class GoogleDrivePageTest extends TestCase
 
         $html = Livewire::test('pages::google-drive.index')->set('step', 2)->html();
 
-        // Change account and Disconnect: Enter moves on until the button, so a half-filled form isn't sent early.
-        $this->assertSame(2, substr_count($html, 'x-on:keydown.enter='));
+        // Change account and Disconnect: every field is required, so the portal's shared Enter rule (app.js) moves on
+        // to the next empty one, and a half-filled form isn't sent early. No form keeps its own copy of the rule.
+        preg_match_all('~<form wire:submit="(?:changeAccount|disconnect)".*?</form>~s', $html, $forms);
+        $this->assertCount(2, $forms[0]);
+        foreach ($forms[0] as $form) {
+            preg_match_all('~<input\b[^>]*>~', $form, $inputs);
+            $this->assertNotEmpty($inputs[0]);
+            foreach ($inputs[0] as $input) {
+                $this->assertStringContainsString('required', $input);
+            }
+        }
+        $this->assertStringNotContainsString('x-on:keydown.enter=', $html);
         // Their buttons stay clickable; the server says what doesn't match.
         $this->assertStringNotContainsString('x-bind:disabled', $html);
-        // An Enter that confirms an IME's characters stays with the IME instead of moving on.
-        $this->assertSame(2, substr_count($html, '! $event.isComposing && $event.keyCode !== 229'));
     }
 
     public function test_the_page_links_to_the_drive_folder(): void

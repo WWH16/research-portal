@@ -49,6 +49,14 @@ class RegistrationTest extends TestCase
             ->assertDontSeeHtml('<select');
     }
 
+    public function test_the_college_dropdown_says_it_is_required(): void
+    {
+        // Screen readers hear it, and Enter in the field before it moves on to it while it is empty (app.js)
+        $page = $this->get(route('register'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('~role="combobox"(?:(?!</button>).)*?aria-required="true"~s', $page);
+    }
+
     public function test_create_account_button_shows_a_loading_state_while_submitting(): void
     {
         $this->get(route('register'))

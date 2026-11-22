@@ -82,6 +82,18 @@ class SubmissionTest extends TestCase
             ->assertDontSeeHtml('type="date"');
     }
 
+    public function test_the_pickers_a_proposal_needs_say_they_are_required(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        // Category, the starting date and the completion date are hand-built pickers. Saying they are required lets
+        // screen readers hear it, and lets Enter in an earlier field move on to them while they are empty (app.js).
+        $page = $this->get(route('submissions.create'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('~role="combobox"(?:(?!</button>).)*?aria-required="true"~s', $page);
+        $this->assertSame(2, preg_match_all('~aria-haspopup="dialog"(?:(?!</button>).)*?aria-required="true"~s', $page));
+    }
+
     public function test_admins_cannot_open_the_submit_form(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));

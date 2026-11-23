@@ -16,20 +16,49 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    /* "Instrument Sans fallback" is Arial resized to Instrument Sans's measurements, built by the font plugin with
+       fontaine, so text keeps its place while the real font loads instead of reflowing when it arrives. */
+    --font-sans: 'Instrument Sans', 'Instrument Sans fallback', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    /* ISU seal green. 700 is the brand green. */
-    --color-isu-green-50: #edf7f1;
-    --color-isu-green-100: #d3ecdd;
-    --color-isu-green-200: #a8d8bb;
-    --color-isu-green-300: #73bd93;
-    --color-isu-green-400: #3f9c6b;
-    --color-isu-green-500: #1f7f50;
-    --color-isu-green-600: #126b41;
-    --color-isu-green-700: #0b5e36;
-    --color-isu-green-800: #094b2b;
-    --color-isu-green-900: #073a22;
-    --color-isu-green-950: #042414;
+    /* Secondary text (14px) at 1.5, like body text, instead of Tailwind's 1.43, so wrapped lines have room. */
+    --text-sm--line-height: 1.5;
+
+    /*
+     * One shadow scale for the whole portal, by what a surface does rather than how big its shadow is. Each is soft and
+     * tinted with the neutrals' green: a tight contact shadow under the edge plus a wide, faint one, never over 0.08
+     * opacity in total, so a surface lifts without looking stuck on. Borders still draw the edge; shadows only lift.
+     * - shadow-control: inputs, buttons and cards that sit in the page.
+     * - shadow-raised: a resting panel that stands a little off the page, such as a memo page or a key card.
+     * - shadow-floating: anything over the page that it still shows around: menus, option lists, tooltips.
+     * - shadow-overlay: what takes over the page: dialogs, flyouts, toasts, the Undo bar.
+     * Tailwind's sizes point at the same four, so Flux's own shadow-xs, shadow-lg and the rest follow the scale too.
+     * Use these names; don't write an arbitrary shadow or a shadow colour.
+     */
+    --shadow-control: 0 1px 2px oklch(25% 0.02 160 / 0.05);
+    --shadow-raised: 0 1px 2px oklch(25% 0.02 160 / 0.03), 0 2px 6px oklch(25% 0.02 160 / 0.03);
+    --shadow-floating: 0 1px 2px oklch(25% 0.02 160 / 0.03), 0 4px 14px oklch(25% 0.02 160 / 0.045);
+    --shadow-overlay: 0 2px 4px oklch(25% 0.02 160 / 0.025), 0 6px 28px oklch(25% 0.02 160 / 0.05);
+    --shadow-2xs: var(--shadow-control);
+    --shadow-xs: var(--shadow-control);
+    --shadow-sm: var(--shadow-raised);
+    --shadow-md: var(--shadow-floating);
+    --shadow-lg: var(--shadow-overlay);
+    --shadow-xl: var(--shadow-overlay);
+    --shadow-2xl: var(--shadow-overlay);
+
+    /* ISU seal green. 700 is the brand green (#0b5e36). Both seal scales are written in OKLCH, each value the exact
+       equivalent of the hex it replaced, so steps read evenly in lightness and mixes stay predictable. */
+    --color-isu-green-50: oklch(96.70% 0.0132 159.92);
+    --color-isu-green-100: oklch(92.06% 0.0332 159.38);
+    --color-isu-green-200: oklch(84.04% 0.0643 158.16);
+    --color-isu-green-300: oklch(73.82% 0.0966 158.04);
+    --color-isu-green-400: oklch(62.37% 0.1160 157.33);
+    --color-isu-green-500: oklch(53.01% 0.1144 156.82);
+    --color-isu-green-600: oklch(46.73% 0.1050 156.65);
+    --color-isu-green-700: oklch(42.55% 0.0993 155.53);
+    --color-isu-green-800: oklch(36.51% 0.0834 155.92);
+    --color-isu-green-900: oklch(30.91% 0.0677 157.30);
+    --color-isu-green-950: oklch(23.17% 0.0489 157.65);
 
     /* Tailwind's green, which Flux uses for success, set to the seal green: one green across the app,
        and its success text and icons keep their contrast on the pale fills (green-600 on green-50 is 6:1). */
@@ -45,18 +74,18 @@
     --color-green-900: var(--color-isu-green-900);
     --color-green-950: var(--color-isu-green-950);
 
-    /* ISU seal gold. 500 is the brand gold. Too light for text on white; use it for borders, fills and highlights. */
-    --color-isu-gold-50: #fefae8;
-    --color-isu-gold-100: #fdf1c3;
-    --color-isu-gold-200: #fbe28a;
-    --color-isu-gold-300: #f8d04d;
-    --color-isu-gold-400: #f5c21f;
-    --color-isu-gold-500: #f2b705;
-    --color-isu-gold-600: #cc9804;
-    --color-isu-gold-700: #9f7406;
-    --color-isu-gold-800: #7d5b0c;
-    --color-isu-gold-900: #664a0f;
-    --color-isu-gold-950: #3a2803;
+    /* ISU seal gold. 500 is the brand gold (#f2b705). Too light for text on white; use it for borders, fills and highlights. */
+    --color-isu-gold-50: oklch(98.34% 0.0240 96.56);
+    --color-isu-gold-100: oklch(95.63% 0.0607 95.13);
+    --color-isu-gold-200: oklch(91.46% 0.1115 94.04);
+    --color-isu-gold-300: oklch(86.92% 0.1509 91.69);
+    --color-isu-gold-400: oklch(83.63% 0.1653 88.66);
+    --color-isu-gold-500: oklch(81.14% 0.1656 84.96);
+    --color-isu-gold-600: oklch(71.00% 0.1451 83.86);
+    --color-isu-gold-700: oklch(58.67% 0.1193 82.25);
+    --color-isu-gold-800: oklch(49.40% 0.0975 81.88);
+    --color-isu-gold-900: oklch(42.87% 0.0811 81.01);
+    --color-isu-gold-950: oklch(29.10% 0.0570 80.83);
 
     /* Neutrals, faintly tinted toward the seal green so grays sit with the brand. */
     --color-zinc-50: oklch(0.985 0.003 160);
@@ -121,12 +150,41 @@
     html {
         color-scheme: light;
         scrollbar-gutter: stable;
+        /* Browsers may skip kerning on small text when left to decide; always apply the font's kerning pairs. */
+        font-kerning: normal;
     }
 
     /* Flux's toast container sits past the right edge on a phone; clip, not hidden, so sticky headers keep working. */
     html,
     body {
         overflow-x: clip;
+    }
+
+    /* Headings balance their lines, and paragraphs keep a last word from sitting alone on its line (a widow). The
+       longhand leaves the wrap mode alone, so a truncated heading still stays on one line. */
+    h1,
+    h2,
+    h3,
+    h4,
+    [data-flux-heading] {
+        text-wrap-style: balance;
+    }
+
+    /* Headings set tight, at 1.25, as their size utilities otherwise carry body spacing (Flux's 24px heading sits at
+       1.33). Set through Tailwind's leading variable, so a leading-* class on a heading still wins. */
+    [data-flux-heading] {
+        --tw-leading: 1.25;
+    }
+
+    /* Avatar initials trimmed to their capitals, so the letters sit in the optical centre of the circle rather than a
+       line box whose space above and below them isn't even. */
+    [data-flux-avatar] > span {
+        text-box: trim-both cap alphabetic;
+    }
+
+    p,
+    dd {
+        text-wrap-style: pretty;
     }
 
     /* Flux removes a closed toast only when its fade-out reports finishing. A fade cut short, as by moving to another
@@ -177,6 +235,11 @@
 
 .table-frame [data-flux-pagination] {
     padding: 0.75rem 1rem;
+}
+
+/* The pager's "Showing 11 to 20 of 42" and page numbers keep one width per digit, so they don't jiggle page to page. */
+[data-flux-pagination] {
+    font-variant-numeric: tabular-nums;
 }
 
 /* Phones and tablets hide the page title's name, so whatever follows it starts at the top of the page. */
@@ -231,6 +294,11 @@ select:focus[data-flux-control] {
     }
 }
 
+/* A sortable column's whole heading sorts when clicked, padding included, so all of it shows the hand. */
+[data-flux-column][wire\:click] {
+    cursor: pointer;
+}
+
 @media (width < 40rem) {
     /* A sortable column's heading is a button: 44px tall, like every other control on a phone. */
     [data-flux-column] button {
@@ -252,8 +320,9 @@ select:focus[data-flux-control] {
         padding-inline-end: 2.75rem;
     }
 
-    [data-flux-otp] input {
-        height: 2.75rem;
+    /* Tighter gaps, so six 44px code boxes still fit a 360px phone's dialog. */
+    [data-flux-otp] {
+        gap: 0.375rem;
     }
 
     /* Centred dialogs get a 12px gutter, no 320px minimum, and lighter padding. */
@@ -264,14 +333,31 @@ select:focus[data-flux-control] {
     }
 }
 
-/* Phones: the six boxes of a sign-in code are 44px squares, and six still fit a 320px screen's dialog. Flux sets their
-   width with an important utility, which only an important rule in the same layer can outrank. */
+/* A code's six boxes are 44px squares on every screen, not Flux's narrow 32px by 40px, with digits a step above body
+   text in figures of one width, so the code reads at a glance. Where six don't fit, as in a dialog on a 320px phone,
+   they narrow together, never below 32px. Flux fixes the width with an important utility, which only an important
+   rule in the same layer can outrank. */
 @layer utilities {
-    @media (width < 40rem) {
-        [data-flux-otp] [data-flux-input] {
-            width: 2.75rem !important;
-        }
+    [data-flux-otp] [data-flux-input] {
+        width: auto !important;
     }
+}
+
+[data-flux-otp] {
+    width: 100%;
+    max-width: max-content;
+}
+
+[data-flux-otp] [data-flux-input] {
+    flex: 1 1 0;
+    min-width: 2rem;
+    max-width: 2.75rem;
+}
+
+[data-flux-otp] input {
+    height: 2.75rem;
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Settings tabs: gold marks where you are and where you're pointing. */
@@ -363,6 +449,15 @@ select:focus[data-flux-control] {
     color: var(--color-isu-green-300);
 }
 
+/* Flux draws sidebar icons from Heroicons' 24px outline set at 16px, where their 1.5 lines thin to about 1px. A little
+   larger and heavier (18px, 2), they hold their own beside the labels on the green, in the same outline style. */
+.isu-sidebar [data-flux-sidebar-item] [data-flux-icon],
+.isu-sidebar ui-disclosure[data-flux-sidebar-group] > button > div:first-child [data-flux-icon] {
+    width: 1.125rem;
+    height: 1.125rem;
+    stroke-width: 2;
+}
+
 /* Group headings read as written, untracked, a step smaller than the links. Faculty headings don't fold, so they are
    text-only divs; items are elements, so they never pick up this style. */
 .isu-sidebar [data-flux-sidebar-group] > div:first-child:not(:has(*)) {
@@ -407,6 +502,8 @@ select:focus[data-flux-control] {
 
 .isu-sidebar ui-disclosure[data-flux-sidebar-group] > div > div:first-child {
     background-color: var(--color-isu-green-600);
+    /* Under the middle of the 18px heading icon (12px padding + 9px), not Flux's 16px one */
+    margin-inline-start: 1.3125rem;
 }
 
 /*
@@ -479,10 +576,12 @@ select:focus[data-flux-control] {
 
 /*
  * Count badges are gold, like other "look here" marks; Flux's soft colors vanish on the green.
- * A full pill echoes the rounded item, and wider padding keeps "99+" off the edges.
+ * A full pill echoes the rounded item, and wider padding keeps "99+" off the edges. Tabular
+ * figures keep the pill one width when a poll changes the count.
  */
 .isu-sidebar [data-flux-navlist-badge] {
     padding-inline: 0.375rem;
+    font-variant-numeric: tabular-nums;
     border-radius: 9999px;
     background-color: var(--color-highlight);
     color: var(--color-isu-green-950);
@@ -530,6 +629,187 @@ select:focus[data-flux-control] {
 .isu-sidebar [data-flux-sidebar-profile] [data-flux-avatar] {
     background-color: var(--color-isu-green-600);
     color: var(--color-white);
+}
+
+/*
+ * Motion, only for members who allow it, and always transitions, so a menu or row closed mid-way turns back from where
+ * it is instead of finishing first.
+ *
+ * Menus grow out of the corner nearest their trigger: a menu below a button on its right opens from its top right.
+ * Flux places the menu from the dropdown's position attribute ("bottom end"), so that attribute names the corner. Scale,
+ * not transform, so Flux's own placement is left alone.
+ *
+ * Rows a disclosure reveals together (a member's projects, earlier history, an activity run) fade in one after
+ * another, 30ms apart and at most eight steps, so a long list never drags. Only elements hidden when the page loads
+ * carry data-stagger, as @starting-style fires the first time an element shows.
+ */
+@media (prefers-reduced-motion: no-preference) {
+    ui-dropdown > [popover],
+    .listbox-popover {
+        transform-origin: top left;
+        transition:
+            opacity 120ms ease-out,
+            scale 120ms ease-out,
+            display 120ms allow-discrete,
+            overlay 120ms allow-discrete;
+
+        &:not(:popover-open) {
+            opacity: 0;
+            scale: 0.96;
+        }
+
+        @starting-style {
+            &:popover-open {
+                opacity: 0;
+                scale: 0.96;
+            }
+        }
+    }
+
+    ui-dropdown[position~='end'] > [popover] {
+        transform-origin: top right;
+    }
+
+    ui-dropdown[position~='top'] > [popover] {
+        transform-origin: bottom left;
+    }
+
+    ui-dropdown[position~='top'][position~='end'] > [popover] {
+        transform-origin: bottom right;
+    }
+
+    [data-stagger] {
+        transition:
+            opacity 150ms ease-out,
+            translate 150ms ease-out;
+        transition-delay: calc(min(var(--i, 0), 8) * 30ms);
+
+        @starting-style {
+            opacity: 0;
+            translate: 0 -0.25rem;
+        }
+    }
+
+    /* A sending form's fields fade to their dimmed look (below) */
+    form [data-flux-field] {
+        transition: opacity 150ms ease-out;
+    }
+
+    /* A wrong code's six boxes shake once (below) */
+    [data-code-input][data-invalid] [data-flux-otp] {
+        animation: code-shake 320ms ease-out;
+    }
+}
+
+/* A plain auth form that is sending (formStates sets aria-busy): its fields dim and stop taking the pointer, so the
+   button's spinner is the one thing moving. */
+form[aria-busy='true'] [data-flux-field] {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* x-code-input: a wrong code turns the six boxes red, and shakes them once for members who allow motion. */
+[data-code-input][data-invalid] [data-flux-otp-input] {
+    border-color: var(--color-red-600);
+}
+
+@keyframes code-shake {
+    20%,
+    60% {
+        translate: -0.25rem 0;
+    }
+
+    40%,
+    80% {
+        translate: 0.25rem 0;
+    }
+}
+
+/* Flux's menus (dropdowns, the user menu) float over the page, but Flux gives them a control's shadow. */
+ui-dropdown > [popover] {
+    box-shadow: var(--shadow-floating);
+}
+
+/* Flux's skeletons shimmer or pulse with no reduced-motion fallback; for members who ask for less motion they hold
+   still, and the grey shape alone says something is on its way. */
+@media (prefers-reduced-motion: reduce) {
+    [data-flux-skeleton],
+    [data-flux-skeleton]::before {
+        animation: none;
+    }
+}
+
+/* Number fields without the browser's own up/down arrows, which draw in its look, not Flux's; phones still open the
+   number keypad, and the arrow keys still step the value. */
+input[type='number'] {
+    appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
+/* Range sliders in Flux's look, not the browser's (Flux's own slider is Pro): a thin rounded track filled in the accent
+   colour up to the handle, and a white handle with a 1px line and the control shadow, ringed in the accent on keyboard
+   focus. The filled share is --fill, which the page binds to the slider's value. */
+input[type='range'] {
+    --fill: 50%;
+    appearance: none;
+    height: 1.25rem;
+    background: transparent;
+    cursor: pointer;
+}
+
+input[type='range']:focus-visible {
+    outline: none;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: linear-gradient(to right, var(--color-accent) var(--fill), var(--color-zinc-200) var(--fill));
+}
+
+input[type='range']::-moz-range-track {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: var(--color-zinc-200);
+}
+
+input[type='range']::-moz-range-progress {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: var(--color-accent);
+}
+
+input[type='range']::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: -0.375rem;
+    border: 1px solid var(--color-zinc-300);
+    border-radius: 9999px;
+    background: var(--color-white);
+    box-shadow: var(--shadow-control);
+}
+
+input[type='range']::-moz-range-thumb {
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 1px solid var(--color-zinc-300);
+    border-radius: 9999px;
+    background: var(--color-white);
+    box-shadow: var(--shadow-control);
+}
+
+input[type='range']:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 2px var(--color-white), 0 0 0 4px var(--color-accent);
+}
+
+input[type='range']:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 2px var(--color-white), 0 0 0 4px var(--color-accent);
 }
 
 /* Hide Alpine-controlled elements until Alpine starts, so they never flash on load. */

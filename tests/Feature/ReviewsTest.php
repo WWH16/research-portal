@@ -61,7 +61,7 @@ class ReviewsTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']))
             ->get(route('reviews.index'))
             ->assertSeeHtml('aria-label="Review Solar Dryer Study"')
-            ->assertSeeHtml('aria-label="Concept proposal for Solar Dryer Study, opens in a new tab"');
+            ->assertSeeHtml('aria-label="Concept proposal for Solar Dryer Study"');
     }
 
     public function test_rows_read_like_the_submissions_list(): void
@@ -72,7 +72,7 @@ class ReviewsTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']))
             ->get(route('reviews.index'))
-            ->assertSee('title="Solar Dryer Study"', escape: false)
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('Solar Dryer Study', false)
             ->assertDontSee('Solar_Dryer_Study')
             ->assertSee('MDP Santos')
             ->assertDontSee('MARIA DELA PAZ SANTOS')

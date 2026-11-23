@@ -26,7 +26,9 @@
             <flux:icon :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', default => 'document' }" variant="mini" class="text-zinc-500" />
         </span>
         <div class="min-w-0 grow basis-40">
-            <flux:text class="truncate font-medium text-zinc-800" :title="$name">{{ $label ?? $name }}</flux:text>
+            <flux:tooltip :content="$name" class="block min-w-0">
+                <flux:text class="truncate font-medium text-zinc-800">{{ $label ?? $name }}</flux:text>
+            </flux:tooltip>
             <flux:text size="sm">{{ match ($kind) { 'image' => __('Image'), 'pdf' => __('PDF'), default => __('Word document') } }}</flux:text>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -64,11 +66,11 @@
         >
             {{-- While Google Drive sends the memo it says so, and if it never comes the memo can still be downloaded. Under
                  the pointer the memo's frame darkens, a hint that it opens larger. --}}
-            {{-- A grey block the height the memo will take, so the post doesn't jump when it arrives; it pulses only when
-                 the member allows motion --}}
-            <div x-show="loading && ! failed" role="status" class="h-64 rounded-lg border border-line bg-zinc-100 motion-safe:animate-pulse" data-test="memo-loading">
-                <span class="sr-only">{{ __('Loading the memo…') }}</span>
-            </div>
+            {{-- Flux's skeleton the height the memo will take, so the post doesn't jump when it arrives; its shimmer and
+                 the words say the memo is on its way --}}
+            <flux:skeleton x-show="loading && ! failed" animate="shimmer" role="status" class="grid h-64 w-full place-items-center rounded-lg" data-test="memo-loading">
+                <span class="relative z-20 text-sm text-zinc-600">{{ __('Loading the memo…') }}</span>
+            </flux:skeleton>
             <div x-show="failed" x-cloak role="alert" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-test="memo-failed">
                 <flux:text>{{ __('The memo could not be shown here.') }}</flux:text>
                 <flux:button size="sm" icon="arrow-down-tray" class="max-sm:h-11" :href="$announcement->memoUrl()" download x-on:click="$dispatch('memo-opened')">{{ __('Download memo') }}</flux:button>

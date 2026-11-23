@@ -207,11 +207,11 @@ new class extends Component {
                 {{-- The link gets the room: the year and button share the next row until the screen is wide enough for one row --}}
                 <form wire:submit="addCitation" class="mt-3 grid gap-3 sm:grid-cols-[11rem_auto_minmax(0,1fr)] sm:items-start lg:grid-cols-[minmax(0,1fr)_11rem_auto]" data-test="add-citation-form">
                     <flux:input wire:model="link" :label="__('Citing paper’s DOI or link')" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="500" required field:class="sm:col-span-3 lg:col-span-1" class:input="max-sm:h-11" />
-                    <flux:select wire:model="year" :label="__('Citing paper’s year')" class="max-sm:h-11">
+                    <x-select wire:model="year" :label="__('Citing paper’s year')" class="max-sm:h-11">
                         @foreach (range(now()->year, $first) as $option)
-                            <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                            <x-select.option :value="$option">{{ $option }}</x-select.option>
                         @endforeach
-                    </flux:select>
+                    </x-select>
                     <flux:button type="submit" variant="primary" icon="plus" class="sm:mt-6 max-sm:h-11">{{ __('Add citing paper') }}</flux:button>
                 </form>
             @endif
@@ -226,7 +226,9 @@ new class extends Component {
                             <li class="flex items-center gap-4 py-3 max-sm:py-0" wire:key="citation-{{ $citation->id }}">
                                 <span class="w-12 shrink-0 text-sm font-medium tabular-nums text-zinc-800">{{ $citation->year }}</span>
                                 {{-- The bare DOI, or the address without its https://, tells the rows apart; the full link shows on hover --}}
-                                <flux:link :href="$citation->link" :title="$citation->link" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 text-sm wrap-anywhere max-sm:py-3">{{ preg_replace('~^https?://(?:www\.)?(?:doi\.org/)?~i', '', $citation->link) }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
+                                <flux:tooltip :content="$citation->link" class="block min-w-0 flex-1">
+                                    <flux:link :href="$citation->link" target="_blank" rel="noopener noreferrer" class="block text-sm wrap-anywhere max-sm:py-3">{{ preg_replace('~^https?://(?:www\.)?(?:doi\.org/)?~i', '', $citation->link) }}<span class="sr-only"> {{ __('(opens in a new tab)') }}</span></flux:link>
+                                </flux:tooltip>
                                 @if ($canEdit)
                                     <flux:button size="sm" variant="ghost" icon="trash" :aria-label="__('Remove citing paper')" class="max-sm:size-11 text-zinc-500! hover:text-red-600!"
                                         x-on:click="removing = { id: {{ $citation->id }}, link: {{ Js::from($citation->link) }} }; $dispatch('modal-show', { name: 'citation-remove' })" />

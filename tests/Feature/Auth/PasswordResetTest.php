@@ -102,7 +102,7 @@ class PasswordResetTest extends TestCase
     {
         foreach ([route('password.request'), route('password.reset', 'reset-token')] as $page) {
             $this->get($page)
-                ->assertSee('x-on:submit="submitting = true"', escape: false)
+                ->assertSee('x-data="formStates', escape: false)
                 ->assertSee('x-bind:disabled="submitting"', escape: false)
                 ->assertSee('data-flux-loading-indicator', escape: false);
         }

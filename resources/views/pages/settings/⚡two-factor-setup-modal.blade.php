@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Livewire\Attributes\Computed;
@@ -87,7 +88,15 @@ new class extends Component {
     {
         $this->validate();
 
-        $confirmTwoFactorAuthentication(auth()->user(), $this->code);
+        try {
+            $confirmTwoFactorAuthentication(auth()->user(), $this->code);
+        } catch (ValidationException $exception) {
+            // A wrong code is cleared and the focus goes back to the first box, so the member types the current one
+            $this->reset('code');
+            $this->dispatch('code-rejected');
+
+            throw $exception;
+        }
 
         $this->setupComplete = true;
 
@@ -159,7 +168,7 @@ new class extends Component {
 >
         <div class="space-y-6">
             <div class="flex flex-col items-center space-y-4">
-                <div class="p-0.5 w-auto rounded-full border border-stone-100 dark:border-stone-600 bg-white dark:bg-stone-800 shadow-sm">
+                <div class="p-0.5 w-auto rounded-full border border-stone-100 dark:border-stone-600 bg-white dark:bg-stone-800 shadow-raised">
                     <div class="p-2.5 rounded-full border border-stone-200 dark:border-stone-600 overflow-hidden bg-stone-100 dark:bg-stone-200 relative">
                         <div class="flex items-stretch absolute inset-0 w-full h-full divide-x [&>div]:flex-1 divide-stone-200 dark:divide-stone-300 justify-around opacity-50">
                             @for ($i = 1; $i <= 5; $i++)
@@ -185,20 +194,12 @@ new class extends Component {
 
             @if ($showVerificationStep)
                 <div class="space-y-6">
-                    <div
-                        class="flex flex-col items-center space-y-3 justify-center"
-                        x-data
-                        x-init="$nextTick(() => $el.querySelector('input')?.focus())"
-                    >
-                        <flux:otp
-                            name="code"
-                            wire:model="code"
-                            length="6"
-                            :label="__('Authentication code')"
-                            label:sr-only
-                            class="mx-auto"
-                        />
-                    </div>
+                    {{-- A form only so the sixth digit sends the code by itself. The boxes show checking and a wrong code
+                         (x-code-input), and Verify shows its spinner for the auto send too, as its loading state follows
+                         confirmTwoFactor however it is called. --}}
+                    <form wire:submit="confirmTwoFactor" x-data x-init="$nextTick(() => $el.querySelector('input')?.focus())">
+                        <x-code-input wire:model="code" target="confirmTwoFactor" />
+                    </form>
 
                     <div class="flex items-center space-x-3">
                         <flux:button
@@ -227,9 +228,10 @@ new class extends Component {
                 <div class="flex justify-center">
                     <div class="relative w-64 overflow-hidden border rounded-lg border-stone-200 dark:border-stone-700 aspect-square">
                         @empty($qrCodeSvg)
-                            <div class="absolute inset-0 flex items-center justify-center bg-white dark:bg-stone-700 animate-pulse">
-                                <flux:icon.loading/>
-                            </div>
+                            {{-- Flux's skeleton holds the QR code's place while it loads --}}
+                            <flux:skeleton animate="shimmer" role="status" class="absolute inset-0 h-full w-full rounded-none">
+                                <span class="sr-only">{{ __('Loading the QR code…') }}</span>
+                            </flux:skeleton>
                         @else
                             <div x-data class="flex items-center justify-center h-full p-4">
                                 <div
@@ -278,37 +280,22 @@ new class extends Component {
                             }
                         }"
                     >
-                        <div class="flex items-stretch w-full border rounded-xl dark:border-stone-700">
-                            @empty($manualSetupKey)
-                                <div class="flex items-center justify-center w-full p-3 bg-stone-100 dark:bg-stone-700">
-                                    <flux:icon.loading variant="mini"/>
-                                </div>
-                            @else
-                                <input
-                                    type="text"
-                                    readonly
-                                    value="{{ $manualSetupKey }}"
-                                    aria-label="{{ __('Setup key') }}"
-                                    class="w-full p-3 bg-transparent rounded-s-xl text-stone-900 dark:text-stone-100 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-                                />
+                        {{-- A stock Flux field and button joined as one group. The key loads with the QR code, so until then
+                             a skeleton the field's size holds its place. --}}
+                        @empty($manualSetupKey)
+                            <flux:skeleton animate="shimmer" class="h-10 w-full rounded-lg max-sm:h-11" />
+                        @else
+                            <flux:input.group>
+                                <flux:input readonly :value="$manualSetupKey" :aria-label="__('Setup key')" class:input="font-mono max-sm:h-11" />
 
-                                <flux:tooltip :content="__('Copy setup key')" class="flex">
-                                    <button
-                                        type="button"
-                                        @click="copy()"
-                                        aria-label="{{ __('Copy setup key') }}"
-                                        class="flex w-12 items-center justify-center transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
-                                    >
-                                        <flux:icon.document-duplicate x-show="state !== 'copied'" variant="outline"></flux:icon>
-                                        <flux:icon.check
-                                            x-show="state === 'copied'"
-                                            variant="solid"
-                                            class="text-isu-green-700"
-                                        ></flux:icon>
-                                    </button>
+                                <flux:tooltip :content="__('Copy setup key')">
+                                    <flux:button square x-on:click="copy()" :aria-label="__('Copy setup key')" class="max-sm:size-11">
+                                        <flux:icon.document-duplicate variant="mini" x-show="state !== 'copied'" />
+                                        <flux:icon.check variant="mini" x-show="state === 'copied'" x-cloak class="text-isu-green-700" />
+                                    </flux:button>
                                 </flux:tooltip>
-                            @endempty
-                        </div>
+                            </flux:input.group>
+                        @endempty
 
                         <p
                             role="status"

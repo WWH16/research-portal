@@ -5,14 +5,13 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        {{-- Same loading pattern as the login form: disabling the submit button makes Flux show its spinner. --}}
+        {{-- Same states as the login form (formStates): the button's spinner and locked fields while it sends, and after a
+             turned-down sign-up the focus on the first red field, which clears as soon as it is edited. --}}
         <form
             method="POST"
             action="{{ route('register.store') }}"
             class="flex flex-col gap-6"
-            x-data="{ submitting: false, password: '', confirmation: '' }"
-            x-on:submit="submitting = true"
-            x-on:pageshow.window="submitting = false"
+            x-data="formStates({ password: '', confirmation: '' })"
             x-bind:aria-busy="submitting"
         >
             @csrf
@@ -23,7 +22,7 @@
                 :value="old('name')"
                 type="text"
                 required
-                autofocus
+                :autofocus="! $errors->any()"
                 autocomplete="name"
             />
 
@@ -40,11 +39,11 @@
             />
 
             <!-- College -->
-            <flux:select name="department_id" :label="__('College')" :placeholder="__('Choose your college')" required>
+            <x-select name="department_id" :label="__('College')" :placeholder="__('Choose your college')" required>
                 @foreach ($departments as $department)
-                    <flux:select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->name }}</flux:select.option>
+                    <x-select.option :value="$department->id" :selected="old('department_id') == $department->id">{{ $department->name }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
             <!-- Password -->
             <div>
@@ -72,7 +71,7 @@
                     {{ __('Create account') }}
                 </flux:button>
 
-                <p class="text-center text-xs leading-5 text-pretty text-zinc-600 dark:text-zinc-400">
+                <p class="text-center text-xs text-zinc-600 dark:text-zinc-400">
                     {{ __('By creating an account, you agree to the') }}
                     <flux:link :href="route('terms')">{{ __('Terms of Service') }}</flux:link>
                     {{ __('and') }}

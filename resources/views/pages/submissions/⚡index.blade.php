@@ -349,27 +349,27 @@ new #[Title('Submissions')] class extends Component {
         </div>
 
         <div id="submission-filters" x-show="filters" x-cloak @class(['mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4', 'sm:grid-cols-3' => $this->monitoring, 'sm:grid-cols-2' => ! $this->monitoring])>
-            <flux:select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11" data-test="status-filter">
-                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+            <x-select wire:model.live="statusFilter" :label="__('Status')" class="max-sm:h-11" data-test="status-filter">
+                <x-select.option value="">{{ __('All statuses') }}</x-select.option>
                 @foreach ($statuses as $value => $label)
-                    <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+                    <x-select.option :value="$value">{{ $label }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
-            <flux:select wire:model.live="yearFilter" :label="__('Year')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+            <x-select wire:model.live="yearFilter" :label="__('Year')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('All years') }}</x-select.option>
                 @foreach (Submission::years() as $option)
-                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                    <x-select.option :value="$option">{{ $option }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
             @if ($this->monitoring)
-                <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
-                    <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                <x-select wire:model.live="department" :label="__('College')" class="max-sm:h-11" data-test="college-filter">
+                    <x-select.option value="">{{ __('All colleges') }}</x-select.option>
                     @foreach ($this->collegeCodes as $code)
-                        <flux:select.option :value="$code">{{ $code }}</flux:select.option>
+                        <x-select.option :value="$code">{{ $code }}</x-select.option>
                     @endforeach
-                </flux:select>
+                </x-select>
             @endif
         </div>
 
@@ -444,8 +444,9 @@ new #[Title('Submissions')] class extends Component {
                     @endphp
                     <flux:table.row :key="$submission->id">
                         <flux:table.cell class="max-w-sm whitespace-normal sm:min-w-64">
-                            {{-- On phones the padding grows the tap area to 44px and the negative margin keeps the row as it was --}}
-                            <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="line-clamp-2 font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:-my-3 max-sm:py-3">{{ $title }}</a>
+                            {{-- On phones the padding grows the tap area to 44px and the negative margin keeps the row as it was. The
+                                 title clamps inside, so a third line never shows through the padding. --}}
+                            <flux:tooltip :content="$title" class="block min-w-0"><a href="{{ route('drive.show', $submission) }}" wire:navigate wire:transition.navigate="project-{{ $submission->id }}" class="block font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:-my-3 max-sm:py-3"><span class="line-clamp-2">{{ $title }}</span></a></flux:tooltip>
                             <p class="mt-0.5 truncate text-zinc-500"><span class="sr-only">{{ __('Proponents:') }}</span> {{ $submission->proponents->unique(fn ($row) => $row->personKey())->map->shortName()->join(', ') }}</p>
                             {{-- All four documents in stage order: a filled pill opens one on file, a dashed one is still to come, so
                                  every row shows the same sequence, on one line from tablet width up. Phones set them two by two at
@@ -456,10 +457,14 @@ new #[Title('Submissions')] class extends Component {
                             <ul class="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:gap-1" aria-label="{{ __('Documents') }}">
                                 @foreach (Submission::DOCUMENTS as $stage => $label)
                                     <li>
-                                        <flux:tooltip :content="$submission->{$stage.'_path'} ? __('Open the :document in a new tab', ['document' => Str::lower(__($label))]) : __(':document: not uploaded yet', ['document' => __($label)])" class="max-sm:block">
+                                        @php($viewer = $submission->documentViewer($stage))
+                                        {{-- The viewer's click catcher goes outside the tooltip: Flux places a tooltip from its first element, and the
+                                             catcher has no box of its own, which put the tooltip in the screen's top left corner --}}
+                                        <x-opens-in-viewer :viewer="$viewer">
+                                        <flux:tooltip :content="$submission->{$stage.'_path'} ? ($viewer ? __('Open the :document', ['document' => Str::lower(__($label))]) : __('Open the :document in a new tab', ['document' => Str::lower(__($label))])) : __(':document: not uploaded yet', ['document' => __($label)])" class="max-sm:block">
                                             @if ($submission->{$stage.'_path'})
-                                                <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
-                                                    <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-11 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon.arrow-top-right-on-square variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
+                                                <a href="{{ route('submissions.document', [$submission, $stage]) }}" target="_blank" rel="noopener" aria-label="{{ $viewer ? __(':document for :title', ['document' => __($label), 'title' => $submission->title]) : __(':document for :title, opens in a new tab', ['document' => __($label), 'title' => $submission->title]) }}" class="block rounded-md outline-accent hover:[&>*]:bg-isu-green-100! focus-visible:outline-2 focus-visible:outline-offset-2">
+                                                    <flux:badge size="sm" class="gap-0.5! bg-isu-green-50! px-1.5! text-isu-green-800! max-sm:h-11 max-sm:w-full max-sm:justify-center">{{ Str::before(__($label), ' ') }}<flux:icon :icon="$viewer ? 'arrows-pointing-out' : 'arrow-top-right-on-square'" variant="micro" class="size-3 shrink-0 text-isu-green-700" aria-hidden="true" /></flux:badge>
                                                 </a>
                                             @else
                                                 <span class="inline-flex items-center whitespace-nowrap rounded-md border border-dashed border-zinc-300 px-1.5 py-[3px] text-xs font-medium text-zinc-500 max-sm:h-11 max-sm:w-full max-sm:justify-center">
@@ -467,6 +472,7 @@ new #[Title('Submissions')] class extends Component {
                                                 </span>
                                             @endif
                                         </flux:tooltip>
+                                        </x-opens-in-viewer>
                                     </li>
                                 @endforeach
                             </ul>
@@ -559,12 +565,13 @@ new #[Title('Submissions')] class extends Component {
                 <form wire:submit="saveDates" class="flex flex-col gap-6">
                     <div>
                         <flux:heading size="lg" id="project-dates-heading">{{ __('Change dates') }}</flux:heading>
-                        <flux:text class="mt-1 line-clamp-2 [overflow-wrap:anywhere]" title="{{ $this->dating->displayTitle() }}">{{ $this->dating->displayTitle() }}</flux:text>
+                        <flux:tooltip :content="$this->dating->displayTitle()" class="block min-w-0"><flux:text class="mt-1 line-clamp-2 [overflow-wrap:anywhere]">{{ $this->dating->displayTitle() }}</flux:text></flux:tooltip>
                     </div>
 
-                    <div class="grid gap-6 sm:grid-cols-2">
-                        <flux:input wire:model="start_date" :label="__('Starting date')" type="date" required class:input="max-sm:h-11" />
-                        <flux:input wire:model="target_date" :label="__('Completion date')" type="date" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required class:input="max-sm:h-11" />
+                    {{-- One above the other: the dialog is too narrow for two dates in full side by side --}}
+                    <div class="grid gap-4">
+                        <x-date-picker wire:model="start_date" :label="__('Starting date')" required class:input="max-sm:h-11" />
+                        <x-date-picker wire:model="target_date" :label="__('Completion date')" x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)" required class:input="max-sm:h-11" />
                     </div>
 
                     <flux:text class="text-sm">{{ __('For an extension or a correction. The faculty on this project will be notified of the new dates. The status and review list stay as they are.') }}</flux:text>

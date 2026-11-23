@@ -32,6 +32,8 @@
                 @if ($this->reviewing->concept_path)
                     <x-slot name="actions">
                         {{-- The focus starts here, so a keyboard user lands inside the panel on its first step --}}
+                        {{-- A new tab, not the portal's file viewer: the panel is already a dialog, and a second one on top of it would hide
+                             the decision the member came to make --}}
                         <flux:button size="sm" variant="outline" :href="route('submissions.document', [$this->reviewing, 'concept'])" target="_blank" rel="noopener" icon="document-text" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11" autofocus>
                             {{ __('Open concept proposal') }}
                         </flux:button>

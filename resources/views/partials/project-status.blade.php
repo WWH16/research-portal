@@ -17,39 +17,46 @@
         <flux:badge size="sm" inset="top bottom" :color="\App\Models\Submission::STATUS_COLORS[$submission->status] ?? 'zinc'">{{ __($submission->status) }}</flux:badge>
     @endunless
     @if ($submission->awaiting_review)
-        <span class="{{ $line }} text-amber-800" title="{{ __('The concept proposal is waiting for the Research Office to review') }}">
-            <flux:icon.clock variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
-            {{ __('Awaiting review') }}
-        </span>
+        <flux:tooltip :content="__('The concept proposal is waiting for the Research Office to review')">
+            <span class="{{ $line }} text-amber-800">
+                <flux:icon.clock variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
+                {{ __('Awaiting review') }}
+            </span>
+        </flux:tooltip>
     @elseif (! $submission->concept_passed)
-        <span class="{{ $line }} text-rose-700" title="{{ __('The Research Office returned the concept proposal for revision') }}">
-            <flux:icon.arrow-uturn-left variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
-            {{ __('Needs revision') }}
-        </span>
+        <flux:tooltip :content="__('The Research Office returned the concept proposal for revision')">
+            <span class="{{ $line }} text-rose-700">
+                <flux:icon.arrow-uturn-left variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
+                {{ __('Needs revision') }}
+            </span>
+        </flux:tooltip>
     @elseif ($submission->status === 'Concept')
-        <span class="{{ $line }} text-green-700" title="{{ __('The Research Office passed the concept proposal; the detailed proposal is next') }}">
-            <flux:icon.check-circle variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
-            {{ ($stageAfterReview ?? false) ? __('Concept passed') : __('Passed') }}
-        </span>
+        <flux:tooltip :content="__('The Research Office passed the concept proposal; the detailed proposal is next')">
+            <span class="{{ $line }} text-green-700">
+                <flux:icon.check-circle variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
+                {{ ($stageAfterReview ?? false) ? __('Concept passed') : __('Passed') }}
+            </span>
+        </flux:tooltip>
     @endif
     @if (($delay ?? true) && $submission->isDelayed())
-        <span class="{{ $line }} text-red-700" title="{{ __('Completion date :date', ['date' => $submission->target_date->format('M j, Y')]) }}">
-            <flux:icon.exclamation-triangle variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
-            @if ($timing ?? false)
-                {{ trans_choice('{1} 1 day overdue|[2,*] :count days overdue', (int) $submission->target_date->diffInDays(today())) }}
-            @else
-                {{ __('Delayed') }}
-            @endif
-        </span>
+        <flux:tooltip :content="__('Completion date :date', ['date' => $submission->target_date->format('F j, Y')])">
+            <span class="{{ $line }} text-red-700">
+                <flux:icon.exclamation-triangle variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
+                @if ($timing ?? false)
+                    {{ trans_choice('{1} 1 day overdue|[2,*] :count days overdue', (int) $submission->target_date->diffInDays(today())) }}
+                @else
+                    {{ __('Delayed') }}
+                @endif
+            </span>
+        </flux:tooltip>
     @endif
     {{-- Finishing late needs a terminal report, so only a completed project can get here --}}
     @if (($timing ?? false) && $submission->completedOnTime() === false)
-        <span
-            class="{{ $line }} text-orange-700"
-            title="{{ __('Terminal report uploaded :uploaded; completion date :target', ['uploaded' => $submission->terminal_uploaded_at->format('M j, Y'), 'target' => $submission->target_date->format('M j, Y')]) }}"
-        >
-            <flux:icon.flag variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
-            {{ __('Late') }}
-        </span>
+        <flux:tooltip :content="__('Terminal report uploaded :uploaded; completion date :target', ['uploaded' => $submission->terminal_uploaded_at->format('F j, Y'), 'target' => $submission->target_date->format('F j, Y')])">
+            <span class="{{ $line }} text-orange-700">
+                <flux:icon.flag variant="micro" class="size-3.5 shrink-0" aria-hidden="true" />
+                {{ __('Late') }}
+            </span>
+        </flux:tooltip>
     @endif
 </div>

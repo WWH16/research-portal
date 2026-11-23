@@ -201,6 +201,47 @@ class SecurityTest extends TestCase
             ->assertDispatched('passkeys-changed', ids: ['bGFwdG9w']);
     }
 
+    public function test_the_setup_code_sends_itself_once_all_six_digits_are_in(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::settings.two-factor-setup-modal', ['requiresConfirmation' => true])
+            ->dispatch('start-two-factor-setup')
+            ->call('showVerificationIfNecessary')
+            ->assertSet('showVerificationStep', true)
+            ->assertSeeHtml('wire:submit="confirmTwoFactor"')
+            ->assertSeeHtml('submit="auto"');
+    }
+
+    public function test_a_wrong_setup_code_turns_the_boxes_red_and_clears_them_for_the_next_try(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::settings.two-factor-setup-modal', ['requiresConfirmation' => true])
+            ->dispatch('start-two-factor-setup')
+            ->call('showVerificationIfNecessary')
+            ->assertDontSeeHtml('data-invalid="true"')
+            ->set('code', '000000')
+            ->call('confirmTwoFactor')
+            ->assertHasErrors('code')
+            ->assertSet('code', '')
+            ->assertDispatched('code-rejected')
+            ->assertSeeHtml('data-invalid="true"')
+            ->assertSee('That code didn’t match. Enter the code your authenticator app shows now.')
+            ->assertSeeHtml('wire:target="confirmTwoFactor"')
+            ->assertSee('Checking the code…');
+    }
+
+    public function test_turning_on_two_factor_says_so_in_a_toast(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::settings.security')
+            ->dispatch('two-factor-enabled')
+            ->assertSet('twoFactorEnabled', true)
+            ->assertDispatched('toast-show', fn ($name, $params) => $params['slots']['text'] === 'Two-factor authentication is on.');
+    }
+
     public function test_the_setup_key_copy_button_is_named_and_reports_its_result(): void
     {
         $this->actingAs(User::factory()->create());

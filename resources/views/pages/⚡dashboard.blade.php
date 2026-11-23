@@ -80,11 +80,15 @@ new #[Title('Dashboard')] class extends Component {
     }
 
     /**
-     * Quick picks for the date range.
+     * Quick picks for the date range. A quarter (q1 to q4) is this year's, up to today when it is still running.
      */
     public function preset(string $key): void
     {
         [$from, $to] = match ($key) {
+            'q1', 'q2', 'q3', 'q4' => [
+                $start = now()->startOfYear()->addQuarters((int) $key[1] - 1),
+                $start->endOfQuarter()->min(today()),
+            ],
             'last-year' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
             'last-12-months' => [now()->subMonths(11)->startOfMonth(), today()],
             default => [now()->startOfYear(), today()],
@@ -489,20 +493,28 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:heading size="lg" level="2" id="progress-heading" class="text-xl!">{{ __('Faculty progress') }}</flux:heading>
 
                     {{-- Filters drop to their own full-width rows on phones instead of pushing the page sideways: the college and
-                         the quick-range button share the first row, so the two dates get the whole second row and show in full.
-                         field:class puts the layout classes on the field Flux wraps around each labelled control --}}
+                         the quick-range button share the first row, and each date gets a full row of its own. On computers the
+                         dates are short ("Sep 30, 2026") and each field is just wide enough for the longest one. field:class puts
+                         the layout classes on the field Flux wraps around each labelled control --}}
                     <div class="flex w-full flex-wrap items-end gap-3 sm:w-auto">
-                        <flux:select wire:model.live="department" :label="__('College')" class="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
-                            <flux:select.option value="">{{ __('All colleges') }}</flux:select.option>
+                        <x-select wire:model.live="department" :label="__('College')" class="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" data-test="department-select">
+                            <x-select.option value="">{{ __('All colleges') }}</x-select.option>
                             @foreach (Department::orderBy('code')->pluck('code') as $option)
-                                <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                                <x-select.option :value="$option">{{ $option }}</x-select.option>
                             @endforeach
-                        </flux:select>
+                        </x-select>
 
                         <flux:dropdown position="bottom" align="end">
                             <flux:button icon="calendar-days" :aria-label="__('Choose a date range')" :tooltip="__('Choose a date range')" class="max-sm:size-11" />
                             <flux:menu>
                                 <flux:menu.item wire:click="preset('this-year')" class="max-sm:h-11">{{ __('This year') }}</flux:menu.item>
+                                {{-- This year's quarters that have started --}}
+                                @foreach (range(1, now()->quarter) as $quarter)
+                                    <flux:menu.item wire:click="preset('q{{ $quarter }}')" class="max-sm:h-11" data-test="quarter-{{ $quarter }}">
+                                        {{ __('Q:number (:months)', ['number' => $quarter, 'months' => ['Jan – Mar', 'Apr – Jun', 'Jul – Sep', 'Oct – Dec'][$quarter - 1]]) }}
+                                    </flux:menu.item>
+                                @endforeach
+                                <flux:menu.separator />
                                 @if (now()->year > Submission::FIRST_YEAR)
                                     <flux:menu.item wire:click="preset('last-year')" class="max-sm:h-11">{{ __('Last year') }}</flux:menu.item>
                                 @endif
@@ -510,10 +522,10 @@ new #[Title('Dashboard')] class extends Component {
                             </flux:menu>
                         </flux:dropdown>
 
-                        <div class="flex w-full items-end gap-2 sm:w-auto" data-test="date-range">
+                        <div class="grid w-full gap-3 sm:flex sm:w-auto sm:items-end sm:gap-2" data-test="date-range">
                             {{-- Typing a year fires an input per digit; the wait lets it finish before the summary reloads --}}
-                            <flux:input type="date" wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
-                            <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 sm:w-40 sm:flex-none" />
+                            <x-date-picker wire:model.live.debounce.500ms="from" :min="Submission::FIRST_YEAR.'-01-01'" :max="$to" :label="__('From')" :placeholder="__('Pick a date')" short class:input="max-sm:h-11" field:class="min-w-0 sm:w-36" />
+                            <x-date-picker wire:model.live.debounce.500ms="to" :min="$from" :max="today()->toDateString()" :label="__('To')" :placeholder="__('Pick a date')" short class:input="max-sm:h-11" field:class="min-w-0 sm:w-36" />
                         </div>
                     </div>
                 </div>
@@ -552,7 +564,7 @@ new #[Title('Dashboard')] class extends Component {
                         <dl @class(['mt-5 grid gap-3', 'xl:grid-cols-2 xl:gap-x-10' => $below, 'xl:gap-5' => $paired && ! $below])>
                             @foreach ($rows as $row)
                                 <div class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3 text-sm">
-                                    <dt class="truncate text-zinc-800" title="{{ $row['title'] }}">{{ $row['label'] }}</dt>
+                                    <dt class="min-w-0 text-zinc-800"><flux:tooltip :content="$row['title']" class="block"><span class="block truncate">{{ $row['label'] }}</span></flux:tooltip></dt>
                                     <dd class="flex items-center gap-2 border-s border-zinc-300 py-0.5">
                                         <span class="h-4 rounded-e bg-isu-green-300" style="width: {{ $row['count'] ? max(2, $row['count'] / $most * 80) : 0 }}%" aria-hidden="true"></span>
                                         <span class="font-medium tabular-nums text-zinc-700">{{ $row['count'] }}</span>
@@ -629,22 +641,26 @@ new #[Title('Dashboard')] class extends Component {
                                                 >
                                                     {{-- The tooltip opens below, so it never covers the bubble above --}}
                                                     <flux:tooltip :content="__('Copy :email', ['email' => $member->email])" position="bottom">
-                                                        <button
-                                                            type="button"
+                                                        {{-- A stock xs button; the negative margin keeps the small line its height, and on
+                                                             phones an invisible edge grows the tap area to 44px --}}
+                                                        <flux:button
+                                                            size="xs"
+                                                            variant="subtle"
+                                                            square
                                                             x-on:click="copy()"
-                                                            class="relative rounded text-zinc-500 hover:text-isu-green-700 focus-visible:outline-2 focus-visible:outline-accent max-sm:before:absolute max-sm:before:-inset-3.5"
-                                                            aria-label="{{ __('Copy :email', ['email' => $member->email]) }}"
+                                                            class="-my-1 max-sm:before:absolute max-sm:before:-inset-2.5"
+                                                            :aria-label="__('Copy :email', ['email' => $member->email])"
                                                             data-test="copy-email"
                                                         >
                                                             <flux:icon.envelope variant="micro" x-show="! copied" />
                                                             <flux:icon.check variant="micro" x-show="copied" x-cloak class="text-isu-green-700" />
-                                                        </button>
+                                                        </flux:button>
                                                     </flux:tooltip>
                                                     <span
                                                         x-text="message"
                                                         x-bind:class="message && 'opacity-100! ease-out!'"
                                                         role="status"
-                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md shadow-zinc-900/20 transition-opacity duration-150 ease-in"
+                                                        class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-floating transition-opacity duration-150 ease-in"
                                                     ></span>
                                                 </span>
                                             @endif
@@ -673,7 +689,7 @@ new #[Title('Dashboard')] class extends Component {
                                 @if ($group !== 'pending')
                                     <ul id="projects-{{ $member->id }}" x-show="open" x-cloak class="mt-2 grid gap-1.5 border-s border-line ps-3">
                                         @foreach ($member->projects as $project)
-                                            <li>
+                                            <li data-stagger style="--i: {{ $loop->index }}">
                                                 <flux:link :href="route('drive.show', $project)" variant="ghost" class="!font-normal [overflow-wrap:anywhere]" wire:navigate>{{ $project->displayTitle() }}</flux:link>
                                             </li>
                                         @endforeach
@@ -767,7 +783,7 @@ new #[Title('Dashboard')] class extends Component {
                             <li class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                                 <div class="min-w-0 flex-1 text-sm">
                                     {{-- On phones the target runs down over the line below, to 44px without reaching "View all" above --}}
-                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate class="relative block font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:top-0 max-sm:before:-bottom-6">{{ $submission->displayTitle() }}</a>
+                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate wire:transition.navigate="project-{{ $submission->id }}" class="relative block font-medium text-zinc-800 [overflow-wrap:anywhere] hover:underline max-sm:before:absolute max-sm:before:inset-x-0 max-sm:before:top-0 max-sm:before:-bottom-6">{{ $submission->displayTitle() }}</a>
                                     <p class="mt-0.5 tabular-nums text-zinc-500">
                                         {{ $submission->category->name }}.
                                         <span @class(['whitespace-nowrap', 'font-medium text-red-700' => $submission->isDelayed()])>{{ $submission->target_date ? __('Due :date', ['date' => $submission->target_date->format('F j, Y')]) : __('No schedule yet') }}</span>

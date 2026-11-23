@@ -447,7 +447,7 @@ new #[Title('Research project')] class extends Component {
     #[Computed]
     public function faculty(): Collection
     {
-        // ponytail: one plain select of every verified faculty member; switch to a searchable picker past a few hundred.
+        // Every verified faculty member, for the searchable proponent picker.
         return User::where(fn ($query) => $query->faculty()->approved()->whereNotNull('email_verified_at'))
             ->orWhereIn('id', $this->submission?->proponents()->pluck('user_id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
@@ -514,12 +514,12 @@ new #[Title('Research project')] class extends Component {
         <div class="grid gap-x-4 gap-y-6 sm:grid-cols-12">
             {{-- A real, selectable blank option instead of Flux's disabled placeholder: after a re-render the browser
                  can't show a disabled option, so it showed the first real one while nothing was chosen. --}}
-            <flux:select wire:model="category_id" :label="__('Category')" required field:class="sm:col-span-6" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('Select category') }}</flux:select.option>
+            <x-select wire:model="category_id" :label="__('Category')" required field:class="sm:col-span-6" class="max-sm:h-11">
+                <x-select.option value="">{{ __('Select category') }}</x-select.option>
                 @foreach ($this->categories as $category)
-                    <flux:select.option :value="$category->id">{{ $category->name }}</flux:select.option>
+                    <x-select.option :value="$category->id">{{ $category->name }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
             <flux:input wire:model="designation" :label="__('Designation')" :badge="__('Optional')" type="text" maxlength="100" field:class="sm:col-span-6" class:input="max-sm:h-11" />
 
@@ -534,11 +534,10 @@ new #[Title('Research project')] class extends Component {
                 field:class="sm:col-span-12"
             >{{ $this->department ? $this->department->name.' ('.$this->department->code.')' : __('Not assigned') }}</flux:textarea>
 
-            <flux:input wire:model="start_date" :label="__('Starting date')" type="date" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" field:class="sm:col-span-6" class:input="max-sm:h-11" />
-            <flux:input
+            <x-date-picker wire:model="start_date" :label="__('Starting date')" :min="$submission ? null : today()->toDateString()" :required="! $submission" :disabled="(bool) $submission" field:class="sm:col-span-6" class:input="max-sm:h-11" />
+            <x-date-picker
                 wire:model="target_date"
                 :label="__('Completion date')"
-                type="date"
                 x-bind:min="$wire.start_date && new Date(Date.parse($wire.start_date) + 864e5).toISOString().slice(0, 10)"
                 :required="! $submission"
                 :disabled="(bool) $submission"
@@ -568,30 +567,25 @@ new #[Title('Research project')] class extends Component {
                 @foreach ($proponents as $index => $row)
                     <div class="{{ $columns }} items-start max-sm:border-b max-sm:border-line max-sm:pb-3" wire:key="proponent-{{ $index }}" data-test="proponent-row">
                         <div class="sm:col-span-2">
-                            <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" :aria-label="__('Study no.')" class:input="max-sm:h-11" />
+                            <flux:input wire:model="proponents.{{ $index }}.study" type="number" min="1" max="20" required :aria-label="__('Study no.')" class:input="max-sm:h-11" />
                         </div>
 
                         <div class="min-w-0 max-sm:order-last max-sm:col-span-3 sm:col-span-7">
                             {{-- A string name marks a row for someone not in the portal, as isNamed() reads it --}}
                             @if (is_string($row['name'] ?? null))
-                                <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" autocomplete="off" :placeholder="__('e.g. Juan Dela Cruz')" :aria-label="__('Full name')" data-test="proponent-name" class:input="max-sm:h-11" />
+                                <flux:input wire:model="proponents.{{ $index }}.name" maxlength="150" required autocomplete="off" :placeholder="__('e.g. Juan Dela Cruz')" :aria-label="__('Full name')" data-test="proponent-name" class:input="max-sm:h-11" />
                                 <flux:text size="sm" class="mt-1">{{ __('Not in the portal') }}</flux:text>
                             @else
-                                <flux:select wire:model="proponents.{{ $index }}.user_id" :aria-label="__('Faculty')" class="max-sm:h-11">
-                                    <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
-                                    @foreach ($this->faculty as $member)
-                                        <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
-                                    @endforeach
-                                </flux:select>
+                                <x-combobox wire:model="proponents.{{ $index }}.user_id" required :options="$this->faculty->pluck('name', 'id')" :aria-label="__('Faculty')" :placeholder="__('Select faculty')" />
                             @endif
                         </div>
 
                         <div class="sm:col-span-2">
-                            <flux:select wire:model="proponents.{{ $index }}.role" :aria-label="__('Role')" class="max-sm:h-11">
+                            <x-select wire:model="proponents.{{ $index }}.role" required :aria-label="__('Role')" class="max-sm:h-11">
                                 @foreach (Proponent::ROLES as $role)
-                                    <flux:select.option :value="$role">{{ __($role) }}</flux:select.option>
+                                    <x-select.option :value="$role">{{ __($role) }}</x-select.option>
                                 @endforeach
-                            </flux:select>
+                            </x-select>
                         </div>
 
                         <div class="justify-self-end sm:col-span-1">
@@ -652,7 +646,9 @@ new #[Title('Research project')] class extends Component {
                             @if ($onFile)
                                 <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                                     <span class="text-zinc-600">{{ __('On file') }}</span>
-                                    <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">{{ __('Open current file') }}</flux:link>
+                                    <x-opens-in-viewer :viewer="$submission->documentViewer($stage)">
+                                        <flux:link :href="route('submissions.document', [$submission, $stage])" target="_blank" rel="noopener" class="text-sm max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">{{ __('Open current file') }}</flux:link>
+                                    </x-opens-in-viewer>
                                     @if ($open)
                                         <flux:button size="sm" variant="ghost" icon="arrow-path" x-show="! replacing" x-on:click="replacing = true" aria-controls="dropzone-wrap-{{ $stage }}" class="max-sm:h-11" data-test="replace-{{ $stage }}">{{ __('Replace file') }}</flux:button>
                                     @endif
@@ -665,7 +661,9 @@ new #[Title('Research project')] class extends Component {
                                          dropped file lands on it natively. Alpine only swaps the words to name the file. --}}
                                     @php($prompt = $onFile ? __('Drop a new file here to replace it, or click to choose') : __('Drop the file here, or click to choose'))
                                     <label
-                                        x-data="{ name: '', over: false, prompt: @js($prompt) }"
+                                        x-data="{ name: '', over: false, prompt: @js($prompt), progress: 0 }"
+                                        x-on:livewire-upload-start="progress = 0"
+                                        x-on:livewire-upload-progress="progress = $event.detail.progress"
                                         x-bind:class="over && 'border-isu-green-600! bg-isu-green-50!'"
                                         class="relative mt-3 flex flex-col items-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center transition-colors hover:border-isu-green-600 hover:bg-isu-green-50 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-isu-green-700"
                                         data-test="dropzone-{{ $stage }}"
@@ -684,7 +682,9 @@ new #[Title('Research project')] class extends Component {
                                         />
                                         <flux:icon.arrow-up-tray class="size-5 text-zinc-500" aria-hidden="true" />
                                         <span class="text-sm font-medium break-all text-zinc-800" wire:loading.remove wire:target="documents.{{ $stage }}" x-text="name || prompt">{{ $prompt }}</span>
-                                        <span class="text-sm font-medium break-all text-zinc-800" wire:loading wire:target="documents.{{ $stage }}" x-text="@js(__('Uploading')) + ' ' + name + '…'"></span>
+                                        <span class="text-sm font-medium break-all text-zinc-800" wire:loading wire:target="documents.{{ $stage }}" x-text="@js(__('Uploading')) + ' ' + name + '… ' + progress + '%'"></span>
+                                        {{-- Flux's progress bar, filled as the file goes up --}}
+                                        <flux:progress x-model="progress" wire:loading.block wire:target="documents.{{ $stage }}" :aria-label="__('Upload progress')" class="mt-1 w-full max-w-xs" />
                                         <span id="documents-{{ $stage }}-hint" class="text-xs text-zinc-600">{{ __('PDF or Word, up to :size MB', ['size' => \App\Services\DocumentStorage::maxUploadMb()]) }}</span>
                                     </label>
 

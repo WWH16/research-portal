@@ -235,7 +235,7 @@ new class extends Component {
     #[Computed]
     public function faculty(): Collection
     {
-        // ponytail: one plain select of every verified faculty member, as on the project form; switch to a searchable picker past a few hundred.
+        // Every verified faculty member, for the searchable author picker, as on the project form.
         return User::where(fn ($query) => $query->faculty()->approved()->whereNotNull('email_verified_at'))
             ->orWhereIn('id', $this->publication?->faculty()->pluck('users.id')->all() ?? [])
             ->orderBy('name')->get(['id', 'name']);
@@ -283,14 +283,9 @@ new class extends Component {
                         @if ($you)
                             <flux:input :value="__(':name (you)', ['name' => Auth::user()->name])" :aria-label="__('Author')" disabled data-test="author-you" class:input="max-sm:h-11" />
                         @elseif ($field === 'name')
-                            <flux:input wire:model="authorRows.{{ $index }}.name" :aria-label="__('Author outside the portal')" :placeholder="__('e.g. Juan Dela T. Cruz')" type="text" maxlength="100" class:input="max-sm:h-11" />
+                            <flux:input wire:model="authorRows.{{ $index }}.name" required :aria-label="__('Author outside the portal')" :placeholder="__('e.g. Juan Dela T. Cruz')" type="text" maxlength="100" class:input="max-sm:h-11" />
                         @else
-                            <flux:select wire:model="authorRows.{{ $index }}.user_id" :aria-label="__('Author')" class="max-sm:h-11">
-                                <flux:select.option value="">{{ __('Select faculty') }}</flux:select.option>
-                                @foreach ($this->faculty->except(Auth::id()) as $member)
-                                    <flux:select.option :value="$member->id">{{ $member->name }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
+                            <x-combobox wire:model="authorRows.{{ $index }}.user_id" required :options="$this->faculty->except(Auth::id())->pluck('name', 'id')" :aria-label="__('Author')" :placeholder="__('Select faculty')" />
                         @endif
 
                         <div class="flex">
@@ -322,7 +317,7 @@ new class extends Component {
                 <flux:input wire:model="issue" :label="__('Issue')" :badge="__('Optional')" :placeholder="__('e.g. 3')" type="text" maxlength="50" class:input="max-sm:h-11" />
                 <flux:input wire:model="pages" :label="__('Pages')" :badge="__('Optional')" :placeholder="__('e.g. 45–60')" type="text" maxlength="50" class:input="max-sm:h-11" />
 
-                <flux:input wire:model="published_on" :label="__('Publication date')" type="date" :max="today()->toDateString()" required class:input="max-sm:h-11" />
+                <x-date-picker wire:model="published_on" :label="__('Publication date')" :max="today()->toDateString()" required class:input="max-sm:h-11" />
                 <flux:input wire:model="link" :label="__('DOI or link')" :placeholder="__('e.g. https://doi.org/10.1000/xyz123')" type="text" maxlength="500" required field:class="sm:col-span-2" class:input="max-sm:h-11" />
 
                 <flux:checkbox.group wire:model="indexed_in" variant="pills" :label="__('Indexed in')" :badge="__('Optional')" field:class="sm:col-span-3" data-test="indexed-in">
@@ -338,12 +333,12 @@ new class extends Component {
 
             <flux:textarea wire:model="description" :label="__('Description')" :description:trailing="__('The abstract or a short summary.')" rows="4" required />
 
-            <flux:select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('No project') }}</flux:select.option>
+            <x-select wire:model="submission_id" :label="__('Research project')" :badge="__('Optional')" :description:trailing="__('Links the paper to the completed portal project it reports. Leave empty if it didn’t come from one.')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('No project') }}</x-select.option>
                 @foreach ($this->projects as $project)
-                    <flux:select.option :value="$project->id">{{ $project->title }} ({{ $project->year }})</flux:select.option>
+                    <x-select.option :value="$project->id">{{ $project->title }} ({{ $project->year }})</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
         </flux:fieldset>
 
         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6">

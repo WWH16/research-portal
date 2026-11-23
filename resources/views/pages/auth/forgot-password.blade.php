@@ -10,9 +10,7 @@
             method="POST"
             action="{{ route('password.email') }}"
             class="flex flex-col gap-6"
-            x-data="{ submitting: false }"
-            x-on:submit="submitting = true"
-            x-on:pageshow.window="submitting = false"
+            x-data="formStates"
             x-bind:aria-busy="submitting"
         >
             @csrf
@@ -34,7 +32,7 @@
                 </flux:button>
 
                 @if (config('services.recaptcha.site_key'))
-                    <p class="text-center text-xs leading-5 text-pretty text-zinc-600 dark:text-zinc-400">
+                    <p class="text-center text-xs text-zinc-600 dark:text-zinc-400">
                         <x-recaptcha action="forgot_password" />
                     </p>
                 @endif

@@ -8,7 +8,7 @@
         $work = auth()->user()->openWork();
         ['toReview' => $toReview, 'toRevise' => $toRevise, 'toApprove' => $toApprove, 'unread' => $unread] = $work;
         ['reviewLabel' => $reviewLabel, 'revisionLabel' => $revisionLabel, 'approveLabel' => $approveLabel, 'unreadLabel' => $unreadLabel, 'driveIssue' => $driveIssue] = $work;
-        // Two digits at most, so the badge never crowds the label; the hover title keeps the exact count.
+        // Two digits at most, so the badge never crowds the label; the item's tooltip keeps the exact count.
         $capped = fn (int $count) => $count > 99 ? '99+' : $count;
     @endphp
     {{-- The counts are asked for again every minute while the tab is in view and the mouse has moved in the last 5 minutes,
@@ -47,7 +47,7 @@
         x-on:open-work-stale.window="refresh()">
         {{-- The first Tab stop, out of sight until it has focus: it takes a keyboard user past the sidebar to the page --}}
         <div class="sr-only focus-within:not-sr-only focus-within:fixed focus-within:start-4 focus-within:top-4 focus-within:z-30">
-            <flux:button href="#main-content">{{ __('Skip to main content') }}</flux:button>
+            <flux:button href="#main-content" class="max-sm:h-11">{{ __('Skip to main content') }}</flux:button>
         </div>
 
         {{-- 18rem rather than Flux's 16rem, so the longest links and their counts fit beside the nested-group indent --}}
@@ -76,31 +76,40 @@
                     </flux:sidebar.item>
 
                     {{-- Unread notices show as a count on every page; screen readers hear the sentence, not the bare number --}}
-                    <flux:sidebar.item icon="bell" :href="route('notifications.index')" :current="request()->routeIs('notifications.*')" :badge="$capped($unread)" :badge:style="$unread ? null : 'display: none'" :badge:title="$unreadLabel" badge:x-bind:title="unreadLabel" badge:x-show="unread" badge:x-text="unread > 99 ? '99+' : unread" badge:aria-hidden="true" wire:navigate data-test="notifications-nav">
-                        {{ __('Notifications') }}
-                        @if ($unread)
-                            <span class="sr-only">{{ $unreadLabel }}</span>
-                        @endif
-                    </flux:sidebar.item>
+                    <flux:tooltip position="right" class="block">
+                        <flux:sidebar.item icon="bell" :href="route('notifications.index')" :current="request()->routeIs('notifications.*')" :badge="$capped($unread)" :badge:style="$unread ? null : 'display: none'" badge:x-show="unread" badge:x-text="unread > 99 ? '99+' : unread" badge:aria-hidden="true" wire:navigate data-test="notifications-nav">
+                            {{ __('Notifications') }}
+                            @if ($unread)
+                                <span class="sr-only">{{ $unreadLabel }}</span>
+                            @endif
+                        </flux:sidebar.item>
+                        <flux:tooltip.content x-show="unread" x-text="unreadLabel">{{ $unreadLabel }}</flux:tooltip.content>
+                    </flux:tooltip>
                 </flux:sidebar.group>
 
                 {{-- Projects and papers are both research records, so they share one group --}}
                 <flux:sidebar.group :heading="__('Research')" icon="academic-cap" :expandable="auth()->user()->isResearchOffice()" class="grid" data-test="research-nav">
                     @if (auth()->user()->isAdmin())
                         {{-- The Research Office's open work leads the group, with a count visible from every page. Screen readers hear the sentence, not the bare number. --}}
-                        <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$capped($toReview)" :badge:style="$toReview ? null : 'display: none'" :badge:title="$reviewLabel" badge:x-bind:title="reviewLabel" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
-                            {{ __('Concept reviews') }}
-                            <span class="sr-only" x-show="toReview" x-text="reviewLabel">{{ $toReview ? $reviewLabel : '' }}</span>
-                        </flux:sidebar.item>
+                        <flux:tooltip position="right" class="block">
+                            <flux:sidebar.item icon="clipboard-document-check" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$capped($toReview)" :badge:style="$toReview ? null : 'display: none'" badge:x-show="toReview" badge:x-text="toReview > 99 ? '99+' : toReview" badge:aria-hidden="true" wire:navigate data-test="reviews-nav">
+                                {{ __('Concept reviews') }}
+                                <span class="sr-only" x-show="toReview" x-text="reviewLabel">{{ $toReview ? $reviewLabel : '' }}</span>
+                            </flux:sidebar.item>
+                            <flux:tooltip.content x-show="toReview" x-text="reviewLabel">{{ $reviewLabel }}</flux:tooltip.content>
+                        </flux:tooltip>
                     @endif
 
                     {{-- Faculty see how many of their projects need a corrected concept proposal, and the item opens straight to them --}}
-                    <flux:sidebar.item icon="document-text" :href="route('submissions.index', $toRevise ? ['status' => 'revision'] : [])" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" :badge="$toRevise ? $capped($toRevise) : null" badge:data-tone="revision" :badge:title="$revisionLabel" badge:aria-hidden="true" wire:navigate data-test="submissions-nav">
-                        {{ __('Submissions') }}
-                        @if ($toRevise)
-                            <span class="sr-only">{{ $revisionLabel }}</span>
-                        @endif
-                    </flux:sidebar.item>
+                    <flux:tooltip position="right" class="block">
+                        <flux:sidebar.item icon="document-text" :href="route('submissions.index', $toRevise ? ['status' => 'revision'] : [])" :current="request()->routeIs('submissions.*') && request('from') !== 'drive'" :badge="$toRevise ? $capped($toRevise) : null" badge:data-tone="revision" badge:aria-hidden="true" wire:navigate data-test="submissions-nav">
+                            {{ __('Submissions') }}
+                            @if ($toRevise)
+                                <span class="sr-only">{{ $revisionLabel }}</span>
+                            @endif
+                        </flux:sidebar.item>
+                        <flux:tooltip.content x-show="toRevise" x-text="revisionLabel">{{ $revisionLabel }}</flux:tooltip.content>
+                    </flux:tooltip>
 
                     <flux:sidebar.item icon="folder" :href="route('drive.index')" :current="request()->routeIs('drive.*') || request('from') === 'drive'" wire:navigate>
                         {{ __('Research Drive') }}
@@ -121,12 +130,15 @@
                 @if (auth()->user()->isAdmin())
                     {{-- Sign-ups waiting for approval keep the group open and show as a count; the item opens straight to them --}}
                     <flux:sidebar.group :heading="__('Administration')" icon="shield-check" expandable :expanded="$toApprove > 0 || request()->routeIs('users.*', 'activity-log.*')" class="grid" data-test="administration-nav">
-                        <flux:sidebar.item icon="users" :href="route('users.index', $toApprove ? ['status' => 'pending'] : [])" :current="request()->routeIs('users.*')" :badge="$capped($toApprove)" :badge:style="$toApprove ? null : 'display: none'" :badge:title="$approveLabel" badge:x-bind:title="approveLabel" badge:x-show="toApprove" badge:x-text="toApprove > 99 ? '99+' : toApprove" badge:aria-hidden="true" wire:navigate data-test="users-nav">
-                            {{ __('Manage users') }}
-                            @if ($toApprove)
-                                <span class="sr-only">{{ $approveLabel }}</span>
-                            @endif
-                        </flux:sidebar.item>
+                        <flux:tooltip position="right" class="block">
+                            <flux:sidebar.item icon="users" :href="route('users.index', $toApprove ? ['status' => 'pending'] : [])" :current="request()->routeIs('users.*')" :badge="$capped($toApprove)" :badge:style="$toApprove ? null : 'display: none'" badge:x-show="toApprove" badge:x-text="toApprove > 99 ? '99+' : toApprove" badge:aria-hidden="true" wire:navigate data-test="users-nav">
+                                {{ __('Manage users') }}
+                                @if ($toApprove)
+                                    <span class="sr-only">{{ $approveLabel }}</span>
+                                @endif
+                            </flux:sidebar.item>
+                            <flux:tooltip.content x-show="toApprove" x-text="approveLabel">{{ $approveLabel }}</flux:tooltip.content>
+                        </flux:tooltip>
 
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log.index')" :current="request()->routeIs('activity-log.*')" wire:navigate>
                             {{ __('Activity log') }}
@@ -154,10 +166,13 @@
                     <flux:sidebar.group :heading="__('System')" icon="server-stack" expandable :expanded="$driveIssue !== null || request()->routeIs('google-drive.*')" class="grid" data-test="system-nav">
                         {{-- A rose "!" while uploads can't work: no account saved, disconnected, or full. The title says which,
                              and screen readers hear it after the link name --}}
-                        <flux:sidebar.item icon="cloud" :href="route('google-drive.index')" :current="request()->routeIs('google-drive.*')" badge="!" badge:data-tone="alert" :badge:style="$driveIssue ? null : 'display: none'" :badge:title="$driveIssue" badge:x-bind:title="driveIssue" badge:x-show="driveIssue" badge:aria-hidden="true" wire:navigate data-test="google-drive-nav">
-                            {{ __('Google Drive') }}
-                            <span class="sr-only" x-show="driveIssue" x-text="driveIssue">{{ $driveIssue }}</span>
-                        </flux:sidebar.item>
+                        <flux:tooltip position="right" class="block">
+                            <flux:sidebar.item icon="cloud" :href="route('google-drive.index')" :current="request()->routeIs('google-drive.*')" badge="!" badge:data-tone="alert" :badge:style="$driveIssue ? null : 'display: none'" badge:x-show="driveIssue" badge:aria-hidden="true" wire:navigate data-test="google-drive-nav">
+                                {{ __('Google Drive') }}
+                                <span class="sr-only" x-show="driveIssue" x-text="driveIssue">{{ $driveIssue }}</span>
+                            </flux:sidebar.item>
+                            <flux:tooltip.content x-show="driveIssue" x-text="driveIssue">{{ $driveIssue }}</flux:tooltip.content>
+                        </flux:tooltip>
                     </flux:sidebar.group>
                 </flux:sidebar.nav>
             @endif
@@ -242,6 +257,9 @@
         {{ $slot }}
 
         @persist('toast')
+            {{-- The full-screen file viewer, for memos and project documents alike --}}
+            <x-memo-viewer />
+
             <flux:toast.group>
                 <flux:toast />
             </flux:toast.group>

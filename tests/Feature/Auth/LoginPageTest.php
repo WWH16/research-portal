@@ -41,7 +41,7 @@ class LoginPageTest extends TestCase
     public function test_sign_in_button_shows_a_loading_state_while_submitting(): void
     {
         $this->get(route('login'))
-            ->assertSee('x-on:submit="submitting = true"', escape: false)
+            ->assertSee('x-data="formStates', escape: false)
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false);
     }

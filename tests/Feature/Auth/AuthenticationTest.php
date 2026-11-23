@@ -56,6 +56,25 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_wrong_details_mark_both_fields_and_put_the_focus_on_the_password(): void
+    {
+        $user = User::factory()->create();
+
+        $page = $this->from(route('login'))
+            ->followingRedirects()
+            ->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password'])
+            ->assertSee('Incorrect email or password.')
+            ->assertSee('value="'.$user->email.'"', false)
+            ->getContent();
+
+        preg_match('~<input[^>]*name="email"[^>]*>~', $page, $email);
+        preg_match('~<input[^>]*name="password"[^>]*>~', $page, $password);
+        $this->assertStringContainsString('aria-invalid="true"', $email[0]);
+        $this->assertStringNotContainsString('autofocus', $email[0]);
+        $this->assertStringContainsString('aria-invalid="true"', $password[0]);
+        $this->assertStringContainsString('autofocus', $password[0]);
+    }
+
     public function test_too_many_failed_sign_ins_show_a_wait_page(): void
     {
         // Frozen, so a second that ticks over between the attempts can't turn 60 into 59.

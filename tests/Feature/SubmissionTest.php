@@ -46,7 +46,52 @@ class SubmissionTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit proposal')->assertSee('Proponents');
+        $this->get(route('submissions.create'))->assertOk()->assertSee('Submit proposal')->assertSee('Proponents')
+            // The document drop zone fills Flux's progress bar from Livewire's upload progress
+            ->assertSee('x-on:livewire-upload-progress="progress = $event.detail.progress"', false)
+            ->assertSee('data-flux-progress', false);
+    }
+
+    public function test_proponents_are_picked_from_a_searchable_list_of_verified_faculty(): void
+    {
+        $this->actingAs(User::factory()->create(['name' => 'Navarro']));
+        User::factory()->create(['name' => 'Soriano']);
+        User::factory()->unverified()->create(['name' => 'Unverified Member']);
+        User::factory()->create(['name' => 'Research Office Head', 'role' => 'admin']);
+
+        $this->get(route('submissions.create'))
+            ->assertOk()
+            ->assertSee('data-test="combobox"', false)
+            ->assertSee('Soriano')
+            ->assertDontSee('Unverified Member')
+            ->assertDontSee('Research Office Head');
+    }
+
+    public function test_project_dates_use_the_flux_styled_date_picker_with_their_limits(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        // Flux's date picker is Pro: x-date-picker opens a Flux-styled calendar, kept to today and later for the start
+        // and to the day after the start for the completion date
+        $this->get(route('submissions.create'))
+            ->assertOk()
+            ->assertSeeHtml('aria-haspopup="dialog"')
+            ->assertSeeHtml('role="grid"')
+            ->assertSeeHtml('data-min="'.today()->toDateString().'"')
+            ->assertSeeHtml('x-bind:data-min="$wire.start_date &&')
+            ->assertDontSeeHtml('type="date"');
+    }
+
+    public function test_the_pickers_a_proposal_needs_say_they_are_required(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        // Category, the starting date and the completion date are hand-built pickers. Saying they are required lets
+        // screen readers hear it, and lets Enter in an earlier field move on to them while they are empty (app.js).
+        $page = $this->get(route('submissions.create'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('~role="combobox"(?:(?!</button>).)*?aria-required="true"~s', $page);
+        $this->assertSame(2, preg_match_all('~aria-haspopup="dialog"(?:(?!</button>).)*?aria-required="true"~s', $page));
     }
 
     public function test_admins_cannot_open_the_submit_form(): void
@@ -391,7 +436,7 @@ class SubmissionTest extends TestCase
 
         // A disabled placeholder can't stay shown after a re-render, so the blank choice must be a real option.
         Livewire::test('pages::submissions.create')
-            ->assertSeeHtml('>Select category</option>')
+            ->assertSeeHtml('role="option"')->assertSeeHtml('data-value=""')->assertSee('Select category')
             ->assertDontSeeHtml('class="placeholder"')
             ->set('category_id', '')
             ->set('proponents.0.user_id', '')
@@ -1056,9 +1101,9 @@ class SubmissionTest extends TestCase
 
         Livewire::withQueryParams(['status' => 'delayed'])->test('pages::submissions.index')->assertSee('Maria Proposal')->assertDontSee('Jose Proposal');
         $this->get(route('submissions.index'))->assertSee('Finished on time')
-            ->assertSee('Terminal report for Jose Proposal, opens in a new tab')
+            ->assertSee('Terminal report for Jose Proposal')
             // Under the pointer, a pill names the full document and what a click does, or that it is still to come.
-            ->assertSee('Open the terminal report in a new tab')
+            ->assertSee('Open the terminal report')
             ->assertSee('Mid-year progress report: not uploaded yet')
             ->assertSeeText('Due '.today()->subDays(14)->format('M j, Y'));
 

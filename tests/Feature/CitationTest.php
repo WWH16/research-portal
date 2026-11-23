@@ -186,7 +186,7 @@ class CitationTest extends TestCase
             ->assertSeeHtml('data-test="cited-by">1<')
             // The row shows the bare DOI; the full link stays in its href and hover title.
             ->assertSeeHtml('>10.2000/cites<')
-            ->assertSeeHtml('title="https://doi.org/10.2000/cites"');
+            ->assertSeeHtml('data-flux-tooltip')->assertSee('https://doi.org/10.2000/cites', false);
 
         $citation = $this->paper->citations()->sole();
         $this->assertSame('https://doi.org/10.2000/cites', $citation->link);

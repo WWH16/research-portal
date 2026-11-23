@@ -222,18 +222,18 @@ new #[Title('Activity log')] class extends Component {
             <flux:button icon="funnel" x-on:click="filters = ! filters" x-bind:aria-expanded="filters" aria-controls="activity-filters" class="max-sm:h-11">{{ __('Filter') }}</flux:button>
         </div>
 
-        <div id="activity-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 lg:grid-cols-[13rem_minmax(0,22rem)_1fr]">
-            <flux:select wire:model.live="group" :label="__('Type of activity')" class="max-sm:h-11">
-                <flux:select.option value="">{{ __('All activity') }}</flux:select.option>
+        <div id="activity-filters" x-show="filters" x-cloak class="mt-3 grid gap-4 rounded-xl border border-line bg-zinc-50 p-4 lg:grid-cols-[13rem_auto_1fr]">
+            <x-select wire:model.live="group" :label="__('Type of activity')" class="max-sm:h-11">
+                <x-select.option value="">{{ __('All activity') }}</x-select.option>
                 @foreach (ActivityLog::GROUPS as $key => $label)
-                    <flux:select.option :value="$key">{{ __($label) }}</flux:select.option>
+                    <x-select.option :value="$key">{{ __($label) }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
 
-            {{-- min-w-0 lets the date fields share a phone's width instead of keeping their natural size --}}
-            <div class="grid min-w-0 grid-cols-2 gap-3" data-test="date-range">
-                <flux:input type="date" wire:model.live.debounce.500ms="from" :max="$to ?: null" :label="__('From')" class="min-w-0" class:input="max-sm:h-11" />
-                <flux:input type="date" wire:model.live.debounce.500ms="to" :min="$from ?: null" :label="__('To')" class="min-w-0" class:input="max-sm:h-11" />
+            {{-- Stacked on phones; side by side on computers, each just wide enough for a short date ("Sep 30, 2026") --}}
+            <div class="grid min-w-0 gap-3 sm:grid-cols-[repeat(2,9rem)]" data-test="date-range">
+                <x-date-picker wire:model.live.debounce.500ms="from" :max="$to ?: null" :label="__('From')" :placeholder="__('Any date')" short class="min-w-0" class:input="max-sm:h-11" />
+                <x-date-picker wire:model.live.debounce.500ms="to" :min="$from ?: null" :label="__('To')" :placeholder="__('Any date')" short class="min-w-0" class:input="max-sm:h-11" />
             </div>
 
             <div role="group" aria-labelledby="quick-ranges">
@@ -309,8 +309,8 @@ new #[Title('Activity log')] class extends Component {
                         <flux:table.row :key="'run-'.$runId">
                             <flux:table.cell class="tabular-nums text-zinc-800">{{ ActivityLog::runSpan($run) }}</flux:table.cell>
                             <flux:table.cell colspan="3">
-                                <button type="button" x-on:click="open[{{ $runId }}] = ! open[{{ $runId }}]" x-bind:aria-expanded="open[{{ $runId }}] ? 'true' : 'false'" aria-expanded="false" class="flex items-center gap-2 text-zinc-600 hover:text-zinc-800 max-sm:min-h-11">
-                                    <flux:icon.chevron-right variant="micro" class="transition-transform motion-reduce:transition-none" x-bind:class="open[{{ $runId }}] && 'rotate-90'" />
+                                {{-- A stock ghost button, left-aligned; a long summary wraps on a phone instead of running off --}}
+                                <flux:button variant="ghost" size="sm" align="start" icon="chevron-right" icon:variant="micro" icon:class="transition-transform in-aria-expanded:rotate-90 motion-reduce:transition-none" x-on:click="open[{{ $runId }}] = ! open[{{ $runId }}]" x-bind:aria-expanded="open[{{ $runId }}] ? 'true' : 'false'" aria-expanded="false" class="-ms-2 h-auto! min-h-8 whitespace-normal! text-start max-sm:min-h-11">
                                     {{ ActivityLog::runSummary($run) }}
                                     @if ($continued)
                                         <span class="text-zinc-500">· {{ __('continued from the previous page') }}</span>
@@ -318,13 +318,13 @@ new #[Title('Activity log')] class extends Component {
                                     @if ($continues)
                                         <span class="text-zinc-500">· {{ __('continues on the next page') }}</span>
                                     @endif
-                                </button>
+                                </flux:button>
                             </flux:table.cell>
                         </flux:table.row>
 
                         {{-- Indented to line up under the summary, past its chevron, so they read as the run's own rows --}}
                         @foreach ($run as $log)
-                            <flux:table.row :key="$log->id" x-show="open[{{ $runId }}]" x-cloak>
+                            <flux:table.row :key="$log->id" x-show="open[{{ $runId }}]" x-cloak data-stagger style="--i: {{ $loop->index }}">
                                 <flux:table.cell class="tabular-nums">{{ $log->created_at->format('g:i A') }}</flux:table.cell>
                                 <flux:table.cell class="ps-9">@include('pages.activity-log.member', ['log' => $log])</flux:table.cell>
                                 <flux:table.cell>{{ Str::ucfirst($log->summary()) }}</flux:table.cell>
@@ -354,15 +354,17 @@ new #[Title('Activity log')] class extends Component {
 
                             <flux:table.cell>
                                 @if ($subject = $log->subject())
-                                    <p class="truncate text-zinc-800" title="{{ $subject }}">
-                                        @if ($url = $log->subjectUrl())
-                                            {{-- A box of its own, so on phones it can stand 44px tall and still end in an ellipsis; the
-                                                 underline sits closer than Flux's, inside the one-line box that clips it --}}
-                                            <flux:link :href="$url" wire:navigate class="inline-block max-w-full truncate align-top underline-offset-2! max-sm:min-w-11 max-sm:py-3">{{ $subject }}</flux:link>
-                                        @else
-                                            {{ $subject }}
-                                        @endif
-                                    </p>
+                                    <flux:tooltip :content="$subject" class="block min-w-0">
+                                        <p class="truncate text-zinc-800">
+                                            @if ($url = $log->subjectUrl())
+                                                {{-- A box of its own, so on phones it can stand 44px tall and still end in an ellipsis; the
+                                                     underline sits closer than Flux's, inside the one-line box that clips it --}}
+                                                <flux:link :href="$url" wire:navigate class="inline-block max-w-full truncate align-top underline-offset-2! max-sm:min-w-11 max-sm:py-3">{{ $subject }}</flux:link>
+                                            @else
+                                                {{ $subject }}
+                                            @endif
+                                        </p>
+                                    </flux:tooltip>
                                 @endif
 
                                 @php([$change, $note] = [$log->change(), $log->note()])
@@ -382,7 +384,7 @@ new #[Title('Activity log')] class extends Component {
                                 @endif
 
                                 @if ($remarks = $log->remarks())
-                                    <p class="mt-0.5 line-clamp-2 whitespace-normal wrap-anywhere text-sm text-zinc-600" title="{{ $remarks }}">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p>
+                                    <flux:tooltip :content="$remarks" class="block min-w-0"><p class="mt-0.5 line-clamp-2 whitespace-normal wrap-anywhere text-sm text-zinc-600">{{ __('Remarks: :remarks', ['remarks' => $remarks]) }}</p></flux:tooltip>
                                 @endif
 
                                 @if (! $subject && ! $change && ! $note)

@@ -90,12 +90,12 @@ new #[Title('Research Drive')] class extends Component {
                 <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :label="__('Search titles')" :placeholder="__('e.g. Solar Dryer Study')" class:input="max-sm:h-11" field:class="min-w-0 flex-1 max-sm:order-1 max-sm:basis-full sm:w-64 sm:flex-none" clearable />
             @endunless
 
-            <flux:select wire:model.live="year" :label="__('Year')" class="max-sm:h-11" field:class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
-                <flux:select.option value="">{{ __('All years') }}</flux:select.option>
+            <x-select wire:model.live="year" :label="__('Year')" class="max-sm:h-11" field:class="w-32 max-sm:order-3 max-sm:ms-auto sm:w-36" data-test="drive-year-select">
+                <x-select.option value="">{{ __('All years') }}</x-select.option>
                 @foreach (Submission::years() as $option)
-                    <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                    <x-select.option :value="$option">{{ $option }}</x-select.option>
                 @endforeach
-            </flux:select>
+            </x-select>
         </x-slot:actions>
     </x-page-title>
 
@@ -167,10 +167,12 @@ new #[Title('Research Drive')] class extends Component {
                         @php($title = $submission->displayTitle())
                         <flux:table.row :key="$submission->id">
                             <flux:table.cell class="max-w-sm max-sm:whitespace-normal">
-                                <a href="{{ route('drive.show', $submission) }}" wire:navigate title="{{ $title }}" class="flex min-w-0 items-center gap-3 font-medium text-zinc-800 hover:underline max-sm:-my-3 max-sm:py-3">
-                                    <flux:icon.folder variant="mini" class="shrink-0 text-isu-green-700" />
-                                    <span class="max-sm:line-clamp-2 sm:truncate">{{ $title }}</span>
-                                </a>
+                                <flux:tooltip :content="$title" class="block min-w-0">
+                                    <a href="{{ route('drive.show', $submission) }}" wire:navigate class="flex min-w-0 items-center gap-3 font-medium text-zinc-800 hover:underline max-sm:-my-3 max-sm:py-3">
+                                        <flux:icon.folder variant="mini" class="shrink-0 text-isu-green-700" />
+                                        <span class="max-sm:line-clamp-2 sm:truncate" wire:transition.navigate="project-{{ $submission->id }}">{{ $title }}</span>
+                                    </a>
+                                </flux:tooltip>
                             </flux:table.cell>
                             <flux:table.cell class="max-sm:hidden">
                                 {{ $this->office

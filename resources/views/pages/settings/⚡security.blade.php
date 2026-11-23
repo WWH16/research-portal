@@ -183,6 +183,8 @@ new #[Title('Security settings')] class extends Component {
     public function onTwoFactorEnabled(): void
     {
         $this->twoFactorEnabled = true;
+
+        Flux::toast(variant: 'success', text: __('Two-factor authentication is on.'));
     }
 
     /**

@@ -34,10 +34,33 @@ class RegistrationTest extends TestCase
             ->assertSeeHtml('autocomplete="new-password"');
     }
 
+    public function test_the_college_dropdown_is_flux_styled_and_posts_like_a_select(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+
+        // Flux's own styled list is Pro: x-select opens a Flux-styled list and posts the pick in a hidden field
+        $this->get(route('register'))
+            ->assertOk()
+            ->assertSeeHtml('role="combobox"')
+            ->assertSeeHtml('role="listbox"')
+            ->assertSeeHtml('<input type="hidden" name="department_id"')
+            ->assertSeeHtml('data-value="'.$department->id.'"')
+            ->assertSee('Choose your college')
+            ->assertDontSeeHtml('<select');
+    }
+
+    public function test_the_college_dropdown_says_it_is_required(): void
+    {
+        // Screen readers hear it, and Enter in the field before it moves on to it while it is empty (app.js)
+        $page = $this->get(route('register'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('~role="combobox"(?:(?!</button>).)*?aria-required="true"~s', $page);
+    }
+
     public function test_create_account_button_shows_a_loading_state_while_submitting(): void
     {
         $this->get(route('register'))
-            ->assertSee('x-on:submit="submitting = true"', escape: false)
+            ->assertSee('x-data="formStates', escape: false)
             ->assertSee('x-bind:disabled="submitting"', escape: false)
             ->assertSee('data-flux-loading-indicator', escape: false);
     }
@@ -105,6 +128,23 @@ class RegistrationTest extends TestCase
         $this->post(route('register.store'), $form('user30@isu.edu.ph'))
             ->assertSessionHasErrors(['email' => 'Too many sign-ups have come from your network. Please try again within the hour.']);
         $this->assertDatabaseMissing('users', ['email' => 'user30@isu.edu.ph']);
+    }
+
+    public function test_a_turned_down_sign_up_marks_the_field_and_leaves_the_focus_to_it(): void
+    {
+        $department = Department::create(['code' => 'CCSICT', 'name' => 'College of Computing Studies']);
+
+        $page = $this->from(route('register'))
+            ->followingRedirects()
+            ->post(route('register.store'), ['name' => 'John Doe', 'email' => 'john@gmail.com', 'department_id' => $department->id, 'password' => 'password', 'password_confirmation' => 'password'])
+            ->assertSee('Use your ISU email address, ending in @isu.edu.ph.')
+            ->getContent();
+
+        // Name gives up its autofocus, so formStates puts the focus on the first red field
+        preg_match('~<input[^>]*name="name"[^>]*>~', $page, $name);
+        preg_match('~<input[^>]*name="email"[^>]*>~', $page, $email);
+        $this->assertStringNotContainsString('autofocus', $name[0]);
+        $this->assertStringContainsString('aria-invalid="true"', $email[0]);
     }
 
     public function test_only_isu_email_addresses_can_sign_up(): void

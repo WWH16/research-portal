@@ -231,7 +231,7 @@ new #[Title('Notifications')] class extends Component {
          under the phone sidebar and its backdrop (z-20). Not Flux::toast(): its toasts
          stay on screen after a move to another page, where Undo would do nothing, and pause on hover past the cache --}}
     @if ($undo)
-        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="fixed inset-x-4 bottom-4 z-15 shadow-lg/5 sm:start-auto sm:end-6 sm:bottom-6 sm:w-lg" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
+        <flux:callout inline variant="secondary" wire:key="undo-{{ $undo }}" x-init="setTimeout(() => $wire.set('undo', null), 10000)" role="status" class="fixed inset-x-4 bottom-4 z-15 shadow-overlay sm:start-auto sm:end-6 sm:bottom-6 sm:w-lg" :text="trans_choice('{1} Notification deleted.|[2,*] :count notifications deleted.', $deleted)" data-test="undo-delete">
             <x-slot name="actions">
                 <flux:button size="sm" wire:click="undoDelete" class="max-sm:h-11">{{ __('Undo') }}</flux:button>
             </x-slot>
@@ -267,37 +267,35 @@ new #[Title('Notifications')] class extends Component {
 
             {{-- Inbox row: the kind as subject, the message under it; unread in pastel with the gold dot ("Unread:" for
                  screen readers). The whole row opens the notice; its menu sits above, beside the subject only, so the
-                 message runs the full width --}}
+                 message runs under it, up to a comfortable 75 characters a line. data-read alone sets the unread look,
+                 so a click flips it at once (opening reads it, the menu toggles it) and the server's render confirms
+                 it; Delete hides the row at once the same way --}}
             <ul class="mt-2 divide-y divide-line rounded-xl border border-line bg-surface">
                 @foreach ($notices as $notification)
                     @php([$kind, , $icon] = $this->kind($notification))
-                    <li wire:key="{{ $notification->id }}" @class(['relative flex items-start gap-3 px-4 py-3 first:rounded-t-xl last:rounded-b-xl', 'hover:bg-zinc-50' => $notification->read_at, 'bg-pastel hover:bg-pastel-hover' => ! $notification->read_at])>
-                        <flux:icon :icon="$icon" @class(['mt-0.5 size-5 shrink-0', 'text-zinc-400' => $notification->read_at, 'text-isu-green-700' => ! $notification->read_at]) />
+                    <li wire:key="{{ $notification->id }}" data-read="{{ $notification->read_at ? 'true' : 'false' }}" class="group/row relative flex items-start gap-3 px-4 py-3 first:rounded-t-xl last:rounded-b-xl data-[read=false]:bg-pastel data-[read=false]:hover:bg-pastel-hover data-[read=true]:hover:bg-zinc-50">
+                        <flux:icon :icon="$icon" class="mt-0.5 size-5 shrink-0 text-zinc-400 group-data-[read=false]/row:text-isu-green-700" />
 
                         <div class="min-w-0 flex-1">
                             {{-- The subject and message dim if opening takes longer than 150ms, so a slow open still answers the tap --}}
-                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" class="block text-start no-underline! transition-opacity ease-out data-loading:opacity-60 data-loading:delay-150 after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent">
-                                @unless ($notification->read_at)
-                                    <span class="sr-only">{{ __('Unread:') }}</span>
-                                @endunless
-                                <span @class(['block pe-16 text-sm', 'font-medium text-zinc-800' => $notification->read_at, 'font-semibold text-zinc-900' => ! $notification->read_at])>{{ __($kind) }}</span>
-                                <span class="mt-0.5 block text-sm text-zinc-600 wrap-anywhere">{{ $notification->data['message'] }}</span>
+                            <flux:link as="button" variant="subtle" wire:click="read('{{ $notification->id }}')" x-on:click="$el.closest('[data-read]').dataset.read = 'true'" class="block text-start no-underline! transition-opacity ease-out data-loading:opacity-60 data-loading:delay-150 after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent">
+                                <span class="sr-only group-data-[read=true]/row:hidden">{{ __('Unread:') }}</span>
+                                <span class="block pe-16 text-sm font-medium text-zinc-800 group-data-[read=false]/row:font-semibold group-data-[read=false]/row:text-zinc-900">{{ __($kind) }}</span>
+                                <span class="mt-0.5 block max-w-[75ch] text-sm text-zinc-600 wrap-anywhere">{{ $notification->data['message'] }}</span>
                             </flux:link>
                             <p class="mt-1 text-xs text-zinc-600">{{ $notification->created_at->diffForHumans() }}</p>
                         </div>
 
                         {{-- On phones the 44px menu starts at the row's top edge, so its dots stay level with the subject --}}
                         <div class="absolute end-2 top-2 z-10 flex items-center gap-2 max-sm:top-0">
-                            @unless ($notification->read_at)
-                                <span class="size-2 rounded-full bg-isu-gold-700" data-test="unread-dot" aria-hidden="true"></span>
-                            @endunless
+                            <span class="size-2 rounded-full bg-isu-gold-700 group-data-[read=true]/row:hidden" data-test="unread-dot" aria-hidden="true"></span>
                             <flux:dropdown position="bottom" align="end">
                                 <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" :tooltip="__('Open actions')" :aria-label="__('Open actions for: :message', ['message' => $notification->data['message']])" class="max-sm:size-11" />
                                 <flux:menu>
-                                    <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')" class="max-sm:min-h-11">
+                                    <flux:menu.item :icon="$notification->read_at ? 'envelope' : 'envelope-open'" wire:click="toggleRead('{{ $notification->id }}')" x-on:click="const row = $el.closest('[data-read]'); row.dataset.read = row.dataset.read === 'true' ? 'false' : 'true'" class="max-sm:min-h-11">
                                         {{ $notification->read_at ? __('Mark as unread') : __('Mark as read') }}
                                     </flux:menu.item>
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="delete('{{ $notification->id }}')" class="max-sm:min-h-11">{{ __('Delete') }}</flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="delete('{{ $notification->id }}')" x-on:click="$el.closest('li').hidden = true" class="max-sm:min-h-11">{{ __('Delete') }}</flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>
                         </div>

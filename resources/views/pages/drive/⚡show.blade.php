@@ -67,7 +67,7 @@ new #[Title('Research Drive')] class extends Component {
 
         <div class="min-w-0 sm:col-span-2 sm:row-start-2">
             {{-- A title pasted without spaces still breaks instead of overflowing --}}
-            <flux:heading size="xl" level="1" class="text-balance wrap-break-word">{{ $project->title }}</flux:heading>
+            <flux:heading size="xl" level="1" class="wrap-break-word" wire:transition.navigate="project-{{ $project->id }}">{{ $project->title }}</flux:heading>
             <div class="mt-3">@include('partials.project-status', ['submission' => $project])</div>
         </div>
 
@@ -146,7 +146,10 @@ new #[Title('Research Drive')] class extends Component {
                         </p>
                     </div>
                     @if ($path)
-                        <flux:button :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" icon:trailing="arrow-top-right-on-square" class="max-sm:h-11 max-sm:px-4">{{ __('Open file') }}</flux:button>
+                        @php($viewer = $project->documentViewer($stage))
+                        <x-opens-in-viewer :viewer="$viewer">
+                            <flux:button :href="route('submissions.document', [$project, $stage])" target="_blank" rel="noopener" :icon:trailing="$viewer ? 'arrows-pointing-out' : 'arrow-top-right-on-square'" class="max-sm:h-11 max-sm:px-4">{{ __('Open file') }}</flux:button>
+                        </x-opens-in-viewer>
                     @endif
                 </li>
             @endforeach
@@ -190,7 +193,7 @@ new #[Title('Research Drive')] class extends Component {
             <div x-data="{ all: false }">
                 <ol id="history-entries" class="mt-3 divide-y divide-line border-y border-line" data-test="drive-history">
                     @foreach ($history as $entry)
-                        <li class="py-3" @if ($loop->iteration > 5) x-show="all" x-cloak @endif>
+                        <li class="py-3" @if ($loop->iteration > 5) x-show="all" x-cloak data-stagger style="--i: {{ $loop->iteration - 6 }}" @endif>
                             <p class="text-sm text-zinc-500">
                                 <span class="font-medium text-zinc-700">{{ $entry->historyActor() }}</span>
                                 · <time datetime="{{ $entry->created_at->toIso8601String() }}">{{ $entry->day() }}, {{ $entry->created_at->format('g:i A') }}</time>
@@ -206,11 +209,10 @@ new #[Title('Research Drive')] class extends Component {
                     @endforeach
                 </ol>
                 @if ($history->count() > 5)
-                    <button type="button" x-on:click="all = ! all" x-bind:aria-expanded="all ? 'true' : 'false'" aria-expanded="false" aria-controls="history-entries" class="mt-3 flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-800 max-sm:min-h-11" data-test="drive-history-toggle">
-                        <flux:icon.chevron-down variant="micro" class="transition-transform motion-reduce:transition-none" x-bind:class="all && 'rotate-180'" />
+                    <flux:button variant="ghost" size="sm" icon="chevron-down" icon:variant="micro" icon:class="transition-transform in-aria-expanded:rotate-180 motion-reduce:transition-none" x-on:click="all = ! all" x-bind:aria-expanded="all ? 'true' : 'false'" aria-expanded="false" aria-controls="history-entries" class="mt-3 -ms-2 max-sm:h-11" data-test="drive-history-toggle">
                         <span x-show="! all">{{ trans_choice('{1} Show 1 earlier entry|[2,*] Show :count earlier entries', $history->count() - 5) }}</span>
                         <span x-show="all" x-cloak>{{ __('Show fewer') }}</span>
-                    </button>
+                    </flux:button>
                 @endif
             </div>
         @endif

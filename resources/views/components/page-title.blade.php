@@ -7,8 +7,8 @@
 @php($hasActions = $actions?->hasActualContent())
 
 <header data-page-title {{ $attributes->class(['flex flex-wrap items-center gap-3', 'lg:border-b lg:border-line lg:pb-4' => $divider, 'max-lg:mb-4' => $hasActions]) }}>
-    {{-- The seal stands as tall as the text beside it and centred on it: the 32px name, plus the 4px gap and 20px line
-         under it --}}
+    {{-- The seal stands as tall as the text beside it and centred on it: 56px against the 30px name, the 4px gap and the
+         21px line under it --}}
     <div class="flex min-w-0 items-center gap-4 max-lg:sr-only">
         <img src="{{ asset('images/isu_seal-128.png') }}" alt="" class="size-14 shrink-0 object-contain" />
         <div class="min-w-0">
